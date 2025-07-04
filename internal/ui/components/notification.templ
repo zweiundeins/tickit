@@ -1,0 +1,35 @@
+package components
+
+import (
+	"fmt"
+	"github.com/mbolli/tickit/internal/models"
+)
+
+templ Notification (ntf *models.Notification) {
+    <section class={ "notification", templ.KV("read", ntf.Read), templ.KV("unread", !ntf.Read) } data-id={ ntf.Uid }>
+        <div class="grid">
+            <h4 class="notification-title">{ ntf.Title }</h4>
+            <p class="notification-date">{ ntf.Date }</p>
+            if ntf.Read {
+                <button data-on-click__viewtransition={ fmt.Sprintf("$notificationUid = '%s'; @delete('/api/notifications'); $notificationUid = ''", ntf.Uid) }>remove</button>
+            } else {
+                <button data-on-click__viewtransition={ fmt.Sprintf("$notificationUid = '%s'; @patch('/api/notifications/read'); $notificationUid = ''", ntf.Uid) }>mark as read</button>
+            }
+        </div>
+        <p class="notification-message">{ ntf.Body }</p>
+    </section>
+}
+
+templ Notifications (ntfs *models.Notifications) {
+    <div id="notifications" data-on-load={ fmt.Sprintf("document.title = 'TickIt (%d)'", models.GetUnreadCount(ntfs)) } data-signals-notification-uid>
+        <h2>{ models.GetUnreadCount(ntfs) } unread notifications</h2>
+        <fieldset role="group">
+            <button data-on-click__viewtransition="@patch('/api/notifications/read')">Mark all as read</button>
+            <button class="secondary" data-on-click__viewtransition="@delete('/api/notifications')">Delete all</button>
+        </fieldset>
+
+        for _, ntf := range ntfs.Notifications {
+            @Notification(ntf)
+        }
+    </div>
+}

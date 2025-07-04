@@ -1,0 +1,40 @@
+package layouts
+
+
+templ Base(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<title>{ title }</title>
+			<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
+			<link rel="icon" type="image/x-icon" href="/static/assets/favicon.ico"/>
+			<script defer type="module" src="/static/index.mjs"></script>
+			<script defer type="module" src="/static/datastar.js"></script>
+			<link href="/static/index.css" rel="stylesheet" type="text/css"/>
+		</head>
+		<body>
+		    <header class="container">
+                <nav>
+                  <ul>
+                    <li><strong>Acme Corp</strong></li>
+                  </ul>
+                  <ul>
+                    <li><a href="/counter">Link 1</a></li>
+                    <li><a href="/monitor">Link 2</a></li>
+                    <li><a href="/sortable">Link 3</a></li>
+                  </ul>
+                  <ul>
+                  <li>Test</li></ul>
+                </nav>
+		    </header>
+		    <main class="container">
+			{ children... }
+			</main>
+			<footer class="container" data-on-load="@get('/api/notifications')">
+                <div id="notifications"></div>
+
+			    &copy; 2023 Acme Corp. All rights reserved.
+			</footer>
+		</body>
+	</html>
+}

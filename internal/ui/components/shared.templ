@@ -1,0 +1,7 @@
+package components
+
+import ("fmt")
+
+func SseIndicator(signalName string) string {
+	return fmt.Sprintf(`data-attr-aria-busy="$%s ? 'true' : 'false'"`, signalName);
+}

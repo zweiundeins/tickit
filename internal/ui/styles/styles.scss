@@ -1,0 +1,22 @@
+@use "@picocss/pico/scss/pico" with (
+    $theme-color: "cyan",
+
+);
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+
+    > footer {
+        margin-top: auto; // Push footer to the bottom
+    }
+}
+
+#notifications {
+    .notification {
+        &.read {
+            opacity: 0.5; // Make read notifications semi-transparent
+        }
+    }
+}

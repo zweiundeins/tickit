@@ -1,0 +1,17 @@
+package pages
+
+import (
+	"github.com/mbolli/tickit/internal/ui/layouts"
+)
+
+templ Index() {
+	@layouts.Base("TickIt") {
+        <form data-indicator="loading" data-on-submit__viewtransition="@post('/api/notifications/', { contentType: 'form' })">
+          <fieldset role="group">
+            <input name="title" type="text" placeholder="Title" />
+            <input name="body" type="text" placeholder="Text" />
+            <input type="submit" value="Post" data-attr-aria-busy="$loading ? 'true' : 'false'" />
+          </fieldset>
+        </form>
+	}
+}
