@@ -2,10 +2,10 @@ package routes
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -14,6 +14,7 @@ import (
 	"github.com/delaneyj/toolbelt/embeddednats"
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/sessions"
+	"github.com/mbolli/tickit/internal/bootstrap"
 	natsserver "github.com/nats-io/nats-server/v2/server"
 )
 
@@ -40,10 +41,13 @@ func SetupRoutes(ctx context.Context, router chi.Router) (err error) {
 	sessionStore := sessions.NewCookieStore([]byte("session-secret"))
 	sessionStore.MaxAge(int(24 * time.Hour / time.Second))
 
-	if err := errors.Join(
-		setupIndexRoute(router, sessionStore, ns),
-	); err != nil {
-		return fmt.Errorf("error setting up routes: %w", err)
+	slog.Info("using CQRS implementation")
+	cqrsDeps, err := bootstrap.WireCQRS(ctx, ns)
+	if err != nil {
+		return fmt.Errorf("error wiring CQRS: %w", err)
+	}
+	if err := setupCQRSRoutes(router, cqrsDeps.SessionStore, cqrsDeps.NotificationService, cqrsDeps.IssueService, cqrsDeps); err != nil {
+		return fmt.Errorf("error setting up CQRS routes: %w", err)
 	}
 
 	return nil
@@ -75,4 +79,23 @@ func isPortFree(port int) bool {
 	}
 
 	return true
+}
+
+func upsertSessionID(store sessions.Store, r *http.Request, w http.ResponseWriter) (string, error) {
+	sess, err := store.Get(r, "connections")
+	if err != nil {
+		return "", fmt.Errorf("failed to get session: %w", err)
+	}
+
+	id, ok := sess.Values["id"].(string)
+
+	if !ok {
+		id = toolbelt.NextEncodedID()
+		sess.Values["id"] = id
+		if err := sess.Save(r, w); err != nil {
+			return "", fmt.Errorf("failed to save session: %w", err)
+		}
+	}
+
+	return id, nil
 }

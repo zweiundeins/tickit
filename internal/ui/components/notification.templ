@@ -3,13 +3,14 @@ package components
 import (
 	"fmt"
 	"github.com/mbolli/tickit/internal/models"
+	"github.com/xeonx/timeago"
 )
 
 templ Notification (ntf *models.Notification) {
-    <section class={ "notification", templ.KV("read", ntf.Read), templ.KV("unread", !ntf.Read) } data-id={ ntf.Uid }>
+    <section class={ "notification contrast", templ.KV("read", ntf.Read), templ.KV("unread", !ntf.Read) } data-id={ ntf.Uid } data-signals>
         <div class="grid">
             <h4 class="notification-title">{ ntf.Title }</h4>
-            <p class="notification-date">{ ntf.Date }</p>
+            <p class="notification-date">{ timeago.German.Format(ntf.Date) }</p>
             if ntf.Read {
                 <button data-on-click__viewtransition={ fmt.Sprintf("$notificationUid = '%s'; @delete('/api/notifications'); $notificationUid = ''", ntf.Uid) }>remove</button>
             } else {
@@ -21,15 +22,23 @@ templ Notification (ntf *models.Notification) {
 }
 
 templ Notifications (ntfs *models.Notifications) {
-    <div id="notifications" data-on-load={ fmt.Sprintf("document.title = 'TickIt (%d)'", models.GetUnreadCount(ntfs)) } data-signals-notification-uid>
-        <h2>{ models.GetUnreadCount(ntfs) } unread notifications</h2>
-        <fieldset role="group">
-            <button data-on-click__viewtransition="@patch('/api/notifications/read')">Mark all as read</button>
-            <button class="secondary" data-on-click__viewtransition="@delete('/api/notifications')">Delete all</button>
-        </fieldset>
+    <div id="notifications" data-on-load={ fmt.Sprintf("document.title = 'TickIt (%d)'", ntfs.UnreadCount()) } data-signals__ifmissing="{notificationUid: '', _notificationExpanded: false}">
+        <div id="notifications-panel" data-class="{ expanded: $_notificationExpanded }">
+            <div id="notification-bar" data-on-click="if (evt.target.nodeName === 'A') return false; $_notificationExpanded = !$_notificationExpanded">
+                <span class="icon">🔔</span>
+                <span class="title">Notifications</span>
+                <span class="badge">{ ntfs.UnreadCount() }</span>
+                <small class="actions">
+                    <a data-on-click="@patch('/api/notifications/read')">Mark all as read</a>
+                    <a data-on-click="@delete('/api/notifications')">Delete all</a>
+                </small>
+            </div>
 
-        for _, ntf := range ntfs.Notifications {
-            @Notification(ntf)
-        }
+            <main>
+                for _, ntf := range ntfs.Notifications {
+                    @Notification(ntf)
+                }
+            </main>
+        </div>
     </div>
 }

@@ -14,9 +14,69 @@ body {
 }
 
 #notifications {
-    .notification {
-        &.read {
-            opacity: 0.5; // Make read notifications semi-transparent
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 0;
+    z-index: 1000;
+
+    #notifications-panel {
+        width: 22rem;
+        max-height: 3.5rem;
+        overflow: hidden;
+        box-shadow: var(--pico-box-shadow);
+        transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1000;
+
+
+        &.expanded {
+            max-height: 60vh;
+        }
+
+        #notification-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            background: var(--pico-primary-background);
+            border-radius: 1rem 1rem 0 0;
+            box-shadow: var(--pico-box-shadow);
+            z-index: 1001;
+            position: relative;
+    
+            &:hover { background: var(--pico-primary-hover-background); }
+    
+            .badge {
+                background: #ff5252;
+                color: #fff;
+                border-radius: 1rem;
+                padding: 0.2rem 0.7rem;
+                font-size: 0.9rem;
+                margin-left: 0.5rem;
+              }
+        }
+
+        
+        main {
+            overflow-y: auto;
+            background: var(--pico-primary-background);
+            max-height: calc(60vh - 3.5rem); // Panel height minus bar height
+
+            .notification {
+                border-radius: .5rem;
+                padding: 1rem;
+                box-shadow: var(--pico-box-shadow);
+                position: relative;
+                transition: transform .3s ease;
+                cursor: pointer;
+                &.read {
+                    opacity: 0.5; // Make read notifications semi-transparent
+                }
+                &.critical {
+                    border-left: 4px solid #ff5252;
+                }
+            }
         }
     }
 }

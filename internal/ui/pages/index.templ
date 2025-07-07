@@ -2,16 +2,51 @@ package pages
 
 import (
 	"github.com/mbolli/tickit/internal/ui/layouts"
+	"github.com/mbolli/tickit/internal/ui/components"
+	"github.com/mbolli/tickit/internal/models"
 )
 
 templ Index() {
 	@layouts.Base("TickIt") {
-        <form data-indicator="loading" data-on-submit__viewtransition="@post('/api/notifications/', { contentType: 'form' })">
-          <fieldset role="group">
-            <input name="title" type="text" placeholder="Title" />
-            <input name="body" type="text" placeholder="Text" />
-            <input type="submit" value="Post" data-attr-aria-busy="$loading ? 'true' : 'false'" />
-          </fieldset>
+    <div class="notif-form">
+        <form data-indicator="_loading" data-on-submit__viewtransition="@post('/api/notifications/', { contentType: 'form' }) && el.reset()">
+            <label>
+              Title
+              <input name="title" type="text" placeholder="Title" />
+            </label>
+            <label>
+              Text
+              <input name="body" type="text" placeholder="Text" />
+            </label>
+            <button type="submit" { components.SseIndicator("_loading")... }>Send notification</button>
         </form>
+    </div>
+    <div class="issue-form">
+        <form data-indicator="_issue_loading" data-on-submit__viewtransition="@post('/api/issues/', { contentType: 'form' }) && el.reset()">
+            <label>
+              Issue Title
+              <input name="title" type="text" placeholder="Issue Title" required />
+            </label>
+            <label>
+              Description
+              <input name="description" type="text" placeholder="Description" required />
+            </label>
+            <label>
+              Assignee
+              <input name="assignee" type="text" placeholder="Assignee" />
+            </label>
+            <label>
+              Status
+              <select name="status" required>
+                for _, status := range models.IssueStatuses {
+                  <option value={status} selected={status == models.IssueStatusToDo}>{status}</option>
+                }
+              </select>
+            </label>
+            <button type="submit" { components.SseIndicator("_issue_loading")... }>Create issue</button>
+        </form>
+    </div>
+
+    <div id="issues"></div>
 	}
 }

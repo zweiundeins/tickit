@@ -14,9 +14,10 @@ templ Base(title string) {
 		</head>
 		<body>
 		    <header class="container">
+				<div data-signals-_disconnected="false" data-indicator="_connecting" data-on-interval__duration.30s.leading="!$_connecting && @get('/api/updates')" data-on-datastar-sse="el === evt.detail.el && ((evt.detail.type.startsWith('datastar') && ($_disconnected = false)) || (['retrying', 'error', 'finished'].includes(evt.detail.type) && ($_disconnected = true)));"><div data-show="$_disconnected">Warning: Not connected to server.</div></div>
                 <nav>
                   <ul>
-                    <li><strong>Acme Corp</strong></li>
+                    <li><strong>TickIt</strong></li>
                   </ul>
                   <ul>
                     <li><a href="/counter">Link 1</a></li>
@@ -30,10 +31,12 @@ templ Base(title string) {
 		    <main class="container">
 			{ children... }
 			</main>
-			<footer class="container" data-on-load="@get('/api/notifications')">
+			<footer class="container">
                 <div id="notifications"></div>
 
 			    &copy; 2023 Acme Corp. All rights reserved.
+
+				<pre data-json-signals></pre>
 			</footer>
 		</body>
 	</html>

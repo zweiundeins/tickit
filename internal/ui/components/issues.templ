@@ -1,0 +1,19 @@
+package components
+
+import (
+	"github.com/mbolli/tickit/internal/models"
+)
+
+templ Issues (issues []*models.Issue) {
+    <div id="issues">
+        <h2>Issues ({len(issues)})</h2>
+        <ul>
+            for _, issue := range issues {
+                <li>
+                    <strong>{issue.Title}</strong> - {issue.Status} (Assignee: {issue.Assignee})<br/>
+                    <small>{issue.Description}</small>
+                </li>
+            }
+        </ul>
+    </div>
+} 

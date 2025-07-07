@@ -2,6 +2,6 @@ package components
 
 import ("fmt")
 
-func SseIndicator(signalName string) string {
-	return fmt.Sprintf(`data-attr-aria-busy="$%s ? 'true' : 'false'"`, signalName);
+func SseIndicator(signalName string) templ.Attributes {
+	return templ.Attributes{"data-attr": fmt.Sprintf(`{'aria-busy': $%s ? 'true' : 'false'}`, signalName)};
 }
