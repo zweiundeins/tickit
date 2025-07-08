@@ -2,17 +2,20 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
-	"log"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/andybalholm/brotli"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/mbolli/tickit/internal/routes"
+	"github.com/quic-go/quic-go/http3"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -53,13 +56,19 @@ func run(ctx context.Context) error {
 		return "8080"
 	}
 
-	slog.Info("starting server on port :" + getPort())
+	slog.Info("starting server on https://0.0.0.0:" + getPort())
 
 	eg, egctx := errgroup.WithContext(sctx)
 	eg.Go(func() error {
 		router := chi.NewMux()
+		compressor := middleware.NewCompressor(5, "br")
+		compressor.SetEncoder("br", func(w io.Writer, level int) io.Writer {
+			return brotli.NewWriterV2(w, level)
+		})
 
 		router.Use(
+			compressor.Handler,
+			h3AltSvcMiddleware(getPort()),
 			middleware.Logger,
 			middleware.Recoverer,
 		)
@@ -70,20 +79,53 @@ func run(ctx context.Context) error {
 			return fmt.Errorf("error setting up routes: %w", err)
 		}
 
-		srv := &http.Server{
-			Addr:     "0.0.0.0:" + getPort(),
-			Handler:  router,
-			ErrorLog: slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
+		cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
+		if err != nil {
+			return fmt.Errorf("failed to load TLS certificate or key: %w", err)
 		}
+
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			NextProtos:   []string{"h2", "h3"},
+		}
+
+		httpSrv := &http.Server{
+			Addr:      "0.0.0.0:" + getPort(),
+			Handler:   router,
+			TLSConfig: tlsConfig,
+			ErrorLog:  slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
+		}
+
+		http3Srv := &http3.Server{
+			Addr:      "0.0.0.0:" + getPort(),
+			Handler:   router,
+			TLSConfig: tlsConfig,
+			Logger:    slog.Default(),
+		}
+
+		eg.Go(func() error {
+			// HTTP/1.1 and HTTP/2
+			if err := httpSrv.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				return fmt.Errorf("http server error: %w", err)
+			}
+			return nil
+		})
+
+		eg.Go(func() error {
+			// HTTP/3
+			if err := http3Srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				return fmt.Errorf("http3 server error: %w", err)
+			}
+			return nil
+		})
 
 		go func() {
 			<-egctx.Done()
-			if err := srv.Shutdown(context.Background()); err != nil {
-				log.Fatalf("error during shutdown: %v", err)
-			}
+			_ = httpSrv.Shutdown(context.Background())
+			_ = http3Srv.Close()
 		}()
 
-		return srv.ListenAndServe()
+		return eg.Wait()
 	})
 
 	if err := eg.Wait(); err != nil {
@@ -91,4 +133,14 @@ func run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// h3AltSvcMiddleware sets the Alt-Svc header to advertise HTTP/3 support
+func h3AltSvcMiddleware(port string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Alt-Svc", "h3=\":"+port+"\"")
+			next.ServeHTTP(w, r)
+		})
+	}
 }

@@ -3,7 +3,6 @@ package shared
 import (
 	"context"
 	"fmt"
-	"reflect"
 )
 
 // QueryBus handles query routing and execution
@@ -49,9 +48,8 @@ func (b *QueryBus) Execute(ctx context.Context, query interface{}) (interface{},
 
 // getQueryType returns the type name of a query for routing
 func getQueryType(query interface{}) string {
-	t := reflect.TypeOf(query)
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
+	if q, ok := query.(Query); ok {
+		return q.GetQueryType()
 	}
-	return t.Name()
+	return ""
 }
