@@ -2,11 +2,11 @@ package components
 
 import (
 	"fmt"
-	"github.com/mbolli/tickit/internal/models"
+	"github.com/mbolli/tickit/internal/notifications"
 	"github.com/xeonx/timeago"
 )
 
-templ Notification (ntf *models.Notification) {
+templ Notification (ntf *notifications.Notification) {
     <section class={ "notification contrast", templ.KV("read", ntf.Read), templ.KV("unread", !ntf.Read) } data-id={ ntf.Uid } data-signals>
         <div class="grid">
             <h4 class="notification-title">{ ntf.Title }</h4>
@@ -21,7 +21,7 @@ templ Notification (ntf *models.Notification) {
     </section>
 }
 
-templ Notifications (ntfs *models.Notifications) {
+templ Notifications (ntfs *notifications.Notifications) {
     <div id="notifications" data-on-load={ fmt.Sprintf("document.title = 'TickIt (%d)'", ntfs.UnreadCount()) } data-signals__ifmissing="{notificationUid: '', _notificationExpanded: false}">
         <div id="notifications-panel" data-class="{ expanded: $_notificationExpanded }">
             <div id="notification-bar" data-on-click="if (evt.target.nodeName === 'A') return false; $_notificationExpanded = !$_notificationExpanded">

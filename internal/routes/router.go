@@ -15,6 +15,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/sessions"
 	"github.com/mbolli/tickit/internal/bootstrap"
+	"github.com/mbolli/tickit/internal/issues"
+	"github.com/mbolli/tickit/internal/notifications"
+	"github.com/mbolli/tickit/internal/ui/pages"
 	natsserver "github.com/nats-io/nats-server/v2/server"
 )
 
@@ -46,9 +49,28 @@ func SetupRoutes(ctx context.Context, router chi.Router) (err error) {
 	if err != nil {
 		return fmt.Errorf("error wiring CQRS: %w", err)
 	}
-	if err := setupCQRSRoutes(router, cqrsDeps.SessionStore, cqrsDeps.NotificationService, cqrsDeps.IssueService, cqrsDeps); err != nil {
-		return fmt.Errorf("error setting up CQRS routes: %w", err)
-	}
+
+	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		if err := pages.Index().Render(r.Context(), w); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+	})
+
+	router.Route("/api", func(apiRouter chi.Router) {
+		apiRouter.Route("/notifications", func(notifRouter chi.Router) {
+			notifRouter.Post("/", notifications.HandleCreateNotification(cqrsDeps.SessionStore, cqrsDeps.NotificationService))
+			notifRouter.Delete("/", notifications.HandleDeleteNotification(cqrsDeps.SessionStore, cqrsDeps.NotificationService))
+			notifRouter.Patch("/read", notifications.HandleMarkNotificationRead(cqrsDeps.SessionStore, cqrsDeps.NotificationService))
+		})
+		apiRouter.Route("/issues", func(issueRouter chi.Router) {
+			issueRouter.Post("/", issues.HandleCreateIssue(cqrsDeps.SessionStore, cqrsDeps.IssueService))
+			issueRouter.Patch("/{id}", issues.HandleUpdateIssue(cqrsDeps.SessionStore, cqrsDeps.IssueService))
+			issueRouter.Delete("/{id}", issues.HandleDeleteIssue(cqrsDeps.SessionStore, cqrsDeps.IssueService))
+			issueRouter.Get("/", issues.HandleListIssues(cqrsDeps.SessionStore, cqrsDeps.IssueService))
+			issueRouter.Get("/{id}", issues.HandleGetIssueByID(cqrsDeps.SessionStore, cqrsDeps.IssueService))
+		})
+		apiRouter.Get("/updates", handleUpdatesSSE(cqrsDeps.SessionStore, cqrsDeps.NatsConn, cqrsDeps.NotificationService, cqrsDeps.IssueService))
+	})
 
 	return nil
 }
@@ -79,23 +101,4 @@ func isPortFree(port int) bool {
 	}
 
 	return true
-}
-
-func upsertSessionID(store sessions.Store, r *http.Request, w http.ResponseWriter) (string, error) {
-	sess, err := store.Get(r, "connections")
-	if err != nil {
-		return "", fmt.Errorf("failed to get session: %w", err)
-	}
-
-	id, ok := sess.Values["id"].(string)
-
-	if !ok {
-		id = toolbelt.NextEncodedID()
-		sess.Values["id"] = id
-		if err := sess.Save(r, w); err != nil {
-			return "", fmt.Errorf("failed to save session: %w", err)
-		}
-	}
-
-	return id, nil
 }

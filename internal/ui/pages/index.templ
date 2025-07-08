@@ -3,7 +3,7 @@ package pages
 import (
 	"github.com/mbolli/tickit/internal/ui/layouts"
 	"github.com/mbolli/tickit/internal/ui/components"
-	"github.com/mbolli/tickit/internal/models"
+	"github.com/mbolli/tickit/internal/issues"
 )
 
 templ Index() {
@@ -38,8 +38,8 @@ templ Index() {
             <label>
               Status
               <select name="status" required>
-                for _, status := range models.IssueStatuses {
-                  <option value={status} selected={status == models.IssueStatusToDo}>{status}</option>
+                for _, status := range issues.IssueStatuses {
+                  <option value={status} selected={status == issues.IssueStatusToDo}>{status}</option>
                 }
               </select>
             </label>

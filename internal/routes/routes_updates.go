@@ -6,7 +6,9 @@ import (
 	"net/http"
 
 	"github.com/gorilla/sessions"
-	"github.com/mbolli/tickit/internal/cqrs/application"
+	"github.com/mbolli/tickit/internal/issues"
+	"github.com/mbolli/tickit/internal/notifications"
+	"github.com/mbolli/tickit/internal/sharedhttp"
 	"github.com/mbolli/tickit/internal/ui/components"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -14,9 +16,9 @@ import (
 )
 
 // GET /api/updates - SSE endpoint for real-time notifications and issues updates
-func handleUpdatesSSE(store sessions.Store, nc *nats.Conn, notificationService *application.NotificationService, issueService *application.IssueService) http.HandlerFunc {
+func handleUpdatesSSE(store sessions.Store, nc *nats.Conn, notificationService *notifications.NotificationService, issueService *issues.IssueService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		withSessionAndSignals(store, w, r, nil, func(sessionID string, _ any) {
+		sharedhttp.WithSessionAndSignals(store, w, r, nil, func(sessionID string, _ any) {
 			sse := datastar.NewSSE(w, r)
 			ctx := r.Context()
 

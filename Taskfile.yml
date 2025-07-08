@@ -25,10 +25,8 @@ tasks:
     cmds:
       - go build -tags=prod -o bin/main ./cmd/web
     deps:
-      - build:lit-html
       - build:templ
       - build:esbuild
-      - build:styles
 
   # Use this task to debug with the delve debugger
   debug:

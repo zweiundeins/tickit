@@ -1,10 +1,10 @@
 package components
 
 import (
-	"github.com/mbolli/tickit/internal/models"
+	"github.com/mbolli/tickit/internal/issues"
 )
 
-templ Issues (issues []*models.Issue) {
+templ Issues (issues []*issues.Issue) {
     <div id="issues">
         <h2>Issues ({len(issues)})</h2>
         <ul>
