@@ -61,7 +61,7 @@ func run(ctx context.Context) error {
 	eg, egctx := errgroup.WithContext(sctx)
 	eg.Go(func() error {
 		router := chi.NewMux()
-		compressor := middleware.NewCompressor(5, "br")
+		compressor := middleware.NewCompressor(5)
 		compressor.SetEncoder("br", func(w io.Writer, level int) io.Writer {
 			return brotli.NewWriterV2(w, level)
 		})

@@ -32,6 +32,16 @@ internal/ui/static/*
 go.work
 go.work.sum
 
+# Certificates
+*.pem
+*.crt
+*.key
+*.csr
+*.pfx
+*.p12
+*.der
+*.cer
+
 # env file
 .env
 

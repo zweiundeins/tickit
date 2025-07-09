@@ -19,11 +19,7 @@ import (
 func handleUpdatesSSE(store sessions.Store, nc *nats.Conn, notificationService *notifications.NotificationService, issueService *issues.IssueService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sharedhttp.WithSessionAndSignals(store, w, r, nil, func(sessionID string, _ any) {
-			sse := datastar.NewSSE(w, r, datastar.WithCompression(
-				datastar.WithBrotli(),
-				datastar.WithZstd(),
-				datastar.WithGzip(),
-			))
+			sse := datastar.NewSSE(w, r, datastar.WithCompression(datastar.WithServerPriority()))
 			ctx := r.Context()
 
 			jsCtx, err := jetstream.New(nc)
