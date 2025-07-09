@@ -48,6 +48,7 @@ func handleUpdatesSSE(store sessions.Store, nc *nats.Conn, notificationService *
 				_ = sse.PatchElementTempl(components.Issues(issues))
 			}
 
+			// subscribe to jetstream events
 			sub, err := nc.Subscribe("events", func(msg *nats.Msg) {
 				var raw map[string]interface{}
 

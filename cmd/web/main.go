@@ -66,19 +66,6 @@ func run(ctx context.Context) error {
 			return brotli.NewWriterV2(w, level)
 		})
 
-		router.Use(
-			compressor.Handler,
-			h3AltSvcMiddleware(getPort()),
-			middleware.Logger,
-			middleware.Recoverer,
-		)
-
-		router.Handle("/static/*", static())
-
-		if err := routes.SetupRoutes(egctx, router); err != nil {
-			return fmt.Errorf("error setting up routes: %w", err)
-		}
-
 		cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
 		if err != nil {
 			return fmt.Errorf("failed to load TLS certificate or key: %w", err)
@@ -86,7 +73,7 @@ func run(ctx context.Context) error {
 
 		tlsConfig := &tls.Config{
 			Certificates: []tls.Certificate{cert},
-			NextProtos:   []string{"h2", "h3"},
+			NextProtos:   []string{"h3", "h2"},
 		}
 
 		httpSrv := &http.Server{
@@ -99,8 +86,31 @@ func run(ctx context.Context) error {
 		http3Srv := &http3.Server{
 			Addr:      "0.0.0.0:" + getPort(),
 			Handler:   router,
-			TLSConfig: tlsConfig,
+			TLSConfig: http3.ConfigureTLSConfig(tlsConfig),
 			Logger:    slog.Default(),
+		}
+
+		// Set up middlewares
+		router.Use(
+			compressor.Handler,
+			func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.ProtoMajor < 3 {
+						http3Srv.SetQUICHeaders(w.Header())
+					}
+					next.ServeHTTP(w, r)
+				})
+			},
+			middleware.Logger,
+			middleware.Recoverer,
+		)
+
+		// Serve static files
+		router.Handle("/static/*", static())
+
+		// Serve registered routes
+		if err := routes.SetupRoutes(egctx, router); err != nil {
+			return fmt.Errorf("error setting up routes: %w", err)
 		}
 
 		eg.Go(func() error {
@@ -133,14 +143,4 @@ func run(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// h3AltSvcMiddleware sets the Alt-Svc header to advertise HTTP/3 support
-func h3AltSvcMiddleware(port string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Alt-Svc", "h3=\":"+port+"\"")
-			next.ServeHTTP(w, r)
-		})
-	}
 }

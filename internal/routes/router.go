@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"net/http"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/a-h/templ"
 	"github.com/delaneyj/toolbelt"
 	"github.com/delaneyj/toolbelt/embeddednats"
 	"github.com/go-chi/chi/v5"
@@ -44,17 +44,13 @@ func SetupRoutes(ctx context.Context, router chi.Router) (err error) {
 	sessionStore := sessions.NewCookieStore([]byte("session-secret"))
 	sessionStore.MaxAge(int(24 * time.Hour / time.Second))
 
-	slog.Info("using CQRS implementation")
 	cqrsDeps, err := bootstrap.WireCQRS(ctx, ns)
 	if err != nil {
 		return fmt.Errorf("error wiring CQRS: %w", err)
 	}
 
-	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		if err := pages.Index().Render(r.Context(), w); err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		}
-	})
+	// register routes
+	router.Get("/", templ.Handler(pages.Index(), templ.WithStreaming()).ServeHTTP)
 
 	router.Route("/api", func(apiRouter chi.Router) {
 		apiRouter.Route("/notifications", func(notifRouter chi.Router) {
