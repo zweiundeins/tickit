@@ -21,6 +21,13 @@ tasks:
       - "{{.STATIC_DIR}}/index.css"
       - "{{.STATIC_DIR}}/index.mjs"
 
+  build:windows:
+    cmds:
+      - GOOS=windows GOARCH=amd64 go build -tags=prod -o bin/main.exe ./cmd/web
+    deps:
+      - build:templ
+      - build:esbuild
+
   build:
     cmds:
       - go build -tags=prod -o bin/main ./cmd/web
