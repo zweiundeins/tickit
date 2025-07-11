@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
 
-	"github.com/a-h/templ"
 	"github.com/delaneyj/toolbelt"
 	"github.com/delaneyj/toolbelt/embeddednats"
 	"github.com/go-chi/chi/v5"
@@ -50,7 +50,39 @@ func SetupRoutes(ctx context.Context, router chi.Router) (err error) {
 	}
 
 	// register routes
-	router.Get("/", templ.Handler(pages.Index(), templ.WithStreaming()).ServeHTTP)
+	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		pages.Index(r).Render(r.Context(), w)
+	})
+
+	router.Get("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		pages.DashboardPage(r).Render(r.Context(), w)
+	})
+	router.Get("/create-ticket", func(w http.ResponseWriter, r *http.Request) {
+		pages.CreateTicketPage(r).Render(r.Context(), w)
+	})
+	router.Get("/admin", func(w http.ResponseWriter, r *http.Request) {
+		pages.AdminPanelPage(r).Render(r.Context(), w)
+	})
+	router.Get("/login", func(w http.ResponseWriter, r *http.Request) {
+		pages.LoginPage(r).Render(r.Context(), w)
+	})
+	router.Get("/register", func(w http.ResponseWriter, r *http.Request) {
+		pages.RegisterPage(r).Render(r.Context(), w)
+	})
+	// Placeholder logout route (should clear session in future)
+	router.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	})
+	// Ticket detail route (dynamic)
+	router.Get("/ticket/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		issue, err := cqrsDeps.IssueService.GetIssueByID(r.Context(), id)
+		if err != nil || issue == nil {
+			http.NotFound(w, r)
+			return
+		}
+		pages.TicketDetailPage(issue, r).Render(r.Context(), w)
+	})
 
 	router.Route("/api", func(apiRouter chi.Router) {
 		apiRouter.Route("/notifications", func(notifRouter chi.Router) {
@@ -65,8 +97,19 @@ func SetupRoutes(ctx context.Context, router chi.Router) (err error) {
 			issueRouter.Get("/", issues.HandleListIssues(cqrsDeps.SessionStore, cqrsDeps.IssueService))
 			issueRouter.Get("/{id}", issues.HandleGetIssueByID(cqrsDeps.SessionStore, cqrsDeps.IssueService))
 		})
-		apiRouter.Get("/updates", handleUpdatesSSE(cqrsDeps.SessionStore, cqrsDeps.NatsConn, cqrsDeps.NotificationService, cqrsDeps.IssueService))
+		// New SSE route for issues table only
+		apiRouter.Get("/updates/issues", HandleIssuesUpdatesSSE(cqrsDeps.SessionStore, cqrsDeps.NatsConn, cqrsDeps.IssueService))
+		// New SSE route for notifications only
+		apiRouter.Get("/updates/notifications", HandleNotificationsUpdatesSSE(cqrsDeps.SessionStore, cqrsDeps.NatsConn, cqrsDeps.NotificationService))
+		// New SSE route for API status/keepalive
+		apiRouter.Get("/updates/status", HandleStatusUpdatesSSE())
+		// Register the new SSE route for single issue updates
+		apiRouter.Get("/updates/issue/{id}", HandleIssueUpdatesSSE(cqrsDeps.SessionStore, cqrsDeps.NatsConn, cqrsDeps.IssueService))
 	})
+
+	// Upload routes
+	router.Post("/upload", HandleUpload())
+	router.Handle("/uploads/*", HandleUploads())
 
 	return nil
 }

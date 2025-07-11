@@ -1,0 +1,32 @@
+package pages
+
+import "github.com/mbolli/tickit/internal/ui/layouts"
+import "net/http"
+
+templ DashboardPage(r *http.Request) {
+	@layouts.Base("Dashboard", r) {
+		<section class="dashboard" data-on-load="@get('/api/updates/issues')">
+			<div class="grid">
+				<div class="margin-left: auto;">
+					<button>Create Ticket</button>
+				</div>
+			</div>
+			<div class="grid">
+				<select><option>Projects</option></select>
+				<select><option>User</option></select>
+			</div>
+			<div class="grid">
+				<input type="search" placeholder="Search tickets..." style="flex:1;"/>
+				<select><option>Filter</option></select>
+				<select><option>Sort</option></select>
+			</div>
+			<div id="issues" aria-busy="true"></div>
+			<nav style="margin-top:1rem;text-align:center;">
+				<button class="secondary">&lt;</button>
+				<button class="secondary">1</button>
+				<button class="secondary">2</button>
+				<button class="secondary">&gt;</button>
+			</nav>
+		</section>
+	}
+}

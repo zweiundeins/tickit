@@ -1,7 +1,15 @@
 package layouts
 
+import "net/http"
 
-templ Base(title string) {
+func activeClass(r *http.Request, path string) string {
+	if r.URL.Path == path {
+		return "active"
+	}
+	return ""
+}
+
+templ Base(title string, r *http.Request) {
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
@@ -13,30 +21,39 @@ templ Base(title string) {
 			<link href="/static/index.css" rel="stylesheet" type="text/css"/>
 		</head>
 		<body>
-		    <header class="container">
-				<div data-signals-_disconnected="false" data-indicator="_connecting" data-on-interval__duration.30s.leading="!$_connecting && @get('/api/updates')" data-on-datastar-sse="el === evt.detail.el && ((evt.detail.type.startsWith('datastar') && ($_disconnected = false)) || (['retrying', 'error', 'finished'].includes(evt.detail.type) && ($_disconnected = true)));"><div data-show="$_disconnected">Warning: Not connected to server.</div></div>
-                <nav>
-                  <ul>
-                    <li><strong>TickIt</strong></li>
-                  </ul>
-                  <ul>
-                    <li><a href="/counter">Link 1</a></li>
-                    <li><a href="/monitor">Link 2</a></li>
-                    <li><a href="/sortable">Link 3</a></li>
-                  </ul>
-                  <ul>
-                  <li>Test</li></ul>
-                </nav>
-		    </header>
-		    <main class="container">
-			{ children... }
+			<header class="container">
+				<div
+					class="offline-message"
+					data-signals-_online="true"
+					data-indicator="_connecting"
+					data-on-interval__duration.15s.leading="!$_connecting && @get('/api/updates/status')"
+					data-on-datastar-sse="el === evt.detail.el && ['retrying', 'error', 'finished'].includes(evt.detail.type) && ($_online = false);"
+				>
+					<div data-show="!$_online">Warning: Not connected to server.</div>
+				</div>
+				<nav>
+					<ul>
+						<li><a href="/dashboard" class={ activeClass(r, "/dashboard") }><strong>TickIt</strong></a></li>
+					</ul>
+					<ul>
+						<li><a href="/dashboard" class={ activeClass(r, "/dashboard") }>Dashboard</a></li>
+						<li><a href="/create-ticket" class={ activeClass(r, "/create-ticket") }>Create Ticket</a></li>
+						<li><a href="/admin" class={ activeClass(r, "/admin") }>Admin Panel</a></li>
+					</ul>
+					<ul>
+						<li><a href="/login" class={ activeClass(r, "/login") }>Login</a></li>
+						<li><a href="/logout" class={ activeClass(r, "/logout") }>Logout</a></li>
+					</ul>
+				</nav>
+			</header>
+			<main class="container">
+				{ children... }
 			</main>
 			<footer class="container">
-                <div id="notifications"></div>
-
-			    &copy; 2023 Acme Corp. All rights reserved.
-
-				<pre data-json-signals></pre>
+				<div id="notifications"></div>
+				&copy; 2023 Acme Corp. All rights reserved.
+				<script type="module" src="/static/assets/datastar-inspector.js"></script>
+				<datastar-inspector></datastar-inspector>
 			</footer>
 		</body>
 	</html>

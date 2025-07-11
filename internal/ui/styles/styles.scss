@@ -20,7 +20,7 @@ body {
     bottom: 0;
     z-index: 1000;
 
-    #notifications-panel {
+    .notificationsPanel {
         width: 22rem;
         max-height: 3.5rem;
         overflow: hidden;
@@ -33,7 +33,7 @@ body {
             max-height: 60vh;
         }
 
-        #notification-bar {
+        .notificationBar {
             display: flex;
             align-items: center;
             gap: 0.5rem;
@@ -79,4 +79,55 @@ body {
             }
         }
     }
+}
+
+.offline-message > div {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  background: #d32f2f;
+  color: #fff;
+  font-weight: bold;
+  text-align: center;
+  padding: 0.75rem 0;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  letter-spacing: 0.03em;
+  font-size: 1.1rem;
+}
+
+.slidein-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.25);
+  z-index: 1200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  &.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+.slidein-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 480px;
+  max-width: 100vw;
+  height: 100vh;
+  background: var(--pico-primary-hover-background);
+  box-shadow: -2px 0 16px rgba(0,0,0,0.12);
+  z-index: 1300;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  overflow-y: auto;
+  border-radius: 1rem 0 0 1rem;
+  &.open {
+    transform: translateX(0);
+  }
 }

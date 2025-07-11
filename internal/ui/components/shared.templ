@@ -1,7 +1,12 @@
 package components
 
-import ("fmt")
+import "fmt"
 
 func SseIndicator(signalName string) templ.Attributes {
-	return templ.Attributes{"data-attr": fmt.Sprintf(`{'aria-busy': $%s ? 'true' : 'false'}`, signalName)};
+	return templ.Attributes{"data-attr": fmt.Sprintf(`{'aria-busy': $%s ? 'true' : 'false'}`, signalName)}
+}
+
+// UploadURL returns a valid URL for an uploaded file
+func UploadURL(filename string) string {
+	return "/uploads/" + filename
 }

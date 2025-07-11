@@ -1,19 +1,99 @@
 package components
 
-import (
-	"github.com/mbolli/tickit/internal/issues"
-)
+import "github.com/mbolli/tickit/internal/issues"
 
-templ Issues (issues []*issues.Issue) {
-    <div id="issues">
-        <h2>Issues ({len(issues)})</h2>
-        <ul>
-            for _, issue := range issues {
-                <li>
-                    <strong>{issue.Title}</strong> - {issue.Status} (Assignee: {issue.Assignee})<br/>
-                    <small>{issue.Description}</small>
-                </li>
-            }
-        </ul>
-    </div>
-} 
+templ Issues(issues []*issues.Issue) {
+	<div id="issues">
+		<h2>Issues ({ len(issues) })</h2>
+		<ul>
+			for _, issue := range issues {
+				<li>
+					<strong>{ issue.Title }</strong> - { issue.Status } (Assignee: { issue.Assignee })
+					<br/>
+					<small>{ issue.Description }</small>
+				</li>
+			}
+		</ul>
+	</div>
+}
+
+templ IssuesTable(issues []*issues.Issue) {
+	<div id="issues" data-signals-_drawer="false">
+		<h2>Issues ({ len(issues) })</h2>
+		<table role="grid">
+			<thead>
+				<tr>
+					<th>Title</th>
+					<th>Status</th>
+					<th>Description</th>
+					<th>Reporter</th>
+					<th>Assigned</th>
+					<th>Created At</th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, issue := range issues {
+					<tr>
+						<td>
+							<a href={ "/ticket/" + issue.ID } data-id={ issue.ID } data-indicator="_issueLoading" data-on-click__prevent__stop="$_drawer = true; @get('/api/updates/issue/' + el.dataset.id); return false;">
+								{ issue.Title }
+							</a>
+						</td>
+						<td>{ issue.Status }</td>
+						<td>{ issue.Description }</td>
+						<td>{ issue.Reporter }</td>
+						<td>{ issue.Assignee }</td>
+						<td>{ issue.CreatedAt.Format("2006-01-02 15:04") }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+		<!-- Slide-in Issue Detail Panel -->
+		<div class="slidein-backdrop" id="issue-detail-backdrop" data-class-open="$_drawer"></div>
+		<div class="slidein-panel" id="issue-detail-panel" data-class-open="$_drawer" data-attr-aria-busy="$_issueLoading">
+			<div id="issue"></div>
+		</div>
+	</div>
+}
+
+templ Issue(issue *issues.Issue) {
+	<div id="issue">
+		<section style="border:1px solid var(--muted-border-color);padding:1.5rem;border-radius:8px;">
+			<header style="display:flex;align-items:center;justify-content:space-between;">
+				<h2>Ticket #{ issue.ID } - "{ issue.Title }"</h2>
+			</header>
+			<div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin:1rem 0;">
+				<label>Status:<select><option>In Progress</option></select></label>
+				<label>Priority:<select><option>High</option></select></label>
+				<label>Assigned to:<select><option>Me</option></select></label>
+				<label>Project:<select><option>Core App</option></select></label>
+			</div>
+			<div style="display:flex;gap:2rem;flex-wrap:wrap;">
+				<div>Created by: { issue.Reporter }</div>
+				<div>Created at: { issue.CreatedAt.Format("2006-01-02 15:04") }</div>
+			</div>
+			<hr/>
+			<div>
+				<strong>Description:</strong>
+				<p>{ issue.Description }</p>
+			</div>
+			<hr/>
+			<div>
+				<strong>Comments:</strong>
+				<div style="margin:1rem 0;">
+					<div><strong>Max (Agent)</strong> - 10:45<br/><blockquote>We’re investigating this now.</blockquote></div>
+				</div>
+				<form style="display:flex;gap:0.5rem;align-items:center;">
+					<input type="text" placeholder="Add comment..." style="flex:1;"/>
+					<label style="margin:0 0.5rem;"><input type="checkbox"/> Internal</label>
+					<button type="submit">Submit</button>
+				</form>
+			</div>
+			<hr/>
+			<details>
+				<summary>History Log ▼</summary>
+				<ul><li>Ticket created by John</li></ul>
+			</details>
+		</section>
+	</div>
+}
