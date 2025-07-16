@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/mbolli/tickit/internal/issues"
 	"github.com/mbolli/tickit/internal/notifications"
+	"github.com/mbolli/tickit/internal/projects"
 	"github.com/mbolli/tickit/internal/shared"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -17,6 +18,7 @@ import (
 type CQRSDeps struct {
 	NotificationService *notifications.NotificationService
 	IssueService        *issues.IssueService
+	ProjectService      *projects.ProjectService
 	SessionStore        sessions.Store
 	JetStream           jetstream.JetStream
 	NatsConn            *nats.Conn
@@ -57,13 +59,22 @@ func WireCQRS(ctx context.Context, ns *embeddednats.Server) (*CQRSDeps, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create issue projection store: %w", err)
 	}
+	projectProjectionStore, err := projects.NewProjectProjectionStore(ctx, "data/projects.db")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create project projection store: %w", err)
+	}
 	eventHandlers := shared.CreateDefaultEventHandlers()
+	for k, v := range projects.CreateDefaultProjectEventHandlers() {
+		eventHandlers[k] = v
+	}
 	eventHandlers["*"] = shared.CreateEventStoreHandler(eventStore)
 	eventBus := shared.NewEventBusWrapper(js)
 	notifCommandHandler := notifications.NewCommandHandler(eventStore, notificationProjectionStore, eventBus)
 	notifQueryHandler := notifications.NewQueryHandler(notificationProjectionStore)
 	issueCommandHandler := issues.NewIssueCommandHandler(eventBus, eventStore, issueProjectionStore)
 	issueQueryHandler := issues.NewIssueQueryHandler(issueProjectionStore)
+	projectCommandHandler := projects.NewProjectCommandHandler(eventBus, eventStore, projectProjectionStore)
+	projectQueryHandler := projects.NewProjectQueryHandler(projectProjectionStore)
 	commandBus := shared.NewCommandBus()
 	queryBus := shared.NewQueryBus()
 	// Register command handlers
@@ -73,19 +84,27 @@ func WireCQRS(ctx context.Context, ns *embeddednats.Server) (*CQRSDeps, error) {
 	commandBus.RegisterHandler("CreateIssue", issues.NewCreateIssueHandler(issueCommandHandler))
 	commandBus.RegisterHandler("UpdateIssue", issues.NewUpdateIssueHandler(issueCommandHandler))
 	commandBus.RegisterHandler("DeleteIssue", issues.NewDeleteIssueHandler(issueCommandHandler))
+	commandBus.RegisterHandler("PatchIssue", issues.NewPatchIssueHandler(issueCommandHandler))
+	commandBus.RegisterHandler("CreateProject", projects.NewCreateProjectHandler(projectCommandHandler))
+	commandBus.RegisterHandler("UpdateProject", projects.NewUpdateProjectHandler(projectCommandHandler))
+	commandBus.RegisterHandler("DeleteProject", projects.NewDeleteProjectHandler(projectCommandHandler))
 	// Register query handlers
 	queryBus.RegisterHandler("GetNotifications", notifications.NewGetNotificationsHandler(notifQueryHandler))
 	queryBus.RegisterHandler("GetUnreadCount", notifications.NewGetUnreadCountHandler(notifQueryHandler))
 	queryBus.RegisterHandler("GetNotificationByUID", notifications.NewGetNotificationByUIDHandler(notifQueryHandler))
 	queryBus.RegisterHandler("GetIssueByID", issues.NewIssueGetByIDHandler(issueQueryHandler))
 	queryBus.RegisterHandler("ListIssues", issues.NewIssueListHandler(issueQueryHandler))
+	queryBus.RegisterHandler("GetProjectByID", projects.NewGetProjectByIDHandler(projectQueryHandler))
+	queryBus.RegisterHandler("ListProjects", projects.NewListProjectsHandler(projectQueryHandler))
 	notificationService := notifications.NewNotificationService(commandBus, queryBus)
 	issueService := issues.NewIssueService(commandBus, queryBus)
+	projectService := projects.NewProjectService(commandBus, queryBus)
 	sessionStore := sessions.NewCookieStore([]byte("session-secret"))
 	sessionStore.MaxAge(int(24 * time.Hour / time.Second))
 	return &CQRSDeps{
 		NotificationService: notificationService,
 		IssueService:        issueService,
+		ProjectService:      projectService,
 		SessionStore:        sessionStore,
 		JetStream:           js,
 		NatsConn:            nc,

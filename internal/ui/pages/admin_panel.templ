@@ -2,8 +2,9 @@ package pages
 
 import "github.com/mbolli/tickit/internal/ui/layouts"
 import "net/http"
+import "github.com/mbolli/tickit/internal/projects"
 
-templ AdminPanelPage(r *http.Request) {
+templ AdminPanelPage(r *http.Request, projects []*projects.Project) {
 	@layouts.Base("Admin Panel", r) {
 		<main class="container" style="max-width: 900px; margin: 2rem auto;">
 			<nav style="margin-bottom:1rem;">
@@ -23,11 +24,42 @@ templ AdminPanelPage(r *http.Request) {
 				</div>
 				<div style="flex:1;min-width:300px;">
 					<h3>Projects</h3>
+					<!-- Create Project Form -->
+					<form data-on-submit__viewtransition="@post('/api/projects/', { contentType: 'form' }) && el.reset()">
+						<label>Name: <input name="name" type="text" required/></label>
+						<label>Slug: <input name="slug" type="text" required/></label>
+						<label>Description: <input name="description" type="text"/></label>
+						<button type="submit">Create Project</button>
+					</form>
 					<table role="grid">
-						<thead><tr><th>Name</th><th>Edit</th><th>Delete</th></tr></thead>
+						<thead><tr><th>Name</th><th>Slug</th><th>Description</th><th>Edit</th><th>Delete</th></tr></thead>
 						<tbody>
-							<tr><td>Project A</td><td>✎</td><td>✖</td></tr>
-							<tr><td>Project B</td><td>✎</td><td>✖</td></tr>
+							for _, project := range projects {
+								<tr>
+									<td>{ project.Name }</td>
+									<td>{ project.Slug }</td>
+									<td>{ project.Description }</td>
+									<td>
+										<!-- Edit Project Inline Form -->
+										<details>
+											<summary>✎</summary>
+											<form data-on-submit__viewtransition="@patch('/api/projects/{project.ID}', { contentType: 'form' })">
+												<input type="hidden" name="id" value={ project.ID }/>
+												<label>Name: <input name="name" type="text" value={ project.Name } required/></label>
+												<label>Slug: <input name="slug" type="text" value={ project.Slug } required/></label>
+												<label>Description: <input name="description" type="text" value={ project.Description }/></label>
+												<button type="submit">Save</button>
+											</form>
+										</details>
+									</td>
+									<td>
+										<form data-on-submit__viewtransition="@delete('/api/projects/{project.ID}')">
+											<input type="hidden" name="id" value={ project.ID }/>
+											<button type="submit">✖</button>
+										</form>
+									</td>
+								</tr>
+							}
 						</tbody>
 					</table>
 				</div>

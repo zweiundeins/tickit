@@ -10,29 +10,36 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/mbolli/tickit/internal/issues"
 	"github.com/mbolli/tickit/internal/notifications"
+	"github.com/mbolli/tickit/internal/projects"
 	"github.com/mbolli/tickit/internal/sharedhttp"
 	"github.com/mbolli/tickit/internal/ui/components"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
-	"github.com/starfederation/datastar/sdk/go/datastar"
+	"github.com/starfederation/datastar-go/datastar"
 )
 
 // GET /updates/issues - SSE endpoint for real-time issue updates (table)
-func HandleIssuesUpdatesSSE(store sessions.Store, nc *nats.Conn, issueService *issues.IssueService) http.HandlerFunc {
+func HandleIssuesUpdatesSSE(store sessions.Store, nc *nats.Conn, issueService *issues.IssueService, projectService *projects.ProjectService) http.HandlerFunc {
 	return HandleSSEUpdates(
 		store,
 		nc,
-		[]string{"IssueCreated", "IssueUpdated", "IssueDeleted"},
+		[]string{"IssueCreated", "IssueUpdated", "IssueDeleted", "IssuePatched"},
 		func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string) {
 			issuesList, err := issueService.ListIssues(ctx, nil, nil, nil)
 			if err == nil {
-				_ = sse.PatchElementTempl(components.IssuesTable(issuesList))
-			}
-		},
-		func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string) {
-			issuesList, err := issueService.ListIssues(ctx, nil, nil, nil)
-			if err == nil {
-				_ = sse.PatchElementTempl(components.IssuesTable(issuesList))
+				// Collect unique project IDs
+				projectIDs := make(map[string]struct{})
+				for _, issue := range issuesList {
+					projectIDs[issue.ProjectID] = struct{}{}
+				}
+				// Fetch only needed projects
+				projectMap := make(map[string]*projects.Project)
+				for id := range projectIDs {
+					if p, err := projectService.GetProjectByID(ctx, id); err == nil && p != nil {
+						projectMap[id] = p
+					}
+				}
+				_ = sse.PatchElementTempl(components.IssuesTable(issuesList, projectMap))
 			}
 		},
 	)
@@ -44,12 +51,6 @@ func HandleNotificationsUpdatesSSE(store sessions.Store, nc *nats.Conn, notifica
 		store,
 		nc,
 		[]string{"NotificationCreated", "NotificationDeleted", "NotificationRead"},
-		func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string) {
-			ntfs, err := notificationService.GetNotifications(ctx, sessionID)
-			if err == nil {
-				_ = sse.PatchElementTempl(components.Notifications(ntfs))
-			}
-		},
 		func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string) {
 			ntfs, err := notificationService.GetNotifications(ctx, sessionID)
 			if err == nil {
@@ -79,23 +80,18 @@ func HandleStatusUpdatesSSE() http.HandlerFunc {
 }
 
 // GET /updates/issue/{id} - SSE endpoint for real-time updates for a single issue
-func HandleIssueUpdatesSSE(store sessions.Store, nc *nats.Conn, issueService *issues.IssueService) http.HandlerFunc {
+func HandleIssueUpdatesSSE(store sessions.Store, nc *nats.Conn, issueService *issues.IssueService, projectService *projects.ProjectService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		issueID := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
 		handler := HandleSSEUpdates(
 			store,
 			nc,
-			[]string{"IssueUpdated", "IssueDeleted"},
+			[]string{"IssueUpdated", "IssueDeleted", "IssuePatched"},
 			func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string) {
 				issue, err := issueService.GetIssueByID(ctx, issueID)
+				projectsList, _ := projectService.ListProjects(ctx)
 				if err == nil && issue != nil {
-					sse.PatchElementTempl(components.Issue(issue))
-				}
-			},
-			func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string) {
-				issue, err := issueService.GetIssueByID(ctx, issueID)
-				if err == nil && issue != nil {
-					sse.PatchElementTempl(components.Issue(issue))
+					sse.PatchElementTempl(components.Issue(issue, projectsList))
 				}
 			},
 		)
@@ -108,8 +104,8 @@ func HandleSSEUpdates(
 	store sessions.Store,
 	nc *nats.Conn,
 	eventTypes []string,
-	initialPatch func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string),
 	updatePatch func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string),
+	initialPatch ...func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string),
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sharedhttp.WithSessionAndSignals(store, w, r, nil, func(sessionID string, _ any) {
@@ -132,8 +128,12 @@ func HandleSSEUpdates(
 				return
 			}
 
-			// send initial patch
-			initialPatch(ctx, sse, sessionID)
+			// send initial patch (use initialPatch if provided, else updatePatch)
+			if len(initialPatch) > 0 && initialPatch[0] != nil {
+				initialPatch[0](ctx, sse, sessionID)
+			} else {
+				updatePatch(ctx, sse, sessionID)
+			}
 
 			eventTypeSet := make(map[string]struct{})
 			for _, t := range eventTypes {

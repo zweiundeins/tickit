@@ -24,15 +24,47 @@ var IssueStatuses = []string{
 	IssueStatusBlocked,
 }
 
+// Common Jira issue priorities as constants
+const (
+	IssuePriorityLow      = "Low"
+	IssuePriorityMedium   = "Medium"
+	IssuePriorityHigh     = "High"
+	IssuePriorityCritical = "Critical"
+)
+
+// Exported slice of all allowed issue priorities
+var IssuePriorities = []string{
+	IssuePriorityLow,
+	IssuePriorityMedium,
+	IssuePriorityHigh,
+	IssuePriorityCritical,
+}
+
 // Issue represents a minimal Jira-like issue
 // Extendable for more fields (e.g. labels, comments, etc.)
 type Issue struct {
 	ID          string    `json:"id"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
-	Status      string    `json:"status"` // see IssueStatus* constants
+	Status      string    `json:"status"`   // see IssueStatus* constants
+	Priority    string    `json:"priority"` // see IssuePriority* constants
 	Assignee    string    `json:"assignee"`
 	Reporter    string    `json:"reporter"`
+	ProjectID   string    `json:"project_id"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// PatchIssueInput is used for type-safe partial updates to an Issue
+// Only non-nil fields will be updated
+// ID is required
+type PatchIssueInput struct {
+	ID          string
+	Title       *string
+	Description *string
+	Status      *string
+	Priority    *string
+	Assignee    *string
+	Reporter    *string
+	ProjectID   *string
 }

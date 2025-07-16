@@ -3,9 +3,10 @@ package pages
 import "github.com/mbolli/tickit/internal/ui/layouts"
 import "net/http"
 import "github.com/mbolli/tickit/internal/issues"
+import "github.com/mbolli/tickit/internal/projects"
 
 // Accept an issue parameter
-templ TicketDetailPage(issue *issues.Issue, r *http.Request) {
+templ TicketDetailPage(issue *issues.Issue, projects []*projects.Project, r *http.Request) {
 	@layouts.Base("Ticket Detail", r) {
 		<div id="ticket">
 			<nav style="margin-bottom:1rem;"><a href="/dashboard">← Back to List</a></nav>
@@ -14,10 +15,32 @@ templ TicketDetailPage(issue *issues.Issue, r *http.Request) {
 					<h2>Ticket #{ issue.ID } - "{ issue.Title }"</h2>
 				</header>
 				<div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin:1rem 0;">
-					<label>Status:<select><option>In Progress</option></select></label>
-					<label>Priority:<select><option>High</option></select></label>
+					<label>
+						Status:
+						<select name="status">
+							for _, status := range issues.IssueStatuses {
+								<option value={ status } selected={ issue.Status == status }>{ status }</option>
+							}
+						</select>
+					</label>
+					<label>
+						Priority:
+						<select name="priority">
+							for _, priority := range issues.IssuePriorities {
+								<option value={ priority } selected={ issue.Priority == priority }>{ priority }</option>
+							}
+						</select>
+					</label>
 					<label>Assigned to:<select><option>Me</option></select></label>
-					<label>Project:<select><option>Core App</option></select></label>
+					<label>
+						Project:
+						<select name="project_id">
+							<option value="">Select Project</option>
+							for _, project := range projects {
+								<option value={ project.ID } selected={ issue.ProjectID == project.ID }>{ project.Name }</option>
+							}
+						</select>
+					</label>
 				</div>
 				<div style="display:flex;gap:2rem;flex-wrap:wrap;">
 					<div>Created by: { issue.Reporter }</div>

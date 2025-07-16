@@ -1,6 +1,8 @@
 package components
 
 import "github.com/mbolli/tickit/internal/issues"
+import "github.com/mbolli/tickit/internal/projects"
+import "github.com/delaneyj/toolbelt"
 
 templ Issues(issues []*issues.Issue) {
 	<div id="issues">
@@ -17,13 +19,14 @@ templ Issues(issues []*issues.Issue) {
 	</div>
 }
 
-templ IssuesTable(issues []*issues.Issue) {
-	<div id="issues" data-signals-_drawer="false">
+templ IssuesTable(issues []*issues.Issue, projectMap map[string]*projects.Project) {
+	<div id="issues">
 		<h2>Issues ({ len(issues) })</h2>
 		<table role="grid">
 			<thead>
 				<tr>
 					<th>Title</th>
+					<th>Project</th>
 					<th>Status</th>
 					<th>Description</th>
 					<th>Reporter</th>
@@ -35,9 +38,20 @@ templ IssuesTable(issues []*issues.Issue) {
 				for _, issue := range issues {
 					<tr>
 						<td>
-							<a href={ "/ticket/" + issue.ID } data-id={ issue.ID } data-indicator="_issueLoading" data-on-click__prevent__stop="$_drawer = true; @get('/api/updates/issue/' + el.dataset.id); return false;">
+							<span
+								title={ "Priority: " + issue.Priority }
+								class={ "issue-priority " + toolbelt.ToCasedString(issue.Priority).Snake }
+							></span>
+							<a href={ "/ticket/" + issue.ID } data-id={ issue.ID } data-indicator="_issueLoading" data-on-click__prevent__stop="$_drawer = true; @get('/api/updates/issue/' + el.dataset.id, {openWhenHidden: true}); return false;">
 								{ issue.Title }
 							</a>
+						</td>
+						<td>
+							if proj, ok := projectMap[issue.ProjectID]; ok {
+								{ proj.Name }
+							} else {
+								{ issue.ProjectID }
+							}
 						</td>
 						<td>{ issue.Status }</td>
 						<td>{ issue.Description }</td>
@@ -48,27 +62,50 @@ templ IssuesTable(issues []*issues.Issue) {
 				}
 			</tbody>
 		</table>
-		<!-- Slide-in Issue Detail Panel -->
-		<div class="slidein-backdrop" id="issue-detail-backdrop" data-class-open="$_drawer"></div>
-		<div class="slidein-panel" id="issue-detail-panel" data-class-open="$_drawer" data-attr-aria-busy="$_issueLoading">
-			<div id="issue"></div>
-		</div>
 	</div>
 }
 
-templ Issue(issue *issues.Issue) {
+templ Issue(issue *issues.Issue, projects []*projects.Project) {
 	<div id="issue">
-		<section style="border:1px solid var(--muted-border-color);padding:1.5rem;border-radius:8px;">
-			<header style="display:flex;align-items:center;justify-content:space-between;">
+		<section
+		    style="padding:1.5rem;"
+		    data-id={ issue.ID }
+		    data-on-signal-patch__debounce.100ms="@patch('/api/issues/' + el.dataset.id)" 
+			data-on-signal-patch-filter="{include: /^issue./}">
+			<header>
 				<h2>Ticket #{ issue.ID } - "{ issue.Title }"</h2>
 			</header>
-			<div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin:1rem 0;">
-				<label>Status:<select><option>In Progress</option></select></label>
-				<label>Priority:<select><option>High</option></select></label>
-				<label>Assigned to:<select><option>Me</option></select></label>
-				<label>Project:<select><option>Core App</option></select></label>
+			<div class="grid">
+				<label>
+					Status:
+					<select id="status" data-bind="issue.status">
+						for _, status := range issues.IssueStatuses {
+							<option value={ status } selected={ issue.Status == status }>{ status }</option>
+						}
+					</select>
+				</label>
+				<label>
+					Priority:
+					<select id="priority" data-bind="issue.priority">
+						for _, priority := range issues.IssuePriorities {
+							<option value={ priority } selected={ issue.Priority == priority }>{ priority }</option>
+						}
+					</select>
+				</label>
 			</div>
-			<div style="display:flex;gap:2rem;flex-wrap:wrap;">
+			<div class="grid">
+				<label>Assigned to:<select><option>Me</option></select></label>
+				<label>
+					Project:
+					<select id="project_id" data-bind="issue.project_id">
+						<option value="">Select Project</option>
+						for _, project := range projects {
+							<option value={ project.ID } selected={ issue.ProjectID == project.ID }>{ project.Name }</option>
+						}
+					</select>
+				</label>
+			</div>
+			<div>
 				<div>Created by: { issue.Reporter }</div>
 				<div>Created at: { issue.CreatedAt.Format("2006-01-02 15:04") }</div>
 			</div>

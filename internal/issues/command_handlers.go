@@ -69,3 +69,23 @@ func (h *DeleteIssueHandler) Handle(ctx context.Context, command interface{}) er
 	}
 	return h.handler.HandleDeleteIssue(ctx, cmd)
 }
+
+type PatchIssueHandler struct {
+	handler *IssueCommandHandler
+}
+
+var _ shared.CommandHandler = (*PatchIssueHandler)(nil)
+
+func NewPatchIssueHandler(handler *IssueCommandHandler) *PatchIssueHandler {
+	return &PatchIssueHandler{
+		handler: handler,
+	}
+}
+
+func (h *PatchIssueHandler) Handle(ctx context.Context, command interface{}) error {
+	cmd, ok := command.(PatchIssueCommand)
+	if !ok {
+		return fmt.Errorf("invalid command type for PatchIssueHandler")
+	}
+	return h.handler.HandlePatchIssue(ctx, cmd)
+}

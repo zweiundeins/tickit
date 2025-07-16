@@ -16,6 +16,8 @@ type CreateIssueCommand struct {
 	Description string
 	Assignee    string
 	Reporter    string
+	ProjectID   string
+	Priority    string
 }
 
 type UpdateIssueCommand struct {
@@ -24,10 +26,23 @@ type UpdateIssueCommand struct {
 	Description *string
 	Status      *string
 	Assignee    *string
+	ProjectID   *string
+	Priority    *string
 }
 
 type DeleteIssueCommand struct {
 	ID string
+}
+
+type PatchIssueCommand struct {
+	ID          string
+	Title       *string
+	Description *string
+	Status      *string
+	Priority    *string
+	Assignee    *string
+	Reporter    *string
+	ProjectID   *string
 }
 
 // CommandHandler for issues
@@ -58,18 +73,40 @@ func isValidIssueStatus(status string) bool {
 	return ok
 }
 
+// Allowed issue priorities
+var allowedIssuePriorities = map[string]struct{}{
+	"Low":      {},
+	"Medium":   {},
+	"High":     {},
+	"Critical": {},
+}
+
+func isValidIssuePriority(priority string) bool {
+	_, ok := allowedIssuePriorities[priority]
+	return ok
+}
+
 func (h *IssueCommandHandler) HandleCreateIssue(ctx context.Context, cmd CreateIssueCommand) (*Issue, error) {
 	status := IssueStatusToDo // default
 	if !isValidIssueStatus(status) {
 		return nil, fmt.Errorf("invalid issue status: %s", status)
+	}
+	priority := cmd.Priority
+	if priority == "" {
+		priority = "Medium"
+	}
+	if !isValidIssuePriority(priority) {
+		return nil, fmt.Errorf("invalid issue priority: %s", priority)
 	}
 	issue := &Issue{
 		ID:          uuid.New().String(),
 		Title:       cmd.Title,
 		Description: cmd.Description,
 		Status:      status,
+		Priority:    priority,
 		Assignee:    cmd.Assignee,
 		Reporter:    cmd.Reporter,
+		ProjectID:   cmd.ProjectID,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -97,12 +134,18 @@ func (h *IssueCommandHandler) HandleUpdateIssue(ctx context.Context, cmd UpdateI
 	if status != "" && !isValidIssueStatus(status) {
 		return fmt.Errorf("invalid issue status: %s", status)
 	}
+	priority := derefString(cmd.Priority)
+	if priority != "" && !isValidIssuePriority(priority) {
+		return fmt.Errorf("invalid issue priority: %s", priority)
+	}
 	issue := &Issue{
 		ID:          cmd.ID,
 		Title:       derefString(cmd.Title),
 		Description: derefString(cmd.Description),
 		Status:      status,
+		Priority:    priority,
 		Assignee:    derefString(cmd.Assignee),
+		ProjectID:   derefString(cmd.ProjectID),
 		UpdatedAt:   time.Now(),
 	}
 	event := IssueUpdatedEvent{
@@ -138,6 +181,78 @@ func (h *IssueCommandHandler) HandleDeleteIssue(ctx context.Context, cmd DeleteI
 	return h.eventBus.PublishEvent(ctx, event)
 }
 
+func (h *IssueCommandHandler) HandlePatchIssue(ctx context.Context, cmd PatchIssueCommand) error {
+	// Get the current issue from the projection store
+	issue, err := h.projectionStore.GetIssue(ctx, cmd.ID)
+	if err != nil {
+		return err
+	}
+	if issue == nil {
+		return fmt.Errorf("issue not found")
+	}
+
+	changes := make(map[string]interface{})
+
+	// Patch only provided fields and record changes
+	if cmd.Title != nil {
+		issue.Title = *cmd.Title
+		changes["Title"] = *cmd.Title
+	}
+	if cmd.Description != nil {
+		issue.Description = *cmd.Description
+		changes["Description"] = *cmd.Description
+	}
+	if cmd.Status != nil {
+		if !isValidIssueStatus(*cmd.Status) {
+			return fmt.Errorf("invalid issue status: %s", *cmd.Status)
+		}
+		issue.Status = *cmd.Status
+		changes["Status"] = *cmd.Status
+	}
+	if cmd.Priority != nil {
+		if !isValidIssuePriority(*cmd.Priority) {
+			return fmt.Errorf("invalid issue priority: %s", *cmd.Priority)
+		}
+		issue.Priority = *cmd.Priority
+		changes["Priority"] = *cmd.Priority
+	}
+	if cmd.Assignee != nil {
+		issue.Assignee = *cmd.Assignee
+		changes["Assignee"] = *cmd.Assignee
+	}
+	if cmd.Reporter != nil {
+		issue.Reporter = *cmd.Reporter
+		changes["Reporter"] = *cmd.Reporter
+	}
+	if cmd.ProjectID != nil {
+		issue.ProjectID = *cmd.ProjectID
+		changes["ProjectID"] = *cmd.ProjectID
+	}
+
+	// Ignore noop
+	if len(changes) == 0 {
+		return nil
+	}
+
+	// Create the event for patching the issue
+	event := IssuePatchedEvent{
+		ID:        issue.ID,
+		Changes:   changes,
+		Timestamp: time.Now(),
+	}
+
+	// 1. Persist event to SQLite event store
+	if err := h.eventStore.StoreEvent(ctx, event); err != nil {
+		return err
+	}
+	// 2. Update projection
+	if err := h.projectionStore.ApplyEvent(ctx, event); err != nil {
+		return err
+	}
+	// 3. Publish signal to JetStream for real-time updates
+	return h.eventBus.PublishEvent(ctx, event)
+}
+
 func derefString(s *string) string {
 	if s == nil {
 		return ""
@@ -156,3 +271,7 @@ var _ shared.Command = (*UpdateIssueCommand)(nil)
 func (c DeleteIssueCommand) GetCommandType() string { return "DeleteIssue" }
 
 var _ shared.Command = (*DeleteIssueCommand)(nil)
+
+func (c PatchIssueCommand) GetCommandType() string { return "PatchIssue" }
+
+var _ shared.Command = (*PatchIssueCommand)(nil)

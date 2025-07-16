@@ -17,6 +17,7 @@ import (
 	"github.com/mbolli/tickit/internal/bootstrap"
 	"github.com/mbolli/tickit/internal/issues"
 	"github.com/mbolli/tickit/internal/notifications"
+	"github.com/mbolli/tickit/internal/projects"
 	"github.com/mbolli/tickit/internal/ui/pages"
 	natsserver "github.com/nats-io/nats-server/v2/server"
 )
@@ -55,13 +56,16 @@ func SetupRoutes(ctx context.Context, router chi.Router) (err error) {
 	})
 
 	router.Get("/dashboard", func(w http.ResponseWriter, r *http.Request) {
-		pages.DashboardPage(r).Render(r.Context(), w)
+		projectsList, _ := cqrsDeps.ProjectService.ListProjects(r.Context())
+		pages.DashboardPage(r, projectsList).Render(r.Context(), w)
 	})
 	router.Get("/create-ticket", func(w http.ResponseWriter, r *http.Request) {
-		pages.CreateTicketPage(r).Render(r.Context(), w)
+		projectsList, _ := cqrsDeps.ProjectService.ListProjects(r.Context())
+		pages.CreateTicketPage(r, projectsList).Render(r.Context(), w)
 	})
 	router.Get("/admin", func(w http.ResponseWriter, r *http.Request) {
-		pages.AdminPanelPage(r).Render(r.Context(), w)
+		projectsList, _ := cqrsDeps.ProjectService.ListProjects(r.Context())
+		pages.AdminPanelPage(r, projectsList).Render(r.Context(), w)
 	})
 	router.Get("/login", func(w http.ResponseWriter, r *http.Request) {
 		pages.LoginPage(r).Render(r.Context(), w)
@@ -81,7 +85,8 @@ func SetupRoutes(ctx context.Context, router chi.Router) (err error) {
 			http.NotFound(w, r)
 			return
 		}
-		pages.TicketDetailPage(issue, r).Render(r.Context(), w)
+		projectsList, _ := cqrsDeps.ProjectService.ListProjects(r.Context())
+		pages.TicketDetailPage(issue, projectsList, r).Render(r.Context(), w)
 	})
 
 	router.Route("/api", func(apiRouter chi.Router) {
@@ -92,19 +97,26 @@ func SetupRoutes(ctx context.Context, router chi.Router) (err error) {
 		})
 		apiRouter.Route("/issues", func(issueRouter chi.Router) {
 			issueRouter.Post("/", issues.HandleCreateIssue(cqrsDeps.SessionStore, cqrsDeps.IssueService))
-			issueRouter.Patch("/{id}", issues.HandleUpdateIssue(cqrsDeps.SessionStore, cqrsDeps.IssueService))
+			issueRouter.Patch("/{id}", issues.HandlePatchIssue(cqrsDeps.SessionStore, cqrsDeps.IssueService))
 			issueRouter.Delete("/{id}", issues.HandleDeleteIssue(cqrsDeps.SessionStore, cqrsDeps.IssueService))
 			issueRouter.Get("/", issues.HandleListIssues(cqrsDeps.SessionStore, cqrsDeps.IssueService))
 			issueRouter.Get("/{id}", issues.HandleGetIssueByID(cqrsDeps.SessionStore, cqrsDeps.IssueService))
 		})
+		apiRouter.Route("/projects", func(projectRouter chi.Router) {
+			projectRouter.Post("/", projects.HandleCreateProject(cqrsDeps.SessionStore, cqrsDeps.ProjectService))
+			projectRouter.Patch("/{id}", projects.HandleUpdateProject(cqrsDeps.SessionStore, cqrsDeps.ProjectService))
+			projectRouter.Delete("/{id}", projects.HandleDeleteProject(cqrsDeps.SessionStore, cqrsDeps.ProjectService))
+			projectRouter.Get("/", projects.HandleListProjects(cqrsDeps.SessionStore, cqrsDeps.ProjectService))
+			projectRouter.Get("/{id}", projects.HandleGetProjectByID(cqrsDeps.SessionStore, cqrsDeps.ProjectService))
+		})
 		// New SSE route for issues table only
-		apiRouter.Get("/updates/issues", HandleIssuesUpdatesSSE(cqrsDeps.SessionStore, cqrsDeps.NatsConn, cqrsDeps.IssueService))
+		apiRouter.Get("/updates/issues", HandleIssuesUpdatesSSE(cqrsDeps.SessionStore, cqrsDeps.NatsConn, cqrsDeps.IssueService, cqrsDeps.ProjectService))
 		// New SSE route for notifications only
 		apiRouter.Get("/updates/notifications", HandleNotificationsUpdatesSSE(cqrsDeps.SessionStore, cqrsDeps.NatsConn, cqrsDeps.NotificationService))
 		// New SSE route for API status/keepalive
 		apiRouter.Get("/updates/status", HandleStatusUpdatesSSE())
 		// Register the new SSE route for single issue updates
-		apiRouter.Get("/updates/issue/{id}", HandleIssueUpdatesSSE(cqrsDeps.SessionStore, cqrsDeps.NatsConn, cqrsDeps.IssueService))
+		apiRouter.Get("/updates/issue/{id}", HandleIssueUpdatesSSE(cqrsDeps.SessionStore, cqrsDeps.NatsConn, cqrsDeps.IssueService, cqrsDeps.ProjectService))
 	})
 
 	// Upload routes

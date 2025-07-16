@@ -2,17 +2,25 @@ package pages
 
 import "github.com/mbolli/tickit/internal/ui/layouts"
 import "net/http"
+import "github.com/mbolli/tickit/internal/projects"
 
-templ DashboardPage(r *http.Request) {
+templ DashboardPage(r *http.Request, projects []*projects.Project) {
 	@layouts.Base("Dashboard", r) {
-		<section class="dashboard" data-on-load="@get('/api/updates/issues')">
+		<section class="dashboard" data-on-load="@get('/api/updates/issues', {openWhenHidden: true})" data-signals__ifmissing="{_drawer: false, _issueLoading: false}">
 			<div class="grid">
 				<div class="margin-left: auto;">
 					<button>Create Ticket</button>
 				</div>
 			</div>
 			<div class="grid">
-				<select><option>Projects</option></select>
+				<form id="project-filter-form" method="get" action="/dashboard" style="display:inline;">
+					<select name="project_id" onchange="this.form.submit()">
+						<option value="">Projects</option>
+						for _, project := range projects {
+							<option value={ project.ID } selected={ r.URL.Query().Get("project_id") == project.ID }>{ project.Name }</option>
+						}
+					</select>
+				</form>
 				<select><option>User</option></select>
 			</div>
 			<div class="grid">
@@ -28,5 +36,10 @@ templ DashboardPage(r *http.Request) {
 				<button class="secondary">&gt;</button>
 			</nav>
 		</section>
+		<!-- Slide-in Issue Detail Panel -->
+		<div class="slidein-backdrop" data-class-open="$_drawer" data-on-click="$_drawer = false"></div>
+		<div class="slidein-panel" data-class-open="$_drawer" data-attr-aria-busy="$_issueLoading">
+			<div id="issue"></div>
+		</div>
 	}
 }

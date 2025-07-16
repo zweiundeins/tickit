@@ -6,7 +6,7 @@ import (
 
 	"github.com/delaneyj/toolbelt"
 	"github.com/gorilla/sessions"
-	"github.com/starfederation/datastar/sdk/go/datastar"
+	"github.com/starfederation/datastar-go/datastar"
 )
 
 // upsertSessionID ensures a session ID exists and returns it

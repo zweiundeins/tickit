@@ -18,12 +18,14 @@ func NewIssueService(commandBus *shared.CommandBus, queryBus *shared.QueryBus) *
 	}
 }
 
-func (s *IssueService) CreateIssue(ctx context.Context, title, description, assignee, reporter string) (*Issue, error) {
+func (s *IssueService) CreateIssue(ctx context.Context, title, description, assignee, reporter, projectID, priority string) (*Issue, error) {
 	cmd := CreateIssueCommand{
 		Title:       title,
 		Description: description,
 		Assignee:    assignee,
 		Reporter:    reporter,
+		ProjectID:   projectID,
+		Priority:    priority,
 	}
 	if err := s.commandBus.Execute(ctx, cmd); err != nil {
 		return nil, err
@@ -31,13 +33,15 @@ func (s *IssueService) CreateIssue(ctx context.Context, title, description, assi
 	return nil, nil
 }
 
-func (s *IssueService) UpdateIssue(ctx context.Context, id string, title, description, status, assignee *string) error {
+func (s *IssueService) UpdateIssue(ctx context.Context, id string, title, description, status, assignee, projectID, priority *string) error {
 	cmd := UpdateIssueCommand{
 		ID:          id,
 		Title:       title,
 		Description: description,
 		Status:      status,
 		Assignee:    assignee,
+		ProjectID:   projectID,
+		Priority:    priority,
 	}
 	return s.commandBus.Execute(ctx, cmd)
 }
@@ -65,4 +69,21 @@ func (s *IssueService) ListIssues(ctx context.Context, status, assignee, reporte
 	}
 	issues, _ := result.([]*Issue)
 	return issues, nil
+}
+
+func (s *IssueService) PatchIssue(ctx context.Context, input PatchIssueInput) (*Issue, error) {
+	cmd := PatchIssueCommand{
+		ID:          input.ID,
+		Title:       input.Title,
+		Description: input.Description,
+		Status:      input.Status,
+		Priority:    input.Priority,
+		Assignee:    input.Assignee,
+		Reporter:    input.Reporter,
+		ProjectID:   input.ProjectID,
+	}
+	if err := s.commandBus.Execute(ctx, cmd); err != nil {
+		return nil, err
+	}
+	return s.GetIssueByID(ctx, input.ID)
 }

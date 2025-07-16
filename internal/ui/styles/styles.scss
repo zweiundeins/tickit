@@ -97,7 +97,7 @@ body {
   font-size: 1.1rem;
 }
 
-.slidein-backdrop {
+.slidein-backdrop.open {
   position: fixed;
   top: 0;
   left: 0;
@@ -105,13 +105,7 @@ body {
   height: 100vh;
   background: rgba(0,0,0,0.25);
   z-index: 1200;
-  opacity: 0;
-  pointer-events: none;
   transition: opacity 0.3s;
-  &.open {
-    opacity: 1;
-    pointer-events: auto;
-  }
 }
 .slidein-panel {
   position: fixed;
@@ -130,4 +124,18 @@ body {
   &.open {
     transform: translateX(0);
   }
+}
+
+.issue-priority {
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: 50%;
+  margin-right: 0.5em;
+  vertical-align: middle;
+  &.low { background: #2ecc40; }      // green
+  &.medium { background: #ffb700; }   // orange/yellow
+  &.high { background: #ff4136; }     // red
+  &.critical { background: #8b0000; } // dark red
+  &.none { background: #aaa; }        // gray
 }

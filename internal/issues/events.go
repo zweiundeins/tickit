@@ -38,6 +38,17 @@ func (e IssueDeletedEvent) GetTimestamp() interface{} { return e.Timestamp }
 
 var _ shared.Event = (*IssueDeletedEvent)(nil)
 
+type IssuePatchedEvent struct {
+	ID        string
+	Changes   map[string]interface{}
+	Timestamp time.Time
+}
+
+func (e IssuePatchedEvent) GetEventType() string      { return "IssuePatched" }
+func (e IssuePatchedEvent) GetTimestamp() interface{} { return e.Timestamp }
+
+var _ shared.Event = (*IssuePatchedEvent)(nil)
+
 type IssueAssigneeChangedEvent struct {
 	ID          string
 	OldAssignee string

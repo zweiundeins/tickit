@@ -45,6 +45,8 @@ func (ps *IssueProjectionStore) ApplyEvent(ctx context.Context, event shared.Eve
 		return ps.applyUpdated(ctx, e)
 	case IssueDeletedEvent:
 		return ps.applyDeleted(ctx, e)
+	case IssuePatchedEvent:
+		return ps.applyPatched(ctx, e)
 	case IssueAssigneeChangedEvent:
 		return ps.applyAssigneeChanged(ctx, e)
 	case IssueStatusChangedEvent:
@@ -68,6 +70,46 @@ func (ps *IssueProjectionStore) applyUpdated(ctx context.Context, e IssueUpdated
 
 func (ps *IssueProjectionStore) applyDeleted(ctx context.Context, e IssueDeletedEvent) error {
 	return ps.delete(ctx, e.ID)
+}
+
+func (ps *IssueProjectionStore) applyPatched(ctx context.Context, e IssuePatchedEvent) error {
+	issue, err := ps.GetIssue(ctx, e.ID)
+	if err != nil || issue == nil {
+		return err
+	}
+	for field, value := range e.Changes {
+		switch field {
+		case "Title":
+			if v, ok := value.(string); ok {
+				issue.Title = v
+			}
+		case "Description":
+			if v, ok := value.(string); ok {
+				issue.Description = v
+			}
+		case "Status":
+			if v, ok := value.(string); ok {
+				issue.Status = v
+			}
+		case "Priority":
+			if v, ok := value.(string); ok {
+				issue.Priority = v
+			}
+		case "Assignee":
+			if v, ok := value.(string); ok {
+				issue.Assignee = v
+			}
+		case "Reporter":
+			if v, ok := value.(string); ok {
+				issue.Reporter = v
+			}
+		case "ProjectID":
+			if v, ok := value.(string); ok {
+				issue.ProjectID = v
+			}
+		}
+	}
+	return ps.save(ctx, e.ID, issue)
 }
 
 func (ps *IssueProjectionStore) applyAssigneeChanged(ctx context.Context, e IssueAssigneeChangedEvent) error {
@@ -141,7 +183,7 @@ func (ps *IssueProjectionStore) GetIssue(ctx context.Context, id string) (*Issue
 func (ps *IssueProjectionStore) ListIssues(ctx context.Context) ([]*Issue, error) {
 	var issues []*Issue
 	err := ps.db.ReadTX(ctx, func(tx *sqlite.Conn) error {
-		stmt, err := tx.Prepare(`SELECT data FROM issues_projection`)
+		stmt, err := tx.Prepare(`SELECT data FROM issues_projection ORDER BY id DESC`)
 		if err != nil {
 			return err
 		}

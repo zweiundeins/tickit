@@ -2,8 +2,10 @@ package issues
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/mbolli/tickit/internal/sharedhttp"
 
 	"github.com/gorilla/sessions"
@@ -17,7 +19,9 @@ func HandleCreateIssue(store sessions.Store, issueService *IssueService) http.Ha
 			description := r.FormValue("description")
 			assignee := r.FormValue("assignee")
 			reporter := sessionID // For demo, use session as reporter
-			if _, err := issueService.CreateIssue(r.Context(), title, description, assignee, reporter); err != nil {
+			projectID := r.FormValue("project_id")
+			priority := r.FormValue("priority")
+			if _, err := issueService.CreateIssue(r.Context(), title, description, assignee, reporter, projectID, priority); err != nil {
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
@@ -28,22 +32,45 @@ func HandleCreateIssue(store sessions.Store, issueService *IssueService) http.Ha
 }
 
 // PATCH /api/issues/{id} - Update issue
-func HandleUpdateIssue(store sessions.Store, issueService *IssueService) http.HandlerFunc {
+// PatchIssueSignals is used to decode JSON signals for patching an issue
+// Only non-nil fields will be updated
+// ID is required
+type PatchIssueSignals struct {
+	Issue struct {
+		ID          string  `json:"id"`
+		Title       *string `json:"title,omitempty"`
+		Description *string `json:"description,omitempty"`
+		Status      *string `json:"status,omitempty"`
+		Assignee    *string `json:"assignee,omitempty"`
+		ProjectID   *string `json:"project_id,omitempty"`
+		Priority    *string `json:"priority,omitempty"`
+	} `json:"issue"`
+}
+
+func HandlePatchIssue(store sessions.Store, issueService *IssueService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sharedhttp.WithSessionAndSignals(store, w, r, nil, func(sessionID string, _ any) {
-			// For demo, get fields from form values
-			id := r.URL.Query().Get("id")
-			title := r.FormValue("title")
-			description := r.FormValue("description")
-			status := r.FormValue("status")
-			assignee := r.FormValue("assignee")
-			// TODO: Call issueService.UpdateIssue with only provided fields
-			_ = id
-			_ = title
-			_ = description
-			_ = status
-			_ = assignee
-			w.WriteHeader(http.StatusNoContent)
+		sharedhttp.WithSessionAndSignals(store, w, r, &PatchIssueSignals{}, func(sessionID string, s any) {
+			signals := s.(*PatchIssueSignals)
+			input := PatchIssueInput{
+				ID: func() string {
+					if signals.Issue.ID != "" {
+						return signals.Issue.ID
+					}
+					return chi.URLParam(r, "id")
+				}(),
+				Title:       signals.Issue.Title,
+				Description: signals.Issue.Description,
+				Status:      signals.Issue.Status,
+				Assignee:    signals.Issue.Assignee,
+				ProjectID:   signals.Issue.ProjectID,
+				Priority:    signals.Issue.Priority,
+			}
+			fmt.Printf("PatchIssue: input = %+v, signals = %+v, s = %+v\n", input, signals, s)
+			if _, err := issueService.PatchIssue(r.Context(), input); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
 		})
 	}
 }
@@ -53,9 +80,11 @@ func HandleDeleteIssue(store sessions.Store, issueService *IssueService) http.Ha
 	return func(w http.ResponseWriter, r *http.Request) {
 		sharedhttp.WithSessionAndSignals(store, w, r, nil, func(sessionID string, _ any) {
 			id := r.URL.Query().Get("id")
-			// TODO: Call issueService.DeleteIssue
-			_ = id
-			w.WriteHeader(http.StatusNoContent)
+			if err := issueService.DeleteIssue(r.Context(), id); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent) // 204
 		})
 	}
 }
@@ -65,9 +94,17 @@ func HandleGetIssueByID(store sessions.Store, issueService *IssueService) http.H
 	return func(w http.ResponseWriter, r *http.Request) {
 		sharedhttp.WithSessionAndSignals(store, w, r, nil, func(sessionID string, _ any) {
 			id := r.URL.Query().Get("id")
-			// TODO: Call issueService.GetIssueByID
-			_ = id
-			writeJSON(w, &Issue{})
+			issue, err := issueService.GetIssueByID(r.Context(), id)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			if issue == nil {
+				http.Error(w, "Issue not found", http.StatusNotFound)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			writeJSON(w, issue)
 		})
 	}
 }
@@ -76,9 +113,26 @@ func HandleGetIssueByID(store sessions.Store, issueService *IssueService) http.H
 func HandleListIssues(store sessions.Store, issueService *IssueService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sharedhttp.WithSessionAndSignals(store, w, r, nil, func(sessionID string, _ any) {
-			// TODO: Parse filters from query params
-			// TODO: Call issueService.ListIssues
-			writeJSON(w, []*Issue{})
+			status := r.URL.Query().Get("status")
+			assignee := r.URL.Query().Get("assignee")
+			reporter := r.URL.Query().Get("reporter")
+			var statusPtr, assigneePtr, reporterPtr *string
+			if status != "" {
+				statusPtr = &status
+			}
+			if assignee != "" {
+				assigneePtr = &assignee
+			}
+			if reporter != "" {
+				reporterPtr = &reporter
+			}
+			issues, err := issueService.ListIssues(r.Context(), statusPtr, assigneePtr, reporterPtr)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			writeJSON(w, issues)
 		})
 	}
 }
