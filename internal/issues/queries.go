@@ -101,6 +101,14 @@ func (f *ListIssuesFilter) ToQuery() ListIssuesQuery {
 	}
 }
 
+type GetIssueByKeyQuery struct {
+	Key string
+}
+
+func (q GetIssueByKeyQuery) GetQueryType() string { return "GetIssueByKey" }
+
+var _ shared.Query = (*GetIssueByKeyQuery)(nil)
+
 // QueryHandler for issues
 // (Stub, to be implemented with storage/event sourcing)
 type IssueQueryHandler struct {
@@ -117,4 +125,21 @@ func (h *IssueQueryHandler) HandleGetIssueByID(ctx context.Context, query GetIss
 
 func (h *IssueQueryHandler) HandleListIssues(ctx context.Context, query ListIssuesQuery) ([]*Issue, error) {
 	return h.projectionStore.ListIssues(ctx, query)
+}
+
+func (h *IssueQueryHandler) HandleGetIssueByKey(ctx context.Context, query GetIssueByKeyQuery) (*Issue, error) {
+	// For now, we'll need to list all issues and find by key
+	// In a production system, you'd want an index on the key field
+	issues, err := h.projectionStore.ListIssues(ctx, ListIssuesQuery{})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, issue := range issues {
+		if issue.Key == query.Key {
+			return issue, nil
+		}
+	}
+
+	return nil, nil // Not found
 }

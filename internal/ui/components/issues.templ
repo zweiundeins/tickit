@@ -29,6 +29,7 @@ templ IssuesTable(issues []*issues.Issue, projectMap map[string]*projects.Projec
 						Label   string
 						OrderBy string
 					}{
+						{"Key", "key"},
 						{"Title", "title"},
 						{"Project", "project"},
 						{"Status", "status"},
@@ -71,6 +72,17 @@ templ IssuesTable(issues []*issues.Issue, projectMap map[string]*projects.Projec
 				for _, issue := range issues {
 					<tr>
 						<td>
+							if issue.Key != "" {
+								<a href={ "/" + issue.Key } title={ "Short URL: /" + issue.Key }>
+									<strong>{ issue.Key }</strong>
+								</a>
+							} else {
+								<span title="No key assigned">
+									<strong>{ issue.ID }</strong>
+								</span>
+							}
+						</td>
+						<td>
 							<span
 								title={ "Priority: " + issue.Priority }
 								class={ "issue-priority " + toolbelt.ToCasedString(issue.Priority).Snake }
@@ -107,7 +119,11 @@ templ Issue(issue *issues.Issue, projects []*projects.Project) {
 			data-on-signal-patch-filter="{include: /^issue./}"
 		>
 			<header>
-				<h2>Ticket #{ issue.ID } - "{ issue.Title }"</h2>
+				if issue.Key != "" {
+					<h2>Ticket #{ issue.Key } - "{ issue.Title }"</h2>
+				} else {
+					<h2>Ticket #{ issue.ID } - "{ issue.Title }"</h2>
+				}
 			</header>
 			<div class="grid">
 				<label>

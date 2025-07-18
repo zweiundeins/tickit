@@ -30,18 +30,48 @@ func (s *ProjectService) CreateProject(ctx context.Context, name, slug, descript
 	return nil, nil
 }
 
-func (s *ProjectService) UpdateProject(ctx context.Context, id string, name, slug, description *string) error {
+func (s *ProjectService) UpdateProject(ctx context.Context, id string, name, slug, description *string, archived *bool) error {
 	cmd := UpdateProjectCommand{
 		ID:          id,
 		Name:        name,
 		Slug:        slug,
 		Description: description,
+		Archived:    archived,
 	}
 	return s.commandBus.Execute(ctx, cmd)
 }
 
 func (s *ProjectService) DeleteProject(ctx context.Context, id string) error {
 	cmd := DeleteProjectCommand{ID: id}
+	return s.commandBus.Execute(ctx, cmd)
+}
+
+func (s *ProjectService) ArchiveProject(ctx context.Context, id string) error {
+	archived := true
+	cmd := UpdateProjectCommand{
+		ID:       id,
+		Archived: &archived,
+	}
+	return s.commandBus.Execute(ctx, cmd)
+}
+
+func (s *ProjectService) UnarchiveProject(ctx context.Context, id string) error {
+	archived := false
+	cmd := UpdateProjectCommand{
+		ID:       id,
+		Archived: &archived,
+	}
+	return s.commandBus.Execute(ctx, cmd)
+}
+
+func (s *ProjectService) PatchProject(ctx context.Context, input PatchProjectInput) error {
+	cmd := PatchProjectCommand{
+		ID:          input.ID,
+		Name:        input.Name,
+		Slug:        input.Slug,
+		Description: input.Description,
+		Archived:    input.Archived,
+	}
 	return s.commandBus.Execute(ctx, cmd)
 }
 

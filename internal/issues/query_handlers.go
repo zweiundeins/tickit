@@ -44,3 +44,21 @@ func (h *IssueListHandler) Handle(ctx context.Context, query interface{}) (inter
 	}
 	return h.handler.HandleListIssues(ctx, q)
 }
+
+type GetIssueByKeyHandler struct {
+	handler *IssueQueryHandler
+}
+
+var _ shared.QueryHandler = (*GetIssueByKeyHandler)(nil)
+
+func NewGetIssueByKeyHandler(handler *IssueQueryHandler) *GetIssueByKeyHandler {
+	return &GetIssueByKeyHandler{handler: handler}
+}
+
+func (h *GetIssueByKeyHandler) Handle(ctx context.Context, query interface{}) (interface{}, error) {
+	q, ok := query.(GetIssueByKeyQuery)
+	if !ok {
+		return nil, fmt.Errorf("invalid query type for GetIssueByKeyHandler")
+	}
+	return h.handler.HandleGetIssueByKey(ctx, q)
+}

@@ -24,6 +24,10 @@ func NewIssueProjectionStore(ctx context.Context, dbFilename string) (*IssueProj
 			data TEXT NOT NULL,
 			updated_at DATETIME NOT NULL
 		)`,
+		`CREATE TABLE IF NOT EXISTS issue_counters (
+			project_id TEXT PRIMARY KEY,
+			next_number INTEGER NOT NULL DEFAULT 1
+		)`,
 	}
 	db, err := toolbelt.NewDatabase(ctx, dbFilename, migrations)
 	if err != nil {
@@ -79,6 +83,10 @@ func (ps *IssueProjectionStore) applyPatched(ctx context.Context, e IssuePatched
 	}
 	for field, value := range e.Changes {
 		switch field {
+		case "Key":
+			if v, ok := value.(string); ok {
+				issue.Key = v
+			}
 		case "Title":
 			if v, ok := value.(string); ok {
 				issue.Title = v
@@ -225,6 +233,8 @@ func (ps *IssueProjectionStore) ListIssues(ctx context.Context, query ListIssues
 		switch *query.OrderBy {
 		case "id":
 			orderBy = *query.OrderBy
+		case "key":
+			orderBy = "json_extract(data, '$.key')"
 		case "updated_at", "created_at":
 			orderBy = "datetime(json_extract(data, '$." + *query.OrderBy + "'))"
 		case "title", "status", "priority", "assignee", "reporter", "project_id":
@@ -301,6 +311,44 @@ func (ps *IssueProjectionStore) delete(ctx context.Context, id string) error {
 		_, err = stmt.Step()
 		return err
 	})
+}
+
+func (ps *IssueProjectionStore) GetNextIssueNumber(ctx context.Context, projectID string) (int, error) {
+	var nextNumber int
+	err := ps.db.WriteTX(ctx, func(tx *sqlite.Conn) error {
+		// Try to get current number
+		stmt, err := tx.Prepare(`SELECT next_number FROM issue_counters WHERE project_id = ?`)
+		if err != nil {
+			return err
+		}
+		defer stmt.Finalize()
+		stmt.BindText(1, projectID)
+		rowReturned, err := stmt.Step()
+		if err != nil {
+			return err
+		}
+
+		if rowReturned {
+			// Counter exists, get current number
+			nextNumber = int(stmt.ColumnInt64(0))
+		} else {
+			// Counter doesn't exist, start at 1
+			nextNumber = 1
+		}
+
+		// Increment and save
+		nextNumber++
+		stmt2, err := tx.Prepare(`INSERT OR REPLACE INTO issue_counters (project_id, next_number) VALUES (?, ?)`)
+		if err != nil {
+			return err
+		}
+		defer stmt2.Finalize()
+		stmt2.BindText(1, projectID)
+		stmt2.BindInt64(2, int64(nextNumber-1)) // Save the number we just used
+		_, err = stmt2.Step()
+		return err
+	})
+	return nextNumber - 1, err // Return the number we used
 }
 
 // RebuildAllFromEvents rebuilds all issue projections from the event store

@@ -12,7 +12,7 @@ templ TicketDetailPage(issue *issues.Issue, projects []*projects.Project, r *htt
 			<nav style="margin-bottom:1rem;"><a href="/dashboard">← Back to List</a></nav>
 			<section style="border:1px solid var(--muted-border-color);padding:1.5rem;border-radius:8px;">
 				<header style="display:flex;align-items:center;justify-content:space-between;">
-					<h2>Ticket #{ issue.ID } - "{ issue.Title }"</h2>
+					<h2>Ticket #{ issue.Key } - "{ issue.Title }"</h2>
 				</header>
 				<div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin:1rem 0;">
 					<label>

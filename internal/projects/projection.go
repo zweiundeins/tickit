@@ -45,6 +45,8 @@ func (ps *ProjectProjectionStore) ApplyEvent(ctx context.Context, event shared.E
 		return ps.applyUpdated(ctx, e)
 	case ProjectDeletedEvent:
 		return ps.applyDeleted(ctx, e)
+	case ProjectPatchedEvent:
+		return ps.applyPatched(ctx, e)
 	default:
 		return nil // ignore unrelated events
 	}
@@ -60,6 +62,38 @@ func (ps *ProjectProjectionStore) applyUpdated(ctx context.Context, e ProjectUpd
 
 func (ps *ProjectProjectionStore) applyDeleted(ctx context.Context, e ProjectDeletedEvent) error {
 	return ps.delete(ctx, e.ID)
+}
+
+func (ps *ProjectProjectionStore) applyPatched(ctx context.Context, e ProjectPatchedEvent) error {
+	project, err := ps.GetProject(ctx, e.ID)
+	if err != nil || project == nil {
+		return err
+	}
+	for field, value := range e.Changes {
+		switch field {
+		case "Name":
+			if v, ok := value.(string); ok {
+				project.Name = v
+			}
+		case "Slug":
+			if v, ok := value.(string); ok {
+				project.Slug = v
+			}
+		case "Description":
+			if v, ok := value.(string); ok {
+				project.Description = v
+			}
+		case "Archived":
+			if v, ok := value.(bool); ok {
+				project.Archived = v
+			}
+		case "UpdatedAt":
+			if v, ok := value.(time.Time); ok {
+				project.UpdatedAt = v
+			}
+		}
+	}
+	return ps.save(ctx, e.ID, project)
 }
 
 func (ps *ProjectProjectionStore) GetProject(ctx context.Context, id string) (*Project, error) {

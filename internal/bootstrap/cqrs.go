@@ -94,11 +94,12 @@ func WireCQRS(ctx context.Context, ns *embeddednats.Server) (*CQRSDeps, error) {
 	queryBus.RegisterHandler("GetNotificationByUID", notifications.NewGetNotificationByUIDHandler(notifQueryHandler))
 	queryBus.RegisterHandler("GetIssueByID", issues.NewIssueGetByIDHandler(issueQueryHandler))
 	queryBus.RegisterHandler("ListIssues", issues.NewIssueListHandler(issueQueryHandler))
+	queryBus.RegisterHandler("GetIssueByKey", issues.NewGetIssueByKeyHandler(issueQueryHandler))
 	queryBus.RegisterHandler("GetProjectByID", projects.NewGetProjectByIDHandler(projectQueryHandler))
 	queryBus.RegisterHandler("ListProjects", projects.NewListProjectsHandler(projectQueryHandler))
 	notificationService := notifications.NewNotificationService(commandBus, queryBus)
-	issueService := issues.NewIssueService(commandBus, queryBus)
 	projectService := projects.NewProjectService(commandBus, queryBus)
+	issueService := issues.NewIssueService(commandBus, queryBus, projectService, issueProjectionStore)
 	sessionStore := sessions.NewCookieStore([]byte("session-secret"))
 	sessionStore.MaxAge(int(24 * time.Hour / time.Second))
 	return &CQRSDeps{

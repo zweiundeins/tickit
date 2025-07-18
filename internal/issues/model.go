@@ -44,6 +44,7 @@ var IssuePriorities = []string{
 // Extendable for more fields (e.g. labels, comments, etc.)
 type Issue struct {
 	ID          string    `json:"id"`
+	Key         string    `json:"key"` // Human-readable identifier like "PROJ-24242"
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Status      string    `json:"status"`   // see IssueStatus* constants

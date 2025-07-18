@@ -14,4 +14,16 @@ type Project struct {
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	Archived    bool      `json:"archived"`
+}
+
+// PatchProjectInput is used for type-safe partial updates to a Project
+// Only non-nil fields will be updated
+// ID is required
+type PatchProjectInput struct {
+	ID          string
+	Name        *string
+	Slug        *string
+	Description *string
+	Archived    *bool
 }

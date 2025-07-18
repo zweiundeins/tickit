@@ -44,3 +44,15 @@ func (e ProjectDeletedEvent) GetEventType() string      { return "ProjectDeleted
 func (e ProjectDeletedEvent) GetTimestamp() interface{} { return e.Timestamp }
 
 var _ shared.Event = (*ProjectDeletedEvent)(nil)
+
+// ProjectPatchedEvent is emitted when a project is patched (partial update)
+type ProjectPatchedEvent struct {
+	ID        string
+	Changes   map[string]interface{}
+	Timestamp time.Time
+}
+
+func (e ProjectPatchedEvent) GetEventType() string      { return "ProjectPatched" }
+func (e ProjectPatchedEvent) GetTimestamp() interface{} { return e.Timestamp }
+
+var _ shared.Event = (*ProjectPatchedEvent)(nil)

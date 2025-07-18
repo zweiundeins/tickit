@@ -63,3 +63,21 @@ func (h *DeleteProjectHandler) Handle(ctx context.Context, command interface{}) 
 	}
 	return h.handler.HandleDeleteProject(ctx, cmd)
 }
+
+type PatchProjectHandler struct {
+	handler *ProjectCommandHandler
+}
+
+var _ shared.CommandHandler = (*PatchProjectHandler)(nil)
+
+func NewPatchProjectHandler(handler *ProjectCommandHandler) *PatchProjectHandler {
+	return &PatchProjectHandler{handler: handler}
+}
+
+func (h *PatchProjectHandler) Handle(ctx context.Context, command interface{}) error {
+	cmd, ok := command.(PatchProjectCommand)
+	if !ok {
+		return fmt.Errorf("invalid command type for PatchProjectHandler")
+	}
+	return h.handler.HandlePatchProject(ctx, cmd)
+}

@@ -18,6 +18,7 @@ type CreateIssueCommand struct {
 	Reporter    string
 	ProjectID   string
 	Priority    string
+	Key         string // Generated key like "PROJ-24242"
 }
 
 type UpdateIssueCommand struct {
@@ -100,6 +101,7 @@ func (h *IssueCommandHandler) HandleCreateIssue(ctx context.Context, cmd CreateI
 	}
 	issue := &Issue{
 		ID:          uuid.New().String(),
+		Key:         cmd.Key,
 		Title:       cmd.Title,
 		Description: cmd.Description,
 		Status:      status,

@@ -24,29 +24,34 @@ func HandleCreateProject(store sessions.Store, projectService *ProjectService) h
 	}
 }
 
-// PATCH /api/projects/{id} - Update project
+// PATCH /api/projects/{id} - Update project (partial update)
+type PatchProjectSignals struct {
+	Project struct {
+		ID          string  `json:"id"`
+		Name        *string `json:"name,omitempty"`
+		Slug        *string `json:"slug,omitempty"`
+		Description *string `json:"description,omitempty"`
+		Archived    *bool   `json:"archived,omitempty"`
+	} `json:"project"`
+}
+
 func HandleUpdateProject(store sessions.Store, projectService *ProjectService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sharedhttp.WithSessionAndSignals(store, w, r, nil, func(sessionID string, _ any) {
-			id := r.URL.Query().Get("id")
-			if id == "" {
-				id = r.FormValue("id")
+		sharedhttp.WithSessionAndSignals(store, w, r, &PatchProjectSignals{}, func(sessionID string, s any) {
+			signals := s.(*PatchProjectSignals)
+			input := PatchProjectInput{
+				ID: func() string {
+					if signals.Project.ID != "" {
+						return signals.Project.ID
+					}
+					return r.URL.Query().Get("id")
+				}(),
+				Name:        signals.Project.Name,
+				Slug:        signals.Project.Slug,
+				Description: signals.Project.Description,
+				Archived:    signals.Project.Archived,
 			}
-			if id == "" {
-				http.Error(w, "Missing id", http.StatusBadRequest)
-				return
-			}
-			var namePtr, slugPtr, descPtr *string
-			if v := r.FormValue("name"); v != "" {
-				namePtr = &v
-			}
-			if v := r.FormValue("slug"); v != "" {
-				slugPtr = &v
-			}
-			if v := r.FormValue("description"); v != "" {
-				descPtr = &v
-			}
-			if err := projectService.UpdateProject(r.Context(), id, namePtr, slugPtr, descPtr); err != nil {
+			if err := projectService.PatchProject(r.Context(), input); err != nil {
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
@@ -109,6 +114,48 @@ func HandleListProjects(store sessions.Store, projectService *ProjectService) ht
 				return
 			}
 			writeJSON(w, projects)
+		})
+	}
+}
+
+// PATCH /api/projects/{id}/archive - Archive project
+func HandleArchiveProject(store sessions.Store, projectService *ProjectService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sharedhttp.WithSessionAndSignals(store, w, r, nil, func(sessionID string, _ any) {
+			id := r.URL.Query().Get("id")
+			if id == "" {
+				id = r.FormValue("id")
+			}
+			if id == "" {
+				http.Error(w, "Missing id", http.StatusBadRequest)
+				return
+			}
+			if err := projectService.ArchiveProject(r.Context(), id); err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+		})
+	}
+}
+
+// PATCH /api/projects/{id}/unarchive - Unarchive project
+func HandleUnarchiveProject(store sessions.Store, projectService *ProjectService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sharedhttp.WithSessionAndSignals(store, w, r, nil, func(sessionID string, _ any) {
+			id := r.URL.Query().Get("id")
+			if id == "" {
+				id = r.FormValue("id")
+			}
+			if id == "" {
+				http.Error(w, "Missing id", http.StatusBadRequest)
+				return
+			}
+			if err := projectService.UnarchiveProject(r.Context(), id); err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
 		})
 	}
 }

@@ -55,6 +55,18 @@ func SetupRoutes(ctx context.Context, router chi.Router) (err error) {
 		pages.Index(r).Render(r.Context(), w)
 	})
 
+	// Issue key redirect route - must be before other routes to avoid conflicts
+	router.Get("/{issueKey:[A-Z]{2,6}-[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+		issueKey := chi.URLParam(r, "issueKey")
+		issue, err := cqrsDeps.IssueService.GetIssueByKey(r.Context(), issueKey)
+		if err != nil || issue == nil {
+			http.NotFound(w, r)
+			return
+		}
+		// Redirect to the ticket detail page
+		http.Redirect(w, r, "/ticket/"+issue.ID, http.StatusSeeOther)
+	})
+
 	// Existing dashboard route
 	router.Get("/dashboard", func(w http.ResponseWriter, r *http.Request) {
 		projectsList, _ := cqrsDeps.ProjectService.ListProjects(r.Context())
