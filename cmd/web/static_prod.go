@@ -7,8 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	hashFS "github.com/benbjohnson/hashfs"
 	"github.com/mbolli/tickit/internal/ui"
+
+	hashFS "github.com/benbjohnson/hashfs"
 )
 
 func static() http.Handler {

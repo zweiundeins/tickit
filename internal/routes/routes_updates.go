@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/sessions"
 	"github.com/mbolli/tickit/internal/issues"
 	"github.com/mbolli/tickit/internal/notifications"
@@ -18,14 +18,24 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 )
 
+// Example usage for issues updates:
+type IssuesUpdatesSignals struct {
+	Filter   issues.ListIssuesFilter `json:"filter"`
+	OrderBy  string                  `json:"order_by"`
+	OrderDir string                  `json:"order_dir"`
+}
+
 // GET /updates/issues - SSE endpoint for real-time issue updates (table)
 func HandleIssuesUpdatesSSE(store sessions.Store, nc *nats.Conn, issueService *issues.IssueService, projectService *projects.ProjectService) http.HandlerFunc {
 	return HandleSSEUpdates(
 		store,
 		nc,
 		[]string{"IssueCreated", "IssueUpdated", "IssueDeleted", "IssuePatched"},
-		func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string) {
-			issuesList, err := issueService.ListIssues(ctx, nil, nil, nil)
+		&IssuesUpdatesSignals{},
+		func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string, signals any) {
+			sig := signals.(*IssuesUpdatesSignals)
+			query := sig.Filter.ToQuery()
+			issuesList, err := issueService.ListIssues(ctx, query)
 			if err == nil {
 				// Collect unique project IDs
 				projectIDs := make(map[string]struct{})
@@ -51,7 +61,8 @@ func HandleNotificationsUpdatesSSE(store sessions.Store, nc *nats.Conn, notifica
 		store,
 		nc,
 		[]string{"NotificationCreated", "NotificationDeleted", "NotificationRead"},
-		func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string) {
+		nil,
+		func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string, signals any) {
 			ntfs, err := notificationService.GetNotifications(ctx, sessionID)
 			if err == nil {
 				_ = sse.PatchElementTempl(components.Notifications(ntfs))
@@ -82,12 +93,13 @@ func HandleStatusUpdatesSSE() http.HandlerFunc {
 // GET /updates/issue/{id} - SSE endpoint for real-time updates for a single issue
 func HandleIssueUpdatesSSE(store sessions.Store, nc *nats.Conn, issueService *issues.IssueService, projectService *projects.ProjectService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		issueID := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
+		issueID := chi.URLParam(r, "id")
 		handler := HandleSSEUpdates(
 			store,
 			nc,
 			[]string{"IssueUpdated", "IssueDeleted", "IssuePatched"},
-			func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string) {
+			nil,
+			func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string, signals any) {
 				issue, err := issueService.GetIssueByID(ctx, issueID)
 				projectsList, _ := projectService.ListProjects(ctx)
 				if err == nil && issue != nil {
@@ -104,11 +116,12 @@ func HandleSSEUpdates(
 	store sessions.Store,
 	nc *nats.Conn,
 	eventTypes []string,
-	updatePatch func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string),
-	initialPatch ...func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string),
+	signals any,
+	updatePatch func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string, signals any),
+	initialPatch ...func(ctx context.Context, sse *datastar.ServerSentEventGenerator, sessionID string, signals any),
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sharedhttp.WithSessionAndSignals(store, w, r, nil, func(sessionID string, _ any) {
+		sharedhttp.WithSessionAndSignals(store, w, r, signals, func(sessionID string, signals any) {
 			sse := datastar.NewSSE(w, r, datastar.WithCompression(datastar.WithServerPriority()))
 			ctx := r.Context()
 
@@ -130,9 +143,9 @@ func HandleSSEUpdates(
 
 			// send initial patch (use initialPatch if provided, else updatePatch)
 			if len(initialPatch) > 0 && initialPatch[0] != nil {
-				initialPatch[0](ctx, sse, sessionID)
+				initialPatch[0](ctx, sse, sessionID, signals)
 			} else {
-				updatePatch(ctx, sse, sessionID)
+				updatePatch(ctx, sse, sessionID, signals)
 			}
 
 			eventTypeSet := make(map[string]struct{})
@@ -150,7 +163,7 @@ func HandleSSEUpdates(
 
 				eventType, _ := raw["event_type"].(string)
 				if _, ok := eventTypeSet[eventType]; ok {
-					updatePatch(ctx, sse, sessionID)
+					updatePatch(ctx, sse, sessionID, signals)
 				}
 				_ = msg.Ack()
 			})

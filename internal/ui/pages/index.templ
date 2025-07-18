@@ -40,7 +40,7 @@ templ Index(r *http.Request) {
 					Status
 					<select name="status" required>
 						for _, status := range issues.IssueStatuses {
-							<option value={ status } selected={ status == issues.IssueStatusToDo }>{ status }</option>
+							<option value={ status } selected?={ status == issues.IssueStatusToDo }>{ status }</option>
 						}
 					</select>
 				</label>

@@ -1,8 +1,9 @@
 package pages
 
-import "github.com/mbolli/tickit/internal/ui/layouts"
 import "net/http"
+import "github.com/mbolli/tickit/internal/ui/layouts"
 import "github.com/mbolli/tickit/internal/projects"
+
 
 templ AdminPanelPage(r *http.Request, projects []*projects.Project) {
 	@layouts.Base("Admin Panel", r) {

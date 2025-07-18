@@ -61,8 +61,7 @@ func (s *IssueService) GetIssueByID(ctx context.Context, id string) (*Issue, err
 	return issue, nil
 }
 
-func (s *IssueService) ListIssues(ctx context.Context, status, assignee, reporter *string) ([]*Issue, error) {
-	query := ListIssuesQuery{Status: status, Assignee: assignee, Reporter: reporter}
+func (s *IssueService) ListIssues(ctx context.Context, query ListIssuesQuery) ([]*Issue, error) {
 	result, err := s.queryBus.Execute(ctx, query)
 	if err != nil {
 		return nil, err

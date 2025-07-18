@@ -55,7 +55,14 @@ func SetupRoutes(ctx context.Context, router chi.Router) (err error) {
 		pages.Index(r).Render(r.Context(), w)
 	})
 
+	// Existing dashboard route
 	router.Get("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		projectsList, _ := cqrsDeps.ProjectService.ListProjects(r.Context())
+		pages.DashboardPage(r, projectsList).Render(r.Context(), w)
+	})
+
+	// New dashboard route with issueUid
+	router.Get("/dashboard/{issueUid}", func(w http.ResponseWriter, r *http.Request) {
 		projectsList, _ := cqrsDeps.ProjectService.ListProjects(r.Context())
 		pages.DashboardPage(r, projectsList).Render(r.Context(), w)
 	})

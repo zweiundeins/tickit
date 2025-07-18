@@ -92,7 +92,9 @@ func run(ctx context.Context) error {
 
 		// Set up middlewares
 		router.Use(
+			// compression (including brotli)
 			compressor.Handler,
+			// QUIC headers for HTTP/3
 			func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if r.ProtoMajor < 3 {
@@ -101,6 +103,8 @@ func run(ctx context.Context) error {
 					next.ServeHTTP(w, r)
 				})
 			},
+			middleware.NoCache,
+			middleware.GetHead,
 			middleware.Logger,
 			middleware.Recoverer,
 		)

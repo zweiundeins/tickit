@@ -180,14 +180,74 @@ func (ps *IssueProjectionStore) GetIssue(ctx context.Context, id string) (*Issue
 	return &issue, nil
 }
 
-func (ps *IssueProjectionStore) ListIssues(ctx context.Context) ([]*Issue, error) {
+func (ps *IssueProjectionStore) ListIssues(ctx context.Context, query ListIssuesQuery) ([]*Issue, error) {
 	var issues []*Issue
+	sql := "SELECT data FROM issues_projection WHERE 1=1"
+	args := []interface{}{}
+
+	if query.Status != nil {
+		sql += " AND json_extract(data, '$.status') = ?"
+		args = append(args, *query.Status)
+	}
+	if query.Assignee != nil {
+		sql += " AND json_extract(data, '$.assignee') = ?"
+		args = append(args, *query.Assignee)
+	}
+	if query.Reporter != nil {
+		sql += " AND json_extract(data, '$.reporter') = ?"
+		args = append(args, *query.Reporter)
+	}
+	if query.Priority != nil {
+		sql += " AND json_extract(data, '$.priority') = ?"
+		args = append(args, *query.Priority)
+	}
+	if query.ProjectID != nil {
+		sql += " AND json_extract(data, '$.projectid') = ?"
+		args = append(args, *query.ProjectID)
+	}
+	if query.ContainsText != nil {
+		sql += " AND (json_extract(data, '$.title') LIKE ? OR json_extract(data, '$.description') LIKE ?)"
+		likeVal := "%" + *query.ContainsText + "%"
+		args = append(args, likeVal, likeVal)
+	}
+	if query.CreatedAfter != nil {
+		sql += " AND json_extract(data, '$.created_at') >= ?"
+		args = append(args, query.CreatedAfter.Format(time.RFC3339))
+	}
+	if query.CreatedBefore != nil {
+		sql += " AND json_extract(data, '$.created_at') <= ?"
+		args = append(args, query.CreatedBefore.Format(time.RFC3339))
+	}
+	// ORDER BY logic
+	orderBy := "id"
+	orderDir := "DESC"
+	if query.OrderBy != nil {
+		switch *query.OrderBy {
+		case "id":
+			orderBy = *query.OrderBy
+		case "updated_at", "created_at":
+			orderBy = "datetime(json_extract(data, '$." + *query.OrderBy + "'))"
+		case "title", "status", "priority", "assignee", "reporter", "project_id":
+			// Use json_extract for these fields
+			orderBy = "json_extract(data, '$." + *query.OrderBy + "')"
+		}
+	}
+	if query.OrderDir != nil && (*query.OrderDir == "asc" || *query.OrderDir == "desc" || *query.OrderDir == "ASC" || *query.OrderDir == "DESC") {
+		orderDir = *query.OrderDir
+	}
+	sql += " ORDER BY " + orderBy + " " + orderDir
+	fmt.Println("ListIssues SQL:", sql)
+	fmt.Println("ListIssues args:", args)
+
 	err := ps.db.ReadTX(ctx, func(tx *sqlite.Conn) error {
-		stmt, err := tx.Prepare(`SELECT data FROM issues_projection ORDER BY id DESC`)
+		stmt, err := tx.Prepare(sql)
 		if err != nil {
 			return err
 		}
 		defer stmt.Finalize()
+		for i, arg := range args {
+			stmt.BindText(i+1, fmt.Sprintf("%v", arg))
+		}
 		for {
 			rowReturned, err := stmt.Step()
 			if err != nil {

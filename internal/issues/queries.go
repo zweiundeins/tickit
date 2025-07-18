@@ -2,6 +2,7 @@ package issues
 
 import (
 	"context"
+	"time"
 
 	"github.com/mbolli/tickit/internal/shared"
 )
@@ -17,14 +18,88 @@ func (q GetIssueByIDQuery) GetQueryType() string { return "GetIssueByID" }
 var _ shared.Query = (*GetIssueByIDQuery)(nil)
 
 type ListIssuesQuery struct {
-	Status   *string
-	Assignee *string
-	Reporter *string
+	Status        *string
+	Assignee      *string
+	Reporter      *string
+	Priority      *string
+	ProjectID     *string
+	CreatedAfter  *time.Time
+	CreatedBefore *time.Time
+	ContainsText  *string
+	OrderBy       *string // NEW: column to order by
+	OrderDir      *string // NEW: "asc" or "desc"
 }
 
 func (q ListIssuesQuery) GetQueryType() string { return "ListIssues" }
 
 var _ shared.Query = (*ListIssuesQuery)(nil)
+
+type ListIssuesFilter struct {
+	Status        string `json:"status"`
+	Assignee      string `json:"assignee"`
+	Reporter      string `json:"reporter"`
+	Priority      string `json:"priority"`
+	ProjectID     string `json:"project_id"`
+	CreatedAfter  string `json:"created_after"`
+	CreatedBefore string `json:"created_before"`
+	ContainsText  string `json:"contains_text"`
+	OrderBy       string `json:"order_by"`  // NEW
+	OrderDir      string `json:"order_dir"` // NEW
+}
+
+func (f *ListIssuesFilter) ToQuery() ListIssuesQuery {
+	var (
+		statusPtr, assigneePtr, reporterPtr, priorityPtr, projectIDPtr, containsTextPtr *string
+		createdAfterPtr, createdBeforePtr                                               *time.Time
+		orderByPtr, orderDirPtr                                                         *string // NEW
+	)
+	if f.Status != "" {
+		statusPtr = &f.Status
+	}
+	if f.Assignee != "" {
+		assigneePtr = &f.Assignee
+	}
+	if f.Reporter != "" {
+		reporterPtr = &f.Reporter
+	}
+	if f.Priority != "" {
+		priorityPtr = &f.Priority
+	}
+	if f.ProjectID != "" {
+		projectIDPtr = &f.ProjectID
+	}
+	if f.ContainsText != "" {
+		containsTextPtr = &f.ContainsText
+	}
+	if f.CreatedAfter != "" {
+		if t, err := time.Parse(time.RFC3339, f.CreatedAfter); err == nil {
+			createdAfterPtr = &t
+		}
+	}
+	if f.CreatedBefore != "" {
+		if t, err := time.Parse(time.RFC3339, f.CreatedBefore); err == nil {
+			createdBeforePtr = &t
+		}
+	}
+	if f.OrderBy != "" {
+		orderByPtr = &f.OrderBy
+	}
+	if f.OrderDir != "" {
+		orderDirPtr = &f.OrderDir
+	}
+	return ListIssuesQuery{
+		Status:        statusPtr,
+		Assignee:      assigneePtr,
+		Reporter:      reporterPtr,
+		Priority:      priorityPtr,
+		ProjectID:     projectIDPtr,
+		ContainsText:  containsTextPtr,
+		CreatedAfter:  createdAfterPtr,
+		CreatedBefore: createdBeforePtr,
+		OrderBy:       orderByPtr,  // NEW
+		OrderDir:      orderDirPtr, // NEW
+	}
+}
 
 // QueryHandler for issues
 // (Stub, to be implemented with storage/event sourcing)
@@ -41,22 +116,5 @@ func (h *IssueQueryHandler) HandleGetIssueByID(ctx context.Context, query GetIss
 }
 
 func (h *IssueQueryHandler) HandleListIssues(ctx context.Context, query ListIssuesQuery) ([]*Issue, error) {
-	issues, err := h.projectionStore.ListIssues(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var result []*Issue
-	for _, issue := range issues {
-		if query.Status != nil && issue.Status != *query.Status {
-			continue
-		}
-		if query.Assignee != nil && issue.Assignee != *query.Assignee {
-			continue
-		}
-		if query.Reporter != nil && issue.Reporter != *query.Reporter {
-			continue
-		}
-		result = append(result, issue)
-	}
-	return result, nil
+	return h.projectionStore.ListIssues(ctx, query)
 }

@@ -3,6 +3,8 @@
 
 );
 
+@view-transition { navigation: auto; }
+
 body {
     display: flex;
     flex-direction: column;

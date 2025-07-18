@@ -110,23 +110,18 @@ func HandleGetIssueByID(store sessions.Store, issueService *IssueService) http.H
 }
 
 // GET /api/issues - List issues
+type listIssuesSignals struct {
+	Filter   ListIssuesFilter `json:"filter"`
+	OrderBy  string           `json:"order_by"`
+	OrderDir string           `json:"order_dir"`
+}
+
 func HandleListIssues(store sessions.Store, issueService *IssueService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sharedhttp.WithSessionAndSignals(store, w, r, nil, func(sessionID string, _ any) {
-			status := r.URL.Query().Get("status")
-			assignee := r.URL.Query().Get("assignee")
-			reporter := r.URL.Query().Get("reporter")
-			var statusPtr, assigneePtr, reporterPtr *string
-			if status != "" {
-				statusPtr = &status
-			}
-			if assignee != "" {
-				assigneePtr = &assignee
-			}
-			if reporter != "" {
-				reporterPtr = &reporter
-			}
-			issues, err := issueService.ListIssues(r.Context(), statusPtr, assigneePtr, reporterPtr)
+		sharedhttp.WithSessionAndSignals(store, w, r, &listIssuesSignals{}, func(sessionID string, s any) {
+			signals := s.(*listIssuesSignals)
+			query := signals.Filter.ToQuery()
+			issues, err := issueService.ListIssues(r.Context(), query)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return

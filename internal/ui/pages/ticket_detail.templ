@@ -19,7 +19,7 @@ templ TicketDetailPage(issue *issues.Issue, projects []*projects.Project, r *htt
 						Status:
 						<select name="status">
 							for _, status := range issues.IssueStatuses {
-								<option value={ status } selected={ issue.Status == status }>{ status }</option>
+								<option value={ status } selected?={ issue.Status == status }>{ status }</option>
 							}
 						</select>
 					</label>
@@ -27,7 +27,7 @@ templ TicketDetailPage(issue *issues.Issue, projects []*projects.Project, r *htt
 						Priority:
 						<select name="priority">
 							for _, priority := range issues.IssuePriorities {
-								<option value={ priority } selected={ issue.Priority == priority }>{ priority }</option>
+								<option value={ priority } selected?={ issue.Priority == priority }>{ priority }</option>
 							}
 						</select>
 					</label>
@@ -37,7 +37,7 @@ templ TicketDetailPage(issue *issues.Issue, projects []*projects.Project, r *htt
 						<select name="project_id">
 							<option value="">Select Project</option>
 							for _, project := range projects {
-								<option value={ project.ID } selected={ issue.ProjectID == project.ID }>{ project.Name }</option>
+								<option value={ project.ID } selected?={ issue.ProjectID == project.ID }>{ project.Name }</option>
 							}
 						</select>
 					</label>

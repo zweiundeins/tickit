@@ -2,33 +2,45 @@ package pages
 
 import "github.com/mbolli/tickit/internal/ui/layouts"
 import "net/http"
+import "github.com/go-chi/chi/v5"
 import "github.com/mbolli/tickit/internal/projects"
 
 templ DashboardPage(r *http.Request, projects []*projects.Project) {
 	@layouts.Base("Dashboard", r) {
-		<section class="dashboard" data-on-load="@get('/api/updates/issues', {openWhenHidden: true})" data-signals__ifmissing="{_drawer: false, _issueLoading: false}">
+		<section class="dashboard"
+			data-on-load="@get('/api/updates/issues', {openWhenHidden: true})" 
+			data-signals__ifmissing="{_drawer: false, _issueLoading: false, filter: { project_id: '', contains_text: ''}}"
+			data-on-signal-patch__debounce.200ms="@get('/api/updates/issues', {openWhenHidden: true})"
+			data-on-signal-patch-filter="{include: /^filter./}"
+		>
 			<div class="grid">
 				<div class="margin-left: auto;">
 					<button>Create Ticket</button>
 				</div>
 			</div>
 			<div class="grid">
-				<form id="project-filter-form" method="get" action="/dashboard" style="display:inline;">
-					<select name="project_id" onchange="this.form.submit()">
-						<option value="">Projects</option>
+				<label>
+					Projects
+					<select data-bind="filter.project_id">
+						<option value="">All</option>
 						for _, project := range projects {
-							<option value={ project.ID } selected={ r.URL.Query().Get("project_id") == project.ID }>{ project.Name }</option>
+							<option value={ project.ID } selected?={ chi.URLParam(r, "project_id") == project.ID }>{ project.Name }</option>
 						}
 					</select>
-				</form>
-				<select><option>User</option></select>
+				</label>
+				<label>
+					User
+					<select><option>Me</option></select>
+				</label>
 			</div>
 			<div class="grid">
-				<input type="search" placeholder="Search tickets..." style="flex:1;"/>
+				<input data-bind="filter.contains_text" type="search" placeholder="Search tickets..." style="flex:1;"/>
 				<select><option>Filter</option></select>
 				<select><option>Sort</option></select>
 			</div>
+			<!-- Issues table -->
 			<div id="issues" aria-busy="true"></div>
+
 			<nav style="margin-top:1rem;text-align:center;">
 				<button class="secondary">&lt;</button>
 				<button class="secondary">1</button>
@@ -38,7 +50,13 @@ templ DashboardPage(r *http.Request, projects []*projects.Project) {
 		</section>
 		<!-- Slide-in Issue Detail Panel -->
 		<div class="slidein-backdrop" data-class-open="$_drawer" data-on-click="$_drawer = false"></div>
-		<div class="slidein-panel" data-class-open="$_drawer" data-attr-aria-busy="$_issueLoading">
+		<div class="slidein-panel"
+			data-class-open="$_drawer"
+			data-attr-aria-busy="$_issueLoading"
+			data-open-issue={ chi.URLParam(r, "issueUid") }
+			data-indicator="_issueLoading"
+			data-on-load="if (el.dataset.openIssue != '') { $_drawer = true; @get('/api/updates/issue/' + el.dataset.openIssue) }"
+		>
 			<div id="issue"></div>
 		</div>
 	}

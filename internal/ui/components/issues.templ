@@ -25,13 +25,46 @@ templ IssuesTable(issues []*issues.Issue, projectMap map[string]*projects.Projec
 		<table role="grid">
 			<thead>
 				<tr>
-					<th>Title</th>
-					<th>Project</th>
-					<th>Status</th>
-					<th>Description</th>
-					<th>Reporter</th>
-					<th>Assigned</th>
-					<th>Created At</th>
+					{{ columns := []struct{
+						Label   string
+						OrderBy string
+					}{
+						{"Title", "title"},
+						{"Project", "project"},
+						{"Status", "status"},
+						{"Description", "description"},
+						{"Reporter", "reporter"},
+						{"Assigned", "assignee"},
+						{"Updated", "updated_at"},
+					} }}
+					for _, col := range columns {
+						<th>
+							<a href
+							   data-class="{ sorted: $filter.order_by == el.dataset.orderBy }"
+							   data-order-by={ col.OrderBy }
+							   data-on-click__prevent="
+								if ($filter.order_by != el.dataset.orderBy) {
+									$filter.order_by = el.dataset.orderBy;
+									$filter.order_dir = 'asc';
+								} else if ($filter.order_dir == 'asc') {
+									$filter.order_dir = 'desc';
+								} else if ($filter.order_dir == 'desc') {
+									$filter.order_by = '';
+									$filter.order_dir = '';
+								} else {
+									$filter.order_dir = 'asc';
+								}
+							   "
+							   data-attr-title="$filter.order_dir == 'asc' ? 'Sort descending' : $filter.order_dir == 'desc' ? 'Clear sort' : 'Sort ascending'"
+							>
+								{ col.Label }
+								<span class="sort-icons">
+									<span data-class="{active: $filter.order_by == el.dataset.orderBy && $filter.order_dir == 'asc'}">▲</span>
+									<span data-class="{active: $filter.order_by == el.dataset.orderBy && $filter.order_dir == 'desc'}">▼</span>
+								</span>
+							</a>
+						</th>
+					}
 				</tr>
 			</thead>
 			<tbody>
@@ -42,7 +75,7 @@ templ IssuesTable(issues []*issues.Issue, projectMap map[string]*projects.Projec
 								title={ "Priority: " + issue.Priority }
 								class={ "issue-priority " + toolbelt.ToCasedString(issue.Priority).Snake }
 							></span>
-							<a href={ "/ticket/" + issue.ID } data-id={ issue.ID } data-indicator="_issueLoading" data-on-click__prevent__stop="$_drawer = true; @get('/api/updates/issue/' + el.dataset.id, {openWhenHidden: true}); return false;">
+							<a href={ "/dashboard/" + issue.ID }>
 								{ issue.Title }
 							</a>
 						</td>
@@ -57,7 +90,7 @@ templ IssuesTable(issues []*issues.Issue, projectMap map[string]*projects.Projec
 						<td>{ issue.Description }</td>
 						<td>{ issue.Reporter }</td>
 						<td>{ issue.Assignee }</td>
-						<td>{ issue.CreatedAt.Format("2006-01-02 15:04") }</td>
+						<td>{ issue.UpdatedAt.Format("2006-01-02 15:04") }</td>
 					</tr>
 				}
 			</tbody>
@@ -68,10 +101,11 @@ templ IssuesTable(issues []*issues.Issue, projectMap map[string]*projects.Projec
 templ Issue(issue *issues.Issue, projects []*projects.Project) {
 	<div id="issue">
 		<section
-		    style="padding:1.5rem;"
-		    data-id={ issue.ID }
-		    data-on-signal-patch__debounce.100ms="@patch('/api/issues/' + el.dataset.id)" 
-			data-on-signal-patch-filter="{include: /^issue./}">
+			style="padding:1.5rem;"
+			data-id={ issue.ID }
+			data-on-signal-patch__debounce.100ms="@patch('/api/issues/' + el.dataset.id)"
+			data-on-signal-patch-filter="{include: /^issue./}"
+		>
 			<header>
 				<h2>Ticket #{ issue.ID } - "{ issue.Title }"</h2>
 			</header>
@@ -80,7 +114,7 @@ templ Issue(issue *issues.Issue, projects []*projects.Project) {
 					Status:
 					<select id="status" data-bind="issue.status">
 						for _, status := range issues.IssueStatuses {
-							<option value={ status } selected={ issue.Status == status }>{ status }</option>
+							<option value={ status } selected?={ issue.Status == status }>{ status }</option>
 						}
 					</select>
 				</label>
@@ -88,7 +122,7 @@ templ Issue(issue *issues.Issue, projects []*projects.Project) {
 					Priority:
 					<select id="priority" data-bind="issue.priority">
 						for _, priority := range issues.IssuePriorities {
-							<option value={ priority } selected={ issue.Priority == priority }>{ priority }</option>
+							<option value={ priority } selected?={ issue.Priority == priority }>{ priority }</option>
 						}
 					</select>
 				</label>
@@ -100,7 +134,7 @@ templ Issue(issue *issues.Issue, projects []*projects.Project) {
 					<select id="project_id" data-bind="issue.project_id">
 						<option value="">Select Project</option>
 						for _, project := range projects {
-							<option value={ project.ID } selected={ issue.ProjectID == project.ID }>{ project.Name }</option>
+							<option value={ project.ID } selected?={ issue.ProjectID == project.ID }>{ project.Name }</option>
 						}
 					</select>
 				</label>
