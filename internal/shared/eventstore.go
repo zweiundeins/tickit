@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/delaneyj/toolbelt"
@@ -36,6 +38,10 @@ func RegisterEventDeserializer(eventType string, fn func(string, time.Time) (Eve
 
 // NewEventStore creates a new event store
 func NewEventStore(ctx context.Context, dbFilename string) (*EventStore, error) {
+	cwd, _ := os.Getwd()
+	absPath, _ := filepath.Abs(dbFilename)
+	fmt.Printf("[DEBUG] CWD: %s\n", cwd)
+	fmt.Printf("[DEBUG] EventStore dbFilename: %s (abs: %s)\n", dbFilename, absPath)
 	migrations := []string{
 		`CREATE TABLE IF NOT EXISTS events (
 			id TEXT PRIMARY KEY,
@@ -54,7 +60,14 @@ func NewEventStore(ctx context.Context, dbFilename string) (*EventStore, error) 
 
 	db, err := toolbelt.NewDatabase(ctx, dbFilename, migrations)
 	if err != nil {
+		fmt.Printf("[ERROR] Failed to create event store DB at %s: %v\n", dbFilename, err)
 		return nil, fmt.Errorf("failed to create database: %w", err)
+	}
+	fmt.Printf("[DEBUG] toolbelt.NewDatabase returned for %s\n", dbFilename)
+	if _, err := os.Stat(dbFilename); err == nil {
+		fmt.Printf("[INFO] Event store DB file created: %s\n", dbFilename)
+	} else {
+		fmt.Printf("[WARN] Event store DB file missing after creation: %s\n", dbFilename)
 	}
 
 	return NewEventStoreWithDB(db), nil
@@ -70,6 +83,7 @@ func (es *EventStore) StoreEvent(ctx context.Context, event Event) error {
 	// Serialize event data
 	eventData, err := json.Marshal(event)
 	if err != nil {
+		fmt.Printf("[ERROR] Failed to marshal event: %v\n", err)
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
@@ -97,6 +111,7 @@ func (es *EventStore) StoreEvent(ctx context.Context, event Event) error {
 			VALUES (?, ?, ?, ?, ?, ?)
 		`)
 		if err != nil {
+			fmt.Printf("[ERROR] Failed to prepare event insert statement: %v\n", err)
 			return err
 		}
 		defer stmt.Finalize()
@@ -109,6 +124,9 @@ func (es *EventStore) StoreEvent(ctx context.Context, event Event) error {
 		stmt.BindInt64(6, storedEvent.Version)
 
 		_, err = stmt.Step()
+		if err != nil {
+			fmt.Printf("[ERROR] Failed to execute event insert statement: %v\n", err)
+		}
 		return err
 	})
 }
@@ -235,10 +253,25 @@ func (es *EventStore) Close() error {
 	return es.db.Close()
 }
 
-// getAggregateID should be implemented by each feature package
+// getAggregateID extracts the aggregate ID from an event
 func (es *EventStore) getAggregateID(event Event) string {
-	// TODO: Implement in feature package or via registration
-	return "unknown"
+	// Use reflection or type assertion to get the aggregate ID
+	// For notification events, we use SessionID as the aggregate ID
+	switch e := event.(type) {
+	case interface{ GetSessionID() string }:
+		return e.GetSessionID()
+	default:
+		// Try to extract from JSON if it has a session_id field
+		if data, err := json.Marshal(event); err == nil {
+			var eventData map[string]interface{}
+			if err := json.Unmarshal(data, &eventData); err == nil {
+				if sessionID, ok := eventData["session_id"].(string); ok {
+					return sessionID
+				}
+			}
+		}
+		return "unknown"
+	}
 }
 
 // getNextVersion returns the next version for an aggregate

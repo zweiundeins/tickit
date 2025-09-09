@@ -1,0 +1,67 @@
+package components
+
+import "github.com/mbolli/tickit/internal/projects"
+
+templ ProjectForm(errorMsg string, project *projects.Project) {
+	{{ var name, slug, description string }}
+	if project != nil {
+		name = project.Name
+		slug = project.Slug
+		description = project.Description
+	}
+	<form data-on-submit__viewtransition="@post('/api/projects', { contentType: 'form' }) && el.reset()">
+		if errorMsg != "" {
+			<div class="form-error" style="color: red; margin-bottom: 0.5rem;">{ errorMsg }</div>
+		}
+		<label>Name: <input name="name" type="text" value={ name } required/></label>
+		<label>Slug: <input name="slug" type="text" value={ slug } required/></label>
+		<label>Description: <input name="description" type="text" value={ description }/></label>
+		<button type="submit">Create Project</button>
+	</form>
+}
+
+templ ProjectTable(projects []*projects.Project) {
+	<table role="grid" id="projects">
+		<thead><tr><th>Name</th><th>Slug</th><th>Description</th><th>Status</th><th>Edit</th><th>Actions</th></tr></thead>
+		<tbody>
+			for _, project := range projects {
+				<tr
+					if project.Archived {
+						style="opacity: .6"
+					}
+				>
+					<td>{ project.Name }</td>
+					<td>{ project.Slug }</td>
+					<td>{ project.Description }</td>
+					<td>
+						<span style="color: #666; font-style: italic;" hidden?={ !project.Archived }>Archived</span>
+						<span style="color: #28a745;" hidden?={ project.Archived }>Active</span>
+					</td>
+					<td>
+						<!-- Edit Project Inline Form -->
+						<details>
+							<summary>✎</summary>
+							<form data-id={ project.ID } data-on-submit__viewtransition="@patch('/api/projects/' + el.dataset.id)">
+								<label>Name: <input name="name" type="text" value={ project.Name } required/></label>
+								<label>Slug: <input name="slug" type="text" value={ project.Slug } required/></label>
+								<label>Description: <input name="description" type="text" value={ project.Description }/></label>
+								<button type="submit">Save</button>
+							</form>
+						</details>
+					</td>
+					<td>
+						if project.Archived {
+							<button data-on-click__viewtransition="@patch('/api/projects/{project.ID}', { contentType: 'json', body: JSON.stringify({ project: { id: '{project.ID}', archived: false } }) })" style="background: #28a745; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 0.25rem; cursor: pointer;">
+								Unarchive
+							</button>
+						} else {
+							<button data-on-click__viewtransition="@patch('/api/projects/{project.ID}', { contentType: 'json', body: JSON.stringify({ project: { id: '{project.ID}', archived: true } }) })" style="background: #6c757d; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 0.25rem; cursor: pointer;">
+								Archive
+							</button>
+						}
+					</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}

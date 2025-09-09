@@ -1,14 +1,15 @@
 package pages
 
 import (
+		"github.com/gorilla/sessions"
 	"github.com/mbolli/tickit/internal/issues"
 	"github.com/mbolli/tickit/internal/ui/components"
 	"github.com/mbolli/tickit/internal/ui/layouts"
 	"net/http"
 )
 
-templ Index(r *http.Request) {
-	@layouts.Base("TickIt", r) {
+templ Index(store sessions.Store, r *http.Request) {
+	@layouts.Base("TickIt", store, r) {
 		<div class="notif-form">
 			<form data-indicator="_loading" data-on-submit__viewtransition="@post('/api/notifications/', { contentType: 'form' }) && el.reset()">
 				<label>

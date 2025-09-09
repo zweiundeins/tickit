@@ -32,6 +32,18 @@ func (s *NotificationService) CreateNotification(ctx context.Context, sessionID,
 	return s.commandBus.Execute(ctx, cmd)
 }
 
+// CreateNotificationWithUser creates a new notification with user context
+func (s *NotificationService) CreateNotificationWithUser(ctx context.Context, sessionID, userID, title, body string) error {
+	cmd := CreateNotificationCommand{
+		SessionID: sessionID,
+		UserID:    userID,
+		Title:     title,
+		Body:      body,
+	}
+
+	return s.commandBus.Execute(ctx, cmd)
+}
+
 // DeleteNotification deletes a specific notification or all notifications
 func (s *NotificationService) DeleteNotification(ctx context.Context, sessionID, notificationUID string) error {
 	cmd := DeleteNotificationCommand{
@@ -42,10 +54,32 @@ func (s *NotificationService) DeleteNotification(ctx context.Context, sessionID,
 	return s.commandBus.Execute(ctx, cmd)
 }
 
+// DeleteNotificationWithUser deletes a specific notification or all notifications with user context
+func (s *NotificationService) DeleteNotificationWithUser(ctx context.Context, sessionID, userID, notificationUID string) error {
+	cmd := DeleteNotificationCommand{
+		SessionID:       sessionID,
+		UserID:          userID,
+		NotificationUID: notificationUID,
+	}
+
+	return s.commandBus.Execute(ctx, cmd)
+}
+
 // MarkNotificationRead marks a specific notification or all notifications as read
 func (s *NotificationService) MarkNotificationRead(ctx context.Context, sessionID, notificationUID string) error {
 	cmd := MarkNotificationReadCommand{
 		SessionID:       sessionID,
+		NotificationUID: notificationUID,
+	}
+
+	return s.commandBus.Execute(ctx, cmd)
+}
+
+// MarkNotificationReadWithUser marks a specific notification or all notifications as read with user context
+func (s *NotificationService) MarkNotificationReadWithUser(ctx context.Context, sessionID, userID, notificationUID string) error {
+	cmd := MarkNotificationReadCommand{
+		SessionID:       sessionID,
+		UserID:          userID,
 		NotificationUID: notificationUID,
 	}
 

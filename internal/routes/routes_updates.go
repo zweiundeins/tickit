@@ -13,6 +13,7 @@ import (
 	"github.com/mbolli/tickit/internal/projects"
 	"github.com/mbolli/tickit/internal/sharedhttp"
 	"github.com/mbolli/tickit/internal/ui/components"
+	"github.com/mbolli/tickit/internal/users"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/starfederation/datastar-go/datastar"
@@ -26,7 +27,7 @@ type IssuesUpdatesSignals struct {
 }
 
 // GET /updates/issues - SSE endpoint for real-time issue updates (table)
-func HandleIssuesUpdatesSSE(store sessions.Store, nc *nats.Conn, issueService *issues.IssueService, projectService *projects.ProjectService) http.HandlerFunc {
+func HandleIssuesUpdatesSSE(store sessions.Store, nc *nats.Conn, issueService *issues.IssueService, projectService *projects.ProjectService, userService *users.UserService) http.HandlerFunc {
 	return HandleSSEUpdates(
 		store,
 		nc,
@@ -39,8 +40,15 @@ func HandleIssuesUpdatesSSE(store sessions.Store, nc *nats.Conn, issueService *i
 			if err == nil {
 				// Collect unique project IDs
 				projectIDs := make(map[string]struct{})
+				userIDs := make(map[string]struct{})
 				for _, issue := range issuesList {
 					projectIDs[issue.ProjectID] = struct{}{}
+					if issue.Reporter != "" {
+						userIDs[issue.Reporter] = struct{}{}
+					}
+					if issue.Assignee != "" {
+						userIDs[issue.Assignee] = struct{}{}
+					}
 				}
 				// Fetch only needed projects
 				projectMap := make(map[string]*projects.Project)
@@ -49,7 +57,17 @@ func HandleIssuesUpdatesSSE(store sessions.Store, nc *nats.Conn, issueService *i
 						projectMap[id] = p
 					}
 				}
-				_ = sse.PatchElementTempl(components.IssuesTable(issuesList, projectMap))
+				// Fetch only needed users
+				userMap := make(map[string]*components.UserInfo)
+				for id := range userIDs {
+					if u, err := userService.GetUserByID(ctx, id); err == nil && u != nil {
+						userMap[id] = &components.UserInfo{
+							ID:       u.ID,
+							Username: u.Username,
+						}
+					}
+				}
+				_ = sse.PatchElementTempl(components.IssuesTable(issuesList, projectMap, userMap))
 			}
 		},
 	)
@@ -89,6 +107,7 @@ func HandleStatusUpdatesSSE() http.HandlerFunc {
 		}
 	}
 }
+
 
 // GET /updates/issue/{id} - SSE endpoint for real-time updates for a single issue
 func HandleIssueUpdatesSSE(store sessions.Store, nc *nats.Conn, issueService *issues.IssueService, projectService *projects.ProjectService) http.HandlerFunc {

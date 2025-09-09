@@ -39,6 +39,7 @@ func (eb *EventBusWrapper) PublishEvent(ctx context.Context, event Event) error 
 	// Publish to local event bus
 	err := eb.eventBus.Emit(ctx, event)
 	if err != nil {
+		slog.Error("[ERROR] Failed to emit event to local event bus", slog.String("event_type", event.GetEventType()), slog.Any("error", err))
 		return err
 	}
 	// Publish to JetStream unified stream with envelope
@@ -52,10 +53,17 @@ func (eb *EventBusWrapper) PublishEvent(ctx context.Context, event Event) error 
 	}
 	b, err := json.Marshal(env)
 	if err != nil {
+		slog.Error("[ERROR] Failed to marshal event envelope for JetStream", slog.String("event_type", event.GetEventType()), slog.Any("error", err))
 		return err
 	}
-	_, err = eb.jetStream.Publish(ctx, "events", b)
-	return err
+	if eb.jetStream != nil {
+		_, err = eb.jetStream.Publish(ctx, "events", b)
+		if err != nil {
+			slog.Error("[ERROR] Failed to publish event to JetStream", slog.String("event_type", event.GetEventType()), slog.Any("error", err))
+		}
+		return err
+	}
+	return nil
 }
 
 // SubscribeToEvents subscribes to all domain events

@@ -1,6 +1,10 @@
 package issues
 
-import "time"
+import (
+	"strconv"
+	"strings"
+	"time"
+)
 
 // Common Jira issue states as constants
 const (
@@ -44,7 +48,7 @@ var IssuePriorities = []string{
 // Extendable for more fields (e.g. labels, comments, etc.)
 type Issue struct {
 	ID          string    `json:"id"`
-	Key         string    `json:"key"` // Human-readable identifier like "PROJ-24242"
+	Number      int       `json:"number"` // Per-project incrementing number
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Status      string    `json:"status"`   // see IssueStatus* constants
@@ -54,6 +58,11 @@ type Issue struct {
 	ProjectID   string    `json:"project_id"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// GetKey returns the human-readable key for the issue (e.g., PROJ-24242)
+func (i *Issue) GetKey(projectSlug string) string {
+	return strings.ToUpper(projectSlug) + "-" + strconv.Itoa(i.Number)
 }
 
 // PatchIssueInput is used for type-safe partial updates to an Issue

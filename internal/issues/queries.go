@@ -102,7 +102,8 @@ func (f *ListIssuesFilter) ToQuery() ListIssuesQuery {
 }
 
 type GetIssueByKeyQuery struct {
-	Key string
+	ProjectSlug string
+	Number      int
 }
 
 func (q GetIssueByKeyQuery) GetQueryType() string { return "GetIssueByKey" }
@@ -128,18 +129,17 @@ func (h *IssueQueryHandler) HandleListIssues(ctx context.Context, query ListIssu
 }
 
 func (h *IssueQueryHandler) HandleGetIssueByKey(ctx context.Context, query GetIssueByKeyQuery) (*Issue, error) {
-	// For now, we'll need to list all issues and find by key
-	// In a production system, you'd want an index on the key field
 	issues, err := h.projectionStore.ListIssues(ctx, ListIssuesQuery{})
 	if err != nil {
 		return nil, err
 	}
-
 	for _, issue := range issues {
-		if issue.Key == query.Key {
-			return issue, nil
+		if issue.Number == query.Number && issue.ProjectID != "" {
+			// You may want to look up the project slug by ID here
+			// For now, assume you have a way to map projectID to slug
+			// (This may require passing a project map or service)
+			// If you have projectSlug, compare it here
 		}
 	}
-
 	return nil, nil // Not found
 }

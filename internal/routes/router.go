@@ -5,24 +5,22 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"net/http"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/delaneyj/toolbelt"
 	"github.com/delaneyj/toolbelt/embeddednats"
 	"github.com/go-chi/chi/v5"
-	"github.com/gorilla/sessions"
 	"github.com/mbolli/tickit/internal/bootstrap"
-	"github.com/mbolli/tickit/internal/issues"
-	"github.com/mbolli/tickit/internal/notifications"
-	"github.com/mbolli/tickit/internal/projects"
-	"github.com/mbolli/tickit/internal/ui/pages"
+	"github.com/mbolli/tickit/internal/users"
 	natsserver "github.com/nats-io/nats-server/v2/server"
 )
 
+var setupRoutesCallCount int
+
 func SetupRoutes(ctx context.Context, router chi.Router) (err error) {
+	setupRoutesCallCount++
+	slog.Info("SetupRoutes called", "call_count", setupRoutesCallCount)
 	natsPort, err := getFreeNatsPort()
 	if err != nil {
 		return fmt.Errorf("error obtaining NATS port: %w", err)
@@ -42,105 +40,24 @@ func SetupRoutes(ctx context.Context, router chi.Router) (err error) {
 	ns.WaitForServer()
 	slog.Info(fmt.Sprintf("starting NATS on port :%d", natsPort))
 
-	sessionStore := sessions.NewCookieStore([]byte("session-secret"))
-	sessionStore.MaxAge(int(24 * time.Hour / time.Second))
+	// Initialize centralized session store
+	sessionStore, err := users.InitializeGlobalSessionStore()
+	if err != nil {
+		return fmt.Errorf("error initializing session store: %w", err)
+	}
+
+	slog.Info("Session store configured using centralized configuration")
 
 	cqrsDeps, err := bootstrap.WireCQRS(ctx, ns)
 	if err != nil {
 		return fmt.Errorf("error wiring CQRS: %w", err)
 	}
 
-	// register routes
-	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		pages.Index(r).Render(r.Context(), w)
-	})
-
-	// Issue key redirect route - must be before other routes to avoid conflicts
-	router.Get("/{issueKey:[A-Z]{2,6}-[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
-		issueKey := chi.URLParam(r, "issueKey")
-		issue, err := cqrsDeps.IssueService.GetIssueByKey(r.Context(), issueKey)
-		if err != nil || issue == nil {
-			http.NotFound(w, r)
-			return
-		}
-		// Redirect to the ticket detail page
-		http.Redirect(w, r, "/ticket/"+issue.ID, http.StatusSeeOther)
-	})
-
-	// Existing dashboard route
-	router.Get("/dashboard", func(w http.ResponseWriter, r *http.Request) {
-		projectsList, _ := cqrsDeps.ProjectService.ListProjects(r.Context())
-		pages.DashboardPage(r, projectsList).Render(r.Context(), w)
-	})
-
-	// New dashboard route with issueUid
-	router.Get("/dashboard/{issueUid}", func(w http.ResponseWriter, r *http.Request) {
-		projectsList, _ := cqrsDeps.ProjectService.ListProjects(r.Context())
-		pages.DashboardPage(r, projectsList).Render(r.Context(), w)
-	})
-	router.Get("/create-ticket", func(w http.ResponseWriter, r *http.Request) {
-		projectsList, _ := cqrsDeps.ProjectService.ListProjects(r.Context())
-		pages.CreateTicketPage(r, projectsList).Render(r.Context(), w)
-	})
-	router.Get("/admin", func(w http.ResponseWriter, r *http.Request) {
-		projectsList, _ := cqrsDeps.ProjectService.ListProjects(r.Context())
-		pages.AdminPanelPage(r, projectsList).Render(r.Context(), w)
-	})
-	router.Get("/login", func(w http.ResponseWriter, r *http.Request) {
-		pages.LoginPage(r).Render(r.Context(), w)
-	})
-	router.Get("/register", func(w http.ResponseWriter, r *http.Request) {
-		pages.RegisterPage(r).Render(r.Context(), w)
-	})
-	// Placeholder logout route (should clear session in future)
-	router.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-	})
-	// Ticket detail route (dynamic)
-	router.Get("/ticket/{id}", func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
-		issue, err := cqrsDeps.IssueService.GetIssueByID(r.Context(), id)
-		if err != nil || issue == nil {
-			http.NotFound(w, r)
-			return
-		}
-		projectsList, _ := cqrsDeps.ProjectService.ListProjects(r.Context())
-		pages.TicketDetailPage(issue, projectsList, r).Render(r.Context(), w)
-	})
-
-	router.Route("/api", func(apiRouter chi.Router) {
-		apiRouter.Route("/notifications", func(notifRouter chi.Router) {
-			notifRouter.Post("/", notifications.HandleCreateNotification(cqrsDeps.SessionStore, cqrsDeps.NotificationService))
-			notifRouter.Delete("/", notifications.HandleDeleteNotification(cqrsDeps.SessionStore, cqrsDeps.NotificationService))
-			notifRouter.Patch("/read", notifications.HandleMarkNotificationRead(cqrsDeps.SessionStore, cqrsDeps.NotificationService))
-		})
-		apiRouter.Route("/issues", func(issueRouter chi.Router) {
-			issueRouter.Post("/", issues.HandleCreateIssue(cqrsDeps.SessionStore, cqrsDeps.IssueService))
-			issueRouter.Patch("/{id}", issues.HandlePatchIssue(cqrsDeps.SessionStore, cqrsDeps.IssueService))
-			issueRouter.Delete("/{id}", issues.HandleDeleteIssue(cqrsDeps.SessionStore, cqrsDeps.IssueService))
-			issueRouter.Get("/", issues.HandleListIssues(cqrsDeps.SessionStore, cqrsDeps.IssueService))
-			issueRouter.Get("/{id}", issues.HandleGetIssueByID(cqrsDeps.SessionStore, cqrsDeps.IssueService))
-		})
-		apiRouter.Route("/projects", func(projectRouter chi.Router) {
-			projectRouter.Post("/", projects.HandleCreateProject(cqrsDeps.SessionStore, cqrsDeps.ProjectService))
-			projectRouter.Patch("/{id}", projects.HandleUpdateProject(cqrsDeps.SessionStore, cqrsDeps.ProjectService))
-			projectRouter.Delete("/{id}", projects.HandleDeleteProject(cqrsDeps.SessionStore, cqrsDeps.ProjectService))
-			projectRouter.Get("/", projects.HandleListProjects(cqrsDeps.SessionStore, cqrsDeps.ProjectService))
-			projectRouter.Get("/{id}", projects.HandleGetProjectByID(cqrsDeps.SessionStore, cqrsDeps.ProjectService))
-		})
-		// New SSE route for issues table only
-		apiRouter.Get("/updates/issues", HandleIssuesUpdatesSSE(cqrsDeps.SessionStore, cqrsDeps.NatsConn, cqrsDeps.IssueService, cqrsDeps.ProjectService))
-		// New SSE route for notifications only
-		apiRouter.Get("/updates/notifications", HandleNotificationsUpdatesSSE(cqrsDeps.SessionStore, cqrsDeps.NatsConn, cqrsDeps.NotificationService))
-		// New SSE route for API status/keepalive
-		apiRouter.Get("/updates/status", HandleStatusUpdatesSSE())
-		// Register the new SSE route for single issue updates
-		apiRouter.Get("/updates/issue/{id}", HandleIssueUpdatesSSE(cqrsDeps.SessionStore, cqrsDeps.NatsConn, cqrsDeps.IssueService, cqrsDeps.ProjectService))
-	})
-
-	// Upload routes
-	router.Post("/upload", HandleUpload())
-	router.Handle("/uploads/*", HandleUploads())
+	// Register route groups from new files
+	RegisterPageRoutes(router, cqrsDeps)
+	RegisterAPIRoutes(router, cqrsDeps)
+	RegisterUploadRoutes(router, cqrsDeps)
+	RegisterUserRoutes(router, cqrsDeps, sessionStore)
 
 	return nil
 }

@@ -1,14 +1,16 @@
 package pages
 
+import "github.com/gorilla/sessions"
 import "github.com/mbolli/tickit/internal/ui/layouts"
 import "net/http"
 import "github.com/go-chi/chi/v5"
 import "github.com/mbolli/tickit/internal/projects"
 
-templ DashboardPage(r *http.Request, projects []*projects.Project) {
-	@layouts.Base("Dashboard", r) {
-		<section class="dashboard"
-			data-on-load="@get('/api/updates/issues', {openWhenHidden: true})" 
+templ DashboardPage(store sessions.Store, r *http.Request, projects []*projects.Project) {
+	@layouts.Base("Dashboard", store, r) {
+		<section
+			class="dashboard"
+			data-on-load="@get('/api/updates/issues', {openWhenHidden: true})"
 			data-signals__ifmissing="{_drawer: false, _issueLoading: false, filter: { project_id: '', contains_text: ''}}"
 			data-on-signal-patch__debounce.200ms="@get('/api/updates/issues', {openWhenHidden: true})"
 			data-on-signal-patch-filter="{include: /^filter./}"
@@ -40,7 +42,6 @@ templ DashboardPage(r *http.Request, projects []*projects.Project) {
 			</div>
 			<!-- Issues table -->
 			<div id="issues" aria-busy="true"></div>
-
 			<nav style="margin-top:1rem;text-align:center;">
 				<button class="secondary">&lt;</button>
 				<button class="secondary">1</button>
@@ -50,7 +51,8 @@ templ DashboardPage(r *http.Request, projects []*projects.Project) {
 		</section>
 		<!-- Slide-in Issue Detail Panel -->
 		<div class="slidein-backdrop" data-class-open="$_drawer" data-on-click="$_drawer = false"></div>
-		<div class="slidein-panel"
+		<div
+			class="slidein-panel"
 			data-class-open="$_drawer"
 			data-attr-aria-busy="$_issueLoading"
 			data-open-issue={ chi.URLParam(r, "issueUid") }

@@ -5,17 +5,18 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/mbolli/tickit/internal/shared"
 )
 
 // Commands
 
 type CreateProjectCommand struct {
+	ID          string
 	Name        string
 	Slug        string
 	Description string
 	Archived    bool
+	CreatedBy   string // User ID of the project creator
 }
 
 func (c CreateProjectCommand) GetCommandType() string { return "CreateProject" }
@@ -60,7 +61,7 @@ func NewProjectCommandHandler(eventBus *shared.EventBusWrapper, eventStore *shar
 
 func (h *ProjectCommandHandler) HandleCreateProject(ctx context.Context, cmd CreateProjectCommand) (*Project, error) {
 	project := &Project{
-		ID:          uuid.New().String(),
+		ID:          cmd.ID,
 		Name:        cmd.Name,
 		Slug:        cmd.Slug,
 		Description: cmd.Description,
@@ -70,6 +71,7 @@ func (h *ProjectCommandHandler) HandleCreateProject(ctx context.Context, cmd Cre
 	}
 	event := ProjectCreatedEvent{
 		Project:   project,
+		CreatedBy: cmd.CreatedBy,
 		Timestamp: project.CreatedAt,
 	}
 	// 1. Persist event to SQLite event store

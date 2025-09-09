@@ -1,8 +1,10 @@
 package layouts
 
 import "net/http"
-import "github.com/mbolli/tickit/internal/ui"
 
+import "github.com/gorilla/sessions"
+import "github.com/mbolli/tickit/internal/ui"
+import "github.com/mbolli/tickit/internal/sharedhttp"
 
 func activeClass(r *http.Request, path string) string {
 	if r.URL.Path == path {
@@ -11,15 +13,15 @@ func activeClass(r *http.Request, path string) string {
 	return ""
 }
 
-templ Base(title string, r *http.Request) {
+templ Base(title string, sessions sessions.Store, r *http.Request) {
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
 			<title>{ title }</title>
 			<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
 			<link rel="icon" type="image/x-icon" href="/static/assets/favicon.ico"/>
-			<script defer type="module" src={ui.StaticAssets.HashName("/static/index.mjs")}></script>
-			<script defer type="module" src="/static/datastar.js"></script>
+			<script defer type="module" src={ ui.StaticAssets.HashName("/static/index.mjs") }></script>
+			<script defer type="module" src={ ui.StaticAssets.HashName("/static/datastar.js") }></script>
 			<link href="/static/index.css" rel="stylesheet" type="text/css"/>
 		</head>
 		<body>
@@ -29,7 +31,7 @@ templ Base(title string, r *http.Request) {
 					data-signals-_online="true"
 					data-indicator="_connecting"
 					data-on-interval__duration.15s.leading="!$_connecting && @get('/api/updates/status', {openWhenHidden: true})"
-					data-on-datastar-sse="el === evt.detail.el && ['retrying', 'error', 'finished'].includes(evt.detail.type) && ($_online = false);"
+					data-on-datastar-fetch="el === evt.detail.el && ['retrying', 'error', 'finished'].includes(evt.detail.type) && ($_online = false);"
 				>
 					<div data-show="!$_online">Warning: Not connected to server.</div>
 				</div>
@@ -43,8 +45,11 @@ templ Base(title string, r *http.Request) {
 						<li><a href="/admin" class={ activeClass(r, "/admin") }>Admin Panel</a></li>
 					</ul>
 					<ul>
-						<li><a href="/login">Login</a></li>
-						<li><a href="/logout">Logout</a></li>
+						if uid, state := sharedhttp.GetAuthenticatedUser(sessions, r); state == true {
+							<li><a href="/logout">Logout ({ uid })</a></li>
+						} else {
+							<li><a href="/auth/login">Login</a></li>
+						}
 					</ul>
 				</nav>
 			</header>
@@ -53,7 +58,7 @@ templ Base(title string, r *http.Request) {
 			</main>
 			<footer class="container">
 				<div id="notifications"></div>
-				&copy; 2023 Acme Corp. All rights reserved.
+				&copy; 2025 zwei und eins gmbh. All rights reserved.
 				<script type="module" src="/static/datastar-inspector.js"></script>
 				<datastar-inspector></datastar-inspector>
 			</footer>

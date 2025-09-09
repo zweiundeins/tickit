@@ -4,6 +4,11 @@ import "github.com/mbolli/tickit/internal/issues"
 import "github.com/mbolli/tickit/internal/projects"
 import "github.com/delaneyj/toolbelt"
 
+type UserInfo struct {
+	ID       string
+	Username string
+}
+
 templ Issues(issues []*issues.Issue) {
 	<div id="issues">
 		<h2>Issues ({ len(issues) })</h2>
@@ -19,31 +24,33 @@ templ Issues(issues []*issues.Issue) {
 	</div>
 }
 
-templ IssuesTable(issues []*issues.Issue, projectMap map[string]*projects.Project) {
+templ IssuesTable(issues []*issues.Issue, projectMap map[string]*projects.Project, userMap map[string]*UserInfo) {
 	<div id="issues">
 		<h2>Issues ({ len(issues) })</h2>
 		<table role="grid">
 			<thead>
 				<tr>
-					{{ columns := []struct{
-						Label   string
-						OrderBy string
-					}{
-						{"Key", "key"},
-						{"Title", "title"},
-						{"Project", "project"},
-						{"Status", "status"},
-						{"Description", "description"},
-						{"Reporter", "reporter"},
-						{"Assigned", "assignee"},
-						{"Updated", "updated_at"},
-					} }}
+					{{columns := []struct {
+                        Label   string
+                        OrderBy string
+                        }{
+                            {"Key", "number"},
+                            {"Title", "title"},
+                            {"Project", "project"},
+                            {"Status", "status"},
+                            {"Reporter", "reporter"},
+                            {"Assignee", "assignee"},
+                            {"Created", "created_at"},
+                            {"Updated", "updated_at"},
+                        }
+					}}
 					for _, col := range columns {
 						<th>
-							<a href
-							   data-class="{ sorted: $filter.order_by == el.dataset.orderBy }"
-							   data-order-by={ col.OrderBy }
-							   data-on-click__prevent="
+							<a
+								href
+								data-class="{ sorted: $filter.order_by == el.dataset.orderBy }"
+								data-order-by={ col.OrderBy }
+								data-on-click__prevent="
 								if ($filter.order_by != el.dataset.orderBy) {
 									$filter.order_by = el.dataset.orderBy;
 									$filter.order_dir = 'asc';
@@ -56,7 +63,7 @@ templ IssuesTable(issues []*issues.Issue, projectMap map[string]*projects.Projec
 									$filter.order_dir = 'asc';
 								}
 							   "
-							   data-attr-title="$filter.order_dir == 'asc' ? 'Sort descending' : $filter.order_dir == 'desc' ? 'Clear sort' : 'Sort ascending'"
+								data-attr-title="$filter.order_dir == 'asc' ? 'Sort descending' : $filter.order_dir == 'desc' ? 'Clear sort' : 'Sort ascending'"
 							>
 								{ col.Label }
 								<span class="sort-icons">
@@ -72,9 +79,9 @@ templ IssuesTable(issues []*issues.Issue, projectMap map[string]*projects.Projec
 				for _, issue := range issues {
 					<tr>
 						<td>
-							if issue.Key != "" {
-								<a href={ "/" + issue.Key } title={ "Short URL: /" + issue.Key }>
-									<strong>{ issue.Key }</strong>
+							if proj, ok := projectMap[issue.ProjectID]; ok {
+								<a href={ "/" + issue.GetKey(proj.Slug) } title={ "Short URL: /" + issue.GetKey(proj.Slug) }>
+									<strong>{ issue.GetKey(proj.Slug) }</strong>
 								</a>
 							} else {
 								<span title="No key assigned">
@@ -99,9 +106,21 @@ templ IssuesTable(issues []*issues.Issue, projectMap map[string]*projects.Projec
 							}
 						</td>
 						<td>{ issue.Status }</td>
-						<td>{ issue.Description }</td>
-						<td>{ issue.Reporter }</td>
-						<td>{ issue.Assignee }</td>
+						<td>
+							if reporter, ok := userMap[issue.Reporter]; ok {
+								{ reporter.Username }
+							} else {
+								{ issue.Reporter }
+							}
+						</td>
+						<td>
+							if assignee, ok := userMap[issue.Assignee]; ok {
+								{ assignee.Username }
+							} else {
+								{ issue.Assignee }
+							}
+						</td>
+						<td>{ issue.CreatedAt.Format("2006-01-02 15:04") }</td>
 						<td>{ issue.UpdatedAt.Format("2006-01-02 15:04") }</td>
 					</tr>
 				}
@@ -119,11 +138,13 @@ templ Issue(issue *issues.Issue, projects []*projects.Project) {
 			data-on-signal-patch-filter="{include: /^issue./}"
 		>
 			<header>
-				if issue.Key != "" {
-					<h2>Ticket #{ issue.Key } - "{ issue.Title }"</h2>
-				} else {
-					<h2>Ticket #{ issue.ID } - "{ issue.Title }"</h2>
+				{{ var projSlug string }}
+				for _, project := range projects {
+					if project.ID == issue.ProjectID {
+						projSlug = project.Slug
+					}
 				}
+				<h2>Ticket #{ issue.GetKey(projSlug) } - "{ issue.Title }"</h2>
 			</header>
 			<div class="grid">
 				<label>

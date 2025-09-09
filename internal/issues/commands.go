@@ -18,7 +18,7 @@ type CreateIssueCommand struct {
 	Reporter    string
 	ProjectID   string
 	Priority    string
-	Key         string // Generated key like "PROJ-24242"
+	Number      int // Per-project incrementing number
 }
 
 type UpdateIssueCommand struct {
@@ -46,16 +46,46 @@ type PatchIssueCommand struct {
 	ProjectID   *string
 }
 
+// UserValidator interface for validating user assignments
+type UserValidator interface {
+	ValidateIssueAssignment(ctx context.Context, userID, projectID string) error
+}
+
+// Ensure IssueAssignmentValidator from users package implements UserValidator
+var _ UserValidator = (*IssueAssignmentValidatorAdapter)(nil)
+
+// IssueAssignmentValidatorAdapter adapts the users.IssueAssignmentValidator to the UserValidator interface
+type IssueAssignmentValidatorAdapter struct {
+	validator interface {
+		ValidateIssueAssignment(ctx context.Context, userID, projectID string) error
+	}
+}
+
+func NewIssueAssignmentValidatorAdapter(validator interface {
+	ValidateIssueAssignment(ctx context.Context, userID, projectID string) error
+}) *IssueAssignmentValidatorAdapter {
+	return &IssueAssignmentValidatorAdapter{validator: validator}
+}
+
+func (a *IssueAssignmentValidatorAdapter) ValidateIssueAssignment(ctx context.Context, userID, projectID string) error {
+	return a.validator.ValidateIssueAssignment(ctx, userID, projectID)
+}
+
 // CommandHandler for issues
 // (Stub, to be implemented with storage/event sourcing)
 type IssueCommandHandler struct {
 	eventBus        *shared.EventBusWrapper
 	eventStore      *shared.EventStore
 	projectionStore *IssueProjectionStore
+	userValidator   UserValidator
 }
 
 func NewIssueCommandHandler(eventBus *shared.EventBusWrapper, eventStore *shared.EventStore, projectionStore *IssueProjectionStore) *IssueCommandHandler {
 	return &IssueCommandHandler{eventBus: eventBus, eventStore: eventStore, projectionStore: projectionStore}
+}
+
+func NewIssueCommandHandlerWithValidator(eventBus *shared.EventBusWrapper, eventStore *shared.EventStore, projectionStore *IssueProjectionStore, userValidator UserValidator) *IssueCommandHandler {
+	return &IssueCommandHandler{eventBus: eventBus, eventStore: eventStore, projectionStore: projectionStore, userValidator: userValidator}
 }
 
 // Allowed issue statuses
@@ -99,9 +129,23 @@ func (h *IssueCommandHandler) HandleCreateIssue(ctx context.Context, cmd CreateI
 	if !isValidIssuePriority(priority) {
 		return nil, fmt.Errorf("invalid issue priority: %s", priority)
 	}
+
+	// Validate user assignments if validator is available
+	if h.userValidator != nil {
+		if cmd.Assignee != "" {
+			if err := h.userValidator.ValidateIssueAssignment(ctx, cmd.Assignee, cmd.ProjectID); err != nil {
+				return nil, fmt.Errorf("invalid assignee: %w", err)
+			}
+		}
+		if cmd.Reporter != "" {
+			if err := h.userValidator.ValidateIssueAssignment(ctx, cmd.Reporter, cmd.ProjectID); err != nil {
+				return nil, fmt.Errorf("invalid reporter: %w", err)
+			}
+		}
+	}
 	issue := &Issue{
 		ID:          uuid.New().String(),
-		Key:         cmd.Key,
+		Number:      cmd.Number,
 		Title:       cmd.Title,
 		Description: cmd.Description,
 		Status:      status,
@@ -139,6 +183,29 @@ func (h *IssueCommandHandler) HandleUpdateIssue(ctx context.Context, cmd UpdateI
 	priority := derefString(cmd.Priority)
 	if priority != "" && !isValidIssuePriority(priority) {
 		return fmt.Errorf("invalid issue priority: %s", priority)
+	}
+
+	// Validate user assignments if validator is available
+	if h.userValidator != nil {
+		assignee := derefString(cmd.Assignee)
+		if assignee != "" {
+			projectID := derefString(cmd.ProjectID)
+			if projectID == "" {
+				// Get current issue to find project ID
+				issue, err := h.projectionStore.GetIssue(ctx, cmd.ID)
+				if err != nil {
+					return fmt.Errorf("failed to get issue for validation: %w", err)
+				}
+				if issue != nil {
+					projectID = issue.ProjectID
+				}
+			}
+			if projectID != "" {
+				if err := h.userValidator.ValidateIssueAssignment(ctx, assignee, projectID); err != nil {
+					return fmt.Errorf("invalid assignee: %w", err)
+				}
+			}
+		}
 	}
 	issue := &Issue{
 		ID:          cmd.ID,
@@ -219,10 +286,22 @@ func (h *IssueCommandHandler) HandlePatchIssue(ctx context.Context, cmd PatchIss
 		changes["Priority"] = *cmd.Priority
 	}
 	if cmd.Assignee != nil {
+		// Validate assignee if validator is available
+		if h.userValidator != nil && *cmd.Assignee != "" {
+			if err := h.userValidator.ValidateIssueAssignment(ctx, *cmd.Assignee, issue.ProjectID); err != nil {
+				return fmt.Errorf("invalid assignee: %w", err)
+			}
+		}
 		issue.Assignee = *cmd.Assignee
 		changes["Assignee"] = *cmd.Assignee
 	}
 	if cmd.Reporter != nil {
+		// Validate reporter if validator is available
+		if h.userValidator != nil && *cmd.Reporter != "" {
+			if err := h.userValidator.ValidateIssueAssignment(ctx, *cmd.Reporter, issue.ProjectID); err != nil {
+				return fmt.Errorf("invalid reporter: %w", err)
+			}
+		}
 		issue.Reporter = *cmd.Reporter
 		changes["Reporter"] = *cmd.Reporter
 	}

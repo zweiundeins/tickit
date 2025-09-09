@@ -14,6 +14,7 @@ func ProjectEventHandler(ctx context.Context, event shared.Event) error {
 		slog.Info("project created",
 			slog.String("project_id", e.Project.ID),
 			slog.String("name", e.Project.Name),
+			slog.String("created_by", e.CreatedBy),
 		)
 	case ProjectUpdatedEvent:
 		slog.Info("project updated",

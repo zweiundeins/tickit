@@ -1,12 +1,13 @@
 package pages
 
+import	"github.com/gorilla/sessions"
 import "github.com/mbolli/tickit/internal/ui/layouts"
 import "net/http"
 import "github.com/mbolli/tickit/internal/projects"
 import "github.com/mbolli/tickit/internal/issues"
 
-templ CreateTicketPage(r *http.Request, projects []*projects.Project) {
-	@layouts.Base("New Ticket", r) {
+templ CreateTicketPage(store sessions.Store, r *http.Request, projects []*projects.Project) {
+	@layouts.Base("New Ticket", store, r) {
 		<main class="container" style="max-width: 500px; margin: 2rem auto;">
 			<form>
 				<h2>New Ticket</h2>

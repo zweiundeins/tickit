@@ -1,31 +1,36 @@
 package pages
-
+import 	"github.com/gorilla/sessions"
 import "github.com/mbolli/tickit/internal/ui/layouts"
 import "net/http"
 
-templ LoginPage(r *http.Request) {
-	@layouts.Base("Login", r) {
+templ LoginPage(store sessions.Store, r *http.Request, errorMsg string) {
+	@layouts.Base("Login", store, r) {
 		<main class="container" style="max-width: 400px; margin: 2rem auto;">
-			<form>
+			<form method="POST" data-on-submit__passive="$_submit.ariaBusy = true">
 				<h2 style="text-align:center;">Login</h2>
-				<label>Email:<input type="email" name="email" required/></label>
-				<label>Password:<input type="password" name="password" required/></label>
-				<button type="submit" class="contrast">Login</button>
+				if errorMsg != "" {
+					<div class="alert alert-error" style="background-color: #f8d7da; color: #721c24; padding: 0.75rem; border-radius: 0.25rem; margin-bottom: 1rem;">
+						{ errorMsg }
+					</div>
+				}
+				<label>Email:<input type="email" name="email" autocomplete="email" required value={ r.FormValue("email") }/></label>
+				<label>Password:<input type="password" name="password" autocomplete="current-password" required/></label>
+				<button type="submit" class="contrast" data-ref="_submit">Login</button>
 				<button type="button" class="secondary" style="width:100%;margin-top:0.5rem;">Register Instead</button>
 			</form>
 		</main>
 	}
 }
 
-templ RegisterPage(r *http.Request) {
-	@layouts.Base("Register", r) {
+templ RegisterPage(store sessions.Store, r *http.Request) {
+	@layouts.Base("Register", store, r) {
 		<main class="container" style="max-width: 400px; margin: 2rem auto;">
 			<form>
 				<h2 style="text-align:center;">Register New Account</h2>
-				<label>Name:<input type="text" name="name" required/></label>
-				<label>Email:<input type="email" name="email" required/></label>
-				<label>Password:<input type="password" name="password" required/></label>
-				<label>Confirm:<input type="password" name="confirm" required/></label>
+				<label>Name:<input type="text" name="name" autocomplete="name" required/></label>
+				<label>Email:<input type="email" name="email" autocomplete="email" required/></label>
+				<label>Password:<input type="password" name="password" autocomplete="new-password" required/></label>
+				<label>Confirm:<input type="password" name="confirm" autocomplete="new-password" required/></label>
 				<button type="submit" class="contrast">Register</button>
 				<button type="button" class="secondary" style="width:100%;margin-top:0.5rem;">Back to Login</button>
 			</form>

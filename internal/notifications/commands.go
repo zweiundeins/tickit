@@ -13,17 +13,20 @@ import (
 
 type CreateNotificationCommand struct {
 	SessionID string `json:"session_id"`
+	UserID    string `json:"user_id,omitempty"`    // Optional user ID for user-specific notifications
 	Title     string `json:"title"`
 	Body      string `json:"body"`
 }
 
 type DeleteNotificationCommand struct {
 	SessionID       string `json:"session_id"`
+	UserID          string `json:"user_id,omitempty"`           // Optional user ID
 	NotificationUID string `json:"notification_uid,omitempty"` // If empty, delete all
 }
 
 type MarkNotificationReadCommand struct {
 	SessionID       string `json:"session_id"`
+	UserID          string `json:"user_id,omitempty"`           // Optional user ID
 	NotificationUID string `json:"notification_uid,omitempty"` // If empty, mark all as read
 }
 
@@ -54,6 +57,7 @@ func (h *CommandHandler) HandleCreateNotification(ctx context.Context, cmd Creat
 	}
 	event := NotificationCreatedEvent{
 		SessionID:    cmd.SessionID,
+		UserID:       cmd.UserID,
 		Notification: notification,
 		Timestamp:    time.Now(),
 	}
@@ -96,6 +100,7 @@ func (h *CommandHandler) HandleDeleteNotification(ctx context.Context, cmd Delet
 	}
 	event := NotificationDeletedEvent{
 		SessionID:              cmd.SessionID,
+		UserID:                 cmd.UserID,
 		DeletedNotificationUID: cmd.NotificationUID,
 		DeletedAll:             deletedAll,
 		DeletedNotificationIDs: deletedNotificationIDs,
@@ -141,6 +146,7 @@ func (h *CommandHandler) HandleMarkNotificationRead(ctx context.Context, cmd Mar
 	}
 	event := NotificationReadEvent{
 		SessionID:           cmd.SessionID,
+		UserID:              cmd.UserID,
 		ReadNotificationUID: cmd.NotificationUID,
 		MarkedAllAsRead:     markedAllAsRead,
 		ReadNotificationIDs: readNotificationIDs,

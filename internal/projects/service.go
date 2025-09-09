@@ -2,9 +2,19 @@ package projects
 
 import (
 	"context"
+	"fmt"
+	"regexp"
+	"strings"
 
+	"github.com/google/uuid"
 	"github.com/mbolli/tickit/internal/shared"
 )
+
+var slugPattern = regexp.MustCompile(`^[A-Z]{2,6}$`)
+
+func isValidSlug(slug string) bool {
+	return slugPattern.MatchString(slug)
+}
 
 type ProjectService struct {
 	commandBus *shared.CommandBus
@@ -18,19 +28,36 @@ func NewProjectService(commandBus *shared.CommandBus, queryBus *shared.QueryBus)
 	}
 }
 
-func (s *ProjectService) CreateProject(ctx context.Context, name, slug, description string) (*Project, error) {
+func (s *ProjectService) CreateProject(ctx context.Context, name, slug, description string) (string, error) {
+	return s.CreateProjectWithCreator(ctx, name, slug, description, "")
+}
+
+func (s *ProjectService) CreateProjectWithCreator(ctx context.Context, name, slug, description, createdBy string) (string, error) {
+	slug = strings.ToUpper(slug)
+	if !isValidSlug(slug) {
+		return "", fmt.Errorf("project slug must be 2-6 uppercase letters (A-Z)")
+	}
+	id := uuid.New().String()
 	cmd := CreateProjectCommand{
+		ID:          id,
 		Name:        name,
 		Slug:        slug,
 		Description: description,
+		CreatedBy:   createdBy,
 	}
 	if err := s.commandBus.Execute(ctx, cmd); err != nil {
-		return nil, err
+		return "", err
 	}
-	return nil, nil
+	return id, nil
 }
 
 func (s *ProjectService) UpdateProject(ctx context.Context, id string, name, slug, description *string, archived *bool) error {
+	if slug != nil {
+		*slug = strings.ToUpper(*slug)
+		if !isValidSlug(*slug) {
+			return fmt.Errorf("project slug must be 2-6 uppercase letters (A-Z)")
+		}
+	}
 	cmd := UpdateProjectCommand{
 		ID:          id,
 		Name:        name,
@@ -93,4 +120,17 @@ func (s *ProjectService) ListProjects(ctx context.Context) ([]*Project, error) {
 	}
 	projects, _ := result.([]*Project)
 	return projects, nil
+}
+
+func (s *ProjectService) GetProjectBySlug(ctx context.Context, slug string) (*Project, error) {
+	projects, err := s.ListProjects(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, project := range projects {
+		if project.Slug == slug {
+			return project, nil
+		}
+	}
+	return nil, nil
 }

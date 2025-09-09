@@ -11,6 +11,7 @@ import (
 
 type ProjectCreatedEvent struct {
 	Project   *Project
+	CreatedBy string    // User ID of the project creator
 	Timestamp time.Time
 }
 

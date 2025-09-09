@@ -38,7 +38,6 @@ func HandleCreateIssue(store sessions.Store, issueService *IssueService) http.Ha
 type PatchIssueSignals struct {
 	Issue struct {
 		ID          string  `json:"id"`
-		Key         *string `json:"key,omitempty"`
 		Title       *string `json:"title,omitempty"`
 		Description *string `json:"description,omitempty"`
 		Status      *string `json:"status,omitempty"`
@@ -59,7 +58,6 @@ func HandlePatchIssue(store sessions.Store, issueService *IssueService) http.Han
 					}
 					return chi.URLParam(r, "id")
 				}(),
-				Key:         signals.Issue.Key,
 				Title:       signals.Issue.Title,
 				Description: signals.Issue.Description,
 				Status:      signals.Issue.Status,

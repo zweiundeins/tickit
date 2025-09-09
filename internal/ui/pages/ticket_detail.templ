@@ -1,18 +1,25 @@
 package pages
 
+import 	"github.com/gorilla/sessions"
 import "github.com/mbolli/tickit/internal/ui/layouts"
 import "net/http"
 import "github.com/mbolli/tickit/internal/issues"
 import "github.com/mbolli/tickit/internal/projects"
 
 // Accept an issue parameter
-templ TicketDetailPage(issue *issues.Issue, projects []*projects.Project, r *http.Request) {
-	@layouts.Base("Ticket Detail", r) {
+templ TicketDetailPage(issue *issues.Issue, projects []*projects.Project, store sessions.Store, r *http.Request) {
+	@layouts.Base("Ticket Detail", store, r) {
 		<div id="ticket">
 			<nav style="margin-bottom:1rem;"><a href="/dashboard">← Back to List</a></nav>
 			<section style="border:1px solid var(--muted-border-color);padding:1.5rem;border-radius:8px;">
 				<header style="display:flex;align-items:center;justify-content:space-between;">
-					<h2>Ticket #{ issue.Key } - "{ issue.Title }"</h2>
+					{{ var projSlug string }}
+					for _, project := range projects {
+						if project.ID == issue.ProjectID {
+							projSlug = project.Slug
+						}
+					}
+					<h2>Ticket #{ issue.GetKey(projSlug) } - "{ issue.Title }"</h2>
 				</header>
 				<div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin:1rem 0;">
 					<label>

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/delaneyj/toolbelt"
@@ -18,6 +20,10 @@ type IssueProjectionStore struct {
 var _ shared.ProjectionRebuilder = (*IssueProjectionStore)(nil)
 
 func NewIssueProjectionStore(ctx context.Context, dbFilename string) (*IssueProjectionStore, error) {
+	cwd, _ := os.Getwd()
+	absPath, _ := filepath.Abs(dbFilename)
+	fmt.Printf("[DEBUG] CWD: %s\n", cwd)
+	fmt.Printf("[DEBUG] IssueProjection dbFilename: %s (abs: %s)\n", dbFilename, absPath)
 	migrations := []string{
 		`CREATE TABLE IF NOT EXISTS issues_projection (
 			id TEXT PRIMARY KEY,
@@ -31,7 +37,14 @@ func NewIssueProjectionStore(ctx context.Context, dbFilename string) (*IssueProj
 	}
 	db, err := toolbelt.NewDatabase(ctx, dbFilename, migrations)
 	if err != nil {
+		fmt.Printf("[ERROR] Failed to create issues projection DB at %s: %v\n", dbFilename, err)
 		return nil, fmt.Errorf("failed to create issues projection db: %w", err)
+	}
+	fmt.Printf("[DEBUG] toolbelt.NewDatabase returned for %s\n", dbFilename)
+	if _, err := os.Stat(dbFilename); err == nil {
+		fmt.Printf("[INFO] Issues projection DB file created: %s\n", dbFilename)
+	} else {
+		fmt.Printf("[WARN] Issues projection DB file missing after creation: %s\n", dbFilename)
 	}
 	return NewIssueProjectionStoreWithDB(db), nil
 }
@@ -83,10 +96,6 @@ func (ps *IssueProjectionStore) applyPatched(ctx context.Context, e IssuePatched
 	}
 	for field, value := range e.Changes {
 		switch field {
-		case "Key":
-			if v, ok := value.(string); ok {
-				issue.Key = v
-			}
 		case "Title":
 			if v, ok := value.(string); ok {
 				issue.Title = v
@@ -210,7 +219,7 @@ func (ps *IssueProjectionStore) ListIssues(ctx context.Context, query ListIssues
 		args = append(args, *query.Priority)
 	}
 	if query.ProjectID != nil {
-		sql += " AND json_extract(data, '$.projectid') = ?"
+		sql += " AND json_extract(data, '$.project_id') = ?"
 		args = append(args, *query.ProjectID)
 	}
 	if query.ContainsText != nil {
@@ -233,8 +242,8 @@ func (ps *IssueProjectionStore) ListIssues(ctx context.Context, query ListIssues
 		switch *query.OrderBy {
 		case "id":
 			orderBy = *query.OrderBy
-		case "key":
-			orderBy = "json_extract(data, '$.key')"
+		case "number":
+			orderBy = "json_extract(data, '$.number')"
 		case "updated_at", "created_at":
 			orderBy = "datetime(json_extract(data, '$." + *query.OrderBy + "'))"
 		case "title", "status", "priority", "assignee", "reporter", "project_id":
@@ -281,14 +290,49 @@ func (ps *IssueProjectionStore) ListIssues(ctx context.Context, query ListIssues
 	return issues, nil
 }
 
+func (ps *IssueProjectionStore) GetIssueByKey(ctx context.Context, projectID string, number int) (*Issue, error) {
+	var data string
+	err := ps.db.ReadTX(ctx, func(tx *sqlite.Conn) error {
+		stmt, err := tx.Prepare(`SELECT data FROM issues_projection WHERE json_extract(data, '$.project_id') = ? AND json_extract(data, '$.number') = ? LIMIT 1`)
+		if err != nil {
+			return err
+		}
+		defer stmt.Finalize()
+		stmt.BindText(1, projectID)
+		stmt.BindInt64(2, int64(number))
+		rowReturned, err := stmt.Step()
+		if err != nil {
+			return err
+		}
+		if !rowReturned {
+			return nil // not found
+		}
+		data = stmt.ColumnText(0)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if data == "" {
+		return nil, nil
+	}
+	var issue Issue
+	if err := json.Unmarshal([]byte(data), &issue); err != nil {
+		return nil, err
+	}
+	return &issue, nil
+}
+
 func (ps *IssueProjectionStore) save(ctx context.Context, id string, issue *Issue) error {
 	b, err := json.Marshal(issue)
 	if err != nil {
+		fmt.Printf("[ERROR] Failed to marshal issue: %v\n", err)
 		return err
 	}
 	return ps.db.WriteTX(ctx, func(tx *sqlite.Conn) error {
 		stmt, err := tx.Prepare(`INSERT OR REPLACE INTO issues_projection (id, data, updated_at) VALUES (?, ?, ?)`)
 		if err != nil {
+			fmt.Printf("[ERROR] Failed to prepare issue insert statement: %v\n", err)
 			return err
 		}
 		defer stmt.Finalize()
@@ -296,6 +340,9 @@ func (ps *IssueProjectionStore) save(ctx context.Context, id string, issue *Issu
 		stmt.BindText(2, string(b))
 		stmt.BindInt64(3, time.Now().Unix())
 		_, err = stmt.Step()
+		if err != nil {
+			fmt.Printf("[ERROR] Failed to execute issue insert statement: %v\n", err)
+		}
 		return err
 	})
 }
@@ -304,11 +351,15 @@ func (ps *IssueProjectionStore) delete(ctx context.Context, id string) error {
 	return ps.db.WriteTX(ctx, func(tx *sqlite.Conn) error {
 		stmt, err := tx.Prepare(`DELETE FROM issues_projection WHERE id = ?`)
 		if err != nil {
+			fmt.Printf("[ERROR] Failed to prepare issue delete statement: %v\n", err)
 			return err
 		}
 		defer stmt.Finalize()
 		stmt.BindText(1, id)
 		_, err = stmt.Step()
+		if err != nil {
+			fmt.Printf("[ERROR] Failed to execute issue delete statement: %v\n", err)
+		}
 		return err
 	})
 }
