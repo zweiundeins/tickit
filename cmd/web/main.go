@@ -49,14 +49,22 @@ func run(ctx context.Context) error {
 	sctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	getPort := func() string {
-		if p, ok := os.LookupEnv("PORT"); ok {
+	getHTTPSPort := func() string {
+		if p, ok := os.LookupEnv("HTTPS_PORT"); ok {
+			return p
+		}
+		return "8443"
+	}
+
+	getHTTPPort := func() string {
+		if p, ok := os.LookupEnv("HTTP_PORT"); ok {
 			return p
 		}
 		return "8080"
 	}
 
-	slog.Info("starting server on https://0.0.0.0:" + getPort())
+	slog.Info("starting HTTPS server on https://0.0.0.0:" + getHTTPSPort())
+	slog.Info("starting HTTP redirect server on http://0.0.0.0:" + getHTTPPort())
 
 	eg, egctx := errgroup.WithContext(sctx)
 	eg.Go(func() error {
@@ -76,15 +84,35 @@ func run(ctx context.Context) error {
 			NextProtos:   []string{"h3", "h2"},
 		}
 
-		httpSrv := &http.Server{
-			Addr:      "0.0.0.0:" + getPort(),
+		redirectSrv := &http.Server{
+			Addr: "0.0.0.0:" + getHTTPPort(),
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// Always redirect HTTP to HTTPS
+				host := r.Host
+				// Remove port from host if present
+				if colonIndex := len(host) - 1; colonIndex > 0 {
+					for i := len(host) - 1; i >= 0; i-- {
+						if host[i] == ':' {
+							host = host[:i]
+							break
+						}
+					}
+				}
+				httpsURL := "https://" + host + ":" + getHTTPSPort() + r.URL.String()
+				http.Redirect(w, r, httpsURL, http.StatusMovedPermanently)
+			}),
+			ErrorLog: slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
+		}
+
+		http2Srv := &http.Server{
+			Addr:      "0.0.0.0:" + getHTTPSPort(),
 			Handler:   router,
 			TLSConfig: tlsConfig,
 			ErrorLog:  slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
 		}
 
 		http3Srv := &http3.Server{
-			Addr:      "0.0.0.0:" + getPort(),
+			Addr:      "0.0.0.0:" + getHTTPSPort(),
 			Handler:   router,
 			TLSConfig: http3.ConfigureTLSConfig(tlsConfig),
 			Logger:    slog.Default(),
@@ -118,8 +146,16 @@ func run(ctx context.Context) error {
 		}
 
 		eg.Go(func() error {
+			// HTTP/1.1 without TLS
+			if err := redirectSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				return fmt.Errorf("http server error: %w", err)
+			}
+			return nil
+		})
+
+		eg.Go(func() error {
 			// HTTP/1.1 and HTTP/2
-			if err := httpSrv.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+			if err := http2Srv.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 				return fmt.Errorf("http server error: %w", err)
 			}
 			return nil
@@ -135,7 +171,8 @@ func run(ctx context.Context) error {
 
 		go func() {
 			<-egctx.Done()
-			_ = httpSrv.Shutdown(context.Background())
+			_ = redirectSrv.Shutdown(context.Background())
+			_ = http2Srv.Shutdown(context.Background())
 			_ = http3Srv.Close()
 		}()
 
@@ -145,6 +182,5 @@ func run(ctx context.Context) error {
 	if err := eg.Wait(); err != nil {
 		return err
 	}
-
 	return nil
 }
