@@ -15,6 +15,7 @@ type IssueCreatedEvent struct {
 
 func (e IssueCreatedEvent) GetEventType() string      { return "IssueCreated" }
 func (e IssueCreatedEvent) GetTimestamp() interface{} { return e.Timestamp }
+func (e IssueCreatedEvent) GetIssueID() string        { return e.Issue.ID }
 
 var _ shared.Event = (*IssueCreatedEvent)(nil)
 
@@ -25,6 +26,7 @@ type IssueUpdatedEvent struct {
 
 func (e IssueUpdatedEvent) GetEventType() string      { return "IssueUpdated" }
 func (e IssueUpdatedEvent) GetTimestamp() interface{} { return e.Timestamp }
+func (e IssueUpdatedEvent) GetIssueID() string        { return e.Issue.ID }
 
 var _ shared.Event = (*IssueUpdatedEvent)(nil)
 
@@ -35,6 +37,7 @@ type IssueDeletedEvent struct {
 
 func (e IssueDeletedEvent) GetEventType() string      { return "IssueDeleted" }
 func (e IssueDeletedEvent) GetTimestamp() interface{} { return e.Timestamp }
+func (e IssueDeletedEvent) GetIssueID() string        { return e.ID }
 
 var _ shared.Event = (*IssueDeletedEvent)(nil)
 
@@ -44,8 +47,10 @@ type IssuePatchedEvent struct {
 	Timestamp time.Time
 }
 
-func (e IssuePatchedEvent) GetEventType() string      { return "IssuePatched" }
-func (e IssuePatchedEvent) GetTimestamp() interface{} { return e.Timestamp }
+func (e IssuePatchedEvent) GetEventType() string               { return "IssuePatched" }
+func (e IssuePatchedEvent) GetTimestamp() interface{}          { return e.Timestamp }
+func (e IssuePatchedEvent) GetIssueID() string                 { return e.ID }
+func (e IssuePatchedEvent) GetChanges() map[string]interface{} { return e.Changes }
 
 var _ shared.Event = (*IssuePatchedEvent)(nil)
 

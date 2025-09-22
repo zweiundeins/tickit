@@ -284,6 +284,7 @@ type UserProjectionStore interface {
 
 	// User operations
 	GetUser(ctx context.Context, userID string) (*User, error)
+	GetUsers(ctx context.Context, userIDs []string) ([]*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
 	ListUsers(ctx context.Context, limit, offset int, filters map[string]interface{}) ([]*User, error)

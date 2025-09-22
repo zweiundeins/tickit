@@ -11,6 +11,7 @@ import (
 
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
+	"github.com/mbolli/tickit/internal/logger"
 )
 
 // OAuthService handles OAuth authentication flows
@@ -182,7 +183,7 @@ func (s *OAuthService) CreateOrLinkUser(ctx context.Context, gothUser *goth.User
 	user.UpdatedAt = now
 	if err := s.userStore.UpdateUser(ctx, user); err != nil {
 		// Log error but don't fail login
-		fmt.Printf("Failed to update user last login time: %v\n", err)
+		logger.Error().Err(err).Msg("Failed to update user last login time")
 	}
 
 	return user, session, nil

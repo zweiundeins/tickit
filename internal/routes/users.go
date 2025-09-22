@@ -4,20 +4,14 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/gorilla/sessions"
 	"github.com/mbolli/tickit/internal/bootstrap"
-	"github.com/mbolli/tickit/internal/users"
 )
 
 // RegisterUserRoutes registers all user-related HTTP routes
-func RegisterUserRoutes(router chi.Router, deps *bootstrap.CQRSDeps, sessionStore sessions.Store) {
+func RegisterUserRoutes(router chi.Router, deps *bootstrap.Deps) {
 	// Use the already initialized user routes from dependencies
 	// This ensures we use the same session store instance that was configured in bootstrap
 	userRoutes := deps.UserRoutes
-
-	// Configure CSRF protection
-	csrfConfig := users.DefaultCSRFConfig()
-	csrfMiddleware := users.NewCSRFMiddleware(csrfConfig)
 
 	// Security middleware for enhanced protection
 	securityMiddleware := func(next http.Handler) http.Handler {
@@ -33,10 +27,9 @@ func RegisterUserRoutes(router chi.Router, deps *bootstrap.CQRSDeps, sessionStor
 		})
 	}
 
-	// Apply CSRF protection and security headers to form-based routes
+	// Apply security headers to form-based routes (CSRF now global)
 	router.Group(func(r chi.Router) {
 		r.Use(securityMiddleware)
-		r.Use(csrfMiddleware)
 
 		// Authentication routes (public, with CSRF protection for forms)
 		r.Post("/auth/register", userRoutes.HandleRegister)
@@ -82,7 +75,6 @@ func RegisterUserRoutes(router chi.Router, deps *bootstrap.CQRSDeps, sessionStor
 	router.Group(func(r chi.Router) {
 		r.Use(securityMiddleware)
 		r.Use(userRoutes.RequireAuthentication)
-		r.Use(csrfMiddleware)
 
 		r.Get("/api/users/profile", userRoutes.HandleGetProfile)
 		r.Put("/api/users/profile", userRoutes.HandleUpdateProfile)
@@ -93,7 +85,6 @@ func RegisterUserRoutes(router chi.Router, deps *bootstrap.CQRSDeps, sessionStor
 	router.Group(func(r chi.Router) {
 		r.Use(securityMiddleware)
 		r.Use(userRoutes.RequireAuthentication)
-		r.Use(csrfMiddleware)
 
 		r.Get("/api/projects/{projectId}/members", userRoutes.HandleGetProjectMembers)
 		r.Post("/api/projects/{projectId}/invite", userRoutes.HandleInviteUser)
@@ -105,7 +96,6 @@ func RegisterUserRoutes(router chi.Router, deps *bootstrap.CQRSDeps, sessionStor
 	router.Group(func(r chi.Router) {
 		r.Use(securityMiddleware)
 		r.Use(userRoutes.RequireAuthentication)
-		r.Use(csrfMiddleware)
 
 		r.Get("/api/invitations", userRoutes.HandleGetUserInvitations)
 		r.Post("/api/invitations/{token}/accept", userRoutes.HandleAcceptInvitation)
@@ -117,7 +107,6 @@ func RegisterUserRoutes(router chi.Router, deps *bootstrap.CQRSDeps, sessionStor
 		r.Use(securityMiddleware)
 		r.Use(userRoutes.RequireAuthentication)
 		r.Use(userRoutes.RequireAdminRole)
-		r.Use(csrfMiddleware)
 
 		r.Get("/api/admin/users", userRoutes.HandleListUsers)
 		r.Get("/api/admin/users/{userId}", userRoutes.HandleGetUser)
@@ -133,7 +122,6 @@ func RegisterUserRoutes(router chi.Router, deps *bootstrap.CQRSDeps, sessionStor
 	router.Group(func(r chi.Router) {
 		r.Use(securityMiddleware)
 		r.Use(userRoutes.RequireAuthentication)
-		r.Use(csrfMiddleware)
 
 		r.Get("/api/users/sessions", userRoutes.HandleGetUserSessions)
 		r.Delete("/api/users/sessions/{sessionId}", userRoutes.HandleInvalidateSession)

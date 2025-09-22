@@ -3,10 +3,10 @@ package users
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mbolli/tickit/internal/logger"
 	"github.com/mbolli/tickit/internal/projects"
 	"github.com/mbolli/tickit/internal/shared"
 )
@@ -38,7 +38,7 @@ func (h *ProjectCreatedEventHandler) Handle(ctx context.Context, event shared.Ev
 	projectEvent, ok := event.(projects.ProjectCreatedEvent)
 	if !ok {
 		// If we can't cast, we'll skip processing for now
-		slog.Warn("project created event handler: unable to cast event to projects.ProjectCreatedEvent")
+		logger.Warn().Msg("project created event handler: unable to cast event to projects.ProjectCreatedEvent")
 		return nil
 	}
 
@@ -47,31 +47,24 @@ func (h *ProjectCreatedEventHandler) Handle(ctx context.Context, event shared.Ev
 	createdBy := projectEvent.CreatedBy
 
 	if projectID == "" {
-		slog.Warn("project created event handler: empty project ID",
-			slog.String("created_by", createdBy))
+		logger.Warn().Str("created_by", createdBy).Msg("project created event handler: empty project ID")
 		return nil
 	}
 
 	if createdBy == "" {
-		slog.Warn("project created event handler: empty creator user ID",
-			slog.String("project_id", projectID))
+		logger.Warn().Str("project_id", projectID).Msg("project created event handler: empty creator user ID")
 		return nil
 	}
 
 	// Verify the creator user exists
 	user, err := h.userStore.GetUser(ctx, createdBy)
 	if err != nil {
-		slog.Error("project created event handler: failed to get creator user",
-			slog.String("project_id", projectID),
-			slog.String("created_by", createdBy),
-			slog.String("error", err.Error()))
+		logger.Error().Str("project_id", projectID).Str("created_by", createdBy).Str("error", err.Error()).Msg("project created event handler: failed to get creator user")
 		return fmt.Errorf("failed to get creator user: %w", err)
 	}
 
 	if user == nil {
-		slog.Warn("project created event handler: creator user not found",
-			slog.String("project_id", projectID),
-			slog.String("created_by", createdBy))
+		logger.Warn().Str("project_id", projectID).Str("created_by", createdBy).Msg("project created event handler: creator user not found")
 		return nil
 	}
 
@@ -87,17 +80,11 @@ func (h *ProjectCreatedEventHandler) Handle(ctx context.Context, event shared.Ev
 
 	err = h.userStore.CreateProjectMembership(ctx, membership)
 	if err != nil {
-		slog.Error("project created event handler: failed to create project membership",
-			slog.String("project_id", projectID),
-			slog.String("created_by", createdBy),
-			slog.String("error", err.Error()))
+		logger.Error().Str("project_id", projectID).Str("created_by", createdBy).Str("error", err.Error()).Msg("project created event handler: failed to create project membership")
 		return fmt.Errorf("failed to create project membership: %w", err)
 	}
 
-	slog.Info("project created event handler: added creator as project admin",
-		slog.String("project_id", projectID),
-		slog.String("user_id", createdBy),
-		slog.String("username", user.Username))
+	logger.Info().Str("project_id", projectID).Str("user_id", createdBy).Str("username", user.Username).Msg("project created event handler: added creator as project admin")
 
 	return nil
 }
@@ -169,8 +156,7 @@ func (h *IssueCreatedEventHandler) Handle(ctx context.Context, event shared.Even
 
 	// For now, we'll handle this as a generic event since we don't have the issue event types defined
 	// In a real implementation, you'd want to define proper event types for issues
-	slog.Info("issue created event handler: received issue created event",
-		slog.String("event_type", event.GetEventType()))
+	logger.Info().Str("event_type", event.GetEventType()).Msg("issue created event handler: received issue created event")
 
 	// Skip validation for now since we don't have proper issue event types
 	return nil
@@ -197,8 +183,7 @@ func (h *IssueUpdatedEventHandler) Handle(ctx context.Context, event shared.Even
 
 	// For now, we'll handle this as a generic event since we don't have the issue event types defined
 	// In a real implementation, you'd want to define proper event types for issues
-	slog.Info("issue updated event handler: received issue updated event",
-		slog.String("event_type", event.GetEventType()))
+	logger.Info().Str("event_type", event.GetEventType()).Msg("issue updated event handler: received issue updated event")
 
 	// Skip validation for now since we don't have proper issue event types
 	return nil

@@ -1,39 +1,13 @@
 package projects
 
 import (
-	"context"
-	"log/slog"
-
 	"github.com/mbolli/tickit/internal/shared"
 )
 
-// ProjectEventHandler handles project-specific events
-func ProjectEventHandler(ctx context.Context, event shared.Event) error {
-	switch e := event.(type) {
-	case ProjectCreatedEvent:
-		slog.Info("project created",
-			slog.String("project_id", e.Project.ID),
-			slog.String("name", e.Project.Name),
-			slog.String("created_by", e.CreatedBy),
-		)
-	case ProjectUpdatedEvent:
-		slog.Info("project updated",
-			slog.String("project_id", e.Project.ID),
-			slog.String("name", e.Project.Name),
-		)
-	case ProjectDeletedEvent:
-		slog.Info("project deleted",
-			slog.String("project_id", e.ID),
-		)
-	}
-	return nil
-}
-
-// CreateDefaultProjectEventHandlers creates a map of default event handlers for projects
-func CreateDefaultProjectEventHandlers() shared.EventHandlers {
-	return shared.EventHandlers{
-		"ProjectCreated": ProjectEventHandler,
-		"ProjectUpdated": ProjectEventHandler,
-		"ProjectDeleted": ProjectEventHandler,
-	}
+// GetEventHandlers returns functional event handlers for the projects module
+// Following the same pattern as the users module
+func GetEventHandlers() shared.EventHandlers {
+	// Currently no functional event handlers needed for projects module
+	// The actual business logic handlers are in the users module for cross-module integration
+	return shared.EventHandlers{}
 }

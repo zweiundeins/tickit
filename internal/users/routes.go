@@ -14,13 +14,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mbolli/tickit/web/ui/pages"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
 	"github.com/justinas/nosurf"
 	"github.com/mbolli/tickit/internal/session"
 	"github.com/mbolli/tickit/internal/sharedhttp"
-	"github.com/mbolli/tickit/internal/ui/pages"
 )
 
 // UserRoutes handles HTTP routes for user management
@@ -258,17 +259,28 @@ func (ur *UserRoutes) HandleClearCookies(w http.ResponseWriter, r *http.Request)
 func (ur *UserRoutes) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	// Debug: Log request details
+	log.Printf("Login request: Method=%s, URL=%s, ContentType=%s", r.Method, r.URL.String(), r.Header.Get("Content-Type"))
+
 	// Parse form data
 	if err := r.ParseForm(); err != nil {
+		log.Printf("Failed to parse form: %v", err)
 		ur.renderLoginPageWithError(w, r, "Invalid form data")
 		return
 	}
 
+	// Debug: Log form values
+	log.Printf("Form values: %+v", r.Form)
+	log.Printf("PostForm values: %+v", r.PostForm)
+
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
+	log.Printf("Extracted email='%s', password='%s' (length: %d)", email, password, len(password))
+
 	// Validate required fields
 	if email == "" || password == "" {
+		log.Printf("Validation failed: email empty=%t, password empty=%t", email == "", password == "")
 		ur.renderLoginPageWithError(w, r, "Email and password are required")
 		return
 	}

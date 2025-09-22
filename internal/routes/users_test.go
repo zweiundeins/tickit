@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"github.com/mbolli/tickit/internal/session"
 	"net/http/httptest"
 	"testing"
 
@@ -14,12 +15,12 @@ func TestUserRoutesRegistration(t *testing.T) {
 	router := chi.NewRouter()
 
 	// Create mock dependencies
-	deps := &bootstrap.CQRSDeps{
+	deps := &bootstrap.Deps{
 		UserService: &users.UserService{},
 	}
 
 	// Create session store using centralized test configuration
-	sessionStore := users.CreateTestSessionStore("test-secret")
+	sessionStore := session.CreateTestSessionStore("test-secret")
 
 	// Register user routes
 	RegisterUserRoutes(router, deps, sessionStore)

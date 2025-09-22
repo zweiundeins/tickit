@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/mbolli/tickit/internal/logger"
 	"github.com/mbolli/tickit/internal/shared"
 )
 
@@ -201,7 +202,7 @@ func (h *SSORoutes) handleSSOLogout(w http.ResponseWriter, r *http.Request) {
 	// Destroy local session
 	if err := h.sessionManager.DestroySession(r, w, "user-session"); err != nil {
 		// Log error but continue
-		fmt.Printf("Failed to destroy session: %v\n", err)
+		logger.Error().Err(err).Msg("Failed to destroy session")
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -317,7 +318,7 @@ func (h *SSORoutes) handleSingleLogout(w http.ResponseWriter, r *http.Request) {
 	// Destroy local session
 	if err := h.sessionManager.DestroySession(r, w, "user-session"); err != nil {
 		// Log error but continue
-		fmt.Printf("Failed to destroy session: %v\n", err)
+		logger.Error().Err(err).Msg("Failed to destroy session")
 	}
 
 	w.WriteHeader(http.StatusOK)

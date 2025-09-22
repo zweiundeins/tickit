@@ -8,28 +8,38 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/mbolli/tickit/internal/bootstrap"
 	"github.com/mbolli/tickit/internal/issues"
-	"github.com/mbolli/tickit/internal/ui/pages"
+	"github.com/mbolli/tickit/internal/realtime"
+	"github.com/mbolli/tickit/internal/users"
+	"github.com/mbolli/tickit/web/ui/pages"
 )
 
 // RegisterPageRoutes registers public and authenticated (non-admin, non-API) page routes.
-func RegisterPageRoutes(router chi.Router, deps *bootstrap.CQRSDeps) {
+func RegisterPageRoutes(router chi.Router, deps *bootstrap.Deps) {
+	// Configure CSRF protection for form pages
+	csrfMiddleware := users.NewCSRFMiddleware(nil)
+
 	// --- Public routes (no auth required) ---
-	router.Get("/auth/login", func(w http.ResponseWriter, r *http.Request) {
-		pages.LoginPage(deps.SessionStore, r, "").Render(r.Context(), w)
-	})
-	router.Get("/register", func(w http.ResponseWriter, r *http.Request) {
-		pages.RegisterPage(deps.SessionStore, r).Render(r.Context(), w)
-	})
-	router.Get("/auth/forgot-password", func(w http.ResponseWriter, r *http.Request) {
-		pages.ForgotPasswordPage(deps.SessionStore, r).Render(r.Context(), w)
-	})
-	router.Get("/auth/reset-password", func(w http.ResponseWriter, r *http.Request) {
-		token := r.URL.Query().Get("token")
-		if token == "" {
-			http.Error(w, "Reset token is required", http.StatusBadRequest)
-			return
-		}
-		pages.ResetPasswordPage(deps.SessionStore, r, token).Render(r.Context(), w)
+	// Apply CSRF middleware to pages that contain forms, so CSRF cookies get set
+	router.Group(func(r chi.Router) {
+		r.Use(csrfMiddleware) // This sets the CSRF cookie on GET requests
+
+		r.Get("/auth/login", func(w http.ResponseWriter, r *http.Request) {
+			pages.LoginPage(deps.SessionStore, r, "").Render(r.Context(), w)
+		})
+		r.Get("/register", func(w http.ResponseWriter, r *http.Request) {
+			pages.RegisterPage(deps.SessionStore, r).Render(r.Context(), w)
+		})
+		r.Get("/auth/forgot-password", func(w http.ResponseWriter, r *http.Request) {
+			pages.ForgotPasswordPage(deps.SessionStore, r).Render(r.Context(), w)
+		})
+		r.Get("/auth/reset-password", func(w http.ResponseWriter, r *http.Request) {
+			token := r.URL.Query().Get("token")
+			if token == "" {
+				http.Error(w, "Reset token is required", http.StatusBadRequest)
+				return
+			}
+			pages.ResetPasswordPage(deps.SessionStore, r, token).Render(r.Context(), w)
+		})
 	})
 
 	// Issue key redirect route - must be before other routes to avoid conflicts
@@ -81,18 +91,25 @@ func RegisterPageRoutes(router chi.Router, deps *bootstrap.CQRSDeps) {
 	router.Group(func(auth chi.Router) {
 		auth.Use(deps.UserRoutes.RequireAuthentication)
 
-		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		auth.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			// pages.Index(r).Render(r.Context(), w)
 			http.Redirect(w, r, "/dashboard", 302)
 		})
-		auth.Get("/dashboard", func(w http.ResponseWriter, r *http.Request) {
-			projectsList, _ := deps.ProjectService.ListProjects(r.Context())
-			pages.DashboardPage(deps.SessionStore, r, projectsList).Render(r.Context(), w)
+
+		// Dashboard routes with realtime subscription middleware
+		auth.Group(func(dashboard chi.Router) {
+			dashboard.Use(realtime.IssuesTableSubscription(realtime.NewIssuesTableRenderer(deps.IssueService, deps.ProjectService, deps.UserService)))
+			dashboard.Get("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+				projectsList, _ := deps.ProjectService.ListProjects(r.Context())
+				pages.DashboardPage(deps.SessionStore, r, projectsList, nil).Render(r.Context(), w)
+			})
+			dashboard.With(realtime.IssueDetailSubscription(realtime.NewIssueDetailRenderer(deps.IssueService, deps.ProjectService, deps.UserService))).Get("/dashboard/{issueId}", func(w http.ResponseWriter, r *http.Request) {
+				projectsList, _ := deps.ProjectService.ListProjects(r.Context())
+				issue, _ := deps.IssueService.GetIssueByID(r.Context(), chi.URLParam(r, "issueId"))
+				pages.DashboardPage(deps.SessionStore, r, projectsList, issue).Render(r.Context(), w)
+			})
 		})
-		auth.Get("/dashboard/{issueUid}", func(w http.ResponseWriter, r *http.Request) {
-			projectsList, _ := deps.ProjectService.ListProjects(r.Context())
-			pages.DashboardPage(deps.SessionStore, r, projectsList).Render(r.Context(), w)
-		})
+
 		auth.Get("/create-ticket", func(w http.ResponseWriter, r *http.Request) {
 			projectsList, _ := deps.ProjectService.ListProjects(r.Context())
 			pages.CreateTicketPage(deps.SessionStore, r, projectsList).Render(r.Context(), w)

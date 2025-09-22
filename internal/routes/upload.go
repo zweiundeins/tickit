@@ -6,7 +6,7 @@ import (
 )
 
 // RegisterUploadRoutes registers upload/static file routes.
-func RegisterUploadRoutes(router chi.Router, deps *bootstrap.CQRSDeps) {
+func RegisterUploadRoutes(router chi.Router, deps *bootstrap.Deps) {
 	router.Post("/upload", HandleUpload())
 	router.Handle("/uploads/*", HandleUploads())
 }

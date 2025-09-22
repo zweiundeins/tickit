@@ -8,6 +8,12 @@ type GetUserByIDQuery struct {
 
 func (q GetUserByIDQuery) GetQueryType() string { return "GetUserByID" }
 
+type GetUsersByIDQuery struct {
+	IDs []string `json:"ids"`
+}
+
+func (q GetUsersByIDQuery) GetQueryType() string { return "GetUsersByID" }
+
 type GetUserByEmailQuery struct {
 	Email string `json:"email"`
 }

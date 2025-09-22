@@ -341,6 +341,16 @@ func (s *UserService) GetUserByID(ctx context.Context, id string) (*User, error)
 	return user, nil
 }
 
+func (s *UserService) GetUsersByID(ctx context.Context, ids []string) ([]*User, error) {
+	query := GetUsersByIDQuery{IDs: ids}
+	result, err := s.queryBus.Execute(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	users, _ := result.([]*User)
+	return users, nil
+}
+
 func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	query := GetUserByEmailQuery{Email: email}
 	result, err := s.queryBus.Execute(ctx, query)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/delaneyj/toolbelt"
 	"github.com/google/uuid"
+	"github.com/mbolli/tickit/internal/logger"
 	"zombiezen.com/go/sqlite"
 )
 
@@ -38,10 +39,11 @@ func RegisterEventDeserializer(eventType string, fn func(string, time.Time) (Eve
 
 // NewEventStore creates a new event store
 func NewEventStore(ctx context.Context, dbFilename string) (*EventStore, error) {
-	cwd, _ := os.Getwd()
 	absPath, _ := filepath.Abs(dbFilename)
-	fmt.Printf("[DEBUG] CWD: %s\n", cwd)
-	fmt.Printf("[DEBUG] EventStore dbFilename: %s (abs: %s)\n", dbFilename, absPath)
+	logger.Debug().
+		Str("dbFilename", dbFilename).
+		Str("absPath", absPath).
+		Msg("EventStore dbFilename")
 	migrations := []string{
 		`CREATE TABLE IF NOT EXISTS events (
 			id TEXT PRIMARY KEY,
@@ -60,14 +62,17 @@ func NewEventStore(ctx context.Context, dbFilename string) (*EventStore, error) 
 
 	db, err := toolbelt.NewDatabase(ctx, dbFilename, migrations)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to create event store DB at %s: %v\n", dbFilename, err)
+		logger.Error().
+			Str("dbFilename", dbFilename).
+			Err(err).
+			Msg("Failed to create event store DB")
 		return nil, fmt.Errorf("failed to create database: %w", err)
 	}
-	fmt.Printf("[DEBUG] toolbelt.NewDatabase returned for %s\n", dbFilename)
+	logger.Debug().Msgf("toolbelt.NewDatabase returned for %s\n", dbFilename)
 	if _, err := os.Stat(dbFilename); err == nil {
-		fmt.Printf("[INFO] Event store DB file created: %s\n", dbFilename)
+		logger.Info().Msgf("Event store DB file created: %s\n", dbFilename)
 	} else {
-		fmt.Printf("[WARN] Event store DB file missing after creation: %s\n", dbFilename)
+		logger.Warn().Msgf("Event store DB file missing after creation: %s\n", dbFilename)
 	}
 
 	return NewEventStoreWithDB(db), nil
@@ -83,7 +88,7 @@ func (es *EventStore) StoreEvent(ctx context.Context, event Event) error {
 	// Serialize event data
 	eventData, err := json.Marshal(event)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to marshal event: %v\n", err)
+		logger.Error().Err(err).Msg("Failed to marshal event")
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
@@ -111,7 +116,7 @@ func (es *EventStore) StoreEvent(ctx context.Context, event Event) error {
 			VALUES (?, ?, ?, ?, ?, ?)
 		`)
 		if err != nil {
-			fmt.Printf("[ERROR] Failed to prepare event insert statement: %v\n", err)
+			logger.Error().Err(err).Msg("Failed to prepare event insert statement")
 			return err
 		}
 		defer stmt.Finalize()
@@ -125,7 +130,7 @@ func (es *EventStore) StoreEvent(ctx context.Context, event Event) error {
 
 		_, err = stmt.Step()
 		if err != nil {
-			fmt.Printf("[ERROR] Failed to execute event insert statement: %v\n", err)
+			logger.Error().Err(err).Msg("Failed to execute event insert statement")
 		}
 		return err
 	})

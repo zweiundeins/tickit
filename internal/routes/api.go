@@ -9,32 +9,38 @@ import (
 )
 
 // RegisterAPIRoutes registers all API endpoints, grouped by middleware.
-func RegisterAPIRoutes(router chi.Router, deps *bootstrap.CQRSDeps) {
+func RegisterAPIRoutes(router chi.Router, deps *bootstrap.Deps) {
+	// Generic SSE endpoint - subscription context comes from page middleware
+	router.Get("/updates", HandleUpdatesSSE(deps))
+
+	// Generic signals endpoint - updates subscription context
+	router.Post("/signals", HandleSignalsUpdate(deps))
+
 	router.Route("/api", func(apiRouter chi.Router) {
 		// --- Notifications API ---
 		apiRouter.Route("/notifications", func(notifRouter chi.Router) {
-			notifRouter.Post("/", notifications.HandleCreateNotification(deps.SessionStore, deps.NotificationService))
-			notifRouter.Delete("/", notifications.HandleDeleteNotification(deps.SessionStore, deps.NotificationService))
-			notifRouter.Patch("/read", notifications.HandleMarkNotificationRead(deps.SessionStore, deps.NotificationService))
+			notifRouter.Post("/", notifications.HandleCreateNotification(deps.NotificationService))
+			notifRouter.Delete("/", notifications.HandleDeleteNotification(deps.NotificationService))
+			notifRouter.Patch("/read", notifications.HandleMarkNotificationRead(deps.NotificationService))
 		})
 
 		// --- Issues API ---
 		apiRouter.Route("/issues", func(issueRouter chi.Router) {
-			issueRouter.Post("/", issues.HandleCreateIssue(deps.SessionStore, deps.IssueService))
-			issueRouter.Patch("/{id}", issues.HandlePatchIssue(deps.SessionStore, deps.IssueService))
-			issueRouter.Delete("/{id}", issues.HandleDeleteIssue(deps.SessionStore, deps.IssueService))
-			issueRouter.Get("/", issues.HandleListIssues(deps.SessionStore, deps.IssueService))
-			issueRouter.Get("/{id}", issues.HandleGetIssueByID(deps.SessionStore, deps.IssueService))
+			issueRouter.Post("/", issues.HandleCreateIssue(deps.IssueService))
+			issueRouter.Patch("/{id}", issues.HandlePatchIssue(deps.IssueService))
+			issueRouter.Delete("/{id}", issues.HandleDeleteIssue(deps.IssueService))
+			issueRouter.Get("/", issues.HandleListIssues(deps.IssueService))
+			issueRouter.Get("/{id}", issues.HandleGetIssueByID(deps.IssueService))
 		})
 
 		// --- Projects API (CRUD + membership + members) ---
 		apiRouter.Route("/projects", func(projectRouter chi.Router) {
 			// CRUD endpoints (main API)
-			projectRouter.Post("/", HandleCreateProject(deps.SessionStore, deps.ProjectService))
-			projectRouter.Patch("/{id}", HandleUpdateProject(deps.SessionStore, deps.ProjectService))
-			projectRouter.Delete("/{id}", HandleDeleteProject(deps.SessionStore, deps.ProjectService))
-			projectRouter.Get("/", HandleListProjects(deps.SessionStore, deps.ProjectService))
-			projectRouter.Get("/{id}", HandleGetProjectByID(deps.SessionStore, deps.ProjectService))
+			projectRouter.Post("/", HandleCreateProject(deps.ProjectService))
+			projectRouter.Patch("/{id}", HandleUpdateProject(deps.ProjectService))
+			projectRouter.Delete("/{id}", HandleDeleteProject(deps.ProjectService))
+			projectRouter.Get("/", HandleListProjects(deps.ProjectService))
+			projectRouter.Get("/{id}", HandleGetProjectByID(deps.ProjectService))
 
 			// Membership and members endpoints (auth required)
 			projectRouter.Group(func(r chi.Router) {
@@ -56,8 +62,7 @@ func RegisterAPIRoutes(router chi.Router, deps *bootstrap.CQRSDeps) {
 		apiRouter.Route("/users", func(userRouter chi.Router) {
 			// Authenticated, CSRF-protected form-based routes
 			userRouter.Group(func(r chi.Router) {
-				csrfConfig := users.DefaultCSRFConfig()
-				csrfMiddleware := users.NewCSRFMiddleware(csrfConfig)
+				csrfMiddleware := users.NewCSRFMiddleware(nil)
 				r.Use(csrfMiddleware)
 				r.Use(deps.UserRoutes.RequireAuthentication)
 				r.Put("/profile", deps.UserRoutes.HandleUpdateProfile)
@@ -101,10 +106,8 @@ func RegisterAPIRoutes(router chi.Router, deps *bootstrap.CQRSDeps) {
 		})
 
 		// --- SSE/Updates API ---
-		apiRouter.Get("/updates/issues", HandleIssuesUpdatesSSE(deps.SessionStore, deps.NatsConn, deps.IssueService, deps.ProjectService, deps.UserService))
-		apiRouter.Get("/updates/notifications", HandleNotificationsUpdatesSSE(deps.SessionStore, deps.NatsConn, deps.NotificationService))
+		apiRouter.Get("/updates/notifications", HandleNotificationsUpdatesSSE(deps))
 		apiRouter.Get("/updates/status", HandleStatusUpdatesSSE())
-		apiRouter.Get("/updates/issue/{id}", HandleIssueUpdatesSSE(deps.SessionStore, deps.NatsConn, deps.IssueService, deps.ProjectService))
 
 		// --- API endpoints, OAuth callbacks, etc. (no CSRF needed) ---
 		apiRouter.Group(func(r chi.Router) {

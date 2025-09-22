@@ -26,6 +26,8 @@ func (h *UserQueryHandler) Handle(ctx context.Context, query interface{}) (inter
 	// User Queries
 	case GetUserByIDQuery:
 		return h.HandleGetUserByID(ctx, q)
+	case GetUsersByIDQuery:
+		return h.HandleGetUsersByID(ctx, q)
 	case GetUserByEmailQuery:
 		return h.HandleGetUserByEmail(ctx, q)
 	case GetUserByUsernameQuery:
@@ -102,6 +104,10 @@ func (h *UserQueryHandler) Handle(ctx context.Context, query interface{}) (inter
 
 func (h *UserQueryHandler) HandleGetUserByID(ctx context.Context, query GetUserByIDQuery) (*User, error) {
 	return h.projectionStore.GetUser(ctx, query.ID)
+}
+
+func (h *UserQueryHandler) HandleGetUsersByID(ctx context.Context, query GetUsersByIDQuery) ([]*User, error) {
+	return h.projectionStore.GetUsers(ctx, query.IDs)
 }
 
 func (h *UserQueryHandler) HandleGetUserByEmail(ctx context.Context, query GetUserByEmailQuery) (*User, error) {
@@ -237,7 +243,7 @@ func (h *UserQueryHandler) HandleGetUserWebAuthnCredentials(ctx context.Context,
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user credentials: %w", err)
 	}
-	
+
 	// Filter for WebAuthn credentials
 	var webauthnCredentials []interface{}
 	for _, cred := range credentials {
@@ -255,7 +261,7 @@ func (h *UserQueryHandler) HandleGetUserWebAuthnCredentials(ctx context.Context,
 			webauthnCredentials = append(webauthnCredentials, credentialData)
 		}
 	}
-	
+
 	return webauthnCredentials, nil
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/markbates/goth/providers/github"
 	"github.com/markbates/goth/providers/google"
 	"github.com/markbates/goth/providers/microsoftonline"
+	"github.com/mbolli/tickit/internal/logger"
 )
 
 // OAuthConfig represents the OAuth configuration
@@ -100,7 +101,7 @@ func (m *OAuthManager) initializeProviders() error {
 		}
 
 		if config.ClientID == "" || config.ClientSecret == "" {
-			fmt.Printf("Warning: OAuth provider %s is missing client ID or secret, skipping\n", name)
+			logger.Warn().Str("provider", name).Msg("OAuth provider is missing client ID or secret, skipping")
 			continue
 		}
 
@@ -130,7 +131,7 @@ func (m *OAuthManager) initializeProviders() error {
 				config.Scopes...,
 			)
 		default:
-			fmt.Printf("Warning: Unknown OAuth provider %s, skipping\n", name)
+			logger.Warn().Str("provider", name).Msg("Unknown OAuth provider, skipping")
 			continue
 		}
 
@@ -140,7 +141,7 @@ func (m *OAuthManager) initializeProviders() error {
 
 		providers = append(providers, provider)
 		m.providers[name] = provider
-		fmt.Printf("OAuth provider %s initialized successfully\n", name)
+		logger.Info().Str("provider", name).Msg("OAuth provider initialized successfully")
 	}
 
 	// Set providers in Goth

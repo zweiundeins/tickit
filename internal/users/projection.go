@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/delaneyj/toolbelt"
+	"github.com/mbolli/tickit/internal/logger"
 	"github.com/mbolli/tickit/internal/shared"
 	"zombiezen.com/go/sqlite"
 )
@@ -24,10 +25,11 @@ var _ shared.ProjectionRebuilder = (*UserProjectionStoreImpl)(nil)
 
 // NewUserProjectionStore creates a new UserProjectionStore instance
 func NewUserProjectionStore(ctx context.Context, dbFilename string) (*UserProjectionStoreImpl, error) {
-	cwd, _ := os.Getwd()
 	absPath, _ := filepath.Abs(dbFilename)
-	fmt.Printf("[DEBUG] CWD: %s\n", cwd)
-	fmt.Printf("[DEBUG] UserProjection dbFilename: %s (abs: %s)\n", dbFilename, absPath)
+	logger.Debug().
+		Str("dbFilename", dbFilename).
+		Str("absPath", absPath).
+		Msg("UserProjection dbFilename")
 
 	migrations := []string{
 		// Note: This projection store reads directly from the main users.db tables
@@ -38,15 +40,18 @@ func NewUserProjectionStore(ctx context.Context, dbFilename string) (*UserProjec
 
 	db, err := toolbelt.NewDatabase(ctx, dbFilename, migrations)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to create users projection DB at %s: %v\n", dbFilename, err)
+		logger.Error().
+			Str("dbFilename", dbFilename).
+			Err(err).
+			Msg("Failed to create users projection db")
 		return nil, fmt.Errorf("failed to create users projection db: %w", err)
 	}
 
-	fmt.Printf("[DEBUG] toolbelt.NewDatabase returned for %s\n", dbFilename)
+	logger.Debug().Msgf("toolbelt.NewDatabase returned for %s\n", dbFilename)
 	if _, err := os.Stat(dbFilename); err == nil {
-		fmt.Printf("[INFO] Users projection DB file created: %s\n", dbFilename)
+		logger.Info().Msgf("Users projection DB file created: %s\n", dbFilename)
 	} else {
-		fmt.Printf("[WARN] Users projection DB file missing after creation: %s\n", dbFilename)
+		logger.Warn().Msgf("Users projection DB file missing after creation: %s\n", dbFilename)
 	}
 
 	return NewUserProjectionStoreWithDB(db), nil
@@ -325,6 +330,18 @@ func (ps *UserProjectionStoreImpl) GetUser(ctx context.Context, userID string) (
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (ps *UserProjectionStoreImpl) GetUsers(ctx context.Context, userIDs []string) ([]*User, error) {
+	var users []*User
+	for _, userID := range userIDs {
+		user, err := ps.GetUser(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	return users, nil
 }
 
 func (ps *UserProjectionStoreImpl) GetUserByEmail(ctx context.Context, email string) (*User, error) {

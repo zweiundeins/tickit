@@ -4,183 +4,200 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
-	"github.com/andybalholm/brotli"
+	"github.com/mbolli/tickit/internal/bootstrap"
+	"github.com/mbolli/tickit/internal/logger"
+	"github.com/mbolli/tickit/internal/nats"
+	"github.com/mbolli/tickit/internal/realtime"
+	"github.com/mbolli/tickit/internal/session"
+	"github.com/mbolli/tickit/internal/users"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/mbolli/tickit/config"
 	"github.com/mbolli/tickit/internal/routes"
-	"github.com/quic-go/quic-go/http3"
 	"golang.org/x/sync/errgroup"
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: func() slog.Level {
-			logLvlStr := os.Getenv("LOG_LEVEL")
-			switch logLvlStr {
-			case "DEBUG":
-				return slog.LevelDebug
-			case "WARN":
-				return slog.LevelWarn
-			case "ERROR":
-				return slog.LevelError
-			default:
-				return slog.LevelInfo
-			}
-		}(),
-	}))
-	slog.SetDefault(logger)
 
-	defer slog.Info("stopping server")
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
 
-	if err := run(context.Background()); err != nil && err != http.ErrServerClosed {
-		slog.Error("error running server", slog.Any("error", err))
+	// Setup zerolog logger (use dev mode when not in production)
+	isDev := config.Global.Environment == config.Dev
+	logger.Setup(isDev)
+
+	if err := run(ctx); err != nil && err != http.ErrServerClosed {
+		logger.Error().Err(err).Msg("error running server")
 		os.Exit(1)
 	}
 }
 
 func run(ctx context.Context) error {
-	sctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	logger.Info().Str("https_port", config.Global.HttpsPort).Msg("starting HTTPS server")
+	logger.Info().Str("http_port", config.Global.HttpPort).Msg("starting HTTP redirect server")
 
-	getHTTPSPort := func() string {
-		if p, ok := os.LookupEnv("HTTPS_PORT"); ok {
-			return p
-		}
-		return "8443"
+	eg, egctx := errgroup.WithContext(ctx)
+
+	/* compressor := middleware.NewCompressor(5)
+	compressor.SetEncoder("br", func(w io.Writer, level int) io.Writer {
+		return brotli.NewWriterV2(w, level)
+	}) */
+
+	// Create user routes using centralized session store
+	sessionStore, err := session.GetGlobalSessionStore()
+	if err != nil {
+		return fmt.Errorf("error getting global session store: %w", err)
 	}
 
-	getHTTPPort := func() string {
-		if p, ok := os.LookupEnv("HTTP_PORT"); ok {
-			return p
-		}
-		return "8080"
+	// Static Router ohne Middleware
+	router := http.NewServeMux()
+	router.Handle("/static/", static())
+
+	appRouter := chi.NewMux()
+
+	// Set up global middlewares
+	appRouter.Use(
+		// DatastarSignalsMiddleware must come BEFORE CSRF to read request body first
+		realtime.DatastarSignalsMiddleware(),
+		// CSRF protection must come BEFORE compression to access request body
+		users.NewCSRFMiddleware(nil),
+		// compression (including brotli)
+		// compressor.Handler,
+		middleware.NoCache,
+		middleware.GetHead,
+		middleware.Logger,
+		middleware.Recoverer,
+		realtime.SetSessionMiddleware(sessionStore),
+		realtime.ConnectionIDMiddleware(),
+	)
+
+	router.Handle("/", appRouter)
+
+	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
+	if err != nil {
+		return fmt.Errorf("failed to load TLS certificate or key: %w", err)
 	}
 
-	slog.Info("starting HTTPS server on https://0.0.0.0:" + getHTTPSPort())
-	slog.Info("starting HTTP redirect server on http://0.0.0.0:" + getHTTPPort())
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		NextProtos:   []string{"h3", "h2"},
+	}
 
-	eg, egctx := errgroup.WithContext(sctx)
-	eg.Go(func() error {
-		router := chi.NewMux()
-		compressor := middleware.NewCompressor(5)
-		compressor.SetEncoder("br", func(w io.Writer, level int) io.Writer {
-			return brotli.NewWriterV2(w, level)
-		})
-
-		cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
-		if err != nil {
-			return fmt.Errorf("failed to load TLS certificate or key: %w", err)
-		}
-
-		tlsConfig := &tls.Config{
-			Certificates: []tls.Certificate{cert},
-			NextProtos:   []string{"h3", "h2"},
-		}
-
-		redirectSrv := &http.Server{
-			Addr: "0.0.0.0:" + getHTTPPort(),
-			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				// Always redirect HTTP to HTTPS
-				host := r.Host
-				// Remove port from host if present
-				if colonIndex := len(host) - 1; colonIndex > 0 {
-					for i := len(host) - 1; i >= 0; i-- {
-						if host[i] == ':' {
-							host = host[:i]
-							break
-						}
+	/* redirectSrv := &http.Server{
+		Addr: "0.0.0.0:" + config.Global.HttpPort,
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Always redirect HTTP to HTTPS
+			host := r.Host
+			// Remove port from host if present
+			if colonIndex := len(host) - 1; colonIndex > 0 {
+				for i := len(host) - 1; i >= 0; i-- {
+					if host[i] == ':' {
+						host = host[:i]
+						break
 					}
 				}
-				httpsURL := "https://" + host + ":" + getHTTPSPort() + r.URL.String()
-				http.Redirect(w, r, httpsURL, http.StatusMovedPermanently)
-			}),
-			ErrorLog: slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
-		}
-
-		http2Srv := &http.Server{
-			Addr:      "0.0.0.0:" + getHTTPSPort(),
-			Handler:   router,
-			TLSConfig: tlsConfig,
-			ErrorLog:  slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
-		}
-
-		http3Srv := &http3.Server{
-			Addr:      "0.0.0.0:" + getHTTPSPort(),
-			Handler:   router,
-			TLSConfig: http3.ConfigureTLSConfig(tlsConfig),
-			Logger:    slog.Default(),
-		}
-
-		// Set up middlewares
-		router.Use(
-			// compression (including brotli)
-			compressor.Handler,
-			// QUIC headers for HTTP/3
-			func(next http.Handler) http.Handler {
-				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if r.ProtoMajor < 3 {
-						http3Srv.SetQUICHeaders(w.Header())
-					}
-					next.ServeHTTP(w, r)
-				})
-			},
-			middleware.NoCache,
-			middleware.GetHead,
-			middleware.Logger,
-			middleware.Recoverer,
-		)
-
-		// Serve static files
-		router.Handle("/static/*", static())
-
-		// Serve registered routes
-		if err := routes.SetupRoutes(egctx, router); err != nil {
-			return fmt.Errorf("error setting up routes: %w", err)
-		}
-
-		eg.Go(func() error {
-			// HTTP/1.1 without TLS
-			if err := redirectSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				return fmt.Errorf("http server error: %w", err)
 			}
-			return nil
-		})
+			httpsURL := "https://" + host + ":" + config.Global.HttpsPort + r.URL.String()
+			http.Redirect(w, r, httpsURL, http.StatusMovedPermanently)
+		}),
+		ErrorLog: logger.NewStdLibLogger(),
+	} */
 
-		eg.Go(func() error {
-			// HTTP/1.1 and HTTP/2
-			if err := http2Srv.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-				return fmt.Errorf("http server error: %w", err)
-			}
-			return nil
-		})
+	http2Srv := &http.Server{
+		Addr:      "0.0.0.0:" + config.Global.HttpsPort,
+		Handler:   router,
+		TLSConfig: tlsConfig,
+		ErrorLog:  logger.NewStdLibLogger(),
+	}
 
-		eg.Go(func() error {
-			// HTTP/3
-			if err := http3Srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				return fmt.Errorf("http3 server error: %w", err)
-			}
-			return nil
-		})
+	/* http3Srv := &http3.Server{
+		Addr:      "0.0.0.0:" + config.Global.HttpsPort,
+		Handler:   router,
+		TLSConfig: http3.ConfigureTLSConfig(tlsConfig),
+		Logger:    logger.GetLogger(),
+	} */
 
-		go func() {
-			<-egctx.Done()
-			_ = redirectSrv.Shutdown(context.Background())
-			_ = http2Srv.Shutdown(context.Background())
-			_ = http3Srv.Close()
-		}()
+	/* appRouter.Use(
+		// QUIC headers for HTTP/3
+		func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.ProtoMajor < 3 {
+					http3Srv.SetQUICHeaders(w.Header())
+				}
+				next.ServeHTTP(w, r)
+			})
+		},
+	) */
 
-		return eg.Wait()
-	})
-
-	if err := eg.Wait(); err != nil {
+	// Start embedded NATS server
+	ns, err := nats.SetupNATS(ctx)
+	if err != nil {
 		return err
 	}
-	return nil
+
+	deps, err := bootstrap.WireDeps(ctx, ns, sessionStore)
+	if err != nil {
+		return fmt.Errorf("error wiring CQRS: %w", err)
+	}
+
+	// Start the global event processor
+	if err := deps.EventProcessor.Start(); err != nil {
+		return fmt.Errorf("error starting event processor: %w", err)
+	}
+
+	// Ensure event processor is stopped on shutdown
+	eg.Go(func() error {
+		<-ctx.Done()
+		return deps.EventProcessor.Stop()
+	})
+
+	// Serve registered routes
+	if err := routes.SetupRoutes(appRouter, deps); err != nil {
+		return fmt.Errorf("error setting up routes: %w", err)
+	}
+
+	/* eg.Go(func() error {
+		// HTTP/1.1 without TLS
+		if err := redirectSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return fmt.Errorf("http server error: %w", err)
+		}
+		return nil
+	})
+	*/
+	eg.Go(func() error {
+		// HTTP/1.1 and HTTP/2
+		if err := http2Srv.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+			return fmt.Errorf("http server error: %w", err)
+		}
+		return nil
+	})
+
+	/* eg.Go(func() error {
+		// HTTP/3
+		if err := http3Srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return fmt.Errorf("http3 server error: %w", err)
+		}
+		return nil
+	}) */
+
+	eg.Go(func() error {
+		<-egctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		logger.Debug().Msg("shutting down server...")
+		//_ = redirectSrv.Shutdown(shutdownCtx)
+		_ = http2Srv.Shutdown(shutdownCtx)
+		//_ = http3Srv.Close()
+		return nil
+	})
+
+	return eg.Wait()
 }

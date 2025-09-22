@@ -3,17 +3,16 @@ package sharedhttp
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/delaneyj/toolbelt"
 	"github.com/gorilla/sessions"
+	"github.com/mbolli/tickit/internal/logger"
 	internalSession "github.com/mbolli/tickit/internal/session"
-	"github.com/starfederation/datastar-go/datastar"
 )
 
-// upsertSessionID ensures a session ID exists and returns it
+// UpsertSessionID ensures a session ID exists and returns it
 func UpsertSessionID(store sessions.Store, r *http.Request, w http.ResponseWriter) (string, error) {
 	sess, err := store.Get(r, "connections")
 	if err != nil {
@@ -33,19 +32,6 @@ func UpsertSessionID(store sessions.Store, r *http.Request, w http.ResponseWrite
 	return id, nil
 }
 
-// WithSessionAndSignals prepares sessionID and reads signals into the provided struct
-func WithSessionAndSignals(store sessions.Store, w http.ResponseWriter, r *http.Request, signals any, handler func(sessionID string, signals any)) {
-	sessionID, err := UpsertSessionID(store, r, w)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if signals != nil {
-		_ = datastar.ReadSignals(r, signals) // Ignore error, signals will be zero if not provided
-	}
-	handler(sessionID, signals)
-}
-
 // GetAuthenticatedUser extracts the authenticated user from the session
 func GetAuthenticatedUser(store sessions.Store, r *http.Request) (string, bool) {
 	sessionName := internalSession.GetSessionName()
@@ -63,15 +49,16 @@ func GetAuthenticatedUser(store sessions.Store, r *http.Request) (string, bool) 
 			cookieNames[i] = cookie.Name
 		}
 
-		slog.Info("Failed to get session",
-			"error", err.Error(),
-			"url", r.URL.Path,
-			"method", r.Method,
-			"user_agent", userAgent,
-			"cookies_received", cookieNames)
+		logger.Info().
+			Str("error", err.Error()).
+			Str("url", r.URL.Path).
+			Str("method", r.Method).
+			Str("user_agent", userAgent).
+			Strs("cookies_received", cookieNames).
+			Msg("Failed to get session")
 		// If we can't get the session due to invalid cookie, try to clear it
 		if strings.Contains(err.Error(), "securecookie") {
-			slog.Info("Attempting to clear invalid session cookie", "url", r.URL.Path)
+			logger.Info().Str("url", r.URL.Path).Msg("Attempting to clear invalid session cookie")
 			// Create a new session to clear the invalid cookie
 			if newSession, newErr := store.New(r, sessionName); newErr == nil {
 				newSession.Options.MaxAge = -1 // This will delete the cookie

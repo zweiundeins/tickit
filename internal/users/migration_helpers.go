@@ -3,7 +3,8 @@ package users
 import (
 	"context"
 	"fmt"
-	"log/slog"
+
+	"github.com/mbolli/tickit/internal/logger"
 )
 
 // MigrationHelper provides utilities for migrating existing data to support user integration
@@ -20,14 +21,14 @@ func NewMigrationHelper(userStore UserStore) *MigrationHelper {
 
 // EnsureBackwardCompatibility ensures that existing data is compatible with the new user integration
 func (m *MigrationHelper) EnsureBackwardCompatibility(ctx context.Context) error {
-	slog.Info("starting backward compatibility check for user integration")
+	logger.Info().Msg("starting backward compatibility check for user integration")
 
 	// Check if we need to create a default admin user for existing projects
 	if err := m.ensureDefaultAdminUser(ctx); err != nil {
 		return fmt.Errorf("failed to ensure default admin user: %w", err)
 	}
 
-	slog.Info("backward compatibility check completed successfully")
+	logger.Info().Msg("backward compatibility check completed successfully")
 	return nil
 }
 
@@ -43,8 +44,9 @@ func (m *MigrationHelper) ensureDefaultAdminUser(ctx context.Context) error {
 	}
 
 	if len(users) > 0 {
-		slog.Info("admin users already exist, skipping default admin creation",
-			slog.Int("admin_count", len(users)))
+		logger.Info().
+			Int("admin_count", len(users)).
+			Msg("admin users already exist, skipping default admin creation")
 		return nil
 	}
 
@@ -65,9 +67,10 @@ func (m *MigrationHelper) ensureDefaultAdminUser(ctx context.Context) error {
 		return fmt.Errorf("failed to create default admin user: %w", err)
 	}
 
-	slog.Info("created default admin user for backward compatibility",
-		slog.String("user_id", defaultAdmin.ID),
-		slog.String("email", defaultAdmin.Email))
+	logger.Info().
+		Str("user_id", defaultAdmin.ID).
+		Str("email", defaultAdmin.Email).
+		Msg("created default admin user for backward compatibility")
 
 	return nil
 }
@@ -77,11 +80,11 @@ func (m *MigrationHelper) ensureDefaultAdminUser(ctx context.Context) error {
 func (m *MigrationHelper) ValidateExistingAssignments(ctx context.Context) ([]string, error) {
 	var warnings []string
 
-	slog.Info("validating existing issue assignments")
+	logger.Info().Msg("validating existing issue assignments")
 
 	// This would require access to the issue projection store
 	// For now, we'll just log that this validation should be run
-	slog.Info("existing assignment validation should be implemented when issue store is available")
+	logger.Info().Msg("existing assignment validation should be implemented when issue store is available")
 
 	return warnings, nil
 }
@@ -119,9 +122,10 @@ func (m *MigrationHelper) GetOrCreateDefaultUser(ctx context.Context, userID str
 		return nil, fmt.Errorf("failed to create placeholder user: %w", err)
 	}
 
-	slog.Warn("created placeholder user for backward compatibility",
-		slog.String("user_id", userID),
-		slog.String("email", placeholderUser.Email))
+	logger.Warn().
+		Str("user_id", userID).
+		Str("email", placeholderUser.Email).
+		Msg("created placeholder user for backward compatibility")
 
 	return placeholderUser, nil
 }

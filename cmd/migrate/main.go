@@ -9,11 +9,15 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/mbolli/tickit/internal/logger"
 	"github.com/mbolli/tickit/internal/migrations"
 	"github.com/mbolli/tickit/internal/users"
 )
 
 func main() {
+	// Setup logger
+	logger.Setup(true) // Use dev mode for migration tool
+
 	var (
 		dbFile     = flag.String("db", "data/users.db", "Database file path")
 		action     = flag.String("action", "up", "Migration action: up, down, status, create, seed, reset")

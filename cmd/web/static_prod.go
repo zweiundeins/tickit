@@ -4,15 +4,14 @@
 package main
 
 import (
-	"log/slog"
 	"net/http"
 
-	"github.com/mbolli/tickit/internal/ui"
-
 	hashFS "github.com/benbjohnson/hashfs"
+	"github.com/mbolli/tickit/internal/logger"
+	"github.com/mbolli/tickit/web/ui"
 )
 
 func static() http.Handler {
-	slog.Debug("static assets are embedded")
+	logger.Debug().Msg("static assets are embedded")
 	return hashFS.FileServer(ui.StaticAssets)
 }

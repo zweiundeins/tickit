@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mbolli/tickit/internal/logger"
 	"github.com/mbolli/tickit/internal/shared"
 )
 
@@ -322,6 +323,8 @@ func (h *IssueCommandHandler) HandlePatchIssue(ctx context.Context, cmd PatchIss
 		Timestamp: time.Now(),
 	}
 
+	logger.Info().Str("id", event.ID).Interface("changes", event.Changes).Msg("🔧 IssuePatched event created")
+
 	// 1. Persist event to SQLite event store
 	if err := h.eventStore.StoreEvent(ctx, event); err != nil {
 		return err
@@ -331,6 +334,7 @@ func (h *IssueCommandHandler) HandlePatchIssue(ctx context.Context, cmd PatchIss
 		return err
 	}
 	// 3. Publish signal to JetStream for real-time updates
+	logger.Info().Str("id", event.ID).Msg("🚀 Publishing IssuePatched event to event bus")
 	return h.eventBus.PublishEvent(ctx, event)
 }
 

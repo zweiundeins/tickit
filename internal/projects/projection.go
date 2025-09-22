@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/delaneyj/toolbelt"
+	"github.com/mbolli/tickit/internal/logger"
 	"github.com/mbolli/tickit/internal/shared"
 	"zombiezen.com/go/sqlite"
 )
@@ -20,10 +21,11 @@ type ProjectProjectionStore struct {
 var _ shared.ProjectionRebuilder = (*ProjectProjectionStore)(nil)
 
 func NewProjectProjectionStore(ctx context.Context, dbFilename string) (*ProjectProjectionStore, error) {
-	cwd, _ := os.Getwd()
 	absPath, _ := filepath.Abs(dbFilename)
-	fmt.Printf("[DEBUG] CWD: %s\n", cwd)
-	fmt.Printf("[DEBUG] ProjectProjection dbFilename: %s (abs: %s)\n", dbFilename, absPath)
+	logger.Debug().
+		Str("dbFilename", dbFilename).
+		Str("absPath", absPath).
+		Msg("ProjectProjection dbFilename")
 	migrations := []string{
 		`CREATE TABLE IF NOT EXISTS projects_projection (
 			id TEXT PRIMARY KEY,
@@ -33,14 +35,17 @@ func NewProjectProjectionStore(ctx context.Context, dbFilename string) (*Project
 	}
 	db, err := toolbelt.NewDatabase(ctx, dbFilename, migrations)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to create projects projection DB at %s: %v\n", dbFilename, err)
+		logger.Error().
+			Str("dbFilename", dbFilename).
+			Err(err).
+			Msg("Failed to create projects projection db")
 		return nil, fmt.Errorf("failed to create projects projection db: %w", err)
 	}
-	fmt.Printf("[DEBUG] toolbelt.NewDatabase returned for %s\n", dbFilename)
+	logger.Debug().Msgf("toolbelt.NewDatabase returned for %s\n", dbFilename)
 	if _, err := os.Stat(dbFilename); err == nil {
-		fmt.Printf("[INFO] Projects projection DB file created: %s\n", dbFilename)
+		logger.Info().Msgf("Projects projection DB file created: %s\n", dbFilename)
 	} else {
-		fmt.Printf("[WARN] Projects projection DB file missing after creation: %s\n", dbFilename)
+		logger.Warn().Msgf("Projects projection DB file missing after creation: %s\n", dbFilename)
 	}
 	return NewProjectProjectionStoreWithDB(db), nil
 }
@@ -175,13 +180,19 @@ func (ps *ProjectProjectionStore) ListProjects(ctx context.Context) ([]*Project,
 func (ps *ProjectProjectionStore) save(ctx context.Context, id string, project *Project) error {
 	b, err := json.Marshal(project)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to marshal project: %v\n", err)
+		logger.Error().
+			Str("project", fmt.Sprintf("%+v", project)).
+			Err(err).
+			Msg("Failed to marshal project")
 		return err
 	}
 	return ps.db.WriteTX(ctx, func(tx *sqlite.Conn) error {
 		stmt, err := tx.Prepare(`INSERT OR REPLACE INTO projects_projection (id, data, updated_at) VALUES (?, ?, ?)`)
 		if err != nil {
-			fmt.Printf("[ERROR] Failed to prepare project insert statement: %v\n", err)
+			logger.Error().
+				Str("project", fmt.Sprintf("%+v", project)).
+				Err(err).
+				Msg("Failed to prepare project insert statement")
 			return err
 		}
 		defer stmt.Finalize()
@@ -190,7 +201,10 @@ func (ps *ProjectProjectionStore) save(ctx context.Context, id string, project *
 		stmt.BindInt64(3, time.Now().Unix())
 		_, err = stmt.Step()
 		if err != nil {
-			fmt.Printf("[ERROR] Failed to execute project insert statement: %v\n", err)
+			logger.Error().
+				Str("project", fmt.Sprintf("%+v", project)).
+				Err(err).
+				Msg("Failed to execute project insert statement")
 		}
 		return err
 	})
@@ -200,14 +214,20 @@ func (ps *ProjectProjectionStore) delete(ctx context.Context, id string) error {
 	return ps.db.WriteTX(ctx, func(tx *sqlite.Conn) error {
 		stmt, err := tx.Prepare(`DELETE FROM projects_projection WHERE id = ?`)
 		if err != nil {
-			fmt.Printf("[ERROR] Failed to prepare project delete statement: %v\n", err)
+			logger.Error().
+				Str("id", id).
+				Err(err).
+				Msg("Failed to prepare project delete statement")
 			return err
 		}
 		defer stmt.Finalize()
 		stmt.BindText(1, id)
 		_, err = stmt.Step()
 		if err != nil {
-			fmt.Printf("[ERROR] Failed to execute project delete statement: %v\n", err)
+			logger.Error().
+				Str("id", id).
+				Err(err).
+				Msg("Failed to execute project delete statement")
 		}
 		return err
 	})

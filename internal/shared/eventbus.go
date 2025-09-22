@@ -3,9 +3,11 @@ package shared
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
+	"fmt"
+	"strings"
 
 	"github.com/delaneyj/toolbelt"
+	"github.com/mbolli/tickit/internal/logger"
 	"github.com/nats-io/nats.go/jetstream"
 )
 
@@ -31,42 +33,55 @@ func NewEventBusWrapper(js jetstream.JetStream) *EventBusWrapper {
 	}
 }
 
-// PublishEvent publishes a domain event (to local bus and JetStream)
+// PublishEvent publishes an event to the NATS JetStream
 func (eb *EventBusWrapper) PublishEvent(ctx context.Context, event Event) error {
-	slog.Info("publishing domain event",
-		slog.String("event_type", event.GetEventType()),
-	)
-	// Publish to local event bus
-	err := eb.eventBus.Emit(ctx, event)
-	if err != nil {
-		slog.Error("[ERROR] Failed to emit event to local event bus", slog.String("event_type", event.GetEventType()), slog.Any("error", err))
-		return err
-	}
-	// Publish to JetStream unified stream with envelope
-	type eventEnvelope struct {
-		EventType string      `json:"event_type"`
-		Payload   interface{} `json:"payload"`
-	}
-	env := eventEnvelope{
-		EventType: event.GetEventType(),
-		Payload:   event,
-	}
-	b, err := json.Marshal(env)
-	if err != nil {
-		slog.Error("[ERROR] Failed to marshal event envelope for JetStream", slog.String("event_type", event.GetEventType()), slog.Any("error", err))
-		return err
-	}
-	if eb.jetStream != nil {
-		_, err = eb.jetStream.Publish(ctx, "events", b)
-		if err != nil {
-			slog.Error("[ERROR] Failed to publish event to JetStream", slog.String("event_type", event.GetEventType()), slog.Any("error", err))
-		}
-		return err
-	}
-	return nil
-}
+	logger.Debug().
+		Str("event_type", event.GetEventType()).
+		Msg("EventBus.PublishEvent called")
 
-// SubscribeToEvents subscribes to all domain events
+	// Create a flattened event structure for UI consumption
+	data := map[string]interface{}{
+		"event_type": event.GetEventType(),
+		"timestamp":  event.GetTimestamp(),
+	}
+
+	// Add entity-specific fields based on event type
+	entityType := strings.ToLower(strings.TrimSuffix(event.GetEventType(), "Created"))
+	entityType = strings.TrimSuffix(entityType, "Updated")
+	entityType = strings.TrimSuffix(entityType, "Deleted")
+	entityType = strings.TrimSuffix(entityType, "Patched")
+
+	if entityType == "issue" {
+		entityType = "issues" // Pluralize for UI consistency
+	}
+
+	data["entity_type"] = entityType
+
+	// Extract entity ID and changes if available
+	if entityIDProvider, ok := event.(interface{ GetIssueID() string }); ok {
+		data["entity_id"] = entityIDProvider.GetIssueID()
+	}
+
+	if changesProvider, ok := event.(interface{ GetChanges() map[string]interface{} }); ok {
+		data["data"] = changesProvider.GetChanges()
+	}
+
+	logger.Debug().Interface("data", data).Msg("Publishing event data")
+
+	eventData, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal event: %w", err)
+	}
+
+	_, err = eb.jetStream.Publish(ctx, "events", eventData)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to publish event to NATS")
+		return fmt.Errorf("failed to publish event to NATS: %w", err)
+	}
+
+	logger.Debug().Msg("Successfully published event to NATS topic 'events'")
+	return nil
+} // SubscribeToEvents subscribes to all domain events
 func (eb *EventBusWrapper) SubscribeToEvents(ctx context.Context, handler func(Event) error) context.CancelFunc {
 	return eb.eventBus.Subscribe(ctx, handler)
 }
@@ -109,9 +124,9 @@ func NewEventBusWithHandlers(handlers EventHandlers, js jetstream.JetStream) *Ev
 	eb.eventBus.Subscribe(context.Background(), func(event Event) error {
 		handler, exists := eb.handlers[event.GetEventType()]
 		if !exists {
-			slog.Warn("no handler found for event type",
-				slog.String("event_type", event.GetEventType()),
-			)
+			logger.Warn().
+				Str("event_type", event.GetEventType()).
+				Msg("no handler found for event type")
 			return nil
 		}
 

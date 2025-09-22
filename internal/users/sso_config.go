@@ -8,6 +8,7 @@ import (
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/providers/microsoftonline"
 	"github.com/markbates/goth/providers/openidConnect"
+	"github.com/mbolli/tickit/internal/logger"
 )
 
 // SSOManager manages SSO providers and configuration
@@ -156,10 +157,13 @@ func (m *SSOManager) initializeProviders() error {
 		case "saml":
 			// SAML provider would be implemented here
 			// For now, we'll skip SAML as it requires additional dependencies
-			fmt.Printf("Warning: SAML provider %s not yet implemented, skipping\n", name)
+			logger.Warn().Str("provider", name).Msg("SAML provider not yet implemented, skipping")
 			continue
 		default:
-			fmt.Printf("Warning: Unknown SSO provider type %s for %s, skipping\n", config.Type, name)
+			logger.Warn().
+				Str("type", config.Type).
+				Str("provider", name).
+				Msg("Unknown SSO provider type, skipping")
 			continue
 		}
 
@@ -169,7 +173,10 @@ func (m *SSOManager) initializeProviders() error {
 
 		providers = append(providers, provider)
 		m.providers[name] = provider
-		fmt.Printf("SSO provider %s (%s) initialized successfully\n", name, config.Type)
+		logger.Info().
+			Str("provider", name).
+			Str("type", config.Type).
+			Msg("SSO provider initialized successfully")
 	}
 
 	// Add SSO providers to existing OAuth providers

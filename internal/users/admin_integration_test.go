@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/mbolli/tickit/internal/session"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -25,7 +26,7 @@ func TestAdministrativeIntegration(t *testing.T) {
 	commandBus := &shared.CommandBus{}
 	queryBus := &shared.QueryBus{}
 	userService := NewUserService(commandBus, queryBus)
-	sessionStore := CreateTestSessionStore("test-key")
+	sessionStore := session.CreateTestSessionStore("test-key")
 
 	// Create mock auth service
 	mockAuthService := &MockAuthService{}

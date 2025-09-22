@@ -32,7 +32,7 @@ func main() {
 		log.Fatalf("Failed to start embedded NATS: %v", err)
 	}
 	ns.WaitForServer()
-	cqrs, err := bootstrap.WireCQRS(ctx, ns)
+	cqrs, err := bootstrap.WireDeps(ctx, ns)
 	if err != nil {
 		log.Fatalf("Failed to wire CQRS: %v", err)
 	}
@@ -68,7 +68,7 @@ func purgeData() {
 	}
 }
 
-func seedProjectsAndIssues(ctx context.Context, cqrs *bootstrap.CQRSDeps, userIDs []string) []string {
+func seedProjectsAndIssues(ctx context.Context, cqrs *bootstrap.Deps, userIDs []string) []string {
 	gofakeit.Seed(time.Now().UnixNano())
 	projectNames := []string{
 		gofakeit.Company(),

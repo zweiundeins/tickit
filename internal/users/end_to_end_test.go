@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mbolli/tickit/internal/session"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -42,7 +43,7 @@ func (suite *EndToEndTestSuite) SetupSuite() {
 	suite.Require().NoError(err)
 
 	// Initialize session store using centralized test configuration
-	suite.sessionStore = CreateTestSessionStore("test-secret-key")
+	suite.sessionStore = session.CreateTestSessionStore("test-secret-key")
 
 	// Create user service with all dependencies
 	eventBus := &shared.EventBusWrapper{}

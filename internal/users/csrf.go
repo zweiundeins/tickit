@@ -45,55 +45,56 @@ func NewCSRFMiddleware(config *CSRFConfig) func(http.Handler) http.Handler {
 		}
 	}
 
-	// Create the nosurf handler
-	csrfHandler := nosurf.New(nil)
-
-	// Configure the CSRF handler
-	csrfHandler.SetBaseCookie(http.Cookie{
-		Name:     nosurf.CookieName,
-		MaxAge:   config.MaxAge,
-		Domain:   config.Domain,
-		Path:     config.Path,
-		Secure:   config.Secure,
-		HttpOnly: config.HttpOnly,
-		SameSite: config.SameSite,
-	})
-
-	// Set custom error handler if provided
-	if config.ErrorFunc != nil {
-		csrfHandler.SetFailureHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			config.ErrorFunc(w, r, nosurf.Reason(r))
-		}))
-	}
-
-	// Exempt certain endpoints from CSRF protection
-	// These are typically API endpoints that use other authentication methods
-	csrfHandler.ExemptFunc(func(r *http.Request) bool {
-		// Exempt API endpoints that use token-based authentication
-		if isAPIEndpoint(r.URL.Path) {
-			return true
-		}
-
-		// Exempt OAuth callback endpoints
-		if isOAuthCallback(r.URL.Path) {
-			return true
-		}
-
-		// Exempt WebAuthn endpoints (they have their own protection)
-		if isWebAuthnEndpoint(r.URL.Path) {
-			return true
-		}
-
-		// Exempt magic mail login (development only)
-		if isMagicMailEndpoint(r.URL.Path) {
-			return true
-		}
-
-		return false
-	})
-
+	// The nosurf.CSRFHandler implements http.Handler and wraps the next handler internally
+	// when we call nosurf.New(next), it returns a configured handler
 	return func(next http.Handler) http.Handler {
-		return next
+		// Configure the handler to wrap the next handler
+		wrappedHandler := nosurf.New(next)
+
+		// Apply our configuration to the wrapped handler
+		wrappedHandler.SetBaseCookie(http.Cookie{
+			Name:     "tickit_" + nosurf.CookieName,
+			MaxAge:   config.MaxAge,
+			Domain:   config.Domain,
+			Path:     config.Path,
+			Secure:   config.Secure,
+			HttpOnly: config.HttpOnly,
+			SameSite: config.SameSite,
+		})
+
+		// Set custom error handler if provided
+		if config.ErrorFunc != nil {
+			wrappedHandler.SetFailureHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				config.ErrorFunc(w, r, nosurf.Reason(r))
+			}))
+		}
+
+		// Set exemptions
+		wrappedHandler.ExemptFunc(func(r *http.Request) bool {
+			// Exempt API endpoints that use token-based authentication
+			if isAPIEndpoint(r.URL.Path) {
+				return true
+			}
+
+			// Exempt OAuth callback endpoints
+			if isOAuthCallback(r.URL.Path) {
+				return true
+			}
+
+			// Exempt WebAuthn endpoints (they have their own protection)
+			if isWebAuthnEndpoint(r.URL.Path) {
+				return true
+			}
+
+			// Exempt magic mail login (development only)
+			if isMagicMailEndpoint(r.URL.Path) {
+				return true
+			}
+
+			return false
+		})
+
+		return wrappedHandler
 	}
 }
 
@@ -110,7 +111,7 @@ func defaultCSRFErrorHandler(w http.ResponseWriter, r *http.Request, reason erro
 		w.Write([]byte(`{"error": "CSRF token validation failed", "code": "CSRF_FAILURE"}`))
 	} else {
 		// For regular requests, return HTML error or redirect
-		http.Error(w, "CSRF token validation failed. Please refresh the page and try again.", http.StatusForbidden)
+		http.Error(w, "CSRF token validation failed. Please refresh the page and try again. "+reason.Error(), http.StatusForbidden)
 	}
 }
 
@@ -141,57 +142,4 @@ func isAjaxRequest(r *http.Request) bool {
 	return r.Header.Get("X-Requested-With") == "XMLHttpRequest" ||
 		r.Header.Get("Content-Type") == "application/json" ||
 		r.Header.Get("Accept") == "application/json"
-}
-
-// GetCSRFToken extracts the CSRF token from the request
-func GetCSRFToken(r *http.Request) string {
-	return nosurf.Token(r)
-}
-
-// CSRFTokenMiddleware adds CSRF token to the request context
-func CSRFTokenMiddleware() func(http.HandlerFunc) http.HandlerFunc {
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			// Add CSRF token to response headers for AJAX requests
-			if isAjaxRequest(r) {
-				w.Header().Set("X-CSRF-Token", GetCSRFToken(r))
-			}
-
-			next.ServeHTTP(w, r)
-		}
-	}
-}
-
-// CSRFFormMiddleware injects CSRF token into form responses
-func CSRFFormMiddleware() func(http.HandlerFunc) http.HandlerFunc {
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			// For form-based endpoints, we might want to inject the token
-			// This would typically be done in the template rendering
-			next.ServeHTTP(w, r)
-		}
-	}
-}
-
-// ValidateCSRFToken manually validates a CSRF token (for custom validation)
-func ValidateCSRFToken(r *http.Request, token string) bool {
-	return nosurf.VerifyToken(nosurf.Token(r), token)
-}
-
-// CSRFProtectedHandler wraps a handler with CSRF protection
-func CSRFProtectedHandler(config *CSRFConfig, handler http.HandlerFunc) http.HandlerFunc {
-	middleware := NewCSRFMiddleware(config)
-	return func(w http.ResponseWriter, r *http.Request) {
-		middleware(http.HandlerFunc(handler)).ServeHTTP(w, r)
-	}
-}
-
-// CSRFExemptHandler creates a handler that is exempt from CSRF protection
-func CSRFExemptHandler(handler http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Mark request as CSRF exempt
-		// This is typically done by the nosurf library automatically
-		// based on the ExemptFunc configuration
-		handler.ServeHTTP(w, r)
-	}
 }

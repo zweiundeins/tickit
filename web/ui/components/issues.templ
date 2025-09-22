@@ -1,0 +1,206 @@
+package components
+
+import "github.com/mbolli/tickit/internal/issues"
+import "github.com/mbolli/tickit/internal/projects"
+import "github.com/delaneyj/toolbelt"
+
+type UserInfo struct {
+	ID       string
+	Username string
+}
+
+templ Issues(issues []*issues.Issue) {
+	<div id="issues">
+		<h2>Issues ({ len(issues) })</h2>
+		<ul>
+			for _, issue := range issues {
+				<li>
+					<strong>{ issue.Title }</strong> - { issue.Status } (Assignee: { issue.Assignee })
+					<br/>
+					<small>{ issue.Description }</small>
+				</li>
+			}
+		</ul>
+	</div>
+}
+
+templ IssuesTable(issues []*issues.Issue, projectMap map[string]*projects.Project, userMap map[string]*UserInfo) {
+	<div id="issues">
+		<h2>Issues ({ len(issues) })</h2>
+		<table role="grid">
+			<thead>
+				<tr>
+					{{columns := []struct {
+                        Label   string
+                        OrderBy string
+                        }{
+                            {"Key", "number"},
+                            {"Title", "title"},
+                            {"Project", "project"},
+                            {"Status", "status"},
+                            {"Reporter", "reporter"},
+                            {"Assignee", "assignee"},
+                            {"Created", "created_at"},
+                            {"Updated", "updated_at"},
+                        }
+					}}
+					for _, col := range columns {
+						<th>
+							<a
+								href
+								data-class="{ sorted: $filter.order_by == el.dataset.orderBy }"
+								data-order-by={ col.OrderBy }
+								data-on-click__prevent="
+								if ($filter.order_by != el.dataset.orderBy) {
+									$filter.order_by = el.dataset.orderBy;
+									$filter.order_dir = 'asc';
+								} else if ($filter.order_dir == 'asc') {
+									$filter.order_dir = 'desc';
+								} else if ($filter.order_dir == 'desc') {
+									$filter.order_by = '';
+									$filter.order_dir = '';
+								} else {
+									$filter.order_dir = 'asc';
+								}
+							   "
+								data-attr-title="$filter.order_dir == 'asc' ? 'Sort descending' : $filter.order_dir == 'desc' ? 'Clear sort' : 'Sort ascending'"
+							>
+								{ col.Label }
+								<span class="sort-icons">
+									<span data-class="{active: $filter.order_by == el.dataset.orderBy && $filter.order_dir == 'asc'}">▲</span>
+									<span data-class="{active: $filter.order_by == el.dataset.orderBy && $filter.order_dir == 'desc'}">▼</span>
+								</span>
+							</a>
+						</th>
+					}
+				</tr>
+			</thead>
+			<tbody>
+				for _, issue := range issues {
+					<tr>
+						<td>
+							if proj, ok := projectMap[issue.ProjectID]; ok {
+								<a href={ "/" + issue.GetKey(proj.Slug) } title={ "Short URL: /" + issue.GetKey(proj.Slug) }>
+									<strong>{ issue.GetKey(proj.Slug) }</strong>
+								</a>
+							} else {
+								<span title="No key assigned">
+									<strong>{ issue.ID }</strong>
+								</span>
+							}
+						</td>
+						<td>
+							<span
+								title={ "Priority: " + issue.Priority }
+								class={ "issue-priority " + toolbelt.ToCasedString(issue.Priority).Snake }
+							></span>
+							<a href={ "/dashboard/" + issue.ID }>
+								{ issue.Title }
+							</a>
+						</td>
+						<td>
+							if proj, ok := projectMap[issue.ProjectID]; ok {
+								{ proj.Name }
+							} else {
+								{ issue.ProjectID }
+							}
+						</td>
+						<td>{ issue.Status }</td>
+						<td>
+							if reporter, ok := userMap[issue.Reporter]; ok {
+								{ reporter.Username }
+							} else {
+								{ issue.Reporter }
+							}
+						</td>
+						<td>
+							if assignee, ok := userMap[issue.Assignee]; ok {
+								{ assignee.Username }
+							} else {
+								{ issue.Assignee }
+							}
+						</td>
+						<td>{ issue.CreatedAt.Format("2006-01-02 15:04") }</td>
+						<td>{ issue.UpdatedAt.Format("2006-01-02 15:04") }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+}
+
+templ Issue(issue *issues.Issue, projects []*projects.Project) {
+	<div id="issue">
+		<section
+			style="padding:1.5rem;"
+			data-id={ issue.ID }
+			data-on-signal-patch__debounce.100ms="@patch('/api/issues/' + el.dataset.id)"
+			data-on-signal-patch-filter="{include: /^issue./}"
+		>
+			<header>
+				{{ var projSlug string
+				for _, project := range projects {
+					if project.ID == issue.ProjectID { projSlug = project.Slug ; break }
+				}
+				}}
+				<h2>{ issue.GetKey(projSlug) } - "{ issue.Title }"</h2>
+			</header>
+			<div class="grid">
+				<label>
+					Status:
+					<select id="status" data-bind="issue.status">
+						for _, status := range issues.IssueStatuses {
+							<option value={ status } selected?={ issue.Status == status }>{ status }</option>
+						}
+					</select>
+				</label>
+				<label>
+					Priority:
+					<select id="priority" data-bind="issue.priority">
+						for _, priority := range issues.IssuePriorities {
+							<option value={ priority } selected?={ issue.Priority == priority }>{ priority }</option>
+						}
+					</select>
+				</label>
+			</div>
+			<div class="grid">
+				<label>Assigned to:<select><option>Me</option></select></label>
+				<label>
+					Project:
+					<select id="project_id" data-bind="issue.project_id">
+						<option value="">Select Project</option>
+						for _, project := range projects {
+							<option value={ project.ID } selected?={ issue.ProjectID == project.ID }>{ project.Name }</option>
+						}
+					</select>
+				</label>
+			</div>
+			<div>
+				<div>Created by: { issue.Reporter }</div>
+				<div>Created at: { issue.CreatedAt.Format("2006-01-02 15:04") }</div>
+			</div>
+			<hr/>
+			<div>
+				<strong>Description:</strong>
+				<p>{ issue.Description }</p>
+			</div>
+			<hr/>
+			<div>
+				<strong>Comments:</strong>
+				<div style="margin:1rem 0;">
+					<div><strong>Max (Agent)</strong> - 10:45<br/><blockquote>We’re investigating this now.</blockquote></div>
+				</div>
+				<form style="display:flex;gap:0.5rem;align-items:center;">
+					<input type="text" placeholder="Add comment..." style="flex:1;"/>
+					<label style="margin:0 0.5rem;"><input type="checkbox"/> Internal</label>
+					<button type="submit">Submit</button>
+				</form>
+			</div>
+			<hr/>
+			<details>
+				<summary>History Log ▼</summary>
+				<ul><li>Ticket created by John</li></ul>
+			</details>
+		</section>
+	</div>
+}

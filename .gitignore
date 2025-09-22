@@ -4,8 +4,8 @@ data
 
 .task
 
-internal/ui/static/*
-!internal/ui/static/assets
+web/ui/static/*
+!web/ui/static/assets
 
 # ------------------------------------------------------------------
 # Go

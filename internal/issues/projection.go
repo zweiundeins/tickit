@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/delaneyj/toolbelt"
+	"github.com/mbolli/tickit/internal/logger"
 	"github.com/mbolli/tickit/internal/shared"
 	"zombiezen.com/go/sqlite"
 )
@@ -20,10 +21,11 @@ type IssueProjectionStore struct {
 var _ shared.ProjectionRebuilder = (*IssueProjectionStore)(nil)
 
 func NewIssueProjectionStore(ctx context.Context, dbFilename string) (*IssueProjectionStore, error) {
-	cwd, _ := os.Getwd()
 	absPath, _ := filepath.Abs(dbFilename)
-	fmt.Printf("[DEBUG] CWD: %s\n", cwd)
-	fmt.Printf("[DEBUG] IssueProjection dbFilename: %s (abs: %s)\n", dbFilename, absPath)
+	logger.Debug().
+		Str("dbFilename", dbFilename).
+		Str("absPath", absPath).
+		Msg("IssueProjection dbFilename")
 	migrations := []string{
 		`CREATE TABLE IF NOT EXISTS issues_projection (
 			id TEXT PRIMARY KEY,
@@ -37,14 +39,17 @@ func NewIssueProjectionStore(ctx context.Context, dbFilename string) (*IssueProj
 	}
 	db, err := toolbelt.NewDatabase(ctx, dbFilename, migrations)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to create issues projection DB at %s: %v\n", dbFilename, err)
+		logger.Error().
+			Str("dbFilename", dbFilename).
+			Err(err).
+			Msg("Failed to create issues projection DB")
 		return nil, fmt.Errorf("failed to create issues projection db: %w", err)
 	}
-	fmt.Printf("[DEBUG] toolbelt.NewDatabase returned for %s\n", dbFilename)
+	logger.Debug().Msgf("toolbelt.NewDatabase returned for %s\n", dbFilename)
 	if _, err := os.Stat(dbFilename); err == nil {
-		fmt.Printf("[INFO] Issues projection DB file created: %s\n", dbFilename)
+		logger.Info().Msgf("Issues projection DB file created: %s\n", dbFilename)
 	} else {
-		fmt.Printf("[WARN] Issues projection DB file missing after creation: %s\n", dbFilename)
+		logger.Warn().Msgf("Issues projection DB file missing after creation: %s\n", dbFilename)
 	}
 	return NewIssueProjectionStoreWithDB(db), nil
 }
@@ -255,8 +260,10 @@ func (ps *IssueProjectionStore) ListIssues(ctx context.Context, query ListIssues
 		orderDir = *query.OrderDir
 	}
 	sql += " ORDER BY " + orderBy + " " + orderDir
-	fmt.Println("ListIssues SQL:", sql)
-	fmt.Println("ListIssues args:", args)
+	logger.Debug().
+		Str("sql", sql).
+		Interface("args", args).
+		Msg("ListIssues query")
 
 	err := ps.db.ReadTX(ctx, func(tx *sqlite.Conn) error {
 		stmt, err := tx.Prepare(sql)
@@ -326,13 +333,13 @@ func (ps *IssueProjectionStore) GetIssueByKey(ctx context.Context, projectID str
 func (ps *IssueProjectionStore) save(ctx context.Context, id string, issue *Issue) error {
 	b, err := json.Marshal(issue)
 	if err != nil {
-		fmt.Printf("[ERROR] Failed to marshal issue: %v\n", err)
+		logger.Error().Err(err).Msg("Failed to marshal issue")
 		return err
 	}
 	return ps.db.WriteTX(ctx, func(tx *sqlite.Conn) error {
 		stmt, err := tx.Prepare(`INSERT OR REPLACE INTO issues_projection (id, data, updated_at) VALUES (?, ?, ?)`)
 		if err != nil {
-			fmt.Printf("[ERROR] Failed to prepare issue insert statement: %v\n", err)
+			logger.Error().Err(err).Msg("Failed to prepare issue insert statement")
 			return err
 		}
 		defer stmt.Finalize()
@@ -341,7 +348,7 @@ func (ps *IssueProjectionStore) save(ctx context.Context, id string, issue *Issu
 		stmt.BindInt64(3, time.Now().Unix())
 		_, err = stmt.Step()
 		if err != nil {
-			fmt.Printf("[ERROR] Failed to execute issue insert statement: %v\n", err)
+			logger.Error().Err(err).Msg("Failed to execute issue insert statement")
 		}
 		return err
 	})
@@ -351,14 +358,14 @@ func (ps *IssueProjectionStore) delete(ctx context.Context, id string) error {
 	return ps.db.WriteTX(ctx, func(tx *sqlite.Conn) error {
 		stmt, err := tx.Prepare(`DELETE FROM issues_projection WHERE id = ?`)
 		if err != nil {
-			fmt.Printf("[ERROR] Failed to prepare issue delete statement: %v\n", err)
+			logger.Error().Err(err).Msg("Failed to prepare issue delete statement")
 			return err
 		}
 		defer stmt.Finalize()
 		stmt.BindText(1, id)
 		_, err = stmt.Step()
 		if err != nil {
-			fmt.Printf("[ERROR] Failed to execute issue delete statement: %v\n", err)
+			logger.Error().Err(err).Msg("Failed to execute issue delete statement")
 		}
 		return err
 	})
