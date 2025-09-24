@@ -7,7 +7,7 @@ import (
 // GetEventHandlers returns functional event handlers for the notifications module
 // Following the same pattern as the users module
 func GetEventHandlers() shared.EventHandlers {
-	// Currently no functional event handlers needed for notifications module
-	// Notifications are primarily created by command handlers, not event handlers
+	// Event handlers are now registered directly in bootstrap/deps.go
+	// following the same pattern as other cross-module integration handlers
 	return shared.EventHandlers{}
 }

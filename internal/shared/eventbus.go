@@ -60,13 +60,20 @@ func (eb *EventBusWrapper) PublishEvent(ctx context.Context, event Event) error 
 	// Extract entity ID and changes if available
 	if entityIDProvider, ok := event.(interface{ GetIssueID() string }); ok {
 		data["entity_id"] = entityIDProvider.GetIssueID()
+	} else if notificationIDProvider, ok := event.(interface{ GetNotificationID() string }); ok {
+		data["entity_id"] = notificationIDProvider.GetNotificationID()
 	}
 
 	if changesProvider, ok := event.(interface{ GetChanges() map[string]interface{} }); ok {
 		data["data"] = changesProvider.GetChanges()
 	}
 
-	logger.Debug().Interface("data", data).Msg("Publishing event data")
+	logger.Info().
+		Str("event_type", event.GetEventType()).
+		Str("entity_type", entityType).
+		Interface("timestamp", event.GetTimestamp()).
+		Interface("data", data).
+		Msg("🚀 Publishing event data")
 
 	eventData, err := json.Marshal(data)
 	if err != nil {
@@ -81,7 +88,9 @@ func (eb *EventBusWrapper) PublishEvent(ctx context.Context, event Event) error 
 
 	logger.Debug().Msg("Successfully published event to NATS topic 'events'")
 	return nil
-} // SubscribeToEvents subscribes to all domain events
+}
+
+// SubscribeToEvents subscribes to all domain events
 func (eb *EventBusWrapper) SubscribeToEvents(ctx context.Context, handler func(Event) error) context.CancelFunc {
 	return eb.eventBus.Subscribe(ctx, handler)
 }

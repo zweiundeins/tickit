@@ -117,6 +117,18 @@ func WireDeps(ctx context.Context, ns *embeddednats.Server, sessionStore session
 		return issueUpdatedHandler.Handle(ctx, event)
 	})
 
+	// Register notification realtime event handlers for UI updates
+	notificationRealtimeHandler := notifications.NewRealtimeEventHandler(nc)
+	eventBusWithHandlers.AddHandler("NotificationCreated", func(ctx context.Context, event shared.Event) error {
+		return notificationRealtimeHandler.Handle(ctx, event)
+	})
+	eventBusWithHandlers.AddHandler("NotificationDeleted", func(ctx context.Context, event shared.Event) error {
+		return notificationRealtimeHandler.Handle(ctx, event)
+	})
+	eventBusWithHandlers.AddHandler("NotificationRead", func(ctx context.Context, event shared.Event) error {
+		return notificationRealtimeHandler.Handle(ctx, event)
+	})
+
 	// Use the event bus with handlers as the main event bus
 	eventBus := eventBusWithHandlers.EventBusWrapper
 	notifCommandHandler := notifications.NewCommandHandler(eventStore, notificationProjectionStore, eventBus)
@@ -171,6 +183,8 @@ func WireDeps(ctx context.Context, ns *embeddednats.Server, sessionStore session
 	queryBus.RegisterHandler("GetUserByID", users.NewGetUserByIDHandler(userQueryHandler))
 	queryBus.RegisterHandler("GetUserByEmail", users.NewGetUserByEmailHandler(userQueryHandler))
 	queryBus.RegisterHandler("GetUserByUsername", users.NewGetUserByUsernameHandler(userQueryHandler))
+	queryBus.RegisterHandler("GetUserSession", users.NewGetUserSessionHandler(userQueryHandler))
+	queryBus.RegisterHandler("GetUserSessions", users.NewGetUserSessionsHandler(userQueryHandler))
 	queryBus.RegisterHandler("ListUsers", users.NewListUsersHandler(userQueryHandler))
 	queryBus.RegisterHandler("SearchUsers", users.NewSearchUsersHandler(userQueryHandler))
 
@@ -183,6 +197,10 @@ func WireDeps(ctx context.Context, ns *embeddednats.Server, sessionStore session
 	authService := users.NewAuthServiceImpl(userService)
 
 	sessionGroupManager := realtime.NewGroupManager()
+
+	// Initialize the global renderer registry with default renderers
+	realtime.InitializeDefaultRenderers(issueService, projectService, userService, notificationService)
+
 	eventProcessor := realtime.NewEventProcessor(nc, sessionGroupManager)
 	userRoutes := users.NewUserRoutes(userService, sessionStore, authService, webauthnService)
 	return &Deps{

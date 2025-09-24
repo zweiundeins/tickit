@@ -103,3 +103,41 @@ func (h *SearchUsersHandler) Handle(ctx context.Context, query interface{}) (int
 	}
 	return h.handler.HandleSearchUsers(ctx, q)
 }
+
+// GetUserSessionHandler handles GetUserSession queries
+type GetUserSessionHandler struct {
+	handler *UserQueryHandler
+}
+
+var _ shared.QueryHandler = (*GetUserSessionHandler)(nil)
+
+func NewGetUserSessionHandler(handler *UserQueryHandler) *GetUserSessionHandler {
+	return &GetUserSessionHandler{handler: handler}
+}
+
+func (h *GetUserSessionHandler) Handle(ctx context.Context, query interface{}) (interface{}, error) {
+	q, ok := query.(GetUserSessionQuery)
+	if !ok {
+		return nil, fmt.Errorf("invalid query type for GetUserSessionHandler")
+	}
+	return h.handler.HandleGetUserSession(ctx, q)
+}
+
+// GetUserSessionsHandler handles GetUserSessions queries
+type GetUserSessionsHandler struct {
+	handler *UserQueryHandler
+}
+
+var _ shared.QueryHandler = (*GetUserSessionsHandler)(nil)
+
+func NewGetUserSessionsHandler(handler *UserQueryHandler) *GetUserSessionsHandler {
+	return &GetUserSessionsHandler{handler: handler}
+}
+
+func (h *GetUserSessionsHandler) Handle(ctx context.Context, query interface{}) (interface{}, error) {
+	q, ok := query.(GetUserSessionsQuery)
+	if !ok {
+		return nil, fmt.Errorf("invalid query type for GetUserSessionsHandler")
+	}
+	return h.handler.HandleGetUserSessions(ctx, q)
+}

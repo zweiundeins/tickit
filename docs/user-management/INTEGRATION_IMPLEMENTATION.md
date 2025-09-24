@@ -41,7 +41,7 @@ The integration adds user context and validation to the existing project and iss
 **Functionality:**
 - Notifications can now include user context for better tracking
 - Maintains backward compatibility with session-only notifications
-- Added new methods: `CreateNotificationWithUser`, `DeleteNotificationWithUser`, `MarkNotificationReadWithUser`
+- Added new methods: `CreateNotification`, `DeleteNotificationWithUser`, `MarkNotificationReadWithUser`
 
 ### 4. Event Handlers for Cross-Module Integration
 
@@ -121,7 +121,7 @@ err := validator.ValidateIssueAssignment(ctx, userID, projectID)
 ### Creating Notification with User Context
 ```go
 notificationService := notifications.NewNotificationService(commandBus, queryBus)
-err := notificationService.CreateNotificationWithUser(ctx, sessionID, userID, "Title", "Body")
+err := notificationService.CreateNotification(ctx, "Title", "Body")
 ```
 
 ## Architecture Decisions

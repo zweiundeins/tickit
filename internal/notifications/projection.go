@@ -19,11 +19,12 @@ var _ shared.ProjectionRebuilder = (*NotificationProjectionStore)(nil)
 
 func NewNotificationProjectionStore(ctx context.Context, dbFilename string) (*NotificationProjectionStore, error) {
 	migrations := []string{
+		// Update table to use user_id instead of session_id as primary key
 		`CREATE TABLE IF NOT EXISTS notifications_projection (
-			session_id TEXT NOT NULL,
+			user_id TEXT NOT NULL,
 			data TEXT NOT NULL,
 			updated_at DATETIME NOT NULL,
-			PRIMARY KEY (session_id)
+			PRIMARY KEY (user_id)
 		)`,
 	}
 	db, err := toolbelt.NewDatabase(ctx, dbFilename, migrations)
@@ -53,16 +54,38 @@ func (ps *NotificationProjectionStore) ApplyEvent(ctx context.Context, event sha
 }
 
 func (ps *NotificationProjectionStore) applyCreated(ctx context.Context, e NotificationCreatedEvent) error {
-	notifs, err := ps.GetNotifications(ctx, e.SessionID)
+	var notifs *Notifications
+	var err error
+
+	if e.UserID != "" {
+		// Use new user-based lookup
+		notifs, err = ps.GetNotifications(ctx, e.UserID)
+	} else {
+		// Fall back to session-based lookup (should be empty for new table)
+		notifs = &Notifications{Notifications: []*Notification{}}
+	}
+
 	if err != nil {
 		return err
 	}
 	notifs.Notifications = append(notifs.Notifications, e.Notification)
-	return ps.save(ctx, e.SessionID, notifs)
+	return ps.save(ctx, e.UserID, notifs)
 }
 
 func (ps *NotificationProjectionStore) applyDeleted(ctx context.Context, e NotificationDeletedEvent) error {
-	notifs, err := ps.GetNotifications(ctx, e.SessionID)
+	key := e.UserID
+
+	var notifs *Notifications
+	var err error
+
+	if e.UserID != "" {
+		// Use new user-based lookup
+		notifs, err = ps.GetNotifications(ctx, e.UserID)
+	} else {
+		// Fall back to session-based lookup (should be empty for new table)
+		notifs = &Notifications{Notifications: []*Notification{}}
+	}
+
 	if err != nil {
 		return err
 	}
@@ -84,11 +107,23 @@ func (ps *NotificationProjectionStore) applyDeleted(ctx context.Context, e Notif
 		}
 		notifs.Notifications = filtered
 	}
-	return ps.save(ctx, e.SessionID, notifs)
+	return ps.save(ctx, key, notifs)
 }
 
 func (ps *NotificationProjectionStore) applyRead(ctx context.Context, e NotificationReadEvent) error {
-	notifs, err := ps.GetNotifications(ctx, e.SessionID)
+	key := e.UserID
+
+	var notifs *Notifications
+	var err error
+
+	if e.UserID != "" {
+		// Use new user-based lookup
+		notifs, err = ps.GetNotifications(ctx, e.UserID)
+	} else {
+		// Fall back to session-based lookup (should be empty for new table)
+		notifs = &Notifications{Notifications: []*Notification{}}
+	}
+
 	if err != nil {
 		return err
 	}
@@ -99,18 +134,18 @@ func (ps *NotificationProjectionStore) applyRead(ctx context.Context, e Notifica
 			}
 		}
 	}
-	return ps.save(ctx, e.SessionID, notifs)
+	return ps.save(ctx, key, notifs)
 }
 
-func (ps *NotificationProjectionStore) GetNotifications(ctx context.Context, sessionID string) (*Notifications, error) {
+func (ps *NotificationProjectionStore) GetNotifications(ctx context.Context, userID string) (*Notifications, error) {
 	var data string
 	err := ps.db.ReadTX(ctx, func(tx *sqlite.Conn) error {
-		stmt, err := tx.Prepare(`SELECT data FROM notifications_projection WHERE session_id = ?`)
+		stmt, err := tx.Prepare(`SELECT data FROM notifications_projection WHERE user_id = ?`)
 		if err != nil {
 			return err
 		}
 		defer stmt.Finalize()
-		stmt.BindText(1, sessionID)
+		stmt.BindText(1, userID)
 		rowReturned, err := stmt.Step()
 		if err != nil {
 			return err
@@ -125,7 +160,7 @@ func (ps *NotificationProjectionStore) GetNotifications(ctx context.Context, ses
 		return nil, err
 	}
 	if data == "" {
-		return &Notifications{}, nil
+		return &Notifications{Notifications: []*Notification{}}, nil
 	}
 	var notifs Notifications
 	if err := json.Unmarshal([]byte(data), &notifs); err != nil {
@@ -134,18 +169,18 @@ func (ps *NotificationProjectionStore) GetNotifications(ctx context.Context, ses
 	return &notifs, nil
 }
 
-func (ps *NotificationProjectionStore) save(ctx context.Context, sessionID string, notifs *Notifications) error {
+func (ps *NotificationProjectionStore) save(ctx context.Context, userID string, notifs *Notifications) error {
 	b, err := json.Marshal(notifs)
 	if err != nil {
 		return err
 	}
 	return ps.db.WriteTX(ctx, func(tx *sqlite.Conn) error {
-		stmt, err := tx.Prepare(`INSERT OR REPLACE INTO notifications_projection (session_id, data, updated_at) VALUES (?, ?, ?)`)
+		stmt, err := tx.Prepare(`INSERT OR REPLACE INTO notifications_projection (user_id, data, updated_at) VALUES (?, ?, ?)`)
 		if err != nil {
 			return err
 		}
 		defer stmt.Finalize()
-		stmt.BindText(1, sessionID)
+		stmt.BindText(1, userID)
 		stmt.BindText(2, string(b))
 		stmt.BindInt64(3, time.Now().Unix())
 		_, err = stmt.Step()

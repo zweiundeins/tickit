@@ -21,13 +21,28 @@ HTTP/API → Application Service → Command/Query Bus → Handlers → Events �
 
 ## Directory Structure
 ```
-internal/cqrs/
-├── application/        # Application services (API layer)
-├── bus/                # Command & Query buses (generic)
-├── commands/           # Command handlers (notifications, issues)
-├── events/             # Domain events, event bus, event store, projections
-├── queries/            # Query handlers (notifications, issues)
-└── README.md
+internal/shared/        # CQRS implementation
+├── command_bus.go      # Command bus (generic)
+├── query_bus.go        # Query bus (generic)
+├── eventbus.go         # Event bus
+├── eventstore.go       # Event store
+├── event_handlers.go   # Event handlers
+└── signals.go          # Signal handling
+
+Domain modules implement their own handlers:
+internal/issues/        # Issue domain
+├── command_handlers.go # Issue command handlers
+├── query_handlers.go   # Issue query handlers
+├── commands.go         # Issue commands
+├── queries.go          # Issue queries
+└── events.go           # Issue events
+
+internal/users/         # User domain
+├── command_handlers.go # User command handlers
+├── query_handlers.go   # User query handlers
+├── commands.go         # User commands
+├── queries.go          # User queries
+└── events.go           # User events
 ```
 
 ## Event Sourcing
@@ -44,20 +59,32 @@ internal/cqrs/
 
 ## Usage Example
 ```go
-// Initialize event store and buses
-store, _ := events.NewEventStore(ctx, "data/events.db")
-eventBus := events.NewEventBusWithHandlers(events.CreateDefaultEventHandlers())
+// Initialize event store and buses (from bootstrap/deps.go)
+eventStore := shared.NewEventStore(db)
+eventBus := shared.NewEventBusWrapper(natsConn)
 cmdBus := shared.NewCommandBus()
 qryBus := shared.NewQueryBus()
 
-// Register handlers (notifications, issues)
-cmdBus.RegisterHandler("CreateNotification", shared.NewCreateNotificationHandler(...))
-cmdBus.RegisterHandler("CreateIssue", shared.NewCreateIssueHandler(...))
-// ...
+// Register domain handlers
+userHandler := users.NewUserCommandHandler(eventBus, eventStore, userStore, ...)
+cmdBus.RegisterHandler("RegisterUser", userHandler.HandleRegisterUser)
+cmdBus.RegisterHandler("LoginUser", userHandler.HandleLoginUser)
+
+issueHandler := issues.NewIssueCommandHandler(eventBus, eventStore, issueStore, ...)
+cmdBus.RegisterHandler("CreateIssue", issueHandler.HandleCreateIssue)
+
+// Execute commands
+cmd := users.RegisterUserCommand{
+    Email: "user@example.com",
+    Password: "password",
+    // ...
+}
+err := cmdBus.Execute(ctx, cmd)
+```
 
 // Application service usage
 svc := application.NewNotificationService(cmdBus, qryBus)
-svc.CreateNotification(ctx, sessionID, title, body)
+svc.CreateNotification(ctx, title, body)
 ```
 
 ## Features

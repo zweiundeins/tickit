@@ -3,18 +3,17 @@ package routes
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/mbolli/tickit/internal/bootstrap"
+	"github.com/mbolli/tickit/internal/issues"
 	"github.com/mbolli/tickit/internal/logger"
 	"github.com/mbolli/tickit/internal/realtime"
-	"github.com/mbolli/tickit/web/ui/components"
-
-	"github.com/mbolli/tickit/internal/issues"
 	"github.com/mbolli/tickit/internal/sharedhttp"
 	"github.com/nats-io/nats.go"
-	"github.com/nats-io/nats.go/jetstream"
 	"github.com/starfederation/datastar-go/datastar"
 )
 
@@ -47,23 +46,16 @@ func HandleSignalsUpdate(deps *bootstrap.Deps) http.HandlerFunc {
 		if !exists {
 			logger.Debug().Str("connection_id", connectionID).Msg("No subscription context found, creating default context")
 
-			// Create a default subscription context for pages that don't have specific middleware
+			// Create a default subscription context for pages that don't use SetEventPatterns()
 			subCtx = &realtime.SubscriptionContext{
-				EntityType: "default",
-				EntityID:   nil,
-				Filter:     make(map[string]interface{}),
-				Renderer:   nil,
+				Filter:        make(map[string]interface{}),
+				EventPatterns: []string{}, // Default: no patterns
 			}
 			realtime.StoreSubscriptionContext(connectionID, subCtx)
 		} else {
-			entityIDStr := ""
-			if subCtx.EntityID != nil {
-				entityIDStr = *subCtx.EntityID
-			}
 			logger.Debug().
 				Str("connection_id", connectionID).
-				Str("entity_type", subCtx.EntityType).
-				Str("entity_id", entityIDStr).
+				Strs("event_patterns", subCtx.EventPatterns).
 				Interface("filter", subCtx.Filter).
 				Msg("Found existing subscription context")
 		}
@@ -72,20 +64,6 @@ func HandleSignalsUpdate(deps *bootstrap.Deps) http.HandlerFunc {
 		originalFilter := make(map[string]interface{})
 		for k, v := range subCtx.Filter {
 			originalFilter[k] = v
-		}
-
-		// Safely update EntityID if provided
-		if entityId, ok := signalsMap["entityId"]; ok && entityId != nil {
-			if entityIdStr, ok := entityId.(string); ok {
-				subCtx.EntityID = &entityIdStr
-			}
-		}
-
-		// Safely update EntityType if provided
-		if entityType, ok := signalsMap["entityType"]; ok && entityType != nil {
-			if entityTypeStr, ok := entityType.(string); ok {
-				subCtx.EntityType = entityTypeStr
-			}
 		}
 
 		// Safely merge filter data instead of replacing entirely
@@ -101,14 +79,11 @@ func HandleSignalsUpdate(deps *bootstrap.Deps) http.HandlerFunc {
 			}
 		}
 
-		entityIDStr := ""
-		if subCtx.EntityID != nil {
-			entityIDStr = *subCtx.EntityID
-		}
+		// Note: Notification patterns are now handled automatically via registry
+
 		logger.Debug().
 			Str("connection_id", connectionID).
-			Str("entity_type", subCtx.EntityType).
-			Str("entity_id", entityIDStr).
+			Strs("event_patterns", subCtx.EventPatterns).
 			Interface("filter", subCtx.Filter).
 			Msg("Updated subscription context")
 
@@ -116,10 +91,19 @@ func HandleSignalsUpdate(deps *bootstrap.Deps) http.HandlerFunc {
 		realtime.StoreSubscriptionContext(connectionID, subCtx)
 
 		// Check if filter change requires moving to a different group
-		if subCtx.EntityType != "default" {
+		if len(subCtx.EventPatterns) > 0 {
 			// Generate new group key with updated filter
-			newGroupKey := realtime.GenerateGroupKey(subCtx.EntityType, subCtx.EntityID, subCtx.Filter)
+			newGroupKey := realtime.GenerateGroupKey(subCtx.Filter, subCtx.EventPatterns)
 			currentGroup := deps.SessionGroupManager.GetGroupByConnectionID(connectionID)
+
+			// Derive entity type from first event pattern
+			entityType := "default"
+			if len(subCtx.EventPatterns) > 0 {
+				parts := strings.Split(subCtx.EventPatterns[0], ".")
+				if len(parts) > 0 {
+					entityType = parts[0]
+				}
+			}
 
 			// If group key changed, move session to new group
 			if currentGroup != nil && currentGroup.ID != newGroupKey {
@@ -142,10 +126,8 @@ func HandleSignalsUpdate(deps *bootstrap.Deps) http.HandlerFunc {
 						connectionID,
 						session.SessionID,
 						session.UserID,
-						subCtx.EntityType,
-						subCtx.EntityID,
 						subCtx.Filter,
-						subCtx.Renderer,
+						subCtx.EventPatterns,
 						session,
 					)
 
@@ -155,7 +137,7 @@ func HandleSignalsUpdate(deps *bootstrap.Deps) http.HandlerFunc {
 						// Send update with new filter to trigger re-rendering
 						uiEvent := &realtime.UIUpdateEvent{
 							EventType:  "filter.updated", // currently not used at all
-							EntityType: subCtx.EntityType,
+							EntityType: entityType,
 							EntityID:   "",
 							Timestamp:  time.Now(),
 							Data:       signalsMap,
@@ -171,7 +153,7 @@ func HandleSignalsUpdate(deps *bootstrap.Deps) http.HandlerFunc {
 				// Same group, just trigger update with new filter data
 				uiEvent := &realtime.UIUpdateEvent{
 					EventType:  "filter.updated",
-					EntityType: subCtx.EntityType,
+					EntityType: entityType,
 					EntityID:   "",
 					Timestamp:  time.Now(),
 					Data:       signalsMap,
@@ -219,7 +201,7 @@ func HandleUpdatesSSE(deps *bootstrap.Deps) http.HandlerFunc {
 		subCtx, ok := realtime.GetSubscriptionContextByConnectionID(connectionID)
 		if !ok {
 			logger.Info().Msgf("HandleUpdatesSSE: Subscription context not found for connection ID: %s", connectionID)
-			http.Error(w, "Subscription context not found", http.StatusInternalServerError)
+			http.Error(w, "Subscription context not found", http.StatusNoContent)
 			return
 		}
 
@@ -230,17 +212,16 @@ func HandleUpdatesSSE(deps *bootstrap.Deps) http.HandlerFunc {
 		logger.Info().Msgf("HandleUpdatesSSE: Current user ID: %s", currentUser)
 
 		// Add session to appropriate group (now returns update channel)
-		logger.Info().Msgf("HandleUpdatesSSE: Adding session to group with EntityType=%s, EntityID=%v, Filter=%v",
-			subCtx.EntityType, subCtx.EntityID, subCtx.Filter)
+		logger.Info().Msgf("HandleUpdatesSSE: Adding session to group with EventPatterns=%v, Filter=%v",
+			subCtx.EventPatterns, subCtx.Filter)
 
 		group, updateCh := deps.SessionGroupManager.AddSession(
 			connectionID, // Unique connection ID
 			sessionID,    // Browser session ID
 			currentUser,  // User ID
-			subCtx.EntityType,
-			subCtx.EntityID,
 			subCtx.Filter,
-			subCtx.Renderer,
+			subCtx.EventPatterns,
+			nil, // Registry used instead
 		)
 
 		if group == nil {
@@ -249,16 +230,124 @@ func HandleUpdatesSSE(deps *bootstrap.Deps) http.HandlerFunc {
 			return
 		}
 
-		entityIDStr := "nil"
-		if group.EntityID != nil {
-			entityIDStr = *group.EntityID
-		}
-
-		logger.Info().Msgf("%s: Connection %s (session %s) added to group %s (entity: %s/%s, renderer: %v)",
-			r.URL, connectionID, sessionID, group.ID, group.EntityType, entityIDStr, group.Renderer != nil)
+		logger.Info().Msgf("%s: Connection %s (session %s) added to group %s (patterns: %v, renderer: %v)",
+			r.URL, connectionID, sessionID, group.ID, group.EventPatterns, len(group.GetRenderers()) > 0)
 
 		// Send initial update directly to this session
 		sendGroupUpdate(ctx, sse, group)
+
+		// Subscribe to pattern-based events (now the default with registry system)
+		var natsSubscription *nats.Subscription
+		logger.Info().Msgf("HandleUpdatesSSE: Subscribing to event patterns: %v", subCtx.EventPatterns)
+
+		sub, err := deps.NatsConn.Subscribe("events", func(msg *nats.Msg) {
+			var raw map[string]interface{}
+			if err := json.Unmarshal(msg.Data, &raw); err != nil {
+				logger.Error().Err(err).Msg("Failed to unmarshal NATS event")
+				_ = msg.Ack()
+				return
+			}
+
+			eventType, _ := raw["event_type"].(string)
+			if realtime.MatchesEventPattern(eventType, subCtx.EventPatterns) {
+				// For notification events, check if they're for this session/user
+				if strings.HasPrefix(eventType, "notifications.") {
+					// Check if this notification event is for this session or user
+					eventSessionID, _ := raw["data"].(map[string]interface{})["session_id"].(string)
+					eventUserID, _ := raw["data"].(map[string]interface{})["user_id"].(string)
+
+					// Only process if the notification is for this session or user
+					if eventSessionID != sessionID && eventUserID != currentUser {
+						_ = msg.Ack()
+						return
+					}
+				}
+
+				logger.Debug().
+					Str("event_type", eventType).
+					Str("connection_id", connectionID).
+					Msg("Pattern-based event matched, triggering update")
+			}
+			// Use registry to get appropriate renderer for the event type
+			renderer := realtime.GetRenderer(eventType)
+
+			if renderer != nil {
+				// Prepare render data based on event type
+				var renderData interface{}
+				if strings.HasPrefix(eventType, "notifications.") {
+					// Notification renderer expects the raw event data
+					renderData = raw
+				} else {
+					// Other renderers expect GroupUpdateData format
+					// Derive entity type and ID from event patterns
+					var entityType string
+					var entityID *string
+					if len(subCtx.EventPatterns) > 0 {
+						parts := strings.Split(subCtx.EventPatterns[0], ".")
+						if len(parts) > 0 {
+							entityType = parts[0]
+						}
+						if len(parts) > 1 && parts[1] != "*" {
+							entityID = &parts[1]
+						}
+					}
+
+					renderData = &realtime.GroupUpdateData{
+						EntityType: entityType,
+						EntityID:   entityID,
+						Filter:     subCtx.Filter,
+						EventData:  raw,
+					}
+				}
+
+				if renderer != nil {
+					// Create a context with session information for rendering
+					renderCtx := context.WithValue(ctx, "session_id", sessionID)
+					renderCtx = context.WithValue(renderCtx, "user_id", currentUser)
+
+					// Safely call the renderer with error recovery
+					func() {
+						defer func() {
+							if r := recover(); r != nil {
+								logger.Error().
+									Interface("panic", r).
+									Str("event_type", eventType).
+									Str("connection_id", connectionID).
+									Msg("Pattern-based renderer panic recovered")
+							}
+						}()
+
+						component, attrs, renderErr := renderer.RenderUpdate(renderCtx, renderData)
+						if renderErr != nil {
+							logger.Error().Err(renderErr).
+								Str("event_type", eventType).
+								Str("renderer_type", renderer.GetEntityType()).
+								Msg("Failed to render pattern-based update")
+						} else if component != nil {
+							// Send any attributes/signals first
+							if attrs != nil && len(attrs) > 0 {
+								jsonData, jsonErr := json.Marshal(attrs)
+								if jsonErr == nil {
+									_ = sse.PatchSignals(jsonData)
+								}
+							}
+							// Send the component update
+							err := sse.PatchElementTempl(component)
+							if err != nil {
+								logger.Error().Err(err).Msg("Failed to send pattern-based component update")
+							}
+						}
+					}()
+				} // End of renderer != nil
+			} // End of renderer logic
+			_ = msg.Ack()
+		})
+
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to subscribe to pattern-based events")
+		} else {
+			natsSubscription = sub
+		}
 
 		// Listen for updates on the channel and send them via SSE
 		go func() {
@@ -288,6 +377,9 @@ func HandleUpdatesSSE(deps *bootstrap.Deps) http.HandlerFunc {
 		<-ctx.Done()
 
 		// Clean up
+		if natsSubscription != nil {
+			natsSubscription.Unsubscribe()
+		}
 		deps.SessionGroupManager.RemoveSession(connectionID)
 		realtime.RemoveSubscriptionContext(connectionID)
 	}
@@ -332,65 +424,170 @@ func sendGroupUpdate(ctx context.Context, sse *datastar.ServerSentEventGenerator
 		return
 	}
 
-	if group.Renderer == nil {
-		logger.Info().Msgf("sendGroupUpdate: Cannot send group update for group %s: renderer is nil", group.ID)
+	// Get renderers from registry based on group patterns
+	renderers := group.GetRenderers()
+	if len(renderers) == 0 {
+		logger.Info().Msgf("sendGroupUpdate: No renderers found for group %s patterns: %v", group.ID, group.EventPatterns)
 		return
 	}
 
-	// Prepare data for rendering
-	var renderData interface{}
+	logger.Debug().
+		Str("group_id", group.ID).
+		Strs("event_patterns", group.EventPatterns).
+		Int("renderer_count", len(renderers)).
+		Msg("sendGroupUpdate: Preparing render data")
 
-	if group.EntityType == "issues" {
-		// Use strongly typed signals for issues
-		renderData = &realtime.UnifiedIssuesSignals{
-			EntityType: group.EntityType,
-			EntityID:   group.EntityID,
-			Filter:     convertMapToIssuesFilter(group.Filter),
-		}
-	} else {
-		// Use generic data for other entity types
-		renderData = &realtime.GroupUpdateData{
-			EntityType: group.EntityType,
-			EntityID:   group.EntityID,
-			Filter:     group.Filter,
-		}
-	}
-
-	// Render the update using the group's renderer
-	component, signals, err := group.Renderer.RenderUpdate(ctx, renderData)
-	if err != nil {
-		logger.Info().Msgf("sendGroupUpdate: Failed to render update for group %s: %v", group.ID, err)
-		// Don't return here - try to continue, the error might be recoverable
-		return
-	}
-
-	// If we have a specific SSE connection, send to it
-	if sse != nil {
-		// Send the signals first if any
-		if signals != nil && len(signals) > 0 {
-			jsonData, err := json.Marshal(signals)
-			if err == nil {
-				_ = sse.PatchSignals(jsonData)
+	// Extract entity type from event patterns for backward compatibility with renderers
+	entityType := "unknown"
+	var entityID *string
+	if len(group.EventPatterns) > 0 {
+		firstPattern := group.EventPatterns[0]
+		if strings.HasPrefix(firstPattern, "issues.") && firstPattern != "issues.*" {
+			entityType = "issues"
+			// Extract entity ID from pattern like "issues.123.*"
+			parts := strings.Split(firstPattern, ".")
+			if len(parts) >= 2 && parts[1] != "*" {
+				entityID = &parts[1]
 			}
+		} else if strings.HasPrefix(firstPattern, "issues.") {
+			entityType = "issues"
+		} else if strings.HasPrefix(firstPattern, "projects.") && firstPattern != "projects.*" {
+			entityType = "projects"
+			parts := strings.Split(firstPattern, ".")
+			if len(parts) >= 2 && parts[1] != "*" {
+				entityID = &parts[1]
+			}
+		} else if strings.HasPrefix(firstPattern, "projects.") {
+			entityType = "projects"
+		} else if strings.HasPrefix(firstPattern, "notifications.") {
+			entityType = "notifications"
+		}
+	}
+
+	// Send updates using all matching renderers from registry
+	for pattern, renderer := range renderers {
+		logger.Debug().
+			Str("pattern", pattern).
+			Str("renderer_type", renderer.GetEntityType()).
+			Str("group_id", group.ID).
+			Strs("group_patterns", group.EventPatterns).
+			Msg("sendGroupUpdate: Processing renderer for pattern")
+
+		// Skip renderer if it doesn't match the entity type to prevent type mismatches
+		rendererEntityType := renderer.GetEntityType()
+		if entityType != "unknown" && rendererEntityType != entityType {
+			logger.Debug().
+				Str("pattern", pattern).
+				Str("renderer_type", rendererEntityType).
+				Str("entity_type", entityType).
+				Msg("sendGroupUpdate: Skipping renderer - entity type mismatch")
+			continue
 		}
 
-		err := sse.PatchElementTempl(component)
+		// Determine data type based on specific renderer type using type assertion
+		var renderData interface{}
+		switch renderer := renderer.(type) {
+		case *realtime.IssuesTableRenderer:
+			// IssuesTableRenderer expects UnifiedIssuesSignals
+			renderData = &realtime.UnifiedIssuesSignals{
+				EntityType: entityType,
+				EntityID:   entityID,
+				Filter:     convertMapToIssuesFilter(group.Filter),
+			}
+			logger.Debug().Msg("sendGroupUpdate: Using UnifiedIssuesSignals for IssuesTableRenderer")
+		case *realtime.IssueDetailRenderer:
+			// IssueDetailRenderer expects GroupUpdateData
+			renderData = &realtime.GroupUpdateData{
+				EntityType: entityType,
+				EntityID:   entityID,
+				Filter:     group.Filter,
+			}
+			logger.Debug().Msg("sendGroupUpdate: Using GroupUpdateData for IssueDetailRenderer")
+		case *realtime.NotificationRenderer:
+			// NotificationRenderer expects GroupUpdateData
+			renderData = &realtime.GroupUpdateData{
+				EntityType: entityType,
+				EntityID:   entityID,
+				Filter:     group.Filter,
+			}
+			logger.Debug().Msg("sendGroupUpdate: Using GroupUpdateData for NotificationRenderer")
+		default:
+			// Use generic data for other renderer types
+			renderData = &realtime.GroupUpdateData{
+				EntityType: entityType,
+				EntityID:   entityID,
+				Filter:     group.Filter,
+			}
+			logger.Debug().
+				Str("renderer_type", fmt.Sprintf("%T", renderer)).
+				Msg("sendGroupUpdate: Using generic GroupUpdateData for unknown renderer")
+		}
+
+		// Render the update using this renderer
+		logger.Debug().
+			Str("group_id", group.ID).
+			Str("renderer_type", renderer.GetEntityType()).
+			Msg("sendGroupUpdate: About to call renderer")
+
+		var component datastar.TemplComponent
+		var signals map[string]any
+		var err error
+
+		// Safely call the renderer with panic recovery
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					logger.Error().
+						Interface("panic", r).
+						Str("group_id", group.ID).
+						Str("renderer_type", renderer.GetEntityType()).
+						Msg("Group renderer panic recovered")
+					err = fmt.Errorf("renderer panic: %v", r)
+				}
+			}()
+
+			component, signals, err = renderer.RenderUpdate(ctx, renderData)
+		}()
+
 		if err != nil {
-			logger.Info().Msgf("sendGroupUpdate: Error sending SSE patch for group %s: %v", group.ID, err)
-			// This error might cause the SSE connection to close!
+			logger.Error().
+				Err(err).
+				Str("group_id", group.ID).
+				Str("entity_type", entityType).
+				Str("renderer_type", renderer.GetEntityType()).
+				Interface("render_data_type", renderData).
+				Msgf("sendGroupUpdate: Failed to render update for group %s", group.ID)
+			continue // Try next renderer
+		}
+
+		// If we have a specific SSE connection, send to it
+		if sse != nil {
+			// Send the signals first if any
+			if signals != nil && len(signals) > 0 {
+				jsonData, err := json.Marshal(signals)
+				if err == nil {
+					_ = sse.PatchSignals(jsonData)
+				}
+			}
+
+			err := sse.PatchElementTempl(component)
+			if err != nil {
+				logger.Info().Msgf("sendGroupUpdate: Error sending SSE patch for group %s pattern %s: %v", group.ID, pattern, err)
+				// This error might cause the SSE connection to close!
+				return
+			}
 			return
 		}
-		return
-	}
 
-	// Otherwise, send to all active sessions in the group todo is this needed?
-	sessions := group.GetActiveSessions()
-	logger.Info().Msgf("sendGroupUpdate: Would send update to %d sessions in group %s", len(sessions), group.ID)
-	for _, session := range sessions {
-		// In a real implementation, you'd need to maintain SSE connections per session
-		// For now, this is a placeholder showing the structure
-		logger.Info().Msgf("sendGroupUpdate: Would send update to session %s in group %s", session.ID, group.ID)
-	}
+		// Otherwise, send to all active sessions in the group todo is this needed?
+		sessions := group.GetActiveSessions()
+		logger.Info().Msgf("sendGroupUpdate: Would send update to %d sessions in group %s pattern %s", len(sessions), group.ID, pattern)
+		for _, session := range sessions {
+			// In a real implementation, you'd need to maintain SSE connections per session
+			// For now, this is a placeholder showing the structure
+			logger.Info().Msgf("sendGroupUpdate: Would send update to session %s in group %s pattern %s", session.ID, group.ID, pattern)
+		}
+	} // End of renderer loop
 }
 
 // Example usage for issues updates:
@@ -398,23 +595,6 @@ type IssuesUpdatesSignals struct {
 	Filter   issues.ListIssuesFilter `json:"filter"`
 	OrderBy  string                  `json:"order_by"`
 	OrderDir string                  `json:"order_dir"`
-}
-
-// GET /updates/issues - SSE endpoint for real-time issue updates (table)
-
-// GET /updates/notifications - SSE endpoint for real-time notification updates only
-func HandleNotificationsUpdatesSSE(deps *bootstrap.Deps) http.HandlerFunc {
-	return HandleSSEUpdates(
-		deps,
-		[]string{"NotificationCreated", "NotificationDeleted", "NotificationRead"},
-		nil,
-		func(r *http.Request, sse *datastar.ServerSentEventGenerator, sessionID string, signals any) {
-			ntfs, err := deps.NotificationService.GetNotifications(r.Context(), sessionID)
-			if err == nil {
-				_ = sse.PatchElementTempl(components.Notifications(ntfs))
-			}
-		},
-	)
 }
 
 // GET /updates/status - SSE endpoint for API online status (ping)
@@ -433,72 +613,5 @@ func HandleStatusUpdatesSSE() http.HandlerFunc {
 				_ = sse.PatchSignals(payload)
 			}
 		}
-	}
-}
-
-// GET /updates/issue/{id} - SSE endpoint for real-time updates for a single issue
-
-// Generic SSE handler for updates
-func HandleSSEUpdates(
-	deps *bootstrap.Deps,
-	eventTypes []string,
-	updatePatch func(r *http.Request, sse *datastar.ServerSentEventGenerator, sessionID string, signals any),
-	initialPatch ...func(r *http.Request, sse *datastar.ServerSentEventGenerator, sessionID string, signals any)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		signals := ctx.Value("datastar_signals")
-		sessionID := ctx.Value("session_id").(string)
-		sse := datastar.NewSSE(w, r, datastar.WithCompression(datastar.WithServerPriority()))
-
-		jsCtx, err := jetstream.New(deps.NatsConn)
-		if err != nil {
-			http.Error(w, "Failed to get JetStream context", http.StatusInternalServerError)
-			return
-		}
-
-		_, err = jsCtx.CreateOrUpdateConsumer(ctx, "events", jetstream.ConsumerConfig{
-			Durable:       "updates_sse_" + sessionID,
-			FilterSubject: "events",
-			AckPolicy:     jetstream.AckExplicitPolicy,
-		})
-		if err != nil {
-			http.Error(w, "Failed to create or get events consumer", http.StatusInternalServerError)
-			return
-		}
-
-		// send initial patch (use initialPatch if provided, else updatePatch)
-		if len(initialPatch) > 0 && initialPatch[0] != nil {
-			initialPatch[0](r, sse, sessionID, signals)
-		} else {
-			updatePatch(r, sse, sessionID, signals)
-		}
-
-		eventTypeSet := make(map[string]struct{})
-		for _, t := range eventTypes {
-			eventTypeSet[t] = struct{}{}
-		}
-
-		sub, err := deps.NatsConn.Subscribe("events", func(msg *nats.Msg) {
-			var raw map[string]interface{}
-
-			if err := json.Unmarshal(msg.Data, &raw); err != nil {
-				_ = msg.Ack()
-				return
-			}
-
-			eventType, _ := raw["event_type"].(string)
-			if _, ok := eventTypeSet[eventType]; ok {
-				updatePatch(r, sse, sessionID, signals)
-			}
-			_ = msg.Ack()
-		})
-		if err != nil {
-			http.Error(w, "Failed to subscribe to events deliver subject", http.StatusInternalServerError)
-			return
-		}
-		defer sub.Unsubscribe()
-
-		<-ctx.Done()
-		_ = sub.Unsubscribe()
 	}
 }

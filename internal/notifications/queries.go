@@ -10,7 +10,7 @@ import (
 // Query handlers for notification read operations
 
 type GetNotificationsQuery struct {
-	SessionID string `json:"session_id"`
+	UserID string `json:"user_id,omitempty"` // Optional user ID for user-specific lookup
 }
 
 func (q GetNotificationsQuery) GetQueryType() string { return "GetNotifications" }
@@ -18,7 +18,7 @@ func (q GetNotificationsQuery) GetQueryType() string { return "GetNotifications"
 var _ shared.Query = (*GetNotificationsQuery)(nil)
 
 type GetUnreadCountQuery struct {
-	SessionID string `json:"session_id"`
+	UserID string `json:"user_id"`
 }
 
 func (q GetUnreadCountQuery) GetQueryType() string { return "GetUnreadCount" }
@@ -26,7 +26,7 @@ func (q GetUnreadCountQuery) GetQueryType() string { return "GetUnreadCount" }
 var _ shared.Query = (*GetUnreadCountQuery)(nil)
 
 type GetNotificationByUIDQuery struct {
-	SessionID       string `json:"session_id"`
+	UserID          string `json:"user_id"`
 	NotificationUID string `json:"notification_uid"`
 }
 
@@ -59,51 +59,45 @@ func NewQueryHandler(projectionStore *NotificationProjectionStore) *QueryHandler
 
 // HandleGetNotifications retrieves all notifications for a session
 func (h *QueryHandler) HandleGetNotifications(ctx context.Context, query GetNotificationsQuery) (*NotificationsResult, error) {
-	ntfs, err := h.getNotifications(ctx, query.SessionID)
+	ntfs, err := h.getNotifications(ctx, query.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get notifications: %w", err)
 	}
 
-	unreadCount := ntfs.UnreadCount()
-
 	return &NotificationsResult{
 		Notifications: ntfs.Notifications,
-		UnreadCount:   unreadCount,
+		UnreadCount:   ntfs.UnreadCount(),
 		TotalCount:    len(ntfs.Notifications),
 	}, nil
 }
 
 // HandleGetUnreadCount retrieves only the unread count (optimized query)
 func (h *QueryHandler) HandleGetUnreadCount(ctx context.Context, query GetUnreadCountQuery) (*UnreadCountResult, error) {
-	ntfs, err := h.getNotifications(ctx, query.SessionID)
+	ntfs, err := h.getNotifications(ctx, query.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get notifications: %w", err)
 	}
 
-	count := ntfs.UnreadCount()
-
 	return &UnreadCountResult{
-		Count: count,
+		Count: ntfs.UnreadCount(),
 	}, nil
 }
 
 // HandleGetNotificationByUID retrieves a specific notification
-func (h *QueryHandler) HandleGetNotificationByUID(ctx context.Context, query GetNotificationByUIDQuery) (*Notification, error) {
-	ntfs, err := h.getNotifications(ctx, query.SessionID)
+func (h *QueryHandler) HandleGetNotificationByUID(ctx context.Context, query GetNotificationByUIDQuery) (*NotificationsResult, error) {
+	ntfs, err := h.getNotifications(ctx, query.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get notifications: %w", err)
 	}
 
-	for _, ntf := range ntfs.Notifications {
-		if ntf.Uid == query.NotificationUID {
-			return ntf, nil
-		}
-	}
-
-	return nil, fmt.Errorf("notification not found: %s", query.NotificationUID)
+	return &NotificationsResult{
+		Notifications: ntfs.Notifications,
+		UnreadCount:   ntfs.UnreadCount(),
+		TotalCount:    len(ntfs.Notifications),
+	}, nil
 }
 
 // Helper method to get notifications from storage
-func (h *QueryHandler) getNotifications(ctx context.Context, sessionID string) (*Notifications, error) {
-	return h.projectionStore.GetNotifications(ctx, sessionID)
+func (h *QueryHandler) getNotifications(ctx context.Context, userID string) (*Notifications, error) {
+	return h.projectionStore.GetNotifications(ctx, userID)
 }

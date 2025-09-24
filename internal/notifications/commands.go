@@ -12,21 +12,18 @@ import (
 // Commands
 
 type CreateNotificationCommand struct {
-	SessionID string `json:"session_id"`
-	UserID    string `json:"user_id,omitempty"`    // Optional user ID for user-specific notifications
-	Title     string `json:"title"`
-	Body      string `json:"body"`
+	UserID string `json:"user_id,omitempty"` // Optional user ID for user-specific notifications
+	Title  string `json:"title"`
+	Body   string `json:"body"`
 }
 
 type DeleteNotificationCommand struct {
-	SessionID       string `json:"session_id"`
-	UserID          string `json:"user_id,omitempty"`           // Optional user ID
+	UserID          string `json:"user_id,omitempty"`          // Optional user ID
 	NotificationUID string `json:"notification_uid,omitempty"` // If empty, delete all
 }
 
 type MarkNotificationReadCommand struct {
-	SessionID       string `json:"session_id"`
-	UserID          string `json:"user_id,omitempty"`           // Optional user ID
+	UserID          string `json:"user_id,omitempty"`          // Optional user ID
 	NotificationUID string `json:"notification_uid,omitempty"` // If empty, mark all as read
 }
 
@@ -56,7 +53,6 @@ func (h *CommandHandler) HandleCreateNotification(ctx context.Context, cmd Creat
 		Read:  false,
 	}
 	event := NotificationCreatedEvent{
-		SessionID:    cmd.SessionID,
 		UserID:       cmd.UserID,
 		Notification: notification,
 		Timestamp:    time.Now(),
@@ -81,7 +77,7 @@ func (h *CommandHandler) HandleDeleteNotification(ctx context.Context, cmd Delet
 	// Compose event
 	deletedAll := cmd.NotificationUID == ""
 	// For event, we need to know which IDs will be deleted
-	notifs, err := h.projectionStore.GetNotifications(ctx, cmd.SessionID)
+	notifs, err := h.projectionStore.GetNotifications(ctx, cmd.UserID)
 	if err != nil {
 		return fmt.Errorf("failed to get notifications: %w", err)
 	}
@@ -99,7 +95,6 @@ func (h *CommandHandler) HandleDeleteNotification(ctx context.Context, cmd Delet
 		}
 	}
 	event := NotificationDeletedEvent{
-		SessionID:              cmd.SessionID,
 		UserID:                 cmd.UserID,
 		DeletedNotificationUID: cmd.NotificationUID,
 		DeletedAll:             deletedAll,
@@ -123,7 +118,7 @@ func (h *CommandHandler) HandleDeleteNotification(ctx context.Context, cmd Delet
 
 // HandleMarkNotificationRead marks notification(s) as read
 func (h *CommandHandler) HandleMarkNotificationRead(ctx context.Context, cmd MarkNotificationReadCommand) error {
-	notifs, err := h.projectionStore.GetNotifications(ctx, cmd.SessionID)
+	notifs, err := h.projectionStore.GetNotifications(ctx, cmd.UserID)
 	if err != nil {
 		return fmt.Errorf("failed to get notifications: %w", err)
 	}
@@ -145,7 +140,6 @@ func (h *CommandHandler) HandleMarkNotificationRead(ctx context.Context, cmd Mar
 		}
 	}
 	event := NotificationReadEvent{
-		SessionID:           cmd.SessionID,
 		UserID:              cmd.UserID,
 		ReadNotificationUID: cmd.NotificationUID,
 		MarkedAllAsRead:     markedAllAsRead,

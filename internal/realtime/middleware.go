@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,8 +13,6 @@ import (
 	"github.com/mbolli/tickit/internal/logger"
 	"github.com/mbolli/tickit/internal/sharedhttp"
 	"github.com/starfederation/datastar-go/datastar"
-
-	"github.com/go-chi/chi/v5"
 )
 
 // Helper function to get map keys for debugging
@@ -25,20 +24,145 @@ func getMapKeys(m map[string]interface{}) []string {
 	return keys
 }
 
-// Connection-based subscription context storage
+// Package-level storage for subscription contexts per connection
 var (
 	connectionContextMap = make(map[string]*SubscriptionContext)
 	connectionContextMu  sync.RWMutex
 )
 
-// StoreSubscriptionContext stores subscription context for a connection ID
-func StoreSubscriptionContext(connectionID string, subCtx *SubscriptionContext) {
+// StoreSubscriptionContext stores a subscription context by connection ID
+func StoreSubscriptionContext(connectionID string, ctx *SubscriptionContext) {
 	connectionContextMu.Lock()
 	defer connectionContextMu.Unlock()
-	connectionContextMap[connectionID] = subCtx
+	connectionContextMap[connectionID] = ctx
 }
 
-// GetSubscriptionContext retrieves subscription context for a connection ID
+// SetEventPatterns creates and stores a subscription context with the specified event patterns
+// This replaces the need for subscription middlewares - call this directly in route handlers
+func SetEventPatterns(r *http.Request, eventPatterns []string) {
+	connectionID, ok := r.Context().Value("connection_id").(string)
+	if !ok {
+		// If no connection ID, we can't set patterns - this is not an error as
+		// some routes may not need realtime subscriptions
+		return
+	}
+
+	subCtx := &SubscriptionContext{
+		Filter:        make(map[string]interface{}),
+		EventPatterns: eventPatterns,
+	}
+
+	StoreSubscriptionContext(connectionID, subCtx)
+
+	logger.Debug().
+		Str("connection_id", connectionID).
+		Strs("event_patterns", eventPatterns).
+		Msg("Set event patterns for request")
+}
+
+// SetEventPatternsWithFilter creates a subscription context with patterns and filter data
+// Useful for routes that need query parameter parsing and filtering
+func SetEventPatternsWithFilter(r *http.Request, eventPatterns []string, filter map[string]interface{}) {
+	connectionID, ok := r.Context().Value("connection_id").(string)
+	if !ok {
+		return
+	}
+
+	subCtx := &SubscriptionContext{
+		Filter:        filter,
+		EventPatterns: eventPatterns,
+	}
+
+	StoreSubscriptionContext(connectionID, subCtx)
+
+	logger.Debug().
+		Str("connection_id", connectionID).
+		Strs("event_patterns", eventPatterns).
+		Interface("filter", filter).
+		Msg("Set event patterns with filter for request")
+}
+
+// ParseProjectsTableFilter parses query parameters for projects table view
+// Helper function to extract common filter patterns
+func ParseProjectsTableFilter(r *http.Request) map[string]interface{} {
+	filter := make(map[string]interface{})
+
+	// Default pagination
+	filter["page"] = 1
+	filter["page_size"] = 10
+
+	// Parse query parameters
+	if page := r.URL.Query().Get("page"); page != "" {
+		if p, err := strconv.Atoi(page); err == nil {
+			filter["page"] = p
+		}
+	}
+	if pageSize := r.URL.Query().Get("page_size"); pageSize != "" {
+		if ps, err := strconv.Atoi(pageSize); err == nil {
+			filter["page_size"] = ps
+		}
+	}
+
+	// Extract filter criteria
+	filterData := make(map[string]interface{})
+	if status := r.URL.Query().Get("status"); status != "" {
+		filterData["status"] = status
+	}
+	if ownerID := r.URL.Query().Get("owner_id"); ownerID != "" {
+		filterData["owner_id"] = ownerID
+	}
+
+	if len(filterData) > 0 {
+		filter["filter"] = filterData
+	}
+
+	return filter
+}
+
+// ParseIssuesTableFilter parses query parameters for issues table view
+// Helper function to extract common filter patterns
+func ParseIssuesTableFilter(r *http.Request) map[string]interface{} {
+	filter := make(map[string]interface{})
+
+	// Default pagination
+	filter["page"] = 1
+	filter["page_size"] = 25
+
+	// Parse query parameters for filters
+	if page := r.URL.Query().Get("page"); page != "" {
+		if p, err := strconv.Atoi(page); err == nil {
+			filter["page"] = p
+		}
+	}
+	if pageSize := r.URL.Query().Get("page_size"); pageSize != "" {
+		if ps, err := strconv.Atoi(pageSize); err == nil {
+			filter["page_size"] = ps
+		}
+	}
+
+	// Extract filter criteria
+	filterData := make(map[string]interface{})
+	if status := r.URL.Query().Get("status"); status != "" {
+		filterData["status"] = status
+	}
+	if priority := r.URL.Query().Get("priority"); priority != "" {
+		filterData["priority"] = priority
+	}
+	if projectID := r.URL.Query().Get("project_id"); projectID != "" {
+		filterData["project_id"] = projectID
+	}
+	if assigneeID := r.URL.Query().Get("assignee_id"); assigneeID != "" {
+		filterData["assignee_id"] = assigneeID
+	}
+
+	if len(filterData) > 0 {
+		filter["filter"] = filterData
+	}
+
+	return filter
+}
+
+// GetSubscriptionContextByConnectionID retrieves a subscription context by connection ID
 func GetSubscriptionContextByConnectionID(connectionID string) (*SubscriptionContext, bool) {
 	connectionContextMu.RLock()
 	defer connectionContextMu.RUnlock()
@@ -67,10 +191,18 @@ func RemoveSubscriptionContext(connectionID string) {
 
 // SubscriptionContext holds subscription metadata for a request
 type SubscriptionContext struct {
-	EntityType string                 `json:"entity_type"`
-	EntityID   *string                `json:"entity_id"`
-	Filter     map[string]interface{} `json:"filter"`
-	Renderer   ComponentRenderer      `json:"-"`
+	Filter        map[string]interface{} `json:"filter"`         // Filtering criteria for the subscription
+	EventPatterns []string               `json:"event_patterns"` // Event patterns to subscribe to (e.g., ["issues.*", "notifications.*"])
+}
+
+// GetRenderers returns all renderers that match this subscription's event patterns
+func (sc *SubscriptionContext) GetRenderers() map[string]ComponentRenderer {
+	return GetRenderersForPatterns(sc.EventPatterns)
+}
+
+// GetRenderer returns the best matching renderer for a specific event type
+func (sc *SubscriptionContext) GetRenderer(eventType string) ComponentRenderer {
+	return GetRenderer(eventType)
 }
 
 type contextKey string
@@ -105,15 +237,21 @@ func SetSessionMiddleware(store sessions.Store) func(http.Handler) http.Handler 
 func DatastarSignalsMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Parse Datastar signals from request
+			// Only try to read signals for appropriate content types
+			// Skip for form submissions to avoid interfering with CSRF
+			datastarRequest := r.Header.Get("Datastar-Request")
 			signals := make(map[string]interface{})
-			err := datastar.ReadSignals(r, &signals)
-			if err != nil {
-				logger.Error().Err(err).Msg("DatastarSignalsMiddleware: Error reading signals")
-			}
 
-			if len(signals) > 0 {
-				logger.Debug().Interface("signals", signals).Msg("DatastarSignalsMiddleware: Parsed signals")
+			// Only read signals if this looks like a datastar request
+			if datastarRequest == "true" {
+				err := datastar.ReadSignals(r, &signals)
+				if err != nil {
+					logger.Error().Err(err).Str("url", r.URL.String()).Str("method", r.Method).Msg("DatastarSignalsMiddleware: Error reading signals")
+				}
+
+				if len(signals) > 0 {
+					logger.Debug().Interface("signals", signals).Msg("DatastarSignalsMiddleware: Parsed signals")
+				}
 			}
 
 			// Store signals in context for later use
@@ -129,13 +267,9 @@ func DefaultSubscriptionContextMiddleware() func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			signals := r.Context().Value("datastar_signals")
 			subCtx := &SubscriptionContext{
-				EntityType: "none",
-				EntityID:   nil,
-				Filter:     make(map[string]interface{}),
-				Renderer:   nil,
-			}
-
-			// Update subscription context with current signals
+				Filter:        make(map[string]interface{}),
+				EventPatterns: []string{}, // Default: no patterns, no events
+			} // Update subscription context with current signals
 			UpdateSubscriptionFromSignals(subCtx, signals.(map[string]interface{}))
 
 			ctx := WithSubscriptionContext(r.Context(), subCtx)
@@ -178,166 +312,6 @@ func ConnectionIDMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-// IssuesTableSubscription middleware for issues dashboard/table views
-func IssuesTableSubscription(renderer ComponentRenderer) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			logger.Info().Str("Method", r.Method).Str("URL", r.URL.Path).Msg("IssuesTableSubscription: Processing request")
-
-			// Extract filter and pagination from query params or signals
-			filter := make(map[string]interface{})
-
-			// Default pagination
-			filter["page"] = 1
-			filter["page_size"] = 25
-
-			// Parse query parameters for filters
-			if page := r.URL.Query().Get("page"); page != "" {
-				if p, err := strconv.Atoi(page); err == nil {
-					filter["page"] = p
-				}
-			}
-			if pageSize := r.URL.Query().Get("page_size"); pageSize != "" {
-				if ps, err := strconv.Atoi(pageSize); err == nil {
-					filter["page_size"] = ps
-				}
-			}
-
-			// Extract filter criteria
-			filterData := make(map[string]interface{})
-			if status := r.URL.Query().Get("status"); status != "" {
-				filterData["status"] = status
-			}
-			if priority := r.URL.Query().Get("priority"); priority != "" {
-				filterData["priority"] = priority
-			}
-			if projectID := r.URL.Query().Get("project_id"); projectID != "" {
-				filterData["project_id"] = projectID
-			}
-			if assigneeID := r.URL.Query().Get("assignee_id"); assigneeID != "" {
-				filterData["assignee_id"] = assigneeID
-			}
-
-			if len(filterData) > 0 {
-				filter["filter"] = filterData
-			}
-
-			subCtx := &SubscriptionContext{
-				EntityType: "issues",
-				EntityID:   nil, // nil for table views
-				Filter:     filter,
-				Renderer:   renderer,
-			}
-
-			// Store subscription context by connection ID
-			if connectionID, ok := r.Context().Value("connection_id").(string); ok {
-				logger.Info().Str("connection_id", connectionID).Msg("IssuesTableSubscription: Storing subscription context")
-				StoreSubscriptionContext(connectionID, subCtx)
-			} else {
-				logger.Warn().Msg("IssuesTableSubscription: connection_id not found in context")
-			}
-
-			ctx := WithSubscriptionContext(r.Context(), subCtx)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
-// IssueDetailSubscription middleware for individual issue detail views
-func IssueDetailSubscription(renderer ComponentRenderer) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Extract issue ID from URL path
-			issueID := chi.URLParam(r, "issueId")
-			if issueID == "" {
-				http.Error(w, "Issue ID required", http.StatusBadRequest)
-				return
-			}
-
-			subCtx := &SubscriptionContext{
-				EntityType: "issues",
-				EntityID:   &issueID,
-				Filter:     make(map[string]interface{}), // No filtering for detail views
-				Renderer:   renderer,
-			}
-
-			ctx := WithSubscriptionContext(r.Context(), subCtx)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
-// ProjectsTableSubscription middleware for projects dashboard/table views
-func ProjectsTableSubscription(renderer ComponentRenderer) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			filter := make(map[string]interface{})
-
-			// Default pagination
-			filter["page"] = 1
-			filter["page_size"] = 10
-
-			// Parse query parameters
-			if page := r.URL.Query().Get("page"); page != "" {
-				if p, err := strconv.Atoi(page); err == nil {
-					filter["page"] = p
-				}
-			}
-			if pageSize := r.URL.Query().Get("page_size"); pageSize != "" {
-				if ps, err := strconv.Atoi(pageSize); err == nil {
-					filter["page_size"] = ps
-				}
-			}
-
-			// Extract filter criteria
-			filterData := make(map[string]interface{})
-			if status := r.URL.Query().Get("status"); status != "" {
-				filterData["status"] = status
-			}
-			if ownerID := r.URL.Query().Get("owner_id"); ownerID != "" {
-				filterData["owner_id"] = ownerID
-			}
-
-			if len(filterData) > 0 {
-				filter["filter"] = filterData
-			}
-
-			subCtx := &SubscriptionContext{
-				EntityType: "projects",
-				EntityID:   nil,
-				Filter:     filter,
-				Renderer:   renderer,
-			}
-
-			ctx := WithSubscriptionContext(r.Context(), subCtx)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
-// ProjectDetailSubscription middleware for individual project detail views
-func ProjectDetailSubscription(renderer ComponentRenderer) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			projectID := chi.URLParam(r, "id")
-			if projectID == "" {
-				http.Error(w, "Project ID required", http.StatusBadRequest)
-				return
-			}
-
-			subCtx := &SubscriptionContext{
-				EntityType: "projects",
-				EntityID:   &projectID,
-				Filter:     make(map[string]interface{}),
-				Renderer:   renderer,
-			}
-
-			ctx := WithSubscriptionContext(r.Context(), subCtx)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
 // ExtractSignalsFilter extracts filter data from Datastar signals
 // This would be called when processing SSE requests with signal data
 func ExtractSignalsFilter(signals map[string]interface{}) map[string]interface{} {
@@ -373,4 +347,31 @@ func UpdateSubscriptionFromSignals(subCtx *SubscriptionContext, signals map[stri
 	for key, value := range newFilter {
 		subCtx.Filter[key] = value
 	}
+}
+
+// MatchesEventPattern checks if an event type matches any of the subscription patterns
+// Supports wildcard patterns like "issues.*" or "notifications.user123.*"
+func MatchesEventPattern(eventType string, patterns []string) bool {
+	for _, pattern := range patterns {
+		if matchPattern(eventType, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchPattern checks if an event type matches a pattern with wildcards
+func matchPattern(eventType, pattern string) bool {
+	// Handle exact matches
+	if eventType == pattern {
+		return true
+	}
+
+	// Handle wildcard patterns
+	if strings.HasSuffix(pattern, "*") {
+		prefix := strings.TrimSuffix(pattern, "*")
+		return strings.HasPrefix(eventType, prefix)
+	}
+
+	return false
 }

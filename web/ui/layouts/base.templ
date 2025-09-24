@@ -6,6 +6,7 @@ import "github.com/gorilla/sessions"
 import "github.com/mbolli/tickit/web/ui"
 import "github.com/mbolli/tickit/internal/sharedhttp"
 import "github.com/justinas/nosurf"
+import "github.com/mbolli/tickit/web/ui/components"
 
 func activeClass(r *http.Request, path string) string {
 	if r.URL.Path == path {
@@ -33,9 +34,16 @@ templ Base(title string, sessions sessions.Store, r *http.Request) {
 				return "\"\""
 			}() + ")" }
      		data-on-signal-patch="SignalStorage.setSignal(patch)"
-			data-on-load="@get('/updates', {openWhenHidden: true})"
+			if _, state := sharedhttp.GetAuthenticatedUser(sessions, r); state == true {
+				data-on-load="@get('/updates', {openWhenHidden: true})"
+			}
 		>
-			<header data-on-signal-patch__debounce.250ms={ "@post('/signals', { headers: { 'X-CSRF-Token': '" + nosurf.Token(r) + "' } })" } class="container">
+			<header 
+				if _, state := sharedhttp.GetAuthenticatedUser(sessions, r); state == true {
+					data-on-signal-patch__debounce.250ms={ "@post('/signals', { headers: { 'X-CSRF-Token': '" + nosurf.Token(r) + "' } })" }
+				}
+				class="container"
+			>
 				<div
 					class="offline-message"
 					data-signals-_online="true"
@@ -67,7 +75,7 @@ templ Base(title string, sessions sessions.Store, r *http.Request) {
 				{ children... }
 			</main>
 			<footer class="container">
-				<div id="notifications"></div>
+				@components.Notifications(EmptyNotifications())
 				&copy; 2025 zwei und eins gmbh. All rights reserved.
 				<script type="module" src="/static/datastar-inspector.js"></script>
 				<datastar-inspector></datastar-inspector>

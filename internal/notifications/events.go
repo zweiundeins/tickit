@@ -10,19 +10,18 @@ import (
 // Domain events for notifications
 
 type NotificationCreatedEvent struct {
-	SessionID    string        `json:"session_id"`
-	UserID       string        `json:"user_id,omitempty"`    // Optional user ID for user-specific notifications
-	Notification *Notification `json:"notification"`         // Contains the complete created notification
+	UserID       string        `json:"user_id,omitempty"` // Optional user ID for user-specific notifications
+	Notification *Notification `json:"notification"`      // Contains the complete created notification
 	Timestamp    time.Time     `json:"timestamp"`
 }
 
 func (e NotificationCreatedEvent) GetEventType() string      { return "NotificationCreated" }
 func (e NotificationCreatedEvent) GetTimestamp() interface{} { return e.Timestamp }
+func (e NotificationCreatedEvent) GetNotificationID() string { return e.Notification.Uid }
 
 var _ shared.Event = (*NotificationCreatedEvent)(nil)
 
 type NotificationDeletedEvent struct {
-	SessionID              string    `json:"session_id"`
 	UserID                 string    `json:"user_id,omitempty"`                  // Optional user ID
 	DeletedNotificationUID string    `json:"deleted_notification_uid,omitempty"` // Specific notification deleted
 	DeletedAll             bool      `json:"deleted_all"`                        // Whether all notifications were deleted
@@ -32,11 +31,19 @@ type NotificationDeletedEvent struct {
 
 func (e NotificationDeletedEvent) GetEventType() string      { return "NotificationDeleted" }
 func (e NotificationDeletedEvent) GetTimestamp() interface{} { return e.Timestamp }
+func (e NotificationDeletedEvent) GetNotificationID() string {
+	if e.DeletedNotificationUID != "" {
+		return e.DeletedNotificationUID
+	}
+	if len(e.DeletedNotificationIDs) > 0 {
+		return e.DeletedNotificationIDs[0] // Return first one if multiple
+	}
+	return "" // No specific notification
+}
 
 var _ shared.Event = (*NotificationDeletedEvent)(nil)
 
 type NotificationReadEvent struct {
-	SessionID           string    `json:"session_id"`
 	UserID              string    `json:"user_id,omitempty"`               // Optional user ID
 	ReadNotificationUID string    `json:"read_notification_uid,omitempty"` // Specific notification marked as read
 	MarkedAllAsRead     bool      `json:"marked_all_as_read"`              // Whether all notifications were marked as read
@@ -48,6 +55,15 @@ type NotificationReadEvent struct {
 
 func (e NotificationReadEvent) GetEventType() string      { return "NotificationRead" }
 func (e NotificationReadEvent) GetTimestamp() interface{} { return e.Timestamp }
+func (e NotificationReadEvent) GetNotificationID() string {
+	if e.ReadNotificationUID != "" {
+		return e.ReadNotificationUID
+	}
+	if len(e.ReadNotificationIDs) > 0 {
+		return e.ReadNotificationIDs[0] // Return first one if multiple
+	}
+	return "" // No specific notification
+}
 
 var _ shared.Event = (*NotificationReadEvent)(nil)
 

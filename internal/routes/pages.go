@@ -1,30 +1,43 @@
 package routes
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/justinas/nosurf"
 	"github.com/mbolli/tickit/internal/bootstrap"
 	"github.com/mbolli/tickit/internal/issues"
+	"github.com/mbolli/tickit/internal/logger"
 	"github.com/mbolli/tickit/internal/realtime"
+	"github.com/mbolli/tickit/internal/sharedhttp"
 	"github.com/mbolli/tickit/internal/users"
+	"github.com/mbolli/tickit/web/ui/components"
 	"github.com/mbolli/tickit/web/ui/pages"
 )
 
 // RegisterPageRoutes registers public and authenticated (non-admin, non-API) page routes.
 func RegisterPageRoutes(router chi.Router, deps *bootstrap.Deps) {
-	// Configure CSRF protection for form pages
-	csrfMiddleware := users.NewCSRFMiddleware(nil)
-
 	// --- Public routes (no auth required) ---
-	// Apply CSRF middleware to pages that contain forms, so CSRF cookies get set
+	// CSRF middleware is applied globally, so no need to apply it here again
 	router.Group(func(r chi.Router) {
-		r.Use(csrfMiddleware) // This sets the CSRF cookie on GET requests
 
 		r.Get("/auth/login", func(w http.ResponseWriter, r *http.Request) {
-			pages.LoginPage(deps.SessionStore, r, "").Render(r.Context(), w)
+			// Check for flash messages
+			flashMessage, err := sharedhttp.GetFlashMessage(deps.SessionStore, w, r)
+			if err != nil {
+				// Log error but continue - flash message is not critical
+				// In a real application, you'd use your logger here
+			}
+
+			// Debug: Log CSRF token being generated for the login page
+			csrfToken := nosurf.Token(r)
+			log.Printf("DEBUG: Login GET request - generating CSRF token: %s", csrfToken)
+
+			pages.LoginPage(deps.SessionStore, r, "", flashMessage).Render(r.Context(), w)
 		})
 		r.Get("/register", func(w http.ResponseWriter, r *http.Request) {
 			pages.RegisterPage(deps.SessionStore, r).Render(r.Context(), w)
@@ -96,16 +109,54 @@ func RegisterPageRoutes(router chi.Router, deps *bootstrap.Deps) {
 			http.Redirect(w, r, "/dashboard", 302)
 		})
 
-		// Dashboard routes with realtime subscription middleware
+		// Dashboard routes
 		auth.Group(func(dashboard chi.Router) {
-			dashboard.Use(realtime.IssuesTableSubscription(realtime.NewIssuesTableRenderer(deps.IssueService, deps.ProjectService, deps.UserService)))
 			dashboard.Get("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+				// Set event patterns for dashboard page
+				realtime.SetEventPatterns(r, []string{"issues.*", "projects.*", "notifications.*"})
+
 				projectsList, _ := deps.ProjectService.ListProjects(r.Context())
 				pages.DashboardPage(deps.SessionStore, r, projectsList, nil).Render(r.Context(), w)
 			})
-			dashboard.With(realtime.IssueDetailSubscription(realtime.NewIssueDetailRenderer(deps.IssueService, deps.ProjectService, deps.UserService))).Get("/dashboard/{issueId}", func(w http.ResponseWriter, r *http.Request) {
+			dashboard.Get("/dashboard/{issueId}", func(w http.ResponseWriter, r *http.Request) {
+				issueID := chi.URLParam(r, "issueId")
+				// Set event patterns for issue detail page
+				realtime.SetEventPatterns(r, []string{fmt.Sprintf("issues.%s.*", issueID), "notifications.*"})
+
 				projectsList, _ := deps.ProjectService.ListProjects(r.Context())
-				issue, _ := deps.IssueService.GetIssueByID(r.Context(), chi.URLParam(r, "issueId"))
+				issue, _ := deps.IssueService.GetIssueByID(r.Context(), issueID)
+
+				// Get user_id directly from context (set by authentication middleware)
+				if userID, ok := r.Context().Value("user_id").(string); ok && userID != "" {
+					if user, err := deps.UserService.GetUserByID(r.Context(), userID); err == nil && user != nil {
+						notificationTitle := fmt.Sprintf("Issue Viewed: %s", issue.Title)
+						var issueKey string
+						if project, err := deps.ProjectService.GetProjectByID(r.Context(), issue.ProjectID); err == nil && project != nil {
+							issueKey = issue.GetKey(project.Slug)
+						} else {
+							issueKey = issue.ID
+						}
+						notificationBody := fmt.Sprintf("%s %s viewed issue %s", user.FirstName, user.LastName, issueKey)
+
+						logger.Info().Str("title", notificationTitle).Str("body", notificationBody).Msg("Creating issue view notification")
+
+						// Send notification (this will be sent to all connected clients via SSE)
+						if err := deps.NotificationService.CreateNotification(
+							r.Context(),
+							notificationTitle,
+							notificationBody,
+						); err != nil {
+							logger.Error().Err(err).Msg("Failed to create issue view notification")
+						} else {
+							logger.Info().Msg("Successfully created issue view notification")
+						}
+					} else {
+						logger.Error().Err(err).Msg("Failed to get user for notification")
+					}
+				} else {
+					logger.Error().Msg("No user_id found in context for notification")
+				}
+
 				pages.DashboardPage(deps.SessionStore, r, projectsList, issue).Render(r.Context(), w)
 			})
 		})
@@ -121,6 +172,29 @@ func RegisterPageRoutes(router chi.Router, deps *bootstrap.Deps) {
 				http.NotFound(w, r)
 				return
 			}
+
+			// Create notification when user views an issue
+			sessionID := r.Context().Value("session_id").(string)
+			if userSession, err := deps.UserService.GetUserSession(r.Context(), sessionID); err == nil && userSession != nil {
+				if user, err := deps.UserService.GetUserByID(r.Context(), userSession.UserID); err == nil && user != nil {
+					notificationTitle := fmt.Sprintf("Issue Viewed: %s", issue.Title)
+					var issueKey string
+					if project, err := deps.ProjectService.GetProjectByID(r.Context(), issue.ProjectID); err == nil && project != nil {
+						issueKey = issue.GetKey(project.Slug)
+					} else {
+						issueKey = issue.ID
+					}
+					notificationBody := fmt.Sprintf("%s %s viewed issue %s", user.FirstName, user.LastName, issueKey)
+
+					// Send notification (this will be sent to all connected clients via SSE)
+					_ = deps.NotificationService.CreateNotification(
+						r.Context(),
+						notificationTitle,
+						notificationBody,
+					)
+				}
+			}
+
 			projectsList, _ := deps.ProjectService.ListProjects(r.Context())
 			pages.TicketDetailPage(issue, projectsList, deps.SessionStore, r).Render(r.Context(), w)
 		})
@@ -130,7 +204,27 @@ func RegisterPageRoutes(router chi.Router, deps *bootstrap.Deps) {
 			admin.Use(deps.UserRoutes.RequireAdminRole)
 			admin.Get("/admin", func(w http.ResponseWriter, r *http.Request) {
 				projectsList, _ := deps.ProjectService.ListProjects(r.Context())
-				pages.AdminPanelPage(deps.SessionStore, r, projectsList).Render(r.Context(), w)
+
+				// Fetch users for admin panel
+				usersList, err := deps.UserService.ListUsers(r.Context(), 0, 0, "", "")
+				if err != nil {
+					log.Printf("Error fetching users for admin panel: %v", err)
+					usersList = []*users.User{} // fallback to empty list
+				}
+
+				// Convert users to AdminUser structs to avoid import cycles
+				adminUsers := make([]components.AdminUser, len(usersList))
+				for i, user := range usersList {
+					adminUsers[i] = components.AdminUser{
+						ID:     user.ID,
+						Name:   user.FirstName + " " + user.LastName,
+						Role:   user.Role,
+						Email:  user.Email,
+						Status: user.Status,
+					}
+				}
+
+				pages.AdminPanelPage(deps.SessionStore, r, projectsList, adminUsers).Render(r.Context(), w)
 			})
 		})
 	})

@@ -7,13 +7,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/justinas/nosurf"
+	"github.com/gorilla/sessions"
 )
 
 // SecurityMiddlewareConfig holds configuration for all security middleware
 type SecurityMiddlewareConfig struct {
 	Security *SecurityConfig
-	CSRF     *CSRFConfig
 	Audit    *AuditLogger
 }
 
@@ -23,7 +22,6 @@ func DefaultSecurityMiddlewareConfig() *SecurityMiddlewareConfig {
 
 	return &SecurityMiddlewareConfig{
 		Security: DefaultSecurityConfig(),
-		CSRF:     DefaultCSRFConfig(),
 		Audit:    auditLogger,
 	}
 }
@@ -32,11 +30,10 @@ func DefaultSecurityMiddlewareConfig() *SecurityMiddlewareConfig {
 type SecurityMiddlewareStack struct {
 	config          *SecurityMiddlewareConfig
 	securityManager *SecurityManager
-	csrfMiddleware  func(http.Handler) http.Handler
 }
 
 // NewSecurityMiddlewareStack creates a new security middleware stack
-func NewSecurityMiddlewareStack(config *SecurityMiddlewareConfig) *SecurityMiddlewareStack {
+func NewSecurityMiddlewareStack(config *SecurityMiddlewareConfig, sessionStore sessions.Store) *SecurityMiddlewareStack {
 	if config == nil {
 		config = DefaultSecurityMiddlewareConfig()
 	}
@@ -44,7 +41,6 @@ func NewSecurityMiddlewareStack(config *SecurityMiddlewareConfig) *SecurityMiddl
 	stack := &SecurityMiddlewareStack{
 		config:          config,
 		securityManager: NewSecurityManager(config.Security, config.Audit),
-		csrfMiddleware:  NewCSRFMiddleware(config.CSRF),
 	}
 
 	return stack
@@ -72,14 +68,7 @@ func (sms *SecurityMiddlewareStack) ApplySecurityMiddleware(handler http.Handler
 	h = sms.securityManager.RateLimitMiddleware(authEndpoint)(h)
 
 	// 6. Apply security headers
-	h = SecurityHeaders(h)
-
-	// 7. Apply CSRF protection (wrap with http.Handler conversion)
-	wrappedHandler := sms.csrfMiddleware(http.HandlerFunc(h))
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		wrappedHandler.ServeHTTP(w, r)
-	}
+	return SecurityHeaders(h)
 }
 
 // InputValidationMiddleware provides comprehensive input validation
@@ -232,14 +221,6 @@ func (sms *SecurityMiddlewareStack) ValidateAndSanitizeAuthInput(input map[strin
 	}
 
 	return result, nil
-}
-
-// GetCSRFTokenForResponse gets CSRF token for API responses
-func (sms *SecurityMiddlewareStack) GetCSRFTokenForResponse(r *http.Request) string {
-	if sms.config.CSRF.Enabled {
-		return nosurf.Token(r)
-	}
-	return ""
 }
 
 // LogSecurityEvent logs a security event

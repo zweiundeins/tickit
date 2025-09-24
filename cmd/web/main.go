@@ -64,10 +64,10 @@ func run(ctx context.Context) error {
 
 	// Set up global middlewares
 	appRouter.Use(
-		// DatastarSignalsMiddleware must come BEFORE CSRF to read request body first
+		// CSRF protection must come BEFORE DatastarSignalsMiddleware to read form data first
+		users.NewCSRFMiddleware(nil, sessionStore),
+		// DatastarSignalsMiddleware processes JSON signals
 		realtime.DatastarSignalsMiddleware(),
-		// CSRF protection must come BEFORE compression to access request body
-		users.NewCSRFMiddleware(nil),
 		// compression (including brotli)
 		// compressor.Handler,
 		middleware.NoCache,
@@ -151,6 +151,21 @@ func run(ctx context.Context) error {
 	if err := deps.EventProcessor.Start(); err != nil {
 		return fmt.Errorf("error starting event processor: %w", err)
 	}
+
+	// Create a default notification for all users when server starts
+	go func() {
+		time.Sleep(2 * time.Second) // Wait a bit for the system to fully initialize
+		err := deps.NotificationService.CreateGeneralNotification(
+			ctx,
+			"Server Started",
+			"TickIt server has started successfully!",
+		)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to create startup notification")
+		} else {
+			logger.Info().Msg("Created startup notification")
+		}
+	}()
 
 	// Ensure event processor is stopped on shutdown
 	eg.Go(func() error {

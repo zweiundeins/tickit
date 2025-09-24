@@ -5,16 +5,20 @@ import (
 	"github.com/mbolli/tickit/internal/bootstrap"
 	"github.com/mbolli/tickit/internal/issues"
 	"github.com/mbolli/tickit/internal/notifications"
-	"github.com/mbolli/tickit/internal/users"
 )
 
 // RegisterAPIRoutes registers all API endpoints, grouped by middleware.
 func RegisterAPIRoutes(router chi.Router, deps *bootstrap.Deps) {
-	// Generic SSE endpoint - subscription context comes from page middleware
-	router.Get("/updates", HandleUpdatesSSE(deps))
+	// --- Authenticated API routes ---
+	router.Group(func(auth chi.Router) {
+		auth.Use(deps.UserRoutes.RequireAuthentication)
 
-	// Generic signals endpoint - updates subscription context
-	router.Post("/signals", HandleSignalsUpdate(deps))
+		// Generic SSE endpoint - subscription context comes from page middleware
+		auth.Get("/updates", HandleUpdatesSSE(deps))
+
+		// Generic signals endpoint - updates subscription context
+		auth.Post("/signals", HandleSignalsUpdate(deps))
+	})
 
 	router.Route("/api", func(apiRouter chi.Router) {
 		// --- Notifications API ---
@@ -62,8 +66,6 @@ func RegisterAPIRoutes(router chi.Router, deps *bootstrap.Deps) {
 		apiRouter.Route("/users", func(userRouter chi.Router) {
 			// Authenticated, CSRF-protected form-based routes
 			userRouter.Group(func(r chi.Router) {
-				csrfMiddleware := users.NewCSRFMiddleware(nil)
-				r.Use(csrfMiddleware)
 				r.Use(deps.UserRoutes.RequireAuthentication)
 				r.Put("/profile", deps.UserRoutes.HandleUpdateProfile)
 				r.Post("/profile/avatar", deps.UserRoutes.HandleUploadAvatar)
@@ -106,7 +108,6 @@ func RegisterAPIRoutes(router chi.Router, deps *bootstrap.Deps) {
 		})
 
 		// --- SSE/Updates API ---
-		apiRouter.Get("/updates/notifications", HandleNotificationsUpdatesSSE(deps))
 		apiRouter.Get("/updates/status", HandleStatusUpdatesSSE())
 
 		// --- API endpoints, OAuth callbacks, etc. (no CSRF needed) ---

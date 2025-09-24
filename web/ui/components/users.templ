@@ -1,0 +1,90 @@
+package components
+
+// AdminUser represents user data for admin panel display
+type AdminUser struct {
+	ID        string
+	Name      string
+	Role      string
+	Email     string
+	Status    string
+}
+
+templ UserForm(errorMsg string, user *AdminUser) {
+	{{ var name, email, role string }}
+	if user != nil {
+		name = user.Name
+		email = user.Email
+		role = user.Role
+	}
+	<form data-on-submit__viewtransition="@post('/api/users', { contentType: 'form' }) && el.reset()">
+		if errorMsg != "" {
+			<div class="form-error" style="color: red; margin-bottom: 0.5rem;">{ errorMsg }</div>
+		}
+		<label>Name: <input name="name" type="text" value={ name } required/></label>
+		<label>Email: <input name="email" type="email" value={ email } required/></label>
+		<label>Role: 
+			<select name="role" required>
+				<option value="">Select Role</option>
+				<option value="Admin" selected?={ role == "Admin" }>Admin</option>
+				<option value="ProjectManager" selected?={ role == "ProjectManager" }>Project Manager</option>
+				<option value="Developer" selected?={ role == "Developer" }>Developer</option>
+				<option value="Viewer" selected?={ role == "Viewer" }>Viewer</option>
+			</select>
+		</label>
+		<button type="submit">Create User</button>
+	</form>
+}
+
+templ UserTable(users []AdminUser) {
+	<table role="grid" id="users">
+		<thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Edit</th><th>Actions</th></tr></thead>
+		<tbody>
+			for _, user := range users {
+				<tr
+					if user.Status == "Inactive" {
+						style="opacity: .6"
+					}
+				>
+					<td>{ user.Name }</td>
+					<td>{ user.Email }</td>
+					<td>{ user.Role }</td>
+					<td>
+						<span style="color: #dc3545;" hidden?={ user.Status != "Inactive" }>Inactive</span>
+						<span style="color: #28a745;" hidden?={ user.Status != "Active" }>Active</span>
+						<span style="color: #ffc107;" hidden?={ user.Status != "Pending" }>Pending</span>
+					</td>
+					<td>
+						<!-- Edit User Inline Form -->
+						<details>
+							<summary>✎</summary>
+							<form data-id={ user.ID } data-on-submit__viewtransition="@patch('/api/users/' + el.dataset.id)">
+								<label>Name: <input name="name" type="text" value={ user.Name } required/></label>
+								<label>Email: <input name="email" type="email" value={ user.Email } required/></label>
+								<label>Role: 
+									<select name="role" required>
+										<option value="Admin" selected?={ user.Role == "Admin" }>Admin</option>
+										<option value="ProjectManager" selected?={ user.Role == "ProjectManager" }>Project Manager</option>
+										<option value="Developer" selected?={ user.Role == "Developer" }>Developer</option>
+										<option value="Viewer" selected?={ user.Role == "Viewer" }>Viewer</option>
+									</select>
+								</label>
+								<button type="submit">Save</button>
+							</form>
+						</details>
+					</td>
+					<td>
+						if user.Status == "Inactive" {
+							<button data-on-click__viewtransition="@patch('/api/users/{user.ID}', { contentType: 'json', body: JSON.stringify({ user: { id: '{user.ID}', status: 'Active' } }) })" style="background: #28a745; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 0.25rem; cursor: pointer;">
+								Activate
+							</button>
+						} else {
+							<button data-on-click__viewtransition="@patch('/api/users/{user.ID}', { contentType: 'json', body: JSON.stringify({ user: { id: '{user.ID}', status: 'Inactive' } }) })" style="background: #dc3545; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 0.25rem; cursor: pointer;">
+								Deactivate
+							</button>
+						}
+					</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}

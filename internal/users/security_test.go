@@ -2,10 +2,13 @@ package users
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSecurityConfig(t *testing.T) {
@@ -339,33 +342,50 @@ func TestComprehensiveInputValidation(t *testing.T) {
 	}
 }
 
-func TestSecurityMiddlewareStack(t *testing.T) {
+func TestSecurityInjectionPrevention(t *testing.T) {
+	mockStore := NewMockSessionStore()
 	config := DefaultSecurityMiddlewareConfig()
-	stack := NewSecurityMiddlewareStack(config)
+	stack := NewSecurityMiddlewareStack(config, mockStore)
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
 
 	// Test auth endpoint wrapper
-	authHandler := stack.AuthenticationSecurityWrapper(handler)
+	wrappedHandler := stack.ApplySecurityMiddleware(handler, true)
 
-	req := httptest.NewRequest("POST", "/auth/login", strings.NewReader(`{"email":"test@example.com"}`))
-	req.Header.Set("Content-Type", "application/json")
-	req.RemoteAddr = "192.168.1.1:12345"
+	// Test various injection attempts
+	tests := []struct {
+		name   string
+		input  string
+		expect bool
+	}{
+		{"SQL Injection", "'; DROP TABLE users; --", false},
+		{"XSS Script", "<script>alert('xss')</script>", false},
+		{"Normal Input", "normal@email.com", true},
+	}
 
-	w := httptest.NewRecorder()
-	authHandler(w, req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("POST", "/test", strings.NewReader(fmt.Sprintf(`{"email":"%s"}`, tt.input)))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
 
-	// Should have security headers
-	if w.Header().Get("X-Content-Type-Options") != "nosniff" {
-		t.Error("Expected security headers to be set")
+			wrappedHandler.ServeHTTP(w, req)
+
+			if tt.expect {
+				assert.Equal(t, http.StatusOK, w.Code)
+			} else {
+				assert.NotEqual(t, http.StatusOK, w.Code)
+			}
+		})
 	}
 }
 
 func TestValidateAndSanitizeAuthInput(t *testing.T) {
+	mockStore := NewMockSessionStore()
 	config := DefaultSecurityMiddlewareConfig()
-	stack := NewSecurityMiddlewareStack(config)
+	stack := NewSecurityMiddlewareStack(config, mockStore)
 
 	input := map[string]interface{}{
 		"email":      "test@example.com",
@@ -396,8 +416,9 @@ func TestValidateAndSanitizeAuthInput(t *testing.T) {
 }
 
 func TestBruteForceProtectionIntegration(t *testing.T) {
+	mockStore := NewMockSessionStore()
 	config := DefaultSecurityMiddlewareConfig()
-	stack := NewSecurityMiddlewareStack(config)
+	stack := NewSecurityMiddlewareStack(config, mockStore)
 
 	clientIP := "192.168.1.1"
 	email := "test@example.com"

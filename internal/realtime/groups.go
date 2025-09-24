@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,20 +13,24 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 )
 
-// SessionGroup represents a group of sessions with shared subscription criteria
+// SessionGroup represents a group of sessions with shared filtering criteria
 type SessionGroup struct {
-	ID          string                 `json:"id"`
-	EntityType  string                 `json:"entity_type"` // "issues", "projects", "users"
-	EntityID    *string                `json:"entity_id"`   // nil for lists, specific ID for details
-	Filter      map[string]interface{} `json:"filter"`      // pagination and filtering criteria
-	Sessions    map[string]*Session    `json:"sessions"`    // connectionID -> Session
-	Renderer    ComponentRenderer      `json:"-"`           // how to render updates for this group
-	CreatedAt   time.Time              `json:"created_at"`
-	LastUpdated time.Time              `json:"last_updated"`
-	mu          sync.RWMutex           `json:"-"`
+	ID            string                 `json:"id"`             // Unique identifier for the group
+	Filter        map[string]interface{} `json:"filter"`         // Filtering criteria shared by sessions in this group
+	Sessions      map[string]*Session    `json:"sessions"`       // Sessions in this group
+	EventPatterns []string               `json:"event_patterns"` // Event patterns this group subscribes to
+	mu            sync.RWMutex           `json:"-"`              // Mutex for thread-safe access
 }
 
-// Session represents an active SSE connection
+// GetRenderers returns all renderers that match this group's event patterns
+func (sg *SessionGroup) GetRenderers() map[string]ComponentRenderer {
+	return GetRenderersForPatterns(sg.EventPatterns)
+}
+
+// GetRenderer returns the best matching renderer for a specific event type
+func (sg *SessionGroup) GetRenderer(eventType string) ComponentRenderer {
+	return GetRenderer(eventType)
+} // Session represents an active SSE connection
 type Session struct {
 	ID            string              `json:"id"`         // Unique connection ID (not session ID)
 	SessionID     string              `json:"session_id"` // Browser session ID (shared across tabs)
@@ -59,16 +64,20 @@ func NewGroupManager() *GroupManager {
 }
 
 // GenerateGroupKey creates a deterministic group key based on subscription criteria
-func GenerateGroupKey(entityType string, entityID *string, filter map[string]interface{}) string {
+func GenerateGroupKey(filter map[string]interface{}, eventPatterns []string) string {
 	data := map[string]interface{}{
-		"entity_type": entityType,
-		"entity_id":   entityID,
-		"filter":      filter,
+		"filter":         filter,
+		"event_patterns": eventPatterns,
 	}
 
 	jsonData, _ := json.Marshal(data)
 	hash := sha256.Sum256(jsonData)
-	return fmt.Sprintf("%s:%x", entityType, hash[:8])
+	// Use first pattern as prefix if available, otherwise use "multi"
+	prefix := "multi"
+	if len(eventPatterns) > 0 {
+		prefix = strings.Split(eventPatterns[0], ".")[0]
+	}
+	return fmt.Sprintf("%s:%x", prefix, hash[:8])
 }
 
 // AddSession adds a session to the appropriate group
@@ -76,10 +85,9 @@ func GenerateGroupKey(entityType string, entityID *string, filter map[string]int
 func (gm *GroupManager) AddSession(
 	connectionID, // Unique connection ID
 	sessionID, // Browser session ID (shared across tabs)
-	userID,
-	entityType string,
-	entityID *string,
+	userID string,
 	filter map[string]interface{},
+	eventPatterns []string,
 	renderer ComponentRenderer,
 ) (*SessionGroup, chan *UIUpdateEvent) {
 	// Create new session
@@ -90,7 +98,6 @@ func (gm *GroupManager) AddSession(
 		ID:        connectionID, // Unique connection ID
 		SessionID: sessionID,    // Browser session ID
 		UserID:    userID,
-		CreatedAt: time.Now(),
 		Context:   ctx,
 		Cancel:    cancel,
 		UpdateCh:  updateCh,
@@ -100,18 +107,14 @@ func (gm *GroupManager) AddSession(
 	gm.mu.Lock()
 	defer gm.mu.Unlock()
 
-	groupKey := GenerateGroupKey(entityType, entityID, filter)
+	groupKey := GenerateGroupKey(filter, eventPatterns)
 	group, exists := gm.groups[groupKey]
 	if !exists {
 		group = &SessionGroup{
-			ID:          groupKey,
-			EntityType:  entityType,
-			EntityID:    entityID,
-			Filter:      filter,
-			Sessions:    make(map[string]*Session),
-			Renderer:    renderer,
-			CreatedAt:   time.Now(),
-			LastUpdated: time.Now(),
+			ID:            groupKey,
+			Filter:        filter,
+			EventPatterns: eventPatterns,
+			Sessions:      make(map[string]*Session),
 		}
 		gm.groups[groupKey] = group
 	}
@@ -119,7 +122,6 @@ func (gm *GroupManager) AddSession(
 	// Add session to group
 	group.mu.Lock()
 	group.Sessions[connectionID] = newSession
-	group.LastUpdated = time.Now()
 	group.mu.Unlock()
 
 	return group, updateCh
@@ -147,7 +149,6 @@ func (gm *GroupManager) RemoveSession(connectionID string) {
 			session.mu.Unlock()
 
 			delete(group.Sessions, connectionID)
-			group.LastUpdated = time.Now()
 
 			// Remove empty groups
 			if len(group.Sessions) == 0 {
@@ -174,51 +175,55 @@ func (gm *GroupManager) GetGroupByConnectionID(connectionID string) *SessionGrou
 	return nil
 }
 
-// GetGroupsForEntity returns all groups that should receive updates for a specific entity
-func (gm *GroupManager) GetGroupsForEntity(entityType, entityID string) []*SessionGroup {
+// GetGroupsForEventType returns all groups that should receive updates for a specific event type
+// based on their event patterns rather than entity type matching
+func (gm *GroupManager) GetGroupsForEventType(eventType string) []*SessionGroup {
 	gm.mu.RLock()
 	defer gm.mu.RUnlock()
 
 	var matchingGroups []*SessionGroup
 
 	for _, group := range gm.groups {
-		if group.EntityType == entityType {
-			// Check if this group cares about this entity
-			if group.ShouldReceiveUpdate(entityID) {
-				matchingGroups = append(matchingGroups, group)
-			}
+		// Check if the event type matches any of the group's event patterns
+		if group.MatchesEventPattern(eventType) {
+			matchingGroups = append(matchingGroups, group)
 		}
 	}
 
 	return matchingGroups
 }
 
-// ShouldReceiveUpdate determines if a group should receive an update for a specific entity
-func (sg *SessionGroup) ShouldReceiveUpdate(entityID string) bool {
+// MatchesEventPattern checks if an event type matches any of the group's event patterns
+func (sg *SessionGroup) MatchesEventPattern(eventType string) bool {
 	sg.mu.RLock()
 	defer sg.mu.RUnlock()
 
-	// For detail views, only update if it's the exact entity
-	if sg.EntityID != nil {
-		return *sg.EntityID == entityID
+	for _, pattern := range sg.EventPatterns {
+		if sg.matchesPattern(eventType, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesPattern checks if an event type matches a pattern with wildcards
+func (sg *SessionGroup) matchesPattern(eventType, pattern string) bool {
+	// Exact match
+	if eventType == pattern {
+		return true
 	}
 
-	// For list views, check if entity matches current filters
-	// This is a simplified version - in practice, you'd query your data store
-	// to see if the entity would appear in the current filtered/paginated view
-	return sg.entityMatchesFilter(entityID)
+	// Handle wildcard patterns
+	if strings.HasSuffix(pattern, "*") {
+		prefix := strings.TrimSuffix(pattern, "*")
+		return strings.HasPrefix(eventType, prefix)
+	}
+
+	return false
 }
 
-// entityMatchesFilter checks if an entity matches the group's filter criteria
-func (sg *SessionGroup) entityMatchesFilter(entityID string) bool {
-	// Simplified implementation - in practice, this would:
-	// 1. Load the entity from the projection store
-	// 2. Apply the group's filter criteria
-	// 3. Check if it would appear in the current page
-
-	// For now, assume all entities match (will be refined in implementation)
-	return true
-}
+// Note: Pattern matching in GetGroupsForEventType handles all event filtering
+// No need for ShouldReceiveUpdate since patterns are more precise
 
 // GetActiveSessions returns all active sessions in the group
 func (sg *SessionGroup) GetActiveSessions() []*Session {
@@ -244,10 +249,7 @@ func (sg *SessionGroup) SendUpdateToAllSessions(ctx context.Context, uiEvent *UI
 	sg.mu.RLock()
 	defer sg.mu.RUnlock()
 
-	if sg.Renderer == nil {
-		logger.Error().Str("group_id", sg.ID).Msg("Cannot send update to group: renderer is nil")
-		return fmt.Errorf("renderer is nil for group %s", sg.ID)
-	}
+	// Renderer will be resolved per event type using the registry when needed
 
 	// Send to all active sessions in this group via their update channels
 	sentCount := 0
@@ -277,19 +279,24 @@ func (gm *GroupManager) GetStats() map[string]interface{} {
 	defer gm.mu.RUnlock()
 
 	totalSessions := 0
-	groupsByType := make(map[string]int)
+	groupsByPattern := make(map[string]int)
 
 	for _, group := range gm.groups {
 		group.mu.RLock()
 		totalSessions += len(group.Sessions)
-		groupsByType[group.EntityType]++
+		// Count by first event pattern
+		if len(group.EventPatterns) > 0 {
+			groupsByPattern[group.EventPatterns[0]]++
+		} else {
+			groupsByPattern["no-pattern"]++
+		}
 		group.mu.RUnlock()
 	}
 
 	return map[string]interface{}{
-		"total_groups":   len(gm.groups),
-		"total_sessions": totalSessions,
-		"groups_by_type": groupsByType,
+		"total_groups":      len(gm.groups),
+		"total_sessions":    totalSessions,
+		"groups_by_pattern": groupsByPattern,
 	}
 }
 
@@ -320,7 +327,6 @@ func (gm *GroupManager) RemoveSessionFromGroup(group *SessionGroup, connectionID
 		}
 
 		delete(group.Sessions, connectionID)
-		group.LastUpdated = time.Now()
 
 		// Remove empty groups
 		if len(group.Sessions) == 0 {
@@ -340,30 +346,24 @@ func (gm *GroupManager) RemoveSessionFromGroup(group *SessionGroup, connectionID
 func (gm *GroupManager) AddSessionToGroup(
 	connectionID,
 	sessionID,
-	userID,
-	entityType string,
-	entityID *string,
+	userID string,
 	filter map[string]interface{},
-	renderer ComponentRenderer,
+	eventPatterns []string,
 	existingSession *Session,
 ) (*SessionGroup, chan *UIUpdateEvent) {
 	gm.mu.Lock()
 	defer gm.mu.Unlock()
 
-	groupKey := GenerateGroupKey(entityType, entityID, filter)
+	groupKey := GenerateGroupKey(filter, eventPatterns)
 
 	// Get or create group
 	group, exists := gm.groups[groupKey]
 	if !exists {
 		group = &SessionGroup{
-			ID:          groupKey,
-			EntityType:  entityType,
-			EntityID:    entityID,
-			Filter:      filter,
-			Sessions:    make(map[string]*Session),
-			Renderer:    renderer,
-			CreatedAt:   time.Now(),
-			LastUpdated: time.Now(),
+			ID:            groupKey,
+			Filter:        filter,
+			EventPatterns: eventPatterns,
+			Sessions:      make(map[string]*Session),
 		}
 		gm.groups[groupKey] = group
 	}
@@ -371,7 +371,6 @@ func (gm *GroupManager) AddSessionToGroup(
 	// Add existing session to group
 	group.mu.Lock()
 	group.Sessions[connectionID] = existingSession
-	group.LastUpdated = time.Now()
 	group.mu.Unlock()
 
 	return group, existingSession.UpdateCh

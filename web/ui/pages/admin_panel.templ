@@ -6,9 +6,9 @@ import "github.com/mbolli/tickit/web/ui/layouts"
 import "github.com/mbolli/tickit/internal/projects"
 import "github.com/mbolli/tickit/web/ui/components"
 
-templ AdminPanelPage(store sessions.Store, r *http.Request, projects []*projects.Project) {
+templ AdminPanelPage(store sessions.Store, r *http.Request, projects []*projects.Project, usersList []components.AdminUser) {
 	@layouts.Base("Admin Panel", store, r) {
-		<main class="container" style="max-width: 900px; margin: 2rem auto;">
+		<main class="container" style="margin: 2rem auto;">
 			<nav style="margin-bottom:1rem;">
 				<button>Users</button>
 				<button>Projects</button>
@@ -16,13 +16,8 @@ templ AdminPanelPage(store sessions.Store, r *http.Request, projects []*projects
 			<section style="display:flex;gap:2rem;flex-wrap:wrap;">
 				<div style="flex:1;min-width:300px;">
 					<h3>Users</h3>
-					<table role="grid">
-						<thead><tr><th>Name</th><th>Role</th><th>Edit</th></tr></thead>
-						<tbody>
-							<tr><td>John</td><td>Agent</td><td>✎</td></tr>
-							<tr><td>Mary</td><td>User</td><td>✎</td></tr>
-						</tbody>
-					</table>
+					@components.UserForm("", nil)
+					@components.UserTable(usersList)
 				</div>
 				<div style="flex:1;min-width:300px;">
 					<h3>Projects</h3>

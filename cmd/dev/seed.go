@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mbolli/tickit/internal/bootstrap"
 	"github.com/mbolli/tickit/internal/migrations"
+	"github.com/mbolli/tickit/internal/session"
 	"github.com/mbolli/tickit/internal/users"
 )
 
@@ -31,8 +32,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to start embedded NATS: %v", err)
 	}
+
 	ns.WaitForServer()
-	cqrs, err := bootstrap.WireDeps(ctx, ns)
+
+	// Create user routes using centralized session store
+	sessionStore, err := session.GetGlobalSessionStore()
+	if err != nil {
+		log.Fatalf("error getting global session store: %w", err)
+	}
+
+	cqrs, err := bootstrap.WireDeps(ctx, ns, sessionStore)
 	if err != nil {
 		log.Fatalf("Failed to wire CQRS: %v", err)
 	}

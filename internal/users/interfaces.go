@@ -12,6 +12,7 @@ import (
 
 // UserStore defines the interface for user data storage operations
 // This interface abstracts the database operations for user management
+// TODO this can be revamped due to sessionID and userID being in the context!
 type UserStore interface {
 	// User CRUD operations
 	GetUser(ctx context.Context, userID string) (*User, error)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/mbolli/tickit/internal/logger"
 	"github.com/mbolli/tickit/web/ui/components"
 	"github.com/starfederation/datastar-go/datastar"
 
@@ -49,9 +50,19 @@ func (r *IssueDetailRenderer) RenderUpdate(ctx context.Context, data interface{}
 		return nil, nil, fmt.Errorf("failed to fetch issue: %w", err)
 	}
 
+	if issue == nil {
+		logger.Error().Str("entity_id", *groupData.EntityID).Msg("IssueDetailRenderer: Issue is nil")
+		return nil, nil, fmt.Errorf("issue not found with ID: %s", *groupData.EntityID)
+	}
+
+	logger.Debug().Str("issue_id", issue.ID).Str("issue_title", issue.Title).Msg("IssueDetailRenderer: Issue fetched successfully")
+
 	// Fetch related project
 	var projectsList []*projects.Project
 	projectsList, _ = r.projectService.ListProjects(ctx) // todo remove
+	if projectsList == nil {
+		projectsList = []*projects.Project{} // Initialize empty slice if nil
+	}
 
 	// Fetch related users
 	//var assignee, reporter *users.User

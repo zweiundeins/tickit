@@ -21,33 +21,32 @@ func NewNotificationService(commandBus *shared.CommandBus, queryBus *shared.Quer
 	}
 }
 
-// CreateNotification creates a new notification
-func (s *NotificationService) CreateNotification(ctx context.Context, sessionID, title, body string) error {
+// CreateGeneralNotification creates a general notification without user context
+func (s *NotificationService) CreateGeneralNotification(ctx context.Context, title, body string) error {
 	cmd := CreateNotificationCommand{
-		SessionID: sessionID,
-		Title:     title,
-		Body:      body,
+		UserID: "", // No user context
+		Title:  title,
+		Body:   body,
 	}
 
 	return s.commandBus.Execute(ctx, cmd)
 }
 
-// CreateNotificationWithUser creates a new notification with user context
-func (s *NotificationService) CreateNotificationWithUser(ctx context.Context, sessionID, userID, title, body string) error {
+// CreateNotification creates a new notification with user context
+func (s *NotificationService) CreateNotification(ctx context.Context, title, body string) error {
 	cmd := CreateNotificationCommand{
-		SessionID: sessionID,
-		UserID:    userID,
-		Title:     title,
-		Body:      body,
+		UserID: ctx.Value("user_id").(string),
+		Title:  title,
+		Body:   body,
 	}
 
 	return s.commandBus.Execute(ctx, cmd)
 }
 
 // DeleteNotification deletes a specific notification or all notifications
-func (s *NotificationService) DeleteNotification(ctx context.Context, sessionID, notificationUID string) error {
+func (s *NotificationService) DeleteNotification(ctx context.Context, notificationUID string) error {
 	cmd := DeleteNotificationCommand{
-		SessionID:       sessionID,
+		UserID:          ctx.Value("user_id").(string),
 		NotificationUID: notificationUID,
 	}
 
@@ -55,10 +54,9 @@ func (s *NotificationService) DeleteNotification(ctx context.Context, sessionID,
 }
 
 // DeleteNotificationWithUser deletes a specific notification or all notifications with user context
-func (s *NotificationService) DeleteNotificationWithUser(ctx context.Context, sessionID, userID, notificationUID string) error {
+func (s *NotificationService) DeleteNotificationWithUser(ctx context.Context, notificationUID string) error {
 	cmd := DeleteNotificationCommand{
-		SessionID:       sessionID,
-		UserID:          userID,
+		UserID:          ctx.Value("user_id").(string),
 		NotificationUID: notificationUID,
 	}
 
@@ -66,9 +64,9 @@ func (s *NotificationService) DeleteNotificationWithUser(ctx context.Context, se
 }
 
 // MarkNotificationRead marks a specific notification or all notifications as read
-func (s *NotificationService) MarkNotificationRead(ctx context.Context, sessionID, notificationUID string) error {
+func (s *NotificationService) MarkNotificationRead(ctx context.Context, notificationUID string) error {
 	cmd := MarkNotificationReadCommand{
-		SessionID:       sessionID,
+		UserID:          ctx.Value("user_id").(string),
 		NotificationUID: notificationUID,
 	}
 
@@ -76,10 +74,9 @@ func (s *NotificationService) MarkNotificationRead(ctx context.Context, sessionI
 }
 
 // MarkNotificationReadWithUser marks a specific notification or all notifications as read with user context
-func (s *NotificationService) MarkNotificationReadWithUser(ctx context.Context, sessionID, userID, notificationUID string) error {
+func (s *NotificationService) MarkNotificationReadWithUser(ctx context.Context, notificationUID string) error {
 	cmd := MarkNotificationReadCommand{
-		SessionID:       sessionID,
-		UserID:          userID,
+		UserID:          ctx.Value("user_id").(string),
 		NotificationUID: notificationUID,
 	}
 
@@ -87,9 +84,9 @@ func (s *NotificationService) MarkNotificationReadWithUser(ctx context.Context, 
 }
 
 // GetNotifications retrieves all notifications for a session
-func (s *NotificationService) GetNotifications(ctx context.Context, sessionID string) (*Notifications, error) {
+func (s *NotificationService) GetNotifications(ctx context.Context) (*Notifications, error) {
 	query := GetNotificationsQuery{
-		SessionID: sessionID,
+		UserID: ctx.Value("user_id").(string),
 	}
 
 	result, err := s.queryBus.Execute(ctx, query)
@@ -106,9 +103,9 @@ func (s *NotificationService) GetNotifications(ctx context.Context, sessionID st
 }
 
 // GetUnreadCount retrieves only the unread count
-func (s *NotificationService) GetUnreadCount(ctx context.Context, sessionID string) (*UnreadCountResult, error) {
+func (s *NotificationService) GetUnreadCount(ctx context.Context) (*UnreadCountResult, error) {
 	query := GetUnreadCountQuery{
-		SessionID: sessionID,
+		UserID: ctx.Value("user_id").(string),
 	}
 
 	result, err := s.queryBus.Execute(ctx, query)
@@ -125,9 +122,9 @@ func (s *NotificationService) GetUnreadCount(ctx context.Context, sessionID stri
 }
 
 // GetNotificationByUID retrieves a specific notification by UID
-func (s *NotificationService) GetNotificationByUID(ctx context.Context, sessionID, notificationUID string) (*Notification, error) {
+func (s *NotificationService) GetNotificationByUID(ctx context.Context, notificationUID string) (*Notification, error) {
 	query := GetNotificationByUIDQuery{
-		SessionID:       sessionID,
+		UserID:          ctx.Value("user_id").(string),
 		NotificationUID: notificationUID,
 	}
 

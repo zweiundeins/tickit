@@ -272,6 +272,8 @@ func (ur *UserRoutes) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// Debug: Log form values
 	log.Printf("Form values: %+v", r.Form)
 	log.Printf("PostForm values: %+v", r.PostForm)
+	log.Printf("CSRF token from form: '%s'", r.FormValue("csrf_token"))
+	log.Printf("CSRF token from nosurf: '%s'", nosurf.Token(r))
 
 	email := r.FormValue("email")
 	password := r.FormValue("password")
@@ -383,7 +385,13 @@ func (ur *UserRoutes) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 // renderLoginPageWithError renders the login page with an error message
 func (ur *UserRoutes) renderLoginPageWithError(w http.ResponseWriter, r *http.Request, errorMsg string) {
-	pages.LoginPage(ur.sessionStore, r, errorMsg).Render(r.Context(), w)
+	// Check for flash messages
+	flashMessage, err := sharedhttp.GetFlashMessage(ur.sessionStore, w, r)
+	if err != nil {
+		// Log error but continue - flash message is not critical
+		// In a real application, you'd use your logger here
+	}
+	pages.LoginPage(ur.sessionStore, r, errorMsg, flashMessage).Render(r.Context(), w)
 }
 
 func (ur *UserRoutes) HandleLogout(w http.ResponseWriter, r *http.Request) {

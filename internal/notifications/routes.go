@@ -1,8 +1,9 @@
 package notifications
 
 import (
-	"github.com/mbolli/tickit/internal/shared"
 	"net/http"
+
+	"github.com/mbolli/tickit/internal/shared"
 )
 
 // POST /api/notifications - Create new notification
@@ -10,11 +11,12 @@ func HandleCreateNotification(notificationService *NotificationService) http.Han
 	return func(w http.ResponseWriter, r *http.Request) {
 		title := r.FormValue("title")
 		body := r.FormValue("body")
-		sessionID := r.Context().Value("session_id").(string)
-		if err := notificationService.CreateNotification(r.Context(), sessionID, title, body); err != nil {
+
+		if err := notificationService.CreateNotification(r.Context(), title, body); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
 		w.WriteHeader(http.StatusCreated)
 	}
 }
@@ -32,8 +34,7 @@ func HandleDeleteNotification(notificationService *NotificationService) http.Han
 			return
 		}
 
-		sessionID := r.Context().Value("session_id").(string)
-		if err := notificationService.DeleteNotification(r.Context(), sessionID, signals.NotificationUID); err != nil {
+		if err := notificationService.DeleteNotification(r.Context(), signals.NotificationUID); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -53,9 +54,8 @@ func HandleMarkNotificationRead(notificationService *NotificationService) http.H
 			http.Error(w, "invalid signals: "+err.Error(), http.StatusBadRequest)
 			return
 		}
-		sessionID := r.Context().Value("session_id").(string)
 
-		if err := notificationService.MarkNotificationRead(r.Context(), sessionID, signals.NotificationUID); err != nil {
+		if err := notificationService.MarkNotificationRead(r.Context(), signals.NotificationUID); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

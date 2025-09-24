@@ -95,8 +95,11 @@ func (ep *EventProcessor) handleEvent(msg *nats.Msg) {
 	logger.Debug().Str("eventType", uiEvent.EventType).Str("entityType", uiEvent.EntityType).Str("entityID", uiEvent.EntityID).
 		Msg("Processing UI event")
 
-	// Get all groups that should receive this update
-	groups := ep.groupManager.GetGroupsForEntity(uiEvent.EntityType, uiEvent.EntityID)
+	// Get all groups that should receive this update using pattern-based matching
+	groups := ep.groupManager.GetGroupsForEventType(uiEvent.EventType)
+
+	logger.Debug().Int("matchingGroups", len(groups)).
+		Msg("Found matching groups for event")
 
 	// Send update to each relevant group
 	for _, group := range groups {
@@ -104,10 +107,9 @@ func (ep *EventProcessor) handleEvent(msg *nats.Msg) {
 			continue
 		}
 
-		// Check if this group should actually receive this update
-		if !group.ShouldReceiveUpdate(uiEvent.EntityID) {
-			continue
-		}
+		// Pattern-based matching - if it matched the pattern, it should receive the update
+		logger.Debug().Str("groupID", group.ID).Strs("eventPatterns", group.EventPatterns).
+			Msg("Sending update to pattern-based group")
 
 		// Send update to all sessions in this group
 		if err := group.SendUpdateToAllSessions(ep.ctx, &uiEvent); err != nil {
