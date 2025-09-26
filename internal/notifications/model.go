@@ -5,11 +5,12 @@ import (
 )
 
 type Notification struct {
-	Uid   string    `json:"uid"`
-	Date  time.Time `json:"date"`
-	Title string    `json:"title"`
-	Body  string    `json:"body"`
-	Read  bool      `json:"read"`
+	Uid    string    `json:"uid"`
+	UserID string    `json:"user_id,omitempty"` // Optional user ID for user-specific notifications
+	Date   time.Time `json:"date"`
+	Title  string    `json:"title"`
+	Body   string    `json:"body"`
+	Read   bool      `json:"read"`
 }
 
 type Notifications struct {

@@ -17,6 +17,77 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 )
 
+// HandleCommandSignal executes commands received via signals
+func HandleCommandSignal(deps *bootstrap.Deps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		// Get signals from context
+		signals := ctx.Value("datastar_signals")
+		if signals == nil {
+			http.Error(w, "No signals found", http.StatusBadRequest)
+			return
+		}
+
+		signalsMap, ok := signals.(map[string]interface{})
+		if !ok {
+			http.Error(w, "Invalid signals format", http.StatusBadRequest)
+			return
+		}
+
+		// Extract command type and data from datastar variables
+		commandTypeRaw, hasCommandType := signalsMap["command"]
+		commandDataRaw, hasCommandData := signalsMap["commandParams"]
+
+		if !hasCommandType {
+			http.Error(w, "Missing command", http.StatusBadRequest)
+			return
+		}
+
+		commandType, ok := commandTypeRaw.(string)
+		if !ok {
+			http.Error(w, "command must be string", http.StatusBadRequest)
+			return
+		}
+
+		var commandData map[string]interface{}
+		if hasCommandData {
+			commandData, ok = commandDataRaw.(map[string]interface{})
+			if !ok {
+				http.Error(w, "commandParams must be object", http.StatusBadRequest)
+				return
+			}
+		} else {
+			commandData = make(map[string]interface{})
+		}
+
+		logger.Info().
+			Str("command_type", commandType).
+			Interface("command_data", commandData).
+			Msg("Executing command from signal")
+
+		// Create and execute command
+		cmd, err := deps.CommandBus.CreateCommandFromMap(commandType, commandData)
+		if err != nil {
+			logger.Error().Err(err).Msg("Failed to create command")
+			return
+		}
+
+		// Execute the command
+		if err := deps.CommandBus.Execute(ctx, cmd); err != nil {
+			logger.Error().Err(err).Msg("Failed to execute command")
+			return
+		}
+
+		// Send success response
+		w.WriteHeader(http.StatusNoContent)
+
+		logger.Info().
+			Str("command_type", commandType).
+			Msg("Command executed successfully")
+	}
+}
+
 // HandleSignalsUpdate updates subscription context based on incoming signals
 func HandleSignalsUpdate(deps *bootstrap.Deps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -115,13 +186,10 @@ func HandleSignalsUpdate(deps *bootstrap.Deps) http.HandlerFunc {
 				session = currentGroup.GetSession(connectionID)
 
 				if session != nil {
-					logger.Info().Msgf("HandleSignalsUpdate: Found existing session for connection %s, moving to new group", connectionID)
 					// Remove from current group (but don't close channel or cancel context)
 					deps.SessionGroupManager.RemoveSessionFromGroup(currentGroup, connectionID, false)
-					logger.Info().Msgf("HandleSignalsUpdate: Removed connection %s from group %s (cleanup=false)", connectionID, currentGroup.ID)
 
 					// Add to new group with updated filter (reuse existing session context and channel)
-					logger.Info().Msgf("HandleSignalsUpdate: Adding connection %s to new group with key %s", connectionID, newGroupKey)
 					newGroup, _ := deps.SessionGroupManager.AddSessionToGroup(
 						connectionID,
 						session.SessionID,
@@ -132,8 +200,6 @@ func HandleSignalsUpdate(deps *bootstrap.Deps) http.HandlerFunc {
 					)
 
 					if newGroup != nil {
-						logger.Info().Msgf("HandleSignalsUpdate: Successfully moved connection %s to new group %s", connectionID, newGroup.ID)
-
 						// Send update with new filter to trigger re-rendering
 						uiEvent := &realtime.UIUpdateEvent{
 							EventType:  "filter.updated", // currently not used at all
@@ -147,6 +213,8 @@ func HandleSignalsUpdate(deps *bootstrap.Deps) http.HandlerFunc {
 						if err != nil {
 							logger.Info().Msgf("HandleSignalsUpdate: Failed to send update to new group: %v", err)
 						}
+					} else {
+						logger.Error().Msgf("HandleSignalsUpdate: Failed to create or get new group %s for connection %s", newGroupKey, connectionID)
 					}
 				}
 			} else if currentGroup != nil {
@@ -170,8 +238,6 @@ func HandleSignalsUpdate(deps *bootstrap.Deps) http.HandlerFunc {
 			} else {
 				logger.Info().Msgf("HandleSignalsUpdate: No session group found for connection %s", connectionID)
 			}
-		} else {
-			logger.Info().Msgf("HandleSignalsUpdate: Skipping session group update for default context (connection %s)", connectionID)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -207,14 +273,9 @@ func HandleUpdatesSSE(deps *bootstrap.Deps) http.HandlerFunc {
 
 		// Generate unique connection ID for this SSE connection
 		sse := datastar.NewSSE(w, r, datastar.WithCompression(datastar.WithServerPriority()))
-
 		currentUser, _ := sharedhttp.GetUserIDFromContext(ctx)
-		logger.Info().Msgf("HandleUpdatesSSE: Current user ID: %s", currentUser)
 
 		// Add session to appropriate group (now returns update channel)
-		logger.Info().Msgf("HandleUpdatesSSE: Adding session to group with EventPatterns=%v, Filter=%v",
-			subCtx.EventPatterns, subCtx.Filter)
-
 		group, updateCh := deps.SessionGroupManager.AddSession(
 			connectionID, // Unique connection ID
 			sessionID,    // Browser session ID
@@ -230,15 +291,13 @@ func HandleUpdatesSSE(deps *bootstrap.Deps) http.HandlerFunc {
 			return
 		}
 
-		logger.Info().Msgf("%s: Connection %s (session %s) added to group %s (patterns: %v, renderer: %v)",
-			r.URL, connectionID, sessionID, group.ID, group.EventPatterns, len(group.GetRenderers()) > 0)
+		logger.Info().Interface("patterns", group.EventPatterns).Str("conn", connectionID).Str("session", sessionID).Msgf("Added connection to group %s", group.ID)
 
 		// Send initial update directly to this session
 		sendGroupUpdate(ctx, sse, group)
 
 		// Subscribe to pattern-based events (now the default with registry system)
 		var natsSubscription *nats.Subscription
-		logger.Info().Msgf("HandleUpdatesSSE: Subscribing to event patterns: %v", subCtx.EventPatterns)
 
 		sub, err := deps.NatsConn.Subscribe("events", func(msg *nats.Msg) {
 			var raw map[string]interface{}
@@ -360,14 +419,14 @@ func HandleUpdatesSSE(deps *bootstrap.Deps) http.HandlerFunc {
 						return // Channel closed
 					}
 
-					logger.Info().Msgf("HandleUpdatesSSE/FOR: Received update event for connection %s: %+v", connectionID, uiEvent)
+					logger.Info().Interface("event", uiEvent).Msgf("HandleUpdatesSSE/FOR: Received update event for connection %s", connectionID)
 
 					// Get current group dynamically (in case session was moved)
 					currentGroup := deps.SessionGroupManager.GetGroupByConnectionID(connectionID)
 					if currentGroup != nil {
 						sendGroupUpdate(ctx, sse, currentGroup)
 					} else {
-						logger.Info().Msgf("HandleUpdatesSSE/FOR: No current group found for connection %s", connectionID)
+						logger.Warn().Msgf("HandleUpdatesSSE/FOR: No current group found for connection %s", connectionID)
 					}
 				}
 			}

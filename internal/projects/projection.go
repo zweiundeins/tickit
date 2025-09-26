@@ -41,7 +41,6 @@ func NewProjectProjectionStore(ctx context.Context, dbFilename string) (*Project
 			Msg("Failed to create projects projection db")
 		return nil, fmt.Errorf("failed to create projects projection db: %w", err)
 	}
-	logger.Debug().Msgf("toolbelt.NewDatabase returned for %s\n", dbFilename)
 	if _, err := os.Stat(dbFilename); err == nil {
 		logger.Info().Msgf("Projects projection DB file created: %s\n", dbFilename)
 	} else {

@@ -259,21 +259,12 @@ func (ur *UserRoutes) HandleClearCookies(w http.ResponseWriter, r *http.Request)
 func (ur *UserRoutes) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// Debug: Log request details
-	log.Printf("Login request: Method=%s, URL=%s, ContentType=%s", r.Method, r.URL.String(), r.Header.Get("Content-Type"))
-
 	// Parse form data
 	if err := r.ParseForm(); err != nil {
 		log.Printf("Failed to parse form: %v", err)
 		ur.renderLoginPageWithError(w, r, "Invalid form data")
 		return
 	}
-
-	// Debug: Log form values
-	log.Printf("Form values: %+v", r.Form)
-	log.Printf("PostForm values: %+v", r.PostForm)
-	log.Printf("CSRF token from form: '%s'", r.FormValue("csrf_token"))
-	log.Printf("CSRF token from nosurf: '%s'", nosurf.Token(r))
 
 	email := r.FormValue("email")
 	password := r.FormValue("password")
@@ -330,12 +321,6 @@ func (ur *UserRoutes) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		session.Options.Secure = store.Options.Secure
 		session.Options.SameSite = store.Options.SameSite
 	}
-
-	log.Printf("Attempting to save session for user: %s", user.ID)
-	log.Printf("Session values before save: %+v", session.Values)
-	log.Printf("Session options: MaxAge=%d, Secure=%v, HttpOnly=%v, Path=%s, SameSite=%v",
-		session.Options.MaxAge, session.Options.Secure, session.Options.HttpOnly, session.Options.Path, session.Options.SameSite)
-	log.Printf("Session store type: %T", ur.sessionStore)
 
 	// Check if we can write headers
 	if rw, ok := w.(http.ResponseWriter); ok {

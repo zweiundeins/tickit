@@ -31,11 +31,11 @@ type MarkNotificationReadCommand struct {
 type CommandHandler struct {
 	eventStore      *shared.EventStore
 	projectionStore *NotificationProjectionStore
-	eventBus        *shared.EventBusWrapper
+	eventBus        shared.EventPublisher
 }
 
 // NewCommandHandler creates a new command handler
-func NewCommandHandler(eventStore *shared.EventStore, projectionStore *NotificationProjectionStore, eventBus *shared.EventBusWrapper) *CommandHandler {
+func NewCommandHandler(eventStore *shared.EventStore, projectionStore *NotificationProjectionStore, eventBus shared.EventPublisher) *CommandHandler {
 	return &CommandHandler{
 		eventStore:      eventStore,
 		projectionStore: projectionStore,
@@ -45,6 +45,23 @@ func NewCommandHandler(eventStore *shared.EventStore, projectionStore *Notificat
 
 // HandleCreateNotification creates a new notification
 func (h *CommandHandler) HandleCreateNotification(ctx context.Context, cmd CreateNotificationCommand) error {
+	// Security: For user-specific notifications, validate authenticated user context
+	// General notifications (empty UserID) can be created by any authenticated user (system notifications)
+	if cmd.UserID != "" {
+		authenticatedUserID, ok := ctx.Value("user_id").(string)
+		if !ok || authenticatedUserID == "" {
+			return fmt.Errorf("authentication required")
+		}
+		if cmd.UserID == "" {
+			cmd.UserID = authenticatedUserID // default to self
+		}
+		// For now, allow users to create notifications for themselves
+		// In the future, you might want admin-only creation for other users
+		if cmd.UserID != authenticatedUserID {
+			return fmt.Errorf("unauthorized: cannot create notifications for user %s", cmd.UserID)
+		}
+	}
+
 	notification := &Notification{
 		Uid:   uuid.New().String(),
 		Date:  time.Now(),
@@ -74,6 +91,18 @@ func (h *CommandHandler) HandleCreateNotification(ctx context.Context, cmd Creat
 
 // HandleDeleteNotification deletes notification(s)
 func (h *CommandHandler) HandleDeleteNotification(ctx context.Context, cmd DeleteNotificationCommand) error {
+	// Security: Validate that the command UserID matches the authenticated user
+	authenticatedUserID, ok := ctx.Value("user_id").(string)
+	if !ok || authenticatedUserID == "" {
+		return fmt.Errorf("authentication required")
+	}
+	if cmd.UserID == "" {
+		cmd.UserID = authenticatedUserID // default to self
+	}
+	if cmd.UserID != authenticatedUserID {
+		return fmt.Errorf("unauthorized: cannot delete notifications for user %s", cmd.UserID)
+	}
+
 	// Compose event
 	deletedAll := cmd.NotificationUID == ""
 	// For event, we need to know which IDs will be deleted
@@ -118,6 +147,19 @@ func (h *CommandHandler) HandleDeleteNotification(ctx context.Context, cmd Delet
 
 // HandleMarkNotificationRead marks notification(s) as read
 func (h *CommandHandler) HandleMarkNotificationRead(ctx context.Context, cmd MarkNotificationReadCommand) error {
+	// Security: Validate that the command UserID matches the authenticated user
+	authenticatedUserID, ok := ctx.Value("user_id").(string)
+	if !ok || authenticatedUserID == "" {
+		return fmt.Errorf("authentication required")
+	}
+	if cmd.UserID == "" {
+		cmd.UserID = authenticatedUserID // default to self
+	}
+	// Only allow marking own notifications as read
+	if cmd.UserID != authenticatedUserID {
+		return fmt.Errorf("unauthorized: cannot mark notifications as read for user %s", cmd.UserID)
+	}
+
 	notifs, err := h.projectionStore.GetNotifications(ctx, cmd.UserID)
 	if err != nil {
 		return fmt.Errorf("failed to get notifications: %w", err)

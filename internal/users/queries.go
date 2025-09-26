@@ -1,5 +1,9 @@
 package users
 
+import (
+	"context"
+)
+
 // User Queries
 
 type GetUserByIDQuery struct {
@@ -217,3 +221,60 @@ type ValidateSSOProviderQuery struct {
 }
 
 func (q ValidateSSOProviderQuery) GetQueryType() string { return "ValidateSSOProvider" }
+
+// UserQueryHandler handles all user-related queries
+type UserQueryHandler struct {
+	projectionStore UserProjectionStore
+	userStore       UserStore
+}
+
+// NewUserQueryHandler creates a new UserQueryHandler instance
+func NewUserQueryHandler(projectionStore UserProjectionStore, userStore UserStore) *UserQueryHandler {
+	return &UserQueryHandler{
+		projectionStore: projectionStore,
+		userStore:       userStore,
+	}
+}
+
+// User Query Handlers
+
+func (h *UserQueryHandler) HandleGetUserByID(ctx context.Context, query GetUserByIDQuery) (*User, error) {
+	return h.projectionStore.GetUser(ctx, query.ID)
+}
+
+func (h *UserQueryHandler) HandleGetUsersByID(ctx context.Context, query GetUsersByIDQuery) ([]*User, error) {
+	return h.projectionStore.GetUsers(ctx, query.IDs)
+}
+
+func (h *UserQueryHandler) HandleGetUserByEmail(ctx context.Context, query GetUserByEmailQuery) (*User, error) {
+	return h.projectionStore.GetUserByEmail(ctx, query.Email)
+}
+
+func (h *UserQueryHandler) HandleGetUserByUsername(ctx context.Context, query GetUserByUsernameQuery) (*User, error) {
+	return h.projectionStore.GetUserByUsername(ctx, query.Username)
+}
+
+func (h *UserQueryHandler) HandleListUsers(ctx context.Context, query ListUsersQuery) ([]*User, error) {
+	filters := make(map[string]interface{})
+	if query.Status != "" {
+		filters["status"] = query.Status
+	}
+	if query.Role != "" {
+		filters["role"] = query.Role
+	}
+	return h.projectionStore.ListUsers(ctx, query.Limit, query.Offset, filters)
+}
+
+func (h *UserQueryHandler) HandleSearchUsers(ctx context.Context, query SearchUsersQuery) ([]*User, error) {
+	return h.projectionStore.SearchUsers(ctx, query.Query, query.Limit, query.Offset)
+}
+
+// Session Query Handlers
+
+func (h *UserQueryHandler) HandleGetUserSession(ctx context.Context, query GetUserSessionQuery) (*UserSession, error) {
+	return h.projectionStore.GetUserSession(ctx, query.SessionID)
+}
+
+func (h *UserQueryHandler) HandleGetUserSessions(ctx context.Context, query GetUserSessionsQuery) ([]*UserSession, error) {
+	return h.projectionStore.GetUserSessions(ctx, query.UserID)
+}

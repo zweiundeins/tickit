@@ -68,7 +68,6 @@ func NewEventStore(ctx context.Context, dbFilename string) (*EventStore, error) 
 			Msg("Failed to create event store DB")
 		return nil, fmt.Errorf("failed to create database: %w", err)
 	}
-	logger.Debug().Msgf("toolbelt.NewDatabase returned for %s\n", dbFilename)
 	if _, err := os.Stat(dbFilename); err == nil {
 		logger.Info().Msgf("Event store DB file created: %s\n", dbFilename)
 	} else {

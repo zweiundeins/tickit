@@ -46,6 +46,34 @@ func (b *QueryBus) Execute(ctx context.Context, query interface{}) (interface{},
 	return handler.Handle(ctx, query)
 }
 
+// RegisterQueryHandler registers both a typed handler and its factory in one call
+func RegisterQueryHandler[T Query](b *QueryBus, queryType string, handlerFunc func(context.Context, T) (interface{}, error)) {
+	// Create a wrapper that implements QueryHandler
+	wrapper := &typedQueryHandlerWrapper[T]{
+		handlerFunc: handlerFunc,
+	}
+	b.handlers[queryType] = wrapper
+}
+
+// typedQueryHandlerWrapper wraps a typed handler function to implement QueryHandler
+type typedQueryHandlerWrapper[T any] struct {
+	handlerFunc func(context.Context, T) (interface{}, error)
+}
+
+func (w *typedQueryHandlerWrapper[T]) Handle(ctx context.Context, query interface{}) (interface{}, error) {
+	// Try pointer type first
+	var q T
+	if ptr, ok := query.(*T); ok {
+		q = *ptr
+	} else if direct, ok := query.(T); ok {
+		q = direct
+	} else {
+		return nil, fmt.Errorf("invalid query type: expected %T, got %T", q, query)
+	}
+
+	return w.handlerFunc(ctx, q)
+}
+
 // getQueryType returns the type name of a query for routing
 func getQueryType(query interface{}) string {
 	if q, ok := query.(Query); ok {

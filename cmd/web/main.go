@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"net/http"
 	"os"
@@ -40,7 +39,7 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	logger.Info().Str("https_port", config.Global.HttpsPort).Msg("starting HTTPS server")
+	// logger.Info().Str("https_port", config.Global.HttpsPort).Msg("starting HTTPS server")
 	logger.Info().Str("http_port", config.Global.HttpPort).Msg("starting HTTP redirect server")
 
 	eg, egctx := errgroup.WithContext(ctx)
@@ -66,6 +65,7 @@ func run(ctx context.Context) error {
 	appRouter.Use(
 		// CSRF protection must come BEFORE DatastarSignalsMiddleware to read form data first
 		users.NewCSRFMiddleware(nil, sessionStore),
+		realtime.CSRFToContextMiddleware(),
 		// DatastarSignalsMiddleware processes JSON signals
 		realtime.DatastarSignalsMiddleware(),
 		// compression (including brotli)
@@ -80,19 +80,20 @@ func run(ctx context.Context) error {
 
 	router.Handle("/", appRouter)
 
-	cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
+	/* cert, err := tls.LoadX509KeyPair("cert.pem", "key.pem")
 	if err != nil {
 		return fmt.Errorf("failed to load TLS certificate or key: %w", err)
-	}
+	} */
 
-	tlsConfig := &tls.Config{
+	/* tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		NextProtos:   []string{"h3", "h2"},
-	}
+	} */
 
-	/* redirectSrv := &http.Server{
-		Addr: "0.0.0.0:" + config.Global.HttpPort,
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	redirectSrv := &http.Server{
+		Addr:    "0.0.0.0:" + config.Global.HttpPort,
+		Handler: router,
+		/* Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Always redirect HTTP to HTTPS
 			host := r.Host
 			// Remove port from host if present
@@ -106,16 +107,16 @@ func run(ctx context.Context) error {
 			}
 			httpsURL := "https://" + host + ":" + config.Global.HttpsPort + r.URL.String()
 			http.Redirect(w, r, httpsURL, http.StatusMovedPermanently)
-		}),
+		}), */
 		ErrorLog: logger.NewStdLibLogger(),
-	} */
+	}
 
-	http2Srv := &http.Server{
+	/* http2Srv := &http.Server{
 		Addr:      "0.0.0.0:" + config.Global.HttpsPort,
 		Handler:   router,
 		TLSConfig: tlsConfig,
 		ErrorLog:  logger.NewStdLibLogger(),
-	}
+	} */
 
 	/* http3Srv := &http3.Server{
 		Addr:      "0.0.0.0:" + config.Global.HttpsPort,
@@ -178,21 +179,21 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("error setting up routes: %w", err)
 	}
 
-	/* eg.Go(func() error {
+	eg.Go(func() error {
 		// HTTP/1.1 without TLS
 		if err := redirectSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			return fmt.Errorf("http server error: %w", err)
 		}
 		return nil
 	})
-	*/
-	eg.Go(func() error {
+
+	/* eg.Go(func() error {
 		// HTTP/1.1 and HTTP/2
 		if err := http2Srv.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 			return fmt.Errorf("http server error: %w", err)
 		}
 		return nil
-	})
+	}) */
 
 	/* eg.Go(func() error {
 		// HTTP/3
@@ -208,8 +209,8 @@ func run(ctx context.Context) error {
 		defer cancel()
 
 		logger.Debug().Msg("shutting down server...")
-		//_ = redirectSrv.Shutdown(shutdownCtx)
-		_ = http2Srv.Shutdown(shutdownCtx)
+		_ = redirectSrv.Shutdown(shutdownCtx)
+		// _ = http2Srv.Shutdown(shutdownCtx)
 		//_ = http3Srv.Close()
 		return nil
 	})

@@ -110,6 +110,11 @@ func (eb *EventBusWrapper) GetSubscriberCount() int {
 	return eb.eventBus.Count()
 }
 
+// EventPublisher interface for publishing events
+type EventPublisher interface {
+	PublishEvent(ctx context.Context, event Event) error
+}
+
 // EventHandler is a function that handles domain events
 type EventHandler func(ctx context.Context, event Event) error
 
@@ -144,6 +149,17 @@ func NewEventBusWithHandlers(handlers EventHandlers, js jetstream.JetStream) *Ev
 	})
 
 	return eb
+}
+
+// PublishEvent publishes an event to local handlers first, then to NATS
+func (eb *EventBusWithHandlers) PublishEvent(ctx context.Context, event Event) error {
+	// First emit to local event bus to trigger handlers
+	if err := eb.eventBus.Emit(ctx, event); err != nil {
+		return fmt.Errorf("failed to emit to local event bus: %w", err)
+	}
+
+	// Don't publish domain events directly to NATS - let handlers convert and publish UI events instead
+	return nil
 }
 
 // AddHandler adds a new event handler

@@ -3,39 +3,41 @@ package components
 import (
 	"fmt"
 	"github.com/mbolli/tickit/internal/notifications"
+	"github.com/mbolli/tickit/web/ui/helpers"
 	"github.com/xeonx/timeago"
+	"context"
 )
 
-templ Notification(ntf *notifications.Notification) {
+templ Notification(ctx context.Context, ntf *notifications.Notification) {
 	<section class={ "notification contrast", templ.KV("read", ntf.Read), templ.KV("unread", !ntf.Read) } data-id={ ntf.Uid } data-signals>
 		<div class="grid">
 			<h4 class="notification-title">{ ntf.Title }</h4>
 			<p class="notification-date">{ timeago.German.Format(ntf.Date) }</p>
 			if ntf.Read {
-				<button data-on-click__viewtransition={ fmt.Sprintf("$notificationUid = '%s'; @delete('/api/notifications'); $notificationUid = ''", ntf.Uid) }>remove</button>
+				<button data-on-click__viewtransition={ helpers.Command(ctx, notifications.DeleteNotificationCommand{ UserID: ntf.UserID, NotificationUID: ntf.Uid }) }>remove</button>
 			} else {
-				<button data-on-click__viewtransition={ fmt.Sprintf("$notificationUid = '%s'; @patch('/api/notifications/read'); $notificationUid = ''", ntf.Uid) }>mark as read</button>
+				<button data-on-click__viewtransition={ helpers.Command(ctx, notifications.MarkNotificationReadCommand{ UserID: ntf.UserID, NotificationUID: ntf.Uid }) }>mark as read</button>
 			}
 		</div>
 		<p class="notification-message">{ ntf.Body }</p>
 	</section>
 }
 
-templ Notifications(ntfs *notifications.Notifications) {
-	<div id="notifications" data-on-load={ fmt.Sprintf("document.title = 'TickIt (%d)'", ntfs.UnreadCount()) } data-signals__ifmissing="{notificationUid: '', _notificationExpanded: false}">
+templ Notifications(ctx context.Context, ntfs *notifications.Notifications) {
+	<div id="notifications" data-on-load={ fmt.Sprintf("document.title = 'TickIt (%d)'", ntfs.UnreadCount()) } data-signals__ifmissing="{notificationUid: '', command: '', commandParams: {}, _notificationExpanded: false}">
 		<div class="notificationsPanel" data-class="{ expanded: $_notificationExpanded }">
 			<div class="notificationBar" data-on-click="if (evt.target.nodeName === 'A') return false; $_notificationExpanded = !$_notificationExpanded">
 				<span class="icon">🔔</span>
 				<span class="title">Notifications</span>
 				<span class="badge">{ ntfs.UnreadCount() }</span>
 				<small class="actions">
-					<a data-on-click="@patch('/api/notifications/read')">Mark all as read</a>
-					<a data-on-click="@delete('/api/notifications')">Delete all</a>
+					<a data-on-click={ helpers.Command(ctx, notifications.MarkNotificationReadCommand{}) }>Mark all as read</a>
+					<a data-on-click={ helpers.Command(ctx, notifications.DeleteNotificationCommand{}) }>Delete all</a>
 				</small>
 			</div>
 			<main>
 				for _, ntf := range ntfs.Notifications {
-					@Notification(ntf)
+					@Notification(ctx, ntf)
 				}
 			</main>
 		</div>

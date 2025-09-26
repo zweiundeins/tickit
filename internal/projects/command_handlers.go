@@ -24,8 +24,7 @@ func (h *CreateProjectHandler) Handle(ctx context.Context, command interface{}) 
 	if !ok {
 		return fmt.Errorf("invalid command type for CreateProjectHandler")
 	}
-	_, err := h.handler.HandleCreateProject(ctx, cmd)
-	return err
+	return h.handler.HandleCreateProject(ctx, cmd)
 }
 
 type UpdateProjectHandler struct {

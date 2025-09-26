@@ -54,12 +54,19 @@ Set your HTTP port to 8080 in your config:
 # Update system
 sudo apt update && sudo apt upgrade -y
 
-# Install Caddy
+# Install Caddy with Brotli support
 sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
 sudo apt update
-sudo apt install caddy
+
+# Install Caddy with xcaddy to add Brotli encoder
+sudo apt install -y golang-go libbrotli-dev
+go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+sudo CGO_ENABLED=1 ~/go/bin/xcaddy build --with github.com/dunglas/caddy-cbrotli --output /usr/bin/caddy
+
+# Or install standard Caddy if Brotli is already included
+# sudo apt install caddy
 
 # Install other dependencies
 sudo apt install -y git build-essential rsync
@@ -86,12 +93,12 @@ sudo chown -R tickit:tickit /opt/tickit/data /opt/tickit/upload
 Create `/etc/caddy/Caddyfile`:
 
 ```caddyfile
-tickit.yourdomain.com {
+tickitdemo.zweiundeins.gmbh {
+    # Enable compression FIRST (before reverse_proxy)
+    encode br gzip
+    
     # Reverse proxy to Go application
     reverse_proxy 127.0.0.1:8080
-    
-    # Enable HTTP/3 and modern protocols
-    protocols h1 h2 h3
     
     # Serve static files directly from Caddy for better performance
     handle /static/* {
@@ -103,10 +110,6 @@ tickit.yourdomain.com {
         root * /opt/tickit
         file_server
     }
-    
-    # Enable compression (Brotli preferred for SSE, with zstd and gzip fallbacks)
-    # Brotli's compression window spans entire request - excellent for long-running SSE
-    encode brotli zstd gzip
     
     # Security headers
     header {
@@ -215,7 +218,15 @@ echo "🔨 Building application..."
 # Build for Linux if you're on a different platform
 GOOS=linux GOARCH=amd64 go build -o $BUILD_DIR/web ./cmd/web
 
-echo "📦 Building frontend assets..."
+echo "🌱 Building seed script..."
+# Build seed script for database seeding
+GOOS=linux GOARCH=amd64 go build -o $BUILD_DIR/seed ./cmd/dev
+
+echo "�️ Building migration script..."
+# Build migration script for database migrations
+GOOS=linux GOARCH=amd64 go build -o $BUILD_DIR/migrate ./cmd/migrate
+
+echo "�📦 Building frontend assets..."
 # Build frontend (adjust command based on your build system)
 go run ./cmd/web/build
 
@@ -231,6 +242,8 @@ echo "🔐 Setting permissions..."
 ssh $SERVER << 'EOF'
 sudo chown -R tickit:tickit /opt/tickit
 sudo chmod +x /opt/tickit/bin/web
+sudo chmod +x /opt/tickit/bin/seed
+sudo chmod +x /opt/tickit/bin/migrate
 EOF
 
 echo "🚀 Starting services..."

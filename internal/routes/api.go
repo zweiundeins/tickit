@@ -18,6 +18,9 @@ func RegisterAPIRoutes(router chi.Router, deps *bootstrap.Deps) {
 
 		// Generic signals endpoint - updates subscription context
 		auth.Post("/signals", HandleSignalsUpdate(deps))
+
+		// Command execution endpoint
+		auth.Post("/command", HandleCommandSignal(deps))
 	})
 
 	router.Route("/api", func(apiRouter chi.Router) {

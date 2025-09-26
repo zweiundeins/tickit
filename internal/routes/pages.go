@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/justinas/nosurf"
 	"github.com/mbolli/tickit/internal/bootstrap"
 	"github.com/mbolli/tickit/internal/issues"
 	"github.com/mbolli/tickit/internal/logger"
@@ -32,10 +31,6 @@ func RegisterPageRoutes(router chi.Router, deps *bootstrap.Deps) {
 				// Log error but continue - flash message is not critical
 				// In a real application, you'd use your logger here
 			}
-
-			// Debug: Log CSRF token being generated for the login page
-			csrfToken := nosurf.Token(r)
-			log.Printf("DEBUG: Login GET request - generating CSRF token: %s", csrfToken)
 
 			pages.LoginPage(deps.SessionStore, r, "", flashMessage).Render(r.Context(), w)
 		})
@@ -103,6 +98,7 @@ func RegisterPageRoutes(router chi.Router, deps *bootstrap.Deps) {
 	// --- Authenticated routes (RequireAuthentication) ---
 	router.Group(func(auth chi.Router) {
 		auth.Use(deps.UserRoutes.RequireAuthentication)
+		auth.Use(realtime.NotificationContextMiddleware(deps.NotificationService))
 
 		auth.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			// pages.Index(r).Render(r.Context(), w)
@@ -116,7 +112,12 @@ func RegisterPageRoutes(router chi.Router, deps *bootstrap.Deps) {
 				realtime.SetEventPatterns(r, []string{"issues.*", "projects.*", "notifications.*"})
 
 				projectsList, _ := deps.ProjectService.ListProjects(r.Context())
-				pages.DashboardPage(deps.SessionStore, r, projectsList, nil).Render(r.Context(), w)
+
+				issueTable, _, err := realtime.NewIssuesTableRenderer(deps.IssueService, deps.ProjectService, deps.UserService).RenderUpdate(r.Context(), r.Context().Value("datastar_signals"))
+				if err != nil {
+					logger.Error().Err(err).Msg("Failed to render issues table on dashboard")
+				}
+				pages.DashboardPage(deps.SessionStore, r, projectsList, nil, issueTable).Render(r.Context(), w)
 			})
 			dashboard.Get("/dashboard/{issueId}", func(w http.ResponseWriter, r *http.Request) {
 				issueID := chi.URLParam(r, "issueId")
@@ -157,7 +158,8 @@ func RegisterPageRoutes(router chi.Router, deps *bootstrap.Deps) {
 					logger.Error().Msg("No user_id found in context for notification")
 				}
 
-				pages.DashboardPage(deps.SessionStore, r, projectsList, issue).Render(r.Context(), w)
+				issueTable, _, _ := realtime.NewIssuesTableRenderer(deps.IssueService, deps.ProjectService, deps.UserService).RenderUpdate(r.Context(), r.Context().Value("datastar_signals"))
+				pages.DashboardPage(deps.SessionStore, r, projectsList, issue, issueTable).Render(r.Context(), w)
 			})
 		})
 

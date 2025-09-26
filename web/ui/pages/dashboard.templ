@@ -13,6 +13,7 @@ templ DashboardPage(
 	r *http.Request,
 	projects []*projects.Project,
 	issue *issues.Issue,
+	issueTable templ.Component,
 ) {
 	@layouts.Base("Dashboard", store, r) {
 		<section
@@ -45,7 +46,10 @@ templ DashboardPage(
 				<select><option>Sort</option></select>
 			</div>
 			<!-- Issues table -->
-			<div id="issues" aria-busy="true"></div>
+			<div id="issues" aria-busy="true">
+				@issueTable
+			</div>
+
 			<nav style="margin-top:1rem;text-align:center;">
 				<button class="secondary">&lt;</button>
 				<button class="secondary">1</button>
@@ -54,14 +58,14 @@ templ DashboardPage(
 			</nav>
 		</section>
 		<!-- Slide-in Issue Detail Panel -->
-		<div class="slidein-backdrop" data-class-open="$_drawer" data-on-click="$_drawer = false; $entityId = null"></div>
+		<div class="slidein-backdrop" data-class-open="$_drawer" data-on-click="$_drawer = false; $entityId = null; $issue = null"></div>
 		<div
 			class="slidein-panel"
 			data-class-open="$_drawer"
 			data-has-issue={ issue != nil }
 			data-open-issue={ chi.URLParam(r, "issueId") }
 			data-indicator="_issueLoading"
-			data-on-load="$_drawer = el.dataset.hasIssue != ''"
+			data-on-load="$_drawer = el.dataset.hasIssue != 'false'"
 		>
 			if issue != nil {
 				@components.Issue(issue, projects)

@@ -75,17 +75,17 @@ func (a *IssueAssignmentValidatorAdapter) ValidateIssueAssignment(ctx context.Co
 // CommandHandler for issues
 // (Stub, to be implemented with storage/event sourcing)
 type IssueCommandHandler struct {
-	eventBus        *shared.EventBusWrapper
+	eventBus        shared.EventPublisher
 	eventStore      *shared.EventStore
 	projectionStore *IssueProjectionStore
 	userValidator   UserValidator
 }
 
-func NewIssueCommandHandler(eventBus *shared.EventBusWrapper, eventStore *shared.EventStore, projectionStore *IssueProjectionStore) *IssueCommandHandler {
+func NewIssueCommandHandler(eventBus shared.EventPublisher, eventStore *shared.EventStore, projectionStore *IssueProjectionStore) *IssueCommandHandler {
 	return &IssueCommandHandler{eventBus: eventBus, eventStore: eventStore, projectionStore: projectionStore}
 }
 
-func NewIssueCommandHandlerWithValidator(eventBus *shared.EventBusWrapper, eventStore *shared.EventStore, projectionStore *IssueProjectionStore, userValidator UserValidator) *IssueCommandHandler {
+func NewIssueCommandHandlerWithValidator(eventBus shared.EventPublisher, eventStore *shared.EventStore, projectionStore *IssueProjectionStore, userValidator UserValidator) *IssueCommandHandler {
 	return &IssueCommandHandler{eventBus: eventBus, eventStore: eventStore, projectionStore: projectionStore, userValidator: userValidator}
 }
 
@@ -118,29 +118,29 @@ func isValidIssuePriority(priority string) bool {
 	return ok
 }
 
-func (h *IssueCommandHandler) HandleCreateIssue(ctx context.Context, cmd CreateIssueCommand) (*Issue, error) {
+func (h *IssueCommandHandler) HandleCreateIssue(ctx context.Context, cmd CreateIssueCommand) error {
 	status := IssueStatusToDo // default
 	if !isValidIssueStatus(status) {
-		return nil, fmt.Errorf("invalid issue status: %s", status)
+		return fmt.Errorf("invalid issue status: %s", status)
 	}
 	priority := cmd.Priority
 	if priority == "" {
 		priority = "Medium"
 	}
 	if !isValidIssuePriority(priority) {
-		return nil, fmt.Errorf("invalid issue priority: %s", priority)
+		return fmt.Errorf("invalid issue priority: %s", priority)
 	}
 
 	// Validate user assignments if validator is available
 	if h.userValidator != nil {
 		if cmd.Assignee != "" {
 			if err := h.userValidator.ValidateIssueAssignment(ctx, cmd.Assignee, cmd.ProjectID); err != nil {
-				return nil, fmt.Errorf("invalid assignee: %w", err)
+				return fmt.Errorf("invalid assignee: %w", err)
 			}
 		}
 		if cmd.Reporter != "" {
 			if err := h.userValidator.ValidateIssueAssignment(ctx, cmd.Reporter, cmd.ProjectID); err != nil {
-				return nil, fmt.Errorf("invalid reporter: %w", err)
+				return fmt.Errorf("invalid reporter: %w", err)
 			}
 		}
 	}
@@ -163,17 +163,17 @@ func (h *IssueCommandHandler) HandleCreateIssue(ctx context.Context, cmd CreateI
 	}
 	// 1. Persist event to SQLite event store
 	if err := h.eventStore.StoreEvent(ctx, event); err != nil {
-		return nil, err
+		return err
 	}
 	// 2. Update projection
 	if err := h.projectionStore.ApplyEvent(ctx, event); err != nil {
-		return nil, err
+		return err
 	}
 	// 3. Publish signal to JetStream for real-time updates
 	if err := h.eventBus.PublishEvent(ctx, event); err != nil {
-		return nil, err
+		return err
 	}
-	return issue, nil
+	return nil
 }
 
 func (h *IssueCommandHandler) HandleUpdateIssue(ctx context.Context, cmd UpdateIssueCommand) error {

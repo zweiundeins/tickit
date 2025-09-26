@@ -44,7 +44,7 @@ func (r *NotificationRenderer) RenderUpdate(ctx context.Context, data interface{
 		Msg("NotificationRenderer: Fetched notifications")
 
 	// Return the notifications component
-	component := components.Notifications(ntfs)
+	component := components.Notifications(ctx, ntfs)
 	return component, nil, nil
 }
 

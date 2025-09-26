@@ -26,8 +26,7 @@ func (h *CreateIssueHandler) Handle(ctx context.Context, command interface{}) er
 	if !ok {
 		return fmt.Errorf("invalid command type for CreateIssueHandler")
 	}
-	_, err := h.handler.HandleCreateIssue(ctx, cmd)
-	return err
+	return h.handler.HandleCreateIssue(ctx, cmd)
 }
 
 type UpdateIssueHandler struct {

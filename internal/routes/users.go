@@ -1,8 +1,6 @@
 package routes
 
 import (
-	"net/http"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/mbolli/tickit/internal/bootstrap"
 )
@@ -13,24 +11,8 @@ func RegisterUserRoutes(router chi.Router, deps *bootstrap.Deps) {
 	// This ensures we use the same session store instance that was configured in bootstrap
 	userRoutes := deps.UserRoutes
 
-	// Security middleware for enhanced protection
-	securityMiddleware := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Add security headers
-			w.Header().Set("X-Content-Type-Options", "nosniff")
-			w.Header().Set("X-Frame-Options", "DENY")
-			w.Header().Set("X-XSS-Protection", "1; mode=block")
-			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
-
-			// Add rate limiting, audit logging, etc. here as needed
-			next.ServeHTTP(w, r)
-		})
-	}
-
 	// Apply security headers to form-based routes (CSRF now global)
 	router.Group(func(r chi.Router) {
-		r.Use(securityMiddleware)
-
 		// Authentication routes (public, with CSRF protection for forms)
 		r.Post("/auth/register", userRoutes.HandleRegister)
 		r.Post("/auth/login", userRoutes.HandleLogin)
@@ -47,24 +29,24 @@ func RegisterUserRoutes(router chi.Router, deps *bootstrap.Deps) {
 
 	// OAuth routes (CSRF exempt but with security headers)
 	router.Group(func(r chi.Router) {
-		r.Use(securityMiddleware)
+
 		r.Get("/auth/oauth/{provider}", userRoutes.HandleOAuthLogin)
 		r.Get("/auth/oauth/{provider}/callback", userRoutes.HandleOAuthCallback)
 	})
 
 	// Magic mail login (CSRF exempt but with security headers)
-	router.With(securityMiddleware).Get("/auth/magic-mail/login", userRoutes.HandleMagicMailLogin)
+	router.Get("/auth/magic-mail/login", userRoutes.HandleMagicMailLogin)
 
 	// Logout route (CSRF exempt but with security headers)
-	router.With(securityMiddleware).Get("/logout", userRoutes.HandleLogout)
+	router.Get("/logout", userRoutes.HandleLogout)
 
 	// Debug routes (remove in production)
-	router.With(securityMiddleware).Get("/auth/clear-cookies", userRoutes.HandleClearCookies)
-	router.With(securityMiddleware).Get("/auth/test-session", userRoutes.HandleTestSession)
+	router.Get("/auth/clear-cookies", userRoutes.HandleClearCookies)
+	router.Get("/auth/test-session", userRoutes.HandleTestSession)
 
 	// WebAuthn routes (CSRF exempt, but with security headers)
 	router.Group(func(r chi.Router) {
-		r.Use(securityMiddleware)
+
 		r.Post("/auth/webauthn/register/begin", userRoutes.HandleWebAuthnRegisterBegin)
 		r.Post("/auth/webauthn/register/finish", userRoutes.HandleWebAuthnRegisterFinish)
 		r.Post("/auth/webauthn/login/begin", userRoutes.HandleWebAuthnLoginBegin)
@@ -73,7 +55,7 @@ func RegisterUserRoutes(router chi.Router, deps *bootstrap.Deps) {
 
 	// Protected user profile routes
 	router.Group(func(r chi.Router) {
-		r.Use(securityMiddleware)
+
 		r.Use(userRoutes.RequireAuthentication)
 
 		r.Get("/api/users/profile", userRoutes.HandleGetProfile)
@@ -83,7 +65,7 @@ func RegisterUserRoutes(router chi.Router, deps *bootstrap.Deps) {
 
 	// Protected project membership routes
 	router.Group(func(r chi.Router) {
-		r.Use(securityMiddleware)
+
 		r.Use(userRoutes.RequireAuthentication)
 
 		r.Get("/api/projects/{projectId}/members", userRoutes.HandleGetProjectMembers)
@@ -94,7 +76,7 @@ func RegisterUserRoutes(router chi.Router, deps *bootstrap.Deps) {
 
 	// Protected invitation routes
 	router.Group(func(r chi.Router) {
-		r.Use(securityMiddleware)
+
 		r.Use(userRoutes.RequireAuthentication)
 
 		r.Get("/api/invitations", userRoutes.HandleGetUserInvitations)
@@ -104,7 +86,7 @@ func RegisterUserRoutes(router chi.Router, deps *bootstrap.Deps) {
 
 	// Administrative routes (admin only)
 	router.Group(func(r chi.Router) {
-		r.Use(securityMiddleware)
+
 		r.Use(userRoutes.RequireAuthentication)
 		r.Use(userRoutes.RequireAdminRole)
 
@@ -120,7 +102,7 @@ func RegisterUserRoutes(router chi.Router, deps *bootstrap.Deps) {
 
 	// Session management routes
 	router.Group(func(r chi.Router) {
-		r.Use(securityMiddleware)
+
 		r.Use(userRoutes.RequireAuthentication)
 
 		r.Get("/api/users/sessions", userRoutes.HandleGetUserSessions)

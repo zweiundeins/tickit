@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/gorilla/sessions"
+	"github.com/justinas/nosurf"
 	"github.com/mbolli/tickit/internal/logger"
+	"github.com/mbolli/tickit/internal/notifications"
 	"github.com/mbolli/tickit/internal/sharedhttp"
 	"github.com/starfederation/datastar-go/datastar"
 )
@@ -37,7 +39,41 @@ func StoreSubscriptionContext(connectionID string, ctx *SubscriptionContext) {
 	connectionContextMap[connectionID] = ctx
 }
 
-// SetEventPatterns creates and stores a subscription context with the specified event patterns
+// NotificationContextMiddleware fetches user notifications and adds them to request context
+func NotificationContextMiddleware(notificationService *notifications.NotificationService) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Only fetch notifications for authenticated users
+			if userID, ok := sharedhttp.GetUserIDFromContext(r.Context()); ok && userID != "" {
+				// Create a context with user_id for the notification service
+				ctx := context.WithValue(r.Context(), "user_id", userID)
+
+				logger.Debug().
+					Str("user_id", userID).
+					Msg("NotificationContextMiddleware: Fetching notifications for user")
+
+				// Fetch both user-specific and general notifications
+				if userNotifications, err := notificationService.GetAllNotificationsForUser(ctx); err == nil {
+					logger.Debug().
+						Str("user_id", userID).
+						Int("notification_count", len(userNotifications.Notifications)).
+						Msg("NotificationContextMiddleware: Successfully fetched all notifications")
+					// Add notifications to request context
+					ctx = context.WithValue(ctx, "user_notifications", userNotifications)
+					r = r.WithContext(ctx)
+				} else {
+					logger.Error().
+						Str("user_id", userID).
+						Err(err).
+						Msg("NotificationContextMiddleware: Failed to fetch all notifications")
+				}
+			} else {
+				logger.Debug().Msg("NotificationContextMiddleware: No authenticated user found")
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+} // SetEventPatterns creates and stores a subscription context with the specified event patterns
 // This replaces the need for subscription middlewares - call this directly in route handlers
 func SetEventPatterns(r *http.Request, eventPatterns []string) {
 	connectionID, ok := r.Context().Value("connection_id").(string)
@@ -290,24 +326,35 @@ func ConnectionIDMiddleware() func(http.Handler) http.Handler {
 				if signalsMap, ok := signals.(map[string]interface{}); ok {
 					if existingID, ok := signalsMap["connectionId"].(string); ok && existingID != "" {
 						connectionID = existingID
-						logger.Info().Str("connection_id", connectionID).Msg("ConnectionIDMiddleware: Reusing existing connection ID from signals")
 					}
 				}
-			} else {
-				logger.Warn().Str("Method", r.Method).Str("URL", r.URL.Path).Msg("ConnectionIDMiddleware: no datastar_signals set in context")
 			}
 
 			// Generate new connection ID if not provided in signals
 			if connectionID == "" {
 				sessionID := r.Context().Value("session_id").(string)
 				connectionID = fmt.Sprintf("%s-%d", sessionID, time.Now().UnixNano())
-				logger.Info().Str("connection_id", connectionID).Str("URL", r.URL.String()).Msg("ConnectionIDMiddleware: Generated new connection ID")
 			}
 
 			// Store connection ID in context
 			ctx := context.WithValue(r.Context(), "connection_id", connectionID)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// CSRFToContextMiddleware adds CSRF token to request context
+func CSRFToContextMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Get CSRF token from nosurf
+			csrfToken := nosurf.Token(r)
+			if csrfToken != "" {
+				ctx := context.WithValue(r.Context(), "csrf_token", csrfToken)
+				r = r.WithContext(ctx)
+			}
+			next.ServeHTTP(w, r)
 		})
 	}
 }

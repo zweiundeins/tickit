@@ -14,12 +14,14 @@ import (
 // In development mode, it provides colored console output
 // In production mode, it provides structured JSON output
 func Setup(isDevelopment bool) zerolog.Logger {
-	// Set global log level
+	// Set global log level to Info - keeps important messages while reducing noise
+	// Use Debug level only when specifically needed for troubleshooting
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
-	if isDevelopment {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	}
+	// Uncomment the following lines only when debugging is needed:
+	// if isDevelopment {
+	// 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	// }
 
 	var output io.Writer = os.Stdout
 

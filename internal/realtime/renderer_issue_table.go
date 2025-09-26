@@ -53,10 +53,20 @@ type IssuesUpdatesSignals struct {
 func (r *IssuesTableRenderer) RenderUpdate(ctx context.Context, signals any) (datastar.TemplComponent, map[string]any, error) {
 	var query issues.ListIssuesQuery
 
-	logger.Info().Type("signals", signals).Interface("signals", signals).Msg("IssuesTableRenderer: RenderUpdate called")
+	logger.Debug().Type("signals", signals).Interface("signals", signals).Msg("IssuesTableRenderer: RenderUpdate called")
 
 	// Handle different input types
 	switch data := signals.(type) {
+	case nil:
+	case map[string]any:
+		// No signals provided - set default query (e.g. all open issues)
+		filter := issues.ListIssuesFilter{
+			OrderBy:  "created_at",
+			OrderDir: "desc",
+			// Note: pagination (Limit, Offset) should be handled elsewhere in the system
+		}
+		query = filter.ToQuery()
+		logger.Warn().Msg("IssuesTableRenderer: RenderUpdate called with nil signals - using default query for open issues")
 	case *UnifiedIssuesSignals:
 		// From the new unified /updates endpoint - strongly typed
 		if data.EntityType == "issues" {
@@ -65,6 +75,7 @@ func (r *IssuesTableRenderer) RenderUpdate(ctx context.Context, signals any) (da
 	case *IssuesUpdatesSignals:
 		// From legacy specific endpoints like /api/updates/issues
 		query = data.Filter.ToQuery()
+		logger.Error().Msg("IssuesTableRenderer: RenderUpdate called with legacy IssuesUpdatesSignals - please migrate to UnifiedIssuesSignals")
 	case *GroupUpdateData:
 		// Fallback for generic map-based data (temporary compatibility)
 		if data.EntityType == "issues" {
@@ -91,10 +102,11 @@ func (r *IssuesTableRenderer) RenderUpdate(ctx context.Context, signals any) (da
 			query = filter.ToQuery()
 			// Note: pagination is handled elsewhere in the system, not in the query itself
 		}
+		logger.Error().Msg("IssuesTableRenderer: RenderUpdate called with generic GroupUpdateData - please migrate to UnifiedIssuesSignals")
 	default:
 		return nil, nil, fmt.Errorf("unsupported signals type: %T", signals)
 	}
-	logger.Info().Interface("query", query).Msg("IssuesTableRenderer: RenderUpdate called with query")
+	logger.Debug().Interface("query", query).Msg("IssuesTableRenderer: RenderUpdate called with query")
 	issuesList, err := r.issueService.ListIssues(ctx, query)
 	if err == nil {
 		// Collect unique project IDs
@@ -128,9 +140,7 @@ func (r *IssuesTableRenderer) RenderUpdate(ctx context.Context, signals any) (da
 		}
 
 		// Prepare signals for the table
-		signals := map[string]any{
-			"entityType": "issues",
-		}
+		signals := map[string]any{}
 
 		return components.IssuesTable(issuesList, projectMap, userMap), signals, nil
 	}

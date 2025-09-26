@@ -257,11 +257,11 @@ func (sg *SessionGroup) SendUpdateToAllSessions(ctx context.Context, uiEvent *UI
 		select {
 		case <-session.Context.Done():
 			// Session is closed, skip it
-			logger.Info().Str("session_id", sessionID).Str("group_id", sg.ID).Msg("Skipping closed session (context done)")
+			logger.Debug().Str("session_id", sessionID).Str("group_id", sg.ID).Msg("Skipping closed session (context done)")
 			continue
 		case session.UpdateCh <- uiEvent:
 			// Successfully sent to session's channel
-			logger.Info().Str("session_id", sessionID).Str("group_id", sg.ID).Msg("Successfully sent update to session")
+			logger.Debug().Str("session_id", sessionID).Str("group_id", sg.ID).Msg("Successfully sent update to session")
 			sentCount++
 		default:
 			// Channel is full, skip this session to avoid blocking

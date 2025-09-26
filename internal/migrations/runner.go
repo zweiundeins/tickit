@@ -30,10 +30,10 @@ func NewRunner(ctx context.Context, dbFilename string, userStore users.UserStore
 
 // RunMigrations applies all pending migrations
 func (r *Runner) RunMigrations(ctx context.Context) error {
-	log.Println("Loading migrations from internal/migrations/sql...")
+	log.Println("Loading migrations from embedded files...")
 
-	// Load migrations from the sql directory
-	migrations, err := LoadMigrationsFromDirectory("internal/migrations/sql")
+	// Load migrations from embedded files
+	migrations, err := LoadMigrations()
 	if err != nil {
 		return fmt.Errorf("failed to load migrations: %w", err)
 	}
@@ -63,8 +63,8 @@ func (r *Runner) RunMigrations(ctx context.Context) error {
 func (r *Runner) RollbackMigrations(ctx context.Context, targetVersion int) error {
 	log.Printf("Rolling back migrations to version %d...", targetVersion)
 
-	// Load migrations from the sql directory
-	migrations, err := LoadMigrationsFromDirectory("internal/migrations/sql")
+	// Load migrations from embedded files
+	migrations, err := LoadMigrations()
 	if err != nil {
 		return fmt.Errorf("failed to load migrations: %w", err)
 	}
@@ -116,7 +116,7 @@ func (r *Runner) GetMigrationStatus(ctx context.Context) error {
 	}
 
 	// Load available migrations
-	available, err := LoadMigrationsFromDirectory("internal/migrations/sql")
+	available, err := LoadMigrations()
 	if err != nil {
 		return fmt.Errorf("failed to load available migrations: %w", err)
 	}

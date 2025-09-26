@@ -2,6 +2,7 @@ package migrations
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"log"
 	"os"
@@ -14,6 +15,9 @@ import (
 	"github.com/delaneyj/toolbelt"
 	"zombiezen.com/go/sqlite"
 )
+
+//go:embed sql/*.sql
+var migrationFiles embed.FS
 
 // Migration represents a single database migration
 type Migration struct {
@@ -335,6 +339,72 @@ func LoadMigrationsFromDirectory(directory string) ([]*Migration, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return migrations, nil
+}
+
+// LoadMigrations loads migration files from embedded filesystem
+func LoadMigrations() ([]*Migration, error) {
+	var migrations []*Migration
+
+	entries, err := migrationFiles.ReadDir("sql")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read embedded migration directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), ".sql") {
+			continue
+		}
+
+		filename := entry.Name()
+		parts := strings.Split(filename, "_")
+		if len(parts) < 2 {
+			return nil, fmt.Errorf("invalid migration filename format: %s (expected: version_name.sql)", filename)
+		}
+
+		version, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return nil, fmt.Errorf("invalid version number in filename: %s", filename)
+		}
+
+		name := strings.Join(parts[1:], "_")
+		name = strings.TrimSuffix(name, ".sql")
+
+		content, err := migrationFiles.ReadFile("sql/" + filename)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read embedded migration file %s: %w", filename, err)
+		}
+
+		// Split content into up and down migrations
+		contentStr := string(content)
+		upSQL := contentStr
+		downSQL := ""
+
+		// Look for -- +migrate Down comment to separate up and down migrations
+		if strings.Contains(contentStr, "-- +migrate Down") {
+			parts := strings.Split(contentStr, "-- +migrate Down")
+			if len(parts) == 2 {
+				upSQL = strings.TrimSpace(parts[0])
+				downSQL = strings.TrimSpace(parts[1])
+			}
+		}
+
+		migration := &Migration{
+			Version:     version,
+			Name:        name,
+			UpSQL:       upSQL,
+			DownSQL:     downSQL,
+			Description: fmt.Sprintf("Migration %d: %s", version, name),
+		}
+
+		migrations = append(migrations, migration)
+	}
+
+	// Sort migrations by version
+	sort.Slice(migrations, func(i, j int) bool {
+		return migrations[i].Version < migrations[j].Version
+	})
 
 	return migrations, nil
 }

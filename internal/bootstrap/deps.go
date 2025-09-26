@@ -25,6 +25,8 @@ type Deps struct {
 	SessionStore        sessions.Store
 	SessionGroupManager *realtime.GroupManager
 	EventProcessor      *realtime.EventProcessor
+	CommandBus          *shared.CommandBus
+	QueryBus            *shared.QueryBus
 	JetStream           jetstream.JetStream
 	NatsConn            *nats.Conn
 }
@@ -130,7 +132,7 @@ func WireDeps(ctx context.Context, ns *embeddednats.Server, sessionStore session
 	})
 
 	// Use the event bus with handlers as the main event bus
-	eventBus := eventBusWithHandlers.EventBusWrapper
+	eventBus := eventBusWithHandlers // Use the full EventBusWithHandlers instead of just the wrapper
 	notifCommandHandler := notifications.NewCommandHandler(eventStore, notificationProjectionStore, eventBus)
 	notifQueryHandler := notifications.NewQueryHandler(notificationProjectionStore)
 	// Create user validator for issue assignments
@@ -146,47 +148,79 @@ func WireDeps(ctx context.Context, ns *embeddednats.Server, sessionStore session
 	emailService := users.NewEmailServiceFromEnv()
 	webauthnService := users.NewWebAuthnService(userStore)
 	userCommandHandler := users.NewUserCommandHandler(eventBus, eventStore, userStore, passwordHasher, emailService, webauthnService, nil)
+
+	// Create command and query buses
 	commandBus := shared.NewCommandBus()
 	queryBus := shared.NewQueryBus()
-	// Register command handlers
-	commandBus.RegisterHandler("CreateNotification", notifications.NewCreateNotificationHandler(notifCommandHandler))
-	commandBus.RegisterHandler("DeleteNotification", notifications.NewDeleteNotificationHandler(notifCommandHandler))
-	commandBus.RegisterHandler("MarkNotificationRead", notifications.NewMarkNotificationReadHandler(notifCommandHandler))
-	commandBus.RegisterHandler("CreateIssue", issues.NewCreateIssueHandler(issueCommandHandler))
-	commandBus.RegisterHandler("UpdateIssue", issues.NewUpdateIssueHandler(issueCommandHandler))
-	commandBus.RegisterHandler("DeleteIssue", issues.NewDeleteIssueHandler(issueCommandHandler))
-	commandBus.RegisterHandler("PatchIssue", issues.NewPatchIssueHandler(issueCommandHandler))
-	commandBus.RegisterHandler("CreateProject", projects.NewCreateProjectHandler(projectCommandHandler))
-	commandBus.RegisterHandler("UpdateProject", projects.NewUpdateProjectHandler(projectCommandHandler))
-	commandBus.RegisterHandler("DeleteProject", projects.NewDeleteProjectHandler(projectCommandHandler))
+	// Register command handlers and factories in one call
+	shared.RegisterCommandHandler(commandBus, "CreateNotification", notifCommandHandler.HandleCreateNotification)
+	shared.RegisterCommandHandler(commandBus, "DeleteNotification", notifCommandHandler.HandleDeleteNotification)
+	shared.RegisterCommandHandler(commandBus, "MarkNotificationRead", notifCommandHandler.HandleMarkNotificationRead)
+	shared.RegisterCommandHandler(commandBus, "CreateIssue", issueCommandHandler.HandleCreateIssue)
+	shared.RegisterCommandHandler(commandBus, "UpdateIssue", issueCommandHandler.HandleUpdateIssue)
+	shared.RegisterCommandHandler(commandBus, "DeleteIssue", issueCommandHandler.HandleDeleteIssue)
+	shared.RegisterCommandHandler(commandBus, "PatchIssue", issueCommandHandler.HandlePatchIssue)
+	shared.RegisterCommandHandler(commandBus, "CreateProject", projectCommandHandler.HandleCreateProject)
+	shared.RegisterCommandHandler(commandBus, "UpdateProject", projectCommandHandler.HandleUpdateProject)
+	shared.RegisterCommandHandler(commandBus, "DeleteProject", projectCommandHandler.HandleDeleteProject)
 
-	// User command handlers
-	commandBus.RegisterHandler("RegisterUser", users.NewRegisterUserHandler(userCommandHandler))
-	commandBus.RegisterHandler("VerifyEmail", users.NewVerifyEmailHandler(userCommandHandler))
-	commandBus.RegisterHandler("LoginUser", users.NewLoginUserHandler(userCommandHandler))
-	commandBus.RegisterHandler("ForgotPassword", users.NewForgotPasswordHandler(userCommandHandler))
-	commandBus.RegisterHandler("ResetPassword", users.NewResetPasswordHandler(userCommandHandler))
-	commandBus.RegisterHandler("ChangePassword", users.NewChangePasswordHandler(userCommandHandler))
+	// User command handlers using new pattern
+	shared.RegisterCommandHandler(commandBus, "RegisterUser", userCommandHandler.HandleRegisterUser)
+	shared.RegisterCommandHandler(commandBus, "VerifyEmail", userCommandHandler.HandleVerifyEmail)
+	shared.RegisterCommandHandler(commandBus, "LoginUser", userCommandHandler.HandleLoginUser)
+	shared.RegisterCommandHandler(commandBus, "ForgotPassword", userCommandHandler.HandleForgotPassword)
+	shared.RegisterCommandHandler(commandBus, "ResetPassword", userCommandHandler.HandleResetPassword)
+	shared.RegisterCommandHandler(commandBus, "ChangePassword", userCommandHandler.HandleChangePassword)
 
-	// Register query handlers
-	queryBus.RegisterHandler("GetNotifications", notifications.NewGetNotificationsHandler(notifQueryHandler))
-	queryBus.RegisterHandler("GetUnreadCount", notifications.NewGetUnreadCountHandler(notifQueryHandler))
-	queryBus.RegisterHandler("GetNotificationByUID", notifications.NewGetNotificationByUIDHandler(notifQueryHandler))
-	queryBus.RegisterHandler("GetIssueByID", issues.NewIssueGetByIDHandler(issueQueryHandler))
-	queryBus.RegisterHandler("ListIssues", issues.NewIssueListHandler(issueQueryHandler))
-	queryBus.RegisterHandler("GetIssueByKey", issues.NewGetIssueByKeyHandler(issueQueryHandler))
-	queryBus.RegisterHandler("GetProjectByID", projects.NewGetProjectByIDHandler(projectQueryHandler))
-	queryBus.RegisterHandler("ListProjects", projects.NewListProjectsHandler(projectQueryHandler))
+	// Register query handlers using new pattern
+	shared.RegisterQueryHandler(queryBus, "GetNotifications", func(ctx context.Context, query notifications.GetNotificationsQuery) (interface{}, error) {
+		return notifQueryHandler.HandleGetNotifications(ctx, query)
+	})
+	shared.RegisterQueryHandler(queryBus, "GetUnreadCount", func(ctx context.Context, query notifications.GetUnreadCountQuery) (interface{}, error) {
+		return notifQueryHandler.HandleGetUnreadCount(ctx, query)
+	})
+	shared.RegisterQueryHandler(queryBus, "GetNotificationByUID", func(ctx context.Context, query notifications.GetNotificationByUIDQuery) (interface{}, error) {
+		return notifQueryHandler.HandleGetNotificationByUID(ctx, query)
+	})
+	shared.RegisterQueryHandler(queryBus, "GetIssueByID", func(ctx context.Context, query issues.GetIssueByIDQuery) (interface{}, error) {
+		return issueQueryHandler.HandleGetIssueByID(ctx, query)
+	})
+	shared.RegisterQueryHandler(queryBus, "ListIssues", func(ctx context.Context, query issues.ListIssuesQuery) (interface{}, error) {
+		return issueQueryHandler.HandleListIssues(ctx, query)
+	})
+	shared.RegisterQueryHandler(queryBus, "GetIssueByKey", func(ctx context.Context, query issues.GetIssueByKeyQuery) (interface{}, error) {
+		return issueQueryHandler.HandleGetIssueByKey(ctx, query)
+	})
+	shared.RegisterQueryHandler(queryBus, "GetProjectByID", func(ctx context.Context, query projects.GetProjectByIDQuery) (interface{}, error) {
+		return projectQueryHandler.HandleGetProjectByID(ctx, query)
+	})
+	shared.RegisterQueryHandler(queryBus, "ListProjects", func(ctx context.Context, query projects.ListProjectsQuery) (interface{}, error) {
+		return projectQueryHandler.HandleListProjects(ctx, query)
+	})
 
 	// User query handlers
 	userQueryHandler := users.NewUserQueryHandler(userProjectionStore, userStore)
-	queryBus.RegisterHandler("GetUserByID", users.NewGetUserByIDHandler(userQueryHandler))
-	queryBus.RegisterHandler("GetUserByEmail", users.NewGetUserByEmailHandler(userQueryHandler))
-	queryBus.RegisterHandler("GetUserByUsername", users.NewGetUserByUsernameHandler(userQueryHandler))
-	queryBus.RegisterHandler("GetUserSession", users.NewGetUserSessionHandler(userQueryHandler))
-	queryBus.RegisterHandler("GetUserSessions", users.NewGetUserSessionsHandler(userQueryHandler))
-	queryBus.RegisterHandler("ListUsers", users.NewListUsersHandler(userQueryHandler))
-	queryBus.RegisterHandler("SearchUsers", users.NewSearchUsersHandler(userQueryHandler))
+	shared.RegisterQueryHandler(queryBus, "GetUserByID", func(ctx context.Context, query users.GetUserByIDQuery) (interface{}, error) {
+		return userQueryHandler.HandleGetUserByID(ctx, query)
+	})
+	shared.RegisterQueryHandler(queryBus, "GetUserByEmail", func(ctx context.Context, query users.GetUserByEmailQuery) (interface{}, error) {
+		return userQueryHandler.HandleGetUserByEmail(ctx, query)
+	})
+	shared.RegisterQueryHandler(queryBus, "GetUserByUsername", func(ctx context.Context, query users.GetUserByUsernameQuery) (interface{}, error) {
+		return userQueryHandler.HandleGetUserByUsername(ctx, query)
+	})
+	shared.RegisterQueryHandler(queryBus, "GetUserSession", func(ctx context.Context, query users.GetUserSessionQuery) (interface{}, error) {
+		return userQueryHandler.HandleGetUserSession(ctx, query)
+	})
+	shared.RegisterQueryHandler(queryBus, "GetUserSessions", func(ctx context.Context, query users.GetUserSessionsQuery) (interface{}, error) {
+		return userQueryHandler.HandleGetUserSessions(ctx, query)
+	})
+	shared.RegisterQueryHandler(queryBus, "ListUsers", func(ctx context.Context, query users.ListUsersQuery) (interface{}, error) {
+		return userQueryHandler.HandleListUsers(ctx, query)
+	})
+	shared.RegisterQueryHandler(queryBus, "SearchUsers", func(ctx context.Context, query users.SearchUsersQuery) (interface{}, error) {
+		return userQueryHandler.HandleSearchUsers(ctx, query)
+	})
 
 	notificationService := notifications.NewNotificationService(commandBus, queryBus)
 	projectService := projects.NewProjectService(commandBus, queryBus)
@@ -212,6 +246,8 @@ func WireDeps(ctx context.Context, ns *embeddednats.Server, sessionStore session
 		SessionStore:        sessionStore,
 		SessionGroupManager: sessionGroupManager,
 		EventProcessor:      eventProcessor,
+		CommandBus:          commandBus,
+		QueryBus:            queryBus,
 		JetStream:           js,
 		NatsConn:            nc,
 	}, nil

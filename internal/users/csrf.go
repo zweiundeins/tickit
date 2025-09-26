@@ -39,12 +39,9 @@ func DefaultCSRFConfig() *CSRFConfig {
 
 // NewCSRFMiddleware creates a new CSRF protection middleware using justinas/nosurf
 func NewCSRFMiddleware(config *CSRFConfig, sessionStore sessions.Store) func(http.Handler) http.Handler {
-	log.Printf("DEBUG: Creating CSRF middleware - config: %v, sessionStore: %v", config != nil, sessionStore != nil)
-
 	// If config is nil, create default config
 	if config == nil {
 		config = DefaultCSRFConfig()
-		log.Printf("DEBUG: Using default CSRF config")
 	}
 
 	// Set the session store
@@ -61,12 +58,10 @@ func NewCSRFMiddleware(config *CSRFConfig, sessionStore sessions.Store) func(htt
 	// Set default error handler if none provided
 	if config.ErrorFunc == nil {
 		if sessionStore != nil {
-			log.Printf("DEBUG: Setting custom CSRF error handler with session store")
 			config.ErrorFunc = func(w http.ResponseWriter, r *http.Request, reason error) {
 				defaultCSRFErrorHandler(config.SessionStore, w, r, reason)
 			}
 		} else {
-			log.Printf("DEBUG: Setting fallback CSRF error handler (no session store)")
 			// Fallback to simple error handler if no session store
 			config.ErrorFunc = func(w http.ResponseWriter, r *http.Request, reason error) {
 				if isAjaxRequest(r) {
@@ -80,8 +75,6 @@ func NewCSRFMiddleware(config *CSRFConfig, sessionStore sessions.Store) func(htt
 				}
 			}
 		}
-	} else {
-		log.Printf("DEBUG: Using provided CSRF error handler")
 	}
 
 	// The nosurf.CSRFHandler implements http.Handler and wraps the next handler internally
@@ -139,18 +132,14 @@ func NewCSRFMiddleware(config *CSRFConfig, sessionStore sessions.Store) func(htt
 
 // defaultCSRFErrorHandler is the default error handler for CSRF failures
 func defaultCSRFErrorHandler(sessionStore sessions.Store, w http.ResponseWriter, r *http.Request, reason error) {
-	log.Printf("DEBUG: CSRF error handler called - URL: %s, Method: %s, Reason: %v", r.URL.Path, r.Method, reason)
-
 	// Log the CSRF failure for security monitoring
-	// In a real application, you'd use your audit logger here
+	log.Printf("CSRF validation failed - URL: %s, Method: %s", r.URL.Path, r.Method)
 
 	// Return appropriate error response
 	if isAjaxRequest(r) {
-		log.Printf("DEBUG: CSRF error for AJAX request, returning 403")
 		// For AJAX requests, return JSON error
 		w.WriteHeader(http.StatusForbidden)
 	} else {
-		log.Printf("DEBUG: CSRF error for regular request, setting flash message and redirecting")
 		// For regular requests, store error in flash message and redirect to login
 		errorMsg := "CSRF token validation failed. Please refresh the page and try again."
 		if reason != nil {
@@ -159,13 +148,10 @@ func defaultCSRFErrorHandler(sessionStore sessions.Store, w http.ResponseWriter,
 
 		// Store error message as flash message
 		if err := sharedhttp.SetFlashMessage(sessionStore, w, r, sharedhttp.FlashError, errorMsg); err != nil {
-			log.Printf("DEBUG: Failed to set flash message: %v, falling back to direct error", err)
 			// If we can't set flash message, fall back to direct error
 			http.Error(w, errorMsg, http.StatusForbidden)
 			return
 		}
-
-		log.Printf("DEBUG: Flash message set successfully, redirecting to /auth/login")
 		// Redirect to login page where the flash message will be displayed
 		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 	}

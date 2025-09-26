@@ -50,16 +50,16 @@ func (c PatchProjectCommand) GetCommandType() string { return "PatchProject" }
 // CommandHandler for projects
 // (Stub, to be implemented with storage/event sourcing)
 type ProjectCommandHandler struct {
-	eventBus        *shared.EventBusWrapper
+	eventBus        shared.EventPublisher
 	eventStore      *shared.EventStore
 	projectionStore *ProjectProjectionStore
 }
 
-func NewProjectCommandHandler(eventBus *shared.EventBusWrapper, eventStore *shared.EventStore, projectionStore *ProjectProjectionStore) *ProjectCommandHandler {
+func NewProjectCommandHandler(eventBus shared.EventPublisher, eventStore *shared.EventStore, projectionStore *ProjectProjectionStore) *ProjectCommandHandler {
 	return &ProjectCommandHandler{eventBus: eventBus, eventStore: eventStore, projectionStore: projectionStore}
 }
 
-func (h *ProjectCommandHandler) HandleCreateProject(ctx context.Context, cmd CreateProjectCommand) (*Project, error) {
+func (h *ProjectCommandHandler) HandleCreateProject(ctx context.Context, cmd CreateProjectCommand) error {
 	project := &Project{
 		ID:          cmd.ID,
 		Name:        cmd.Name,
@@ -76,17 +76,17 @@ func (h *ProjectCommandHandler) HandleCreateProject(ctx context.Context, cmd Cre
 	}
 	// 1. Persist event to SQLite event store
 	if err := h.eventStore.StoreEvent(ctx, event); err != nil {
-		return nil, err
+		return err
 	}
 	// 2. Update projection
 	if err := h.projectionStore.ApplyEvent(ctx, event); err != nil {
-		return nil, err
+		return err
 	}
 	// 3. Publish signal to JetStream for real-time updates
 	if err := h.eventBus.PublishEvent(ctx, event); err != nil {
-		return nil, err
+		return err
 	}
-	return project, nil
+	return nil
 }
 
 func (h *ProjectCommandHandler) HandleUpdateProject(ctx context.Context, cmd UpdateProjectCommand) error {

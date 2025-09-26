@@ -7,6 +7,8 @@ import "github.com/mbolli/tickit/web/ui"
 import "github.com/mbolli/tickit/internal/sharedhttp"
 import "github.com/justinas/nosurf"
 import "github.com/mbolli/tickit/web/ui/components"
+import "github.com/mbolli/tickit/web/ui/helpers"
+import "github.com/mbolli/tickit/internal/notifications"
 
 func activeClass(r *http.Request, path string) string {
 	if r.URL.Path == path {
@@ -75,7 +77,11 @@ templ Base(title string, sessions sessions.Store, r *http.Request) {
 				{ children... }
 			</main>
 			<footer class="container">
-				@components.Notifications(EmptyNotifications())
+				if userNotifications, ok := r.Context().Value("user_notifications").(*notifications.Notifications); ok && userNotifications != nil {
+					@components.Notifications(r.Context(), userNotifications)
+				} else {
+					@components.Notifications(r.Context(), helpers.EmptyNotifications())
+				}
 				&copy; 2025 zwei und eins gmbh. All rights reserved.
 				<script type="module" src="/static/datastar-inspector.js"></script>
 				<datastar-inspector></datastar-inspector>

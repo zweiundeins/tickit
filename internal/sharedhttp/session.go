@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -178,12 +177,9 @@ type FlashMessage struct {
 
 // SetFlashMessage stores a flash message in the session
 func SetFlashMessage(store sessions.Store, w http.ResponseWriter, r *http.Request, msgType FlashMessageType, message string) error {
-	log.Printf("DEBUG: Setting flash message - Type: %s, Message: %s, URL: %s", msgType, message, r.URL.Path)
-
 	sessionName := internalSession.GetSessionName()
 	session, err := store.Get(r, sessionName)
 	if err != nil {
-		log.Printf("DEBUG: Failed to get session for flash message: %v", err)
 		return fmt.Errorf("failed to get session: %w", err)
 	}
 
@@ -201,11 +197,9 @@ func SetFlashMessage(store sessions.Store, w http.ResponseWriter, r *http.Reques
 
 	// Save session
 	if err := session.Save(r, w); err != nil {
-		log.Printf("DEBUG: Failed to save session with flash message: %v", err)
 		return fmt.Errorf("failed to save session: %w", err)
 	}
 
-	log.Printf("DEBUG: Successfully saved flash message to session")
 	return nil
 }
 

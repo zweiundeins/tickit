@@ -45,7 +45,6 @@ func NewIssueProjectionStore(ctx context.Context, dbFilename string) (*IssueProj
 			Msg("Failed to create issues projection DB")
 		return nil, fmt.Errorf("failed to create issues projection db: %w", err)
 	}
-	logger.Debug().Msgf("toolbelt.NewDatabase returned for %s\n", dbFilename)
 	if _, err := os.Stat(dbFilename); err == nil {
 		logger.Info().Msgf("Issues projection DB file created: %s\n", dbFilename)
 	} else {

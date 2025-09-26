@@ -61,7 +61,7 @@ func (r *IssueDetailRenderer) RenderUpdate(ctx context.Context, data interface{}
 	var projectsList []*projects.Project
 	projectsList, _ = r.projectService.ListProjects(ctx) // todo remove
 	if projectsList == nil {
-		projectsList = []*projects.Project{} // Initialize empty slice if nil
+		projectsList = []*projects.Project{}
 	}
 
 	// Fetch related users
