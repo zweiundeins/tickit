@@ -23,6 +23,7 @@ func SetupNATS(ctx context.Context) (*embeddednats.Server, error) {
 	ns, err := embeddednats.New(ctx, embeddednats.WithNATSServerOptions(&natsserver.Options{
 		JetStream: true,
 		NoSigs:    true,
+		Host:      "127.0.0.1", // only this process connects; never expose it
 		Port:      natsPort,
 		StoreDir:  "data/nats",
 	}))

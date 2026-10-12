@@ -91,7 +91,7 @@ func run(ctx context.Context) error {
 	} */
 
 	redirectSrv := &http.Server{
-		Addr:    "0.0.0.0:" + config.Global.HttpPort,
+		Addr:    config.Global.Host + ":" + config.Global.HttpPort,
 		Handler: router,
 		/* Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Always redirect HTTP to HTTPS
@@ -112,14 +112,14 @@ func run(ctx context.Context) error {
 	}
 
 	/* http2Srv := &http.Server{
-		Addr:      "0.0.0.0:" + config.Global.HttpsPort,
+		Addr:      config.Global.Host + ":" + config.Global.HttpsPort,
 		Handler:   router,
 		TLSConfig: tlsConfig,
 		ErrorLog:  logger.NewStdLibLogger(),
 	} */
 
 	/* http3Srv := &http3.Server{
-		Addr:      "0.0.0.0:" + config.Global.HttpsPort,
+		Addr:      config.Global.Host + ":" + config.Global.HttpsPort,
 		Handler:   router,
 		TLSConfig: http3.ConfigureTLSConfig(tlsConfig),
 		Logger:    logger.GetLogger(),
