@@ -4,6 +4,8 @@
 
 @view-transition { navigation: auto; }
 
+$notification-bar-height: 3.5rem;
+
 body {
     display: flex;
     flex-direction: column;
@@ -11,6 +13,7 @@ body {
 
     > footer {
         margin-top: auto; // Push footer to the bottom
+        padding-bottom: calc($notification-bar-height + var(--pico-spacing)); // Keep the text clear of the fixed notifications bar
     }
 }
 
@@ -23,7 +26,7 @@ body {
 
     .notificationsPanel {
         width: 22rem;
-        max-height: 3.5rem;
+        max-height: $notification-bar-height;
         overflow: hidden;
         box-shadow: var(--pico-box-shadow);
         transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -62,7 +65,7 @@ body {
         main {
             overflow-y: auto;
             background: var(--pico-primary-background);
-            max-height: calc(60vh - 3.5rem); // Panel height minus bar height
+            max-height: calc(60vh - #{$notification-bar-height}); // Panel height minus bar height
 
             .notification {
                 border-radius: .5rem;
