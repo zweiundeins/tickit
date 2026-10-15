@@ -42,4 +42,5 @@ This project uses [Taskfile](https://taskfile.dev/) for automation. You can run 
 - `cmd/` - Main application entry points
 - `internal/` - Backend application logic
 - `web/` - Frontend source code
+- `deploy/` - The shared host's drop-ins: the Caddy site block, the unit's `listen.conf`, the probes and the Alloy file (see [docs/INSTALL.md](docs/INSTALL.md))
 - `data/` - Data files and assets

@@ -5,7 +5,7 @@ This guide covers deploying the Tickit application to a VPS using Caddy as a rev
 ## Architecture Overview
 
 ```
-Internet → Caddy (Port 80/443) → Go App (Port 8080)
+Internet → Caddy (Port 80/443) → Go App (Port 7105)
 ```
 
 **Benefits:**
@@ -40,10 +40,10 @@ httpSrv := &http.Server{
 
 ### Update Configuration
 
-Set your HTTP port to 8080 in your config:
+Set your HTTP port to 7105 in your config:
 
 ```go
-// Set HttpPort to "8080" and remove HttpsPort configuration
+// Set HttpPort to "7105" and remove HttpsPort configuration
 ```
 
 ## Step 2: VPS Setup
@@ -90,59 +90,15 @@ sudo chown -R tickit:tickit /opt/tickit/data /opt/tickit/upload
 
 ## Step 3: Caddy Configuration
 
-Create `/etc/caddy/Caddyfile`:
-
-```caddyfile
-tickitdemo.zweiundeins.gmbh {
-    # Enable compression FIRST (before reverse_proxy)
-    encode br gzip
-    
-    # Reverse proxy to Go application
-    reverse_proxy 127.0.0.1:8080
-    
-    # Serve static files directly from Caddy for better performance
-    handle /static/* {
-        root * /opt/tickit/web/ui
-        file_server
-    }
-    
-    handle /uploads/* {
-        root * /opt/tickit
-        file_server
-    }
-    
-    # Security headers
-    header {
-        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "SAMEORIGIN"
-        Referrer-Policy "strict-origin-when-cross-origin"
-        X-XSS-Protection "1; mode=block"
-    }
-    
-    # Access logs
-    log {
-        output file /var/log/caddy/tickit.log {
-            roll_size 100mb
-            roll_keep 5
-            roll_keep_for 720h
-        }
-        format console
-    }
-}
-
-# Example for additional apps on the same server:
-# anotherapp.yourdomain.com {
-#     reverse_proxy 127.0.0.1:8081
-# }
-```
-
-### Create Log Directory
+The host's Caddyfile imports every file in `/etc/caddy/sites/`, and the site block is [`deploy/tickitdemo.caddy`](../deploy/tickitdemo.caddy): it proxies to the app on `127.0.0.1:7105`, serves `/static/` and `/uploads/` from `/opt/tickit`, sets the security headers, and writes its access log as JSON to `/var/log/caddy/tickitdemo-access.log`. It goes in by hand, since Caddy asks for the certificate as it loads the block. As root, from a copy of `deploy/`:
 
 ```bash
-sudo mkdir -p /var/log/caddy
-sudo chown caddy:caddy /var/log/caddy
+install -m 0644 tickitdemo.caddy /etc/caddy/sites/
+runuser -u caddy -- env HOME=/var/lib/caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+systemctl reload caddy
 ```
+
+Validate as Caddy's user: `caddy validate`, run as root, creates the log file owned by root, and the reload then fails.
 
 ## Step 4: Systemd Service
 
@@ -182,6 +138,8 @@ LimitNPROC=4096
 WantedBy=multi-user.target
 ```
 
+On the shared host, [`deploy/systemd/tickit.service.d/listen.conf`](../deploy/systemd/tickit.service.d/listen.conf) keeps the unit on loopback; `deploy/setup-host.sh` installs it ([Drop-ins on the shared host](#drop-ins-on-the-shared-host)).
+
 ## Step 5: Environment Configuration
 
 Create `/opt/tickit/.env`:
@@ -190,7 +148,7 @@ Create `/opt/tickit/.env`:
 GO_ENV=production
 SESSION_SECRET=your-very-secure-session-secret-change-this
 DATABASE_URL=sqlite:///opt/tickit/data/events.db
-HTTP_PORT=8080
+PORT=7105
 HOST=127.0.0.1
 
 # Add other production environment variables as needed
@@ -286,6 +244,22 @@ Caddy will automatically obtain and renew SSL certificates. On first deployment:
 
 ## Monitoring and Maintenance
 
+### Drop-ins on the shared host
+
+The host keeps its own configs for Caddy, Prometheus and Alloy, and each loads a folder of files that the apps install: lith's guide [Metrics and monitoring](https://lith.zweiundeins.gmbh/docs/guides/monitoring#drop-in-files-for-a-shared-host) has the folders and the labels. tickit's are in `deploy/`, named after the site (`tickitdemo`), and the unit's after the unit (`tickit`):
+
+- `tickitdemo.caddy` as `/etc/caddy/sites/tickitdemo.caddy`, by hand ([Step 3](#step-3-caddy-configuration)).
+- `systemd/tickit.service.d/listen.conf` as `/etc/systemd/system/tickit.service.d/listen.conf`: the unit may reach loopback only.
+- `observability/tickitdemo.targets.yml` as `/etc/prometheus/targets/tickitdemo.yml`: blackbox probes of `/`, a redirect (the host's `http_redirect` module), and `/auth/login` (`http_2xx_tickitdemo`, which wants "TickIt" in the body). Prometheus watches the folder.
+- `observability/tickitdemo.alloy` as `/etc/alloy/tickitdemo.alloy`: Caddy's access log as `{job="caddy", site="tickitdemo"}`, through the host's pipeline for access logs.
+
+tickit serves no metrics, so it has no `/etc/prometheus/apps/` target. `deploy/setup-host.sh` installs everything but the Caddy block: the unit's drop-in with a `daemon-reload` (it never restarts `tickit`: restart it to apply a changed one), then the probes and the Alloy file, each only where its service is installed. It reloads Alloy and puts the old file back if Alloy refuses the new one. Run it again after changing them:
+
+```bash
+scp -r deploy root@host:/tmp/tickit-deploy
+ssh root@host bash /tmp/tickit-deploy/setup-host.sh
+```
+
 ### Check Service Status
 
 ```bash
@@ -346,7 +320,7 @@ sudo ufw status
 
 ### Common Issues
 
-1. **Port conflicts:** Ensure port 8080 is not used by other services
+1. **Port conflicts:** Ensure port 7105 is not used by other services
 2. **Permissions:** Check that the `tickit` user can read/write to data directories
 3. **SSL issues:** Verify domain DNS and firewall settings
 4. **Service won't start:** Check logs with `journalctl -u tickit -n 50`
