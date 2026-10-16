@@ -1,0 +1,5 @@
+/tickit
+/tmp/
+/data/
+*.test
+*.out

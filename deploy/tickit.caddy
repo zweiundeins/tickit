@@ -1,0 +1,24 @@
+# Caddy 2: the site block, with the real domain, as /etc/caddy/sites/tickit.caddy
+# (the host's Caddyfile imports that folder). tickit compresses its pages and its
+# streams itself, so there is no `encode`.
+tickit.example.com {
+	log {
+		output file /var/log/caddy/tickit-access.log {
+			mode 0640
+			roll_size 100mb
+			roll_keep 5
+			roll_keep_for 720h
+		}
+		format json
+	}
+
+	reverse_proxy unix//run/tickit/tickit.sock {
+		# The client's address for the rate limits. tickit takes it only from
+		# the socket or loopback, the last X-Forwarded-For address before
+		# X-Real-IP, and a client cannot set either: these replace them.
+		header_up X-Forwarded-For {http.request.remote.host}
+		header_up X-Real-IP {http.request.remote.host}
+		# Server-sent events: pass every write through at once.
+		flush_interval -1
+	}
+}

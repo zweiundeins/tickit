@@ -1,0 +1,47 @@
+// tickit's logs for the host's Alloy, as /etc/alloy/tickit.alloy. Alloy runs on the
+// folder as one config, so every component label here starts with tickit_.
+
+// The journal as {job="tickit", level}: the job comes from relabeling, since the
+// source's own labels lose it once relabel_rules is set.
+loki.relabel "tickit_journal" {
+	forward_to = []
+
+	rule {
+		target_label = "job"
+		replacement  = "tickit"
+	}
+}
+
+loki.source.journal "tickit_journal" {
+	forward_to     = [loki.process.tickit_journal.receiver]
+	relabel_rules  = loki.relabel.tickit_journal.rules
+	labels         = {job = "tickit"}
+	matches        = "SYSLOG_IDENTIFIER=tickit"
+	format_as_json = false
+}
+
+// tickit logs with slog's text handler (key=value): its level becomes a label, so
+// an error rule is a label match, {job="tickit", level="ERROR"}.
+loki.process "tickit_journal" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.logfmt {
+		mapping = {level = ""}
+	}
+
+	stage.labels {
+		values = {level = ""}
+	}
+}
+
+// Caddy's access log (tickit.caddy) as {job="caddy", site="tickit"}, through the
+// host's pipeline for access logs.
+local.file_match "tickit_access" {
+	path_targets = [{"__path__" = "/var/log/caddy/tickit-access.log", "job" = "caddy", "site" = "tickit"}]
+}
+
+loki.source.file "tickit_access" {
+	targets       = local.file_match.tickit_access.targets
+	forward_to    = [loki.process.caddy_logs.receiver]
+	tail_from_end = true
+}
