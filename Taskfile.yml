@@ -38,3 +38,10 @@ tasks:
       CGO_ENABLED: '0'
     cmds:
       - go build -trimpath -ldflags "-s -w -X main.version={{.VERSION}}" -o {{.BIN}} ./cmd/tickit
+
+  vendor-starbase:
+    desc: Copy Starbase's components and fonts from a checkout (STARBASE=/path/to/starbase)
+    cmds:
+      - go run ./cmd/vendor-starbase -src {{.STARBASE}}
+    requires:
+      vars: [STARBASE]
