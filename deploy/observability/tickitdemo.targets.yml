@@ -1,6 +1,0 @@
-# Blackbox probes for tickitdemo, installed as /etc/prometheus/targets/tickitdemo.yml.
-# `module` picks the blackbox module; see the host's /etc/prometheus/blackbox.yml.
-- targets: ['https://tickitdemo.zweiundeins.gmbh/']
-  labels: { service: tickitdemo, module: http_redirect }
-- targets: ['https://tickitdemo.zweiundeins.gmbh/auth/login']
-  labels: { service: tickitdemo, module: http_2xx_tickitdemo }
