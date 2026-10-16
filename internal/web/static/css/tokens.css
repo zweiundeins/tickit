@@ -1,0 +1,326 @@
+/*
+ * tickit's design tokens. Primitives (slate, tide, hues, space, type,
+ * sizes, motion) in the tokens layer; the semantic tokens every component
+ * reads in the theme layer. Both themes live in one set of values through
+ * light-dark(): a theme is only a color-scheme, set on <html> or on any
+ * element by data-tk-theme="dark|light|system". data-tk-style="smooth"
+ * turns the 8-bit details off, data-tk-density="compact" tightens rows.
+ * Components read semantic tokens, never primitives, and never raw colours.
+ * TestContrast (internal/web) checks the text and surface pairs.
+ */
+@layer reset, tokens, theme, base, layout, components, utilities;
+
+@font-face {
+	font-family: "JetBrains Mono";
+	src: url("../fonts/jetbrains-mono.woff2") format("woff2");
+	font-weight: 100 800;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Pixelify Sans";
+	src: url("../fonts/pixelify-sans.woff2") format("woff2");
+	font-weight: 400 700;
+	font-display: swap;
+}
+
+/* A card that just landed glows, and the glow cools (board.css). */
+@property --tk-landed {
+	syntax: "<number>";
+	inherits: true;
+	initial-value: 0;
+}
+
+/* The band of light across a primary button on hover. */
+@property --tk-sweep {
+	syntax: "<percentage>";
+	inherits: false;
+	initial-value: -30%;
+}
+
+@layer tokens {
+	:root {
+		/* Slate: cool, nearly grey neutrals, so that status, type and
+		 * priority carry the colour on dense screens. 0 is the lightest. */
+		--tk-slate-0: oklch(98.6% 0.003 255);
+		--tk-slate-1: oklch(96.4% 0.005 255);
+		--tk-slate-2: oklch(92.6% 0.008 255);
+		--tk-slate-3: oklch(86% 0.011 255);
+		--tk-slate-4: oklch(74% 0.014 255);
+		--tk-slate-5: oklch(62% 0.016 255);
+		--tk-slate-6: oklch(51% 0.017 255);
+		--tk-slate-7: oklch(43% 0.017 256);
+		--tk-slate-8: oklch(35% 0.016 256);
+		--tk-slate-9: oklch(28.5% 0.015 257);
+		--tk-slate-10: oklch(24% 0.014 258);
+		--tk-slate-11: oklch(20.5% 0.013 259);
+		--tk-slate-12: oklch(17.5% 0.012 260);
+		--tk-slate-13: oklch(14.5% 0.011 260);
+		--tk-paper: oklch(99.6% 0.002 255);
+
+		/* Tide: tickit's one signal colour, a teal-cyan. 5 fills buttons. */
+		--tk-tide-1: oklch(95% 0.04 200);
+		--tk-tide-2: oklch(90% 0.07 200);
+		--tk-tide-3: oklch(84% 0.1 200);
+		--tk-tide-4: oklch(78% 0.12 201);
+		--tk-tide-5: oklch(71% 0.13 203);
+		--tk-tide-6: oklch(63% 0.125 206);
+		--tk-tide-7: oklch(55% 0.115 208);
+		--tk-tide-8: oklch(47% 0.1 210);
+		--tk-tide-9: oklch(39% 0.085 212);
+		--tk-tide-10: oklch(29% 0.06 215);
+
+		/* Category hues, one number each; the theme derives text, fill and
+		 * wash from them (--tk-hue-*). */
+		--tk-hue-todo: 255;
+		--tk-hue-progress: 250;
+		--tk-hue-done: 150;
+		--tk-hue-epic: 295;
+		--tk-hue-story: 145;
+		--tk-hue-task: 235;
+		--tk-hue-bug: 25;
+		--tk-hue-subtask: 200;
+		--tk-hue-low: 235;
+		--tk-hue-medium: 80;
+		--tk-hue-high: 50;
+		--tk-hue-critical: 22;
+
+		/* Space: a 4px rhythm with a 2px half step. */
+		--tk-space-0_5: 0.125rem;
+		--tk-space-1: 0.25rem;
+		--tk-space-1_5: 0.375rem;
+		--tk-space-2: 0.5rem;
+		--tk-space-3: 0.75rem;
+		--tk-space-4: 1rem;
+		--tk-space-5: 1.25rem;
+		--tk-space-6: 1.5rem;
+		--tk-space-8: 2rem;
+		--tk-space-10: 2.5rem;
+		--tk-space-12: 3rem;
+		--tk-space-16: 4rem;
+
+		/* Type: the system face reads, JetBrains Mono labels and keys,
+		 * Pixelify Sans is for display only (never for data). */
+		--tk-font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+		--tk-font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+		--tk-font-display: "Pixelify Sans", ui-monospace, monospace;
+		--tk-text-2xs: 0.6875rem; /* 11: lozenges, eyebrows, counts */
+		--tk-text-xs: 0.75rem; /* 12: meta, timestamps, table heads */
+		--tk-text-sm: 0.8125rem; /* 13: table cells, cards, menus */
+		--tk-text-md: 0.875rem; /* 14: UI body, forms, comments */
+		--tk-text-lg: 1rem; /* 16: documents, descriptions */
+		--tk-text-xl: 1.125rem; /* 18: doc h3, dialog titles */
+		--tk-text-2xl: 1.375rem; /* 22: issue summary, doc h2 */
+		--tk-text-3xl: 1.75rem; /* 28: doc title */
+		--tk-text-4xl: 2.25rem; /* 36: empty states, display */
+		--tk-leading-tight: 1.15;
+		--tk-leading-snug: 1.3;
+		--tk-leading-ui: 1.45;
+		--tk-leading-prose: 1.65;
+		--tk-weight-regular: 400;
+		--tk-weight-medium: 500;
+		--tk-weight-semibold: 600;
+		--tk-weight-heading: 650;
+		--tk-weight-bold: 700;
+		--tk-tracking-caps: 0.08em;
+
+		/* 8-bit details: notches in pixels of --tk-notch (1 pixel, 0
+		 * smooth), and radii that take over at 0. */
+		--tk-notch: 1;
+		--tk-frame-step: 2px;
+		--tk-radius-xs: 3px;
+		--tk-radius-sm: 4px;
+		--tk-radius-md: 6px;
+		--tk-radius-lg: 10px;
+
+		/* Sizes */
+		--tk-control-sm: 1.75rem;
+		--tk-control-md: 2rem;
+		--tk-control-lg: 2.5rem;
+		--tk-row-compact: 1.75rem;
+		--tk-row: 2rem;
+		--tk-row-comfy: 2.5rem;
+		--tk-header-height: 3rem;
+		--tk-sidebar-width: 15rem;
+		--tk-sidebar-collapsed: 3rem;
+		--tk-prose-max: 46rem;
+		--tk-content-max: 80rem;
+		--tk-panel-width: 40rem;
+		--tk-lane-width: 17rem;
+		--tk-lane-min: 260px;
+
+		/* Motion: each curve has one job. */
+		--tk-dur-1: 120ms;
+		--tk-dur-2: 200ms;
+		--tk-dur-3: 320ms;
+		--tk-dur-4: 460ms;
+		--tk-dur-5: 640ms;
+		--tk-ease-glide: cubic-bezier(0.22, 1, 0.36, 1); /* into place */
+		--tk-ease-snap: cubic-bezier(0.2, 0, 0, 1); /* answers a press */
+		--tk-ease-zoom: cubic-bezier(0.16, 1, 0.3, 1); /* opens a layer */
+		--tk-ease-exit: cubic-bezier(0.4, 0, 1, 1); /* leaves */
+		--tk-ease-steps: steps(4, end); /* pixel motion */
+
+		/* Stacking */
+		--tk-z-raised: 1;
+		--tk-z-caret: 5;
+		--tk-z-sticky: 10;
+		--tk-z-dropdown: 20;
+		--tk-z-overlay: 40;
+		--tk-z-modal: 50;
+		--tk-z-toast: 60;
+		--tk-z-tooltip: 70;
+	}
+}
+
+@layer theme {
+	:root {
+		color-scheme: dark;
+
+		/* Surfaces */
+		--tk-bg: light-dark(var(--tk-slate-0), var(--tk-slate-12));
+		--tk-surface-1: light-dark(var(--tk-paper), var(--tk-slate-11));
+		--tk-surface-2: light-dark(var(--tk-slate-1), var(--tk-slate-10));
+		--tk-surface-inset: light-dark(var(--tk-slate-1), var(--tk-slate-13));
+		--tk-surface-hover: light-dark(var(--tk-slate-2), var(--tk-slate-9));
+		--tk-surface-selected: light-dark(oklch(71% 0.13 203 / 0.12), oklch(71% 0.13 203 / 0.14));
+		--tk-surface-overlay: light-dark(var(--tk-paper), var(--tk-slate-11));
+		--tk-scrim: light-dark(oklch(25% 0.02 255 / 0.32), oklch(8% 0.01 260 / 0.62));
+
+		/* Lines. control-border is the edge that tells a field apart. */
+		--tk-border: light-dark(var(--tk-slate-3), var(--tk-slate-8));
+		--tk-border-subtle: light-dark(var(--tk-slate-2), var(--tk-slate-9));
+		--tk-border-strong: light-dark(var(--tk-slate-4), var(--tk-slate-7));
+		--tk-control-border: light-dark(var(--tk-slate-5), var(--tk-slate-6));
+
+		/* Text */
+		--tk-text-1: light-dark(var(--tk-slate-12), var(--tk-slate-1));
+		--tk-text-2: light-dark(var(--tk-slate-8), var(--tk-slate-3));
+		--tk-text-muted: light-dark(var(--tk-slate-6), var(--tk-slate-4));
+
+		/* The accent. The fill and the text on it are the same in both
+		 * themes; accent-text is the accent as text on any surface. */
+		--tk-accent: var(--tk-tide-5);
+		--tk-on-accent: var(--tk-slate-13);
+		--tk-accent-strong: light-dark(var(--tk-tide-6), var(--tk-tide-4));
+		--tk-accent-text: light-dark(var(--tk-tide-8), var(--tk-tide-4));
+		--tk-accent-edge: light-dark(var(--tk-tide-8), var(--tk-tide-5));
+		--tk-accent-subtle: light-dark(oklch(71% 0.13 203 / 0.14), oklch(71% 0.13 203 / 0.13));
+		--tk-glow: light-dark(oklch(71% 0.13 203 / 0.32), oklch(71% 0.13 203 / 0.45));
+		--tk-focus: light-dark(var(--tk-tide-8), var(--tk-tide-4));
+		--tk-selection: oklch(71% 0.13 203 / 0.3);
+
+		/* Status, each usable as text on every surface. */
+		--tk-danger: light-dark(oklch(50% 0.17 25), oklch(74% 0.14 25));
+		--tk-warn: light-dark(oklch(50% 0.1 70), oklch(84% 0.13 82));
+		--tk-ok: light-dark(oklch(47% 0.11 150), oklch(80% 0.12 150));
+		--tk-info: light-dark(oklch(47% 0.1 240), oklch(80% 0.09 240));
+		--tk-on-danger: light-dark(var(--tk-paper), var(--tk-slate-13));
+		--tk-danger-subtle: light-dark(oklch(50% 0.17 25 / 0.1), oklch(74% 0.14 25 / 0.13));
+		--tk-warn-subtle: light-dark(oklch(60% 0.12 75 / 0.13), oklch(84% 0.13 82 / 0.12));
+		--tk-ok-subtle: light-dark(oklch(47% 0.11 150 / 0.11), oklch(80% 0.12 150 / 0.11));
+		--tk-info-subtle: light-dark(oklch(47% 0.1 240 / 0.1), oklch(80% 0.09 240 / 0.11));
+
+		/* The inverted bubble of tooltips and name tags. */
+		--tk-tip-bg: var(--tk-text-1);
+		--tk-tip-text: var(--tk-bg);
+
+		/* Shadows. overlay is one shadow without spread: notched layers
+		 * draw it with filter: drop-shadow(). */
+		--tk-shadow-1: 0 1px 2px light-dark(oklch(30% 0.02 255 / 0.12), oklch(0% 0 0 / 0.4));
+		--tk-shadow-2: 0 10px 30px -12px light-dark(oklch(30% 0.02 255 / 0.25), oklch(0% 0 0 / 0.7));
+		--tk-shadow-overlay: 0 16px 32px light-dark(oklch(30% 0.02 255 / 0.22), oklch(0% 0 0 / 0.7));
+
+		/* Code blocks */
+		--tk-code-bg: light-dark(var(--tk-slate-1), var(--tk-slate-13));
+		--tk-code-text: light-dark(var(--tk-slate-11), var(--tk-slate-2));
+		--tk-code-keyword: light-dark(var(--tk-tide-8), var(--tk-tide-3));
+		--tk-code-function: light-dark(oklch(44% 0.12 295), oklch(80% 0.09 295));
+		--tk-code-string: light-dark(oklch(45% 0.09 145), oklch(82% 0.08 140));
+		--tk-code-number: light-dark(oklch(48% 0.1 65), oklch(86% 0.1 85));
+		--tk-code-comment: light-dark(var(--tk-slate-6), var(--tk-slate-5));
+
+		/* Header: translucent over the page. */
+		--tk-header-bg: color-mix(in oklch, var(--tk-bg) 86%, transparent);
+
+		/* Rows follow the density. */
+		--tk-row-height: var(--tk-row);
+	}
+
+	[data-tk-theme="light"] {
+		color-scheme: light;
+	}
+
+	[data-tk-theme="dark"] {
+		color-scheme: dark;
+	}
+
+	[data-tk-theme="system"] {
+		color-scheme: light dark;
+	}
+
+	[data-tk-style="smooth"] {
+		--tk-notch: 0;
+		--tk-frame-step: 1px;
+		--tk-font-display: var(--tk-font-ui);
+	}
+
+	[data-tk-density="compact"] {
+		--tk-row-height: var(--tk-row-compact);
+		--tk-control-md: 1.75rem;
+	}
+
+	/*
+	 * A hue as text, fill, glyph-on-fill, wash and edge. Elements that carry
+	 * a hue set --h, by one of the attributes below; the tokens are declared
+	 * where --h is, so each element derives its own.
+	 */
+	:where([data-hue], [data-type], [data-prio], [data-cat]) {
+		--tk-hue-text: light-dark(oklch(45% 0.13 var(--h)), oklch(82% 0.11 var(--h)));
+		--tk-hue-fill: light-dark(oklch(52% 0.14 var(--h)), oklch(76% 0.12 var(--h)));
+		--tk-hue-on: light-dark(var(--tk-paper), var(--tk-slate-13));
+		--tk-hue-wash: light-dark(oklch(52% 0.14 var(--h) / 0.12), oklch(76% 0.12 var(--h) / 0.14));
+		--tk-hue-edge: light-dark(oklch(58% 0.14 var(--h)), oklch(72% 0.12 var(--h)));
+		--tk-hue-tile: light-dark(oklch(94% 0.035 var(--h)), oklch(28% 0.04 var(--h)));
+	}
+
+	/* Sixteen hues for faces, carets and epics: data-hue="0" to "15". */
+	[data-hue="0"] { --h: 0; }
+	[data-hue="1"] { --h: 22.5; }
+	[data-hue="2"] { --h: 45; }
+	[data-hue="3"] { --h: 67.5; }
+	[data-hue="4"] { --h: 90; }
+	[data-hue="5"] { --h: 112.5; }
+	[data-hue="6"] { --h: 135; }
+	[data-hue="7"] { --h: 157.5; }
+	[data-hue="8"] { --h: 180; }
+	[data-hue="9"] { --h: 202.5; }
+	[data-hue="10"] { --h: 225; }
+	[data-hue="11"] { --h: 247.5; }
+	[data-hue="12"] { --h: 270; }
+	[data-hue="13"] { --h: 292.5; }
+	[data-hue="14"] { --h: 315; }
+	[data-hue="15"] { --h: 337.5; }
+
+	[data-type="epic"] { --h: var(--tk-hue-epic); }
+	[data-type="story"] { --h: var(--tk-hue-story); }
+	[data-type="task"] { --h: var(--tk-hue-task); }
+	[data-type="bug"] { --h: var(--tk-hue-bug); }
+	[data-type="subtask"] { --h: var(--tk-hue-subtask); }
+	[data-prio="low"] { --h: var(--tk-hue-low); }
+	[data-prio="medium"] { --h: var(--tk-hue-medium); }
+	[data-prio="high"] { --h: var(--tk-hue-high); }
+	[data-prio="critical"] { --h: var(--tk-hue-critical); }
+	[data-cat="progress"] { --h: var(--tk-hue-progress); }
+	[data-cat="done"] { --h: var(--tk-hue-done); }
+
+	/* To do is neutral: the surface and the second text colour. */
+	[data-cat="todo"] {
+		--h: var(--tk-hue-todo);
+		--tk-hue-text: var(--tk-text-2);
+		--tk-hue-fill: var(--tk-text-muted);
+		--tk-hue-wash: var(--tk-surface-2);
+		--tk-hue-edge: var(--tk-border-strong);
+		--tk-hue-tile: var(--tk-surface-2);
+	}
+}
