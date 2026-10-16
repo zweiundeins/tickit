@@ -17,10 +17,15 @@ tickit is a Go, SQLite and Datastar application on lith (github.com/zweiundeins/
 ## Commands
 
 - `go tool task dev`: serve on http://127.0.0.1:8080 with `-dev`, static files as written, and rebuild on every change.
-- `go tool task test`: vet, gofmt, `go test -race ./...`.
+- `go tool task test`: vet, gofmt, `go test ./...`. `go tool task test-race` adds the race detector, which is several times slower: run it at milestones, not after every change.
 - `go tool task build`: the static binary.
 - `go tool templ generate` after editing a `.templ` file. The `_templ.go` files are committed.
 
 ## Project rules
 
-Rules that hold for this project only go here.
+- `docs/requirements.md` says what tickit must do; `docs/architecture.md` says how the code is cut (packages, ids, actions, views and topics, events, migration numbers by area). Read both before a change, and keep the second true.
+- Cite the requirement a test proves in its name or a one-line comment (`// FR-11.2`).
+- Every change is a `POST /cmd/...` action through `tabs.Act`; the actor comes from the session. No route runs a command the client names.
+- UI text and docs are English. In prose, use no em dashes or en dashes.
+- Pages use the design system (`internal/ui`, `static/css`), never raw colours or sizes.
+- Browser tests live in `e2e/` and skip without Chromium (`CHROME=/usr/bin/chromium`).

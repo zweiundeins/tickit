@@ -15,11 +15,17 @@ tasks:
       - go tool air
 
   test:
-    desc: Vet, check the formatting, run the tests with the race detector
+    desc: Vet, check the formatting, run the tests
     deps: [generate]
     cmds:
       - go vet ./...
       - test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - go test ./...
+
+  test-race:
+    desc: The tests with the race detector, which takes several times as long; for milestones and CI
+    deps: [generate]
+    cmds:
       - go test -race ./...
 
   build:
