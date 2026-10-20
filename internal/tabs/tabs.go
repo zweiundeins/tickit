@@ -62,6 +62,9 @@ type Outcome struct {
 	Msg   string `json:"msg,omitempty"`   // why it was refused
 	Field string `json:"field,omitempty"` // the field the refusal belongs to
 	At    int64  `json:"at"`              // unix ms
+	// Data is what a refusal adds for the page to render, as JSON: a
+	// tracker.Conflict's who, when and values (MP-08.3).
+	Data json.RawMessage `json:"data,omitempty"`
 }
 
 // Watched is a view a tab added to its stream (a side panel): its spec
@@ -261,6 +264,10 @@ func (a Act) ApplyResult(tx *writer.Tx) ([]byte, error) {
 		if errors.As(err, &field) {
 			o.Field = field.OnField()
 		}
+		var data interface{ OutcomeData() json.RawMessage }
+		if errors.As(err, &data) {
+			o.Data = data.OutcomeData()
+		}
 		var denial interface{ Denied() bool }
 		if errors.As(err, &denial) && denial.Denied() {
 			mark = markDenied
@@ -322,13 +329,14 @@ func RemoveWatched(tx *writer.Tx, sid, tab, key string, at time.Time) error {
 
 // signal is an outcome as the page reads it from $_outcomes[op].
 type signal struct {
-	OK    bool   `json:"ok"`
-	Msg   string `json:"msg"`
-	Field string `json:"field"`
+	OK    bool            `json:"ok"`
+	Msg   string          `json:"msg"`
+	Field string          `json:"field"`
+	Data  json.RawMessage `json:"data,omitempty"`
 }
 
 // View is the tab's own view: it patches the signal _outcomes, an object
-// from op id to {ok, msg, field}, from the tab's row. Its key holds the
+// from op id to {ok, msg, field, data}, from the tab's row. Its key holds the
 // tab id and it closes over the session: never show a tab id to anyone
 // else, who could open a stream with it.
 func View(sid, tab string) live.View {
@@ -347,7 +355,7 @@ func View(sid, tab string) live.View {
 			}
 			outcomes := make(map[string]signal, len(s.Outcomes))
 			for _, o := range s.Outcomes {
-				outcomes[o.Op] = signal{OK: o.OK, Msg: o.Msg, Field: o.Field}
+				outcomes[o.Op] = signal{OK: o.OK, Msg: o.Msg, Field: o.Field, Data: o.Data}
 			}
 			b, err := json.Marshal(map[string]any{"_outcomes": outcomes})
 			if err != nil {
