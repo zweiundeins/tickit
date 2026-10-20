@@ -1,0 +1,442 @@
+package styleguide
+
+import (
+	"time"
+
+	"github.com/mbolli/tickit/internal/ui"
+)
+
+// pendingDemo shows the pending state for a moment, as a frame would end
+// it. The styleguide's own; features drive aria-busy from their outcomes.
+const pendingDemo = `el.setAttribute('aria-busy', 'true'); setTimeout(() => el.removeAttribute('aria-busy'), 2400)`
+
+templ controls(p Props) {
+	@section("buttons", "Buttons", "Mono labels on notched plates. One primary action per view. Icon-only buttons carry their label as aria-label and tooltip. Pending is aria-busy with lith's walking pixel.") {
+		<div class="sg-grid">
+			@spec("Variants", "@ui.Button(ui.ButtonProps{Label: \"Create\", Icon: \"plus\", Variant: ui.Primary})") {
+				<div class="cluster">
+					@ui.Button(ui.ButtonProps{Label: "Create", Icon: "plus", Variant: ui.Primary})
+					@ui.Button(ui.ButtonProps{Label: "Watch", Icon: "eye"})
+					@ui.Button(ui.ButtonProps{Label: "Filter", Icon: "filter", Variant: ui.Ghost})
+					@ui.Button(ui.ButtonProps{Label: "Delete issue", Icon: "trash", Variant: ui.Danger})
+				</div>
+			}
+			@spec("Sizes, icon-only, shortcut, menu caret", "ui.ButtonProps{Size: ui.SizeSM, IconOnly: true, Label: \"Copy link\", Icon: \"link\"}") {
+				<div class="cluster">
+					@ui.Button(ui.ButtonProps{Label: "Small", Size: ui.SizeSM})
+					@ui.Button(ui.ButtonProps{Label: "Medium"})
+					@ui.Button(ui.ButtonProps{Label: "Large", Size: ui.SizeLG, Variant: ui.Primary})
+					@ui.Button(ui.ButtonProps{Label: "Copy link", Icon: "link", IconOnly: true})
+					@ui.Button(ui.ButtonProps{Label: "More actions", Icon: "more", IconOnly: true, Variant: ui.Ghost})
+					@ui.Button(ui.ButtonProps{Label: "Create", Icon: "plus", Shortcut: "C", Variant: ui.Primary})
+					@ui.Button(ui.ButtonProps{Label: "Sort", IconEnd: "chevron-down"})
+				</div>
+			}
+			@spec("States: pending (click to replay), disabled, pressed", "ui.ButtonProps{Pending: true} · Attrs: data-attr:aria-busy from the outcome") {
+				<div class="cluster">
+					@ui.Button(ui.ButtonProps{Label: "Saving", Variant: ui.Primary, Pending: true})
+					@ui.Button(ui.ButtonProps{Label: "Click me", Icon: "check", Attrs: templ.Attributes{"data-on:click": pendingDemo}})
+					@ui.Button(ui.ButtonProps{Label: "Disabled", Disabled: true})
+					@ui.Button(ui.ButtonProps{Label: "Watching", Icon: "eye", Variant: ui.Ghost, Pressed: "true"})
+					@ui.Button(ui.ButtonProps{Label: "Bold", Icon: "bold", IconOnly: true, Variant: ui.Ghost, Pressed: "false"})
+				</div>
+			}
+		</div>
+	}
+	@section("forms", "Forms", "A label over its control, a hint under it, and a live region for the refusal, tied by aria-describedby. Sent values stay, dashed and read-only, until their outcome arrives.") {
+		<div class="sg-grid">
+			@spec("Text field, required, with a hint", "@ui.Field(f) { @ui.Input(ui.InputProps{ID: f.ID, DescribedBy: f.DescribedBy()}) }") {
+				{{ f := ui.FieldProps{ID: "sg-summary", Label: "Summary", Hint: "One line that says what is wrong or what to build.", Required: true} }}
+				@ui.Field(f) {
+					@ui.Input(ui.InputProps{ID: f.ID, Name: "summary", Value: "Card drag drops the card in the wrong lane", Required: true, DescribedBy: f.DescribedBy()})
+				}
+			}
+			@spec("Refused next to the control (MP-09.2), pending (read-only)", "ui.FieldProps{Error: refusal} · ui.InputProps{Readonly: true}") {
+				{{ f := ui.FieldProps{ID: "sg-key", Label: "Project key", Error: "WEB is taken by the project Website. Pick another key."} }}
+				@ui.Field(f) {
+					@ui.Input(ui.InputProps{ID: f.ID, Value: "WEB", Invalid: true, DescribedBy: f.DescribedBy()})
+				}
+				{{ g := ui.FieldProps{ID: "sg-pending", Label: "Story points", Hint: "Saving…"} }}
+				@ui.Field(g) {
+					@ui.Input(ui.InputProps{ID: g.ID, Value: "5", Readonly: true, DescribedBy: g.DescribedBy(), Attrs: attrs("aria-busy", "true")})
+				}
+			}
+			@spec("Search, select, text area", "@ui.Input(ui.InputProps{Icon: \"search\", Type: \"search\"}) · @ui.Select(...) · @ui.Textarea(...)") {
+				@ui.Field(ui.FieldProps{ID: "sg-find", Label: "Find in this board", HideLabel: true}) {
+					@ui.Input(ui.InputProps{ID: "sg-find", Type: "search", Icon: "search", Placeholder: "Filter cards"})
+				}
+				@ui.Field(ui.FieldProps{ID: "sg-sel", Label: "Status"}) {
+					@ui.Select(ui.SelectProps{ID: "sg-sel", Options: []ui.Option{{Value: "todo", Label: "To Do"}, {Value: "progress", Label: "In Progress", Selected: true}, {Value: "review", Label: "In Review"}, {Value: "done", Label: "Done"}}})
+				}
+				@ui.Field(ui.FieldProps{ID: "sg-ta", Label: "Comment", Optional: true}) {
+					@ui.Textarea(ui.TextareaProps{ID: "sg-ta", Rows: 3, Placeholder: "Add a comment. Type @ to mention someone."})
+				}
+			}
+			@spec("Checkboxes, toggles, radios", "@ui.Checkbox(...) · @ui.Toggle(...) · @ui.RadioGroup(...)") {
+				<div class="stack">
+					@ui.Checkbox(ui.CheckboxProps{Label: "Only my issues", Checked: true})
+					@ui.Checkbox(ui.CheckboxProps{Label: "Show subtasks", Hint: "Cards with the parent's key."})
+					@ui.Checkbox(ui.CheckboxProps{Label: "Archived (disabled)", Disabled: true})
+					@ui.Toggle(ui.ToggleProps{Label: "Email me about mentions", Checked: true})
+					@ui.Toggle(ui.ToggleProps{Label: "Compact rows"})
+					@ui.RadioGroup(ui.RadioGroupProps{Name: "sg-vis", Legend: "Who can see this space", Options: []ui.Option{{Value: "open", Label: "Everyone", Selected: true}, {Value: "members", Label: "Members"}, {Value: "staff", Label: "Staff"}}})
+				</div>
+			}
+			@spec("Segmented choice with icons: type and priority", "ui.RadioGroupProps{Segmented: true, Options: []ui.Option{{Icon: ui.TypeIcon(ui.Bug), ...}}}") {
+				<div class="stack">
+					@ui.RadioGroup(ui.RadioGroupProps{Name: "sg-type", Legend: "Type", Segmented: true, Options: typeOptions(ui.Bug)})
+					@ui.RadioGroup(ui.RadioGroupProps{Name: "sg-prio", Legend: "Priority", Segmented: true, Options: prioOptions(ui.High)})
+				</div>
+			}
+			@spec("Pickers: sb-select (searchable, several) and sb-date-picker", "@ui.Picker(ui.PickerProps{Label: \"Labels\", Multiple: true, Searchable: true, Options: ...})") {
+				<div class="stack">
+					@ui.Picker(ui.PickerProps{Label: "Assignee", Name: "assignee", Searchable: true, Clearable: true, Value: "sunny", Options: peopleOptions()})
+					@ui.Picker(ui.PickerProps{Label: "Labels", Name: "labels", Multiple: true, Searchable: true, Value: `["board","a11y"]`, Options: []ui.Option{{Value: "board", Label: "board"}, {Value: "a11y", Label: "a11y"}, {Value: "safari", Label: "safari"}, {Value: "security", Label: "security"}, {Value: "design", Label: "design"}}})
+					@ui.DatePicker(ui.DatePickerProps{Label: "Due date", Name: "due", Value: p.Now.AddDate(0, 0, 4).Format("2006-01-02")})
+				</div>
+			}
+		</div>
+	}
+}
+
+func typeOptions(sel ui.IssueType) []ui.Option {
+	var out []ui.Option
+	for _, t := range ui.IssueTypes {
+		out = append(out, ui.Option{Value: string(t), Label: t.Name(), Selected: t == sel, Icon: typeGlyph(t)})
+	}
+	return out
+}
+
+func prioOptions(sel ui.Priority) []ui.Option {
+	var out []ui.Option
+	for _, pr := range ui.Priorities {
+		out = append(out, ui.Option{Value: string(pr), Label: pr.Name(), Selected: pr == sel, Icon: prioGlyph(pr)})
+	}
+	return out
+}
+
+templ typeGlyph(t ui.IssueType) {
+	@ui.TypeMark(t)
+}
+
+templ prioGlyph(pr ui.Priority) {
+	<span class="tk-typed--prio" data-prio={ string(pr) }>
+		@ui.PriorityMark(pr)
+	</span>
+}
+
+func peopleOptions() []ui.Option {
+	return []ui.Option{
+		{Value: "me", Label: "Assign to me", Description: "Michael Bolli"},
+		{Value: "sunny", Label: "Sunny Otter"},
+		{Value: "heron", Label: "Brisk Heron"},
+		{Value: "lynx", Label: "Calm Lynx"},
+		{Value: "none", Label: "Unassigned"},
+	}
+}
+
+templ overlays(p Props) {
+	@section("overlays", "Menus and layers", "Menus are native popovers: Escape and a click outside close them, the focus returns to their button, arrow keys move through them. Dialogs and side panels are modal <dialog>s opened with invoker commands, so no script opens or closes them.") {
+		<div class="sg-grid">
+			@spec("Menu (popover)", "@ui.Menu(ui.MenuProps{ID: \"m\", Label: \"Sort\", Caret: true}) { @ui.MenuItem(...) }") {
+				<div class="cluster">
+					@ui.Menu(ui.MenuProps{ID: "sg-menu-sort", Label: "Sort by", Icon: "sort", Caret: true, Variant: ui.Secondary}) {
+						@ui.MenuLabel("Sort by")
+						@ui.MenuItem(ui.MenuItemProps{Label: "Rank", Checked: ui.Pressed(true), Autofocus: true})
+						@ui.MenuItem(ui.MenuItemProps{Label: "Updated", Checked: ui.Pressed(false)})
+						@ui.MenuItem(ui.MenuItemProps{Label: "Priority", Checked: ui.Pressed(false)})
+					}
+					@ui.Menu(ui.MenuProps{ID: "sg-menu-more", Label: "More actions", Icon: "more", IconOnly: true}) {
+						@ui.MenuItem(ui.MenuItemProps{Label: "Copy link", Icon: "link", Hint: "Ctrl L", Autofocus: true})
+						@ui.MenuItem(ui.MenuItemProps{Label: "Watch", Icon: "eye"})
+						@ui.MenuItem(ui.MenuItemProps{Label: "Move to project", Icon: "folder", Disabled: true})
+						@ui.MenuSeparator()
+						@ui.MenuItem(ui.MenuItemProps{Label: "Delete", Icon: "trash", Danger: true})
+					}
+				</div>
+			}
+			@spec("Action menu with submenus: Starbase's sb-dropdown", "@ui.ActionMenu(ui.ActionMenuProps{Label: \"Actions\", Items: []ui.MenuEntry{...}})") {
+				@ui.ActionMenu(ui.ActionMenuProps{Label: "Issue actions", Name: "issue", Items: []ui.MenuEntry{
+					{Value: "watch", Label: "Watch"},
+					{Label: "Move to", Children: []ui.MenuEntry{{Value: "todo", Label: "To Do"}, {Value: "progress", Label: "In Progress"}, {Value: "review", Label: "In Review"}, {Value: "done", Label: "Done"}}},
+					{Value: "clone", Label: "Clone", Description: "With its subtasks"},
+					{Divider: true},
+					{Value: "delete", Label: "Delete", Danger: true},
+				}})
+			}
+			@spec("Tooltip: hover or focus; Escape hides it", "@ui.Tip(\"Calm Lynx, away\") { ... }") {
+				<div class="cluster">
+					@ui.Tip("Assigned to Calm Lynx") {
+						<span tabindex="0" class="sg-focusable">
+							@ui.Avatar(ui.AvatarProps{Person: lynx, Size: ui.SizeMD})
+						</span>
+					}
+					@ui.PriorityIcon(ui.Critical)
+					@ui.TypeIcon(ui.Epic)
+				</div>
+			}
+			@spec("Dialog and side panel", "@ui.Button(ui.ButtonProps{Command: \"show-modal\", CommandFor: \"create\"}) · @ui.Dialog(...) · @ui.SidePanel(...)") {
+				<div class="cluster">
+					@ui.Button(ui.ButtonProps{Label: "Create issue", Icon: "plus", Variant: ui.Primary, Command: "show-modal", CommandFor: "sg-create"})
+					@ui.Button(ui.ButtonProps{Label: "Open WEB-12 beside the board", Icon: "sidebar", Command: "show-modal", CommandFor: "sg-panel"})
+				</div>
+			}
+		</div>
+	}
+}
+
+templ navigation(p Props) {
+	@section("navigation", "Navigation", "Tabs, breadcrumbs, pages and the page tree. The tree follows the ARIA tree pattern with one tab stop: Up, Down, Right, Left, Home, End, and Enter follows the link.") {
+		<div class="sg-grid">
+			@spec("Tabs: sb-tabs with panels in slots", "@ui.Tabs(ui.TabsProps{Labels: []string{\"Comments\", \"History\"}}) { @ui.TabPanel(\"Comments\") {...} }") {
+				@ui.Tabs(ui.TabsProps{Labels: []string{"Comments", "History", "Work log"}}) {
+					@ui.TabPanel("Comments") {
+						<p>Three comments. The newest is from Sunny Otter.</p>
+					}
+					@ui.TabPanel("History") {
+						<p>Brisk Heron changed the priority from Medium to High.</p>
+					}
+					@ui.TabPanel("Work log") {
+						<p>No work logged yet.</p>
+					}
+				}
+			}
+			@spec("Tab links, breadcrumbs", "@ui.TabNav(\"Project\", items) · @ui.Breadcrumbs([]ui.Crumb{...})") {
+				<div class="stack">
+					@ui.TabNav("Project settings", []ui.NavItem{{Label: "Details", Href: "#navigation", Current: true}, {Label: "Workflow", Href: "#navigation"}, {Label: "Members", Href: "#navigation", Count: ui.Count(12)}, {Label: "Labels", Href: "#navigation"}})
+					@ui.Breadcrumbs([]ui.Crumb{{Label: "Engineering", Href: "#navigation", Icon: "space"}, {Label: "Handbook", Href: "#navigation"}, {Label: "Releases", Href: "#navigation"}, {Label: "Release checklist"}})
+				</div>
+			}
+			@spec("Pagination", "@ui.Pagination(ui.PaginationProps{Page: 2, Pages: 7, Total: 312, Noun: \"issues\", Href: href})") {
+				@ui.Pagination(ui.PaginationProps{Page: 4, Pages: 7, Total: 312, Noun: "issues", Href: func(int) string { return "#navigation" }})
+			}
+			@spec("Page tree (ARIA tree)", "@ui.Tree(ui.TreeProps{Label: \"Pages in Engineering\", Items: []ui.TreeItem{...}})") {
+				@ui.Tree(ui.TreeProps{Label: "Pages in Engineering", Items: pageTree()})
+			}
+		</div>
+	}
+}
+
+func pageTree() []ui.TreeItem {
+	return []ui.TreeItem{
+		{ID: "pg-1", Label: "Handbook", Href: "#navigation", Expanded: true, Children: []ui.TreeItem{
+			{ID: "pg-2", Label: "Onboarding", Href: "#navigation"},
+			{ID: "pg-3", Label: "Releases", Href: "#navigation", Expanded: true, Children: []ui.TreeItem{
+				{ID: "pg-4", Label: "Release checklist", Href: "#navigation", Current: true},
+				{ID: "pg-5", Label: "Rollback", Href: "#navigation"},
+			}},
+			{ID: "pg-6", Label: "On call", Href: "#navigation", Meta: "draft"},
+		}},
+		{ID: "pg-7", Label: "Architecture", Href: "#navigation", Children: []ui.TreeItem{
+			{ID: "pg-8", Label: "Event sourcing", Href: "#navigation"},
+			{ID: "pg-9", Label: "Streams and views", Href: "#navigation"},
+		}},
+		{ID: "pg-10", Label: "Meeting notes", Href: "#navigation", Meta: "24"},
+	}
+}
+
+templ tables(p Props) {
+	@section("tables", "Tables", "Plain tables (NFR-50): sortable heads are buttons with aria-sort, rows are 2rem and 1.75rem when compact, a selected row has a wash and a bar. Narrow screens scroll the table, not the page.") {
+		@issueTable(p, 6)
+	}
+}
+
+templ issueTable(p Props, n int) {
+	@ui.Table(ui.TableProps{Caption: "Open issues in Website", HideCaption: true, Sticky: true}) {
+		<thead>
+			<tr>
+				<th scope="col">
+					@ui.Checkbox(ui.CheckboxProps{Label: "Select all", HideLabel: true})
+				</th>
+				<th scope="col"><span class="visually-hidden">Type</span></th>
+				@ui.SortHeader(ui.SortProps{Label: "Key"})
+				@ui.SortHeader(ui.SortProps{Label: "Summary"})
+				@ui.SortHeader(ui.SortProps{Label: "Status"})
+				@ui.SortHeader(ui.SortProps{Label: "Priority", Dir: "descending"})
+				<th scope="col">Assignee</th>
+				@ui.SortHeader(ui.SortProps{Label: "Updated", Align: "end"})
+			</tr>
+		</thead>
+		<tbody>
+			for i, s := range issues[:n] {
+				<tr
+					if i == 1 {
+						aria-selected="true"
+					}
+				>
+					<td>
+						@ui.Checkbox(ui.CheckboxProps{Label: "Select " + s.Key, HideLabel: true, Checked: i == 1})
+					</td>
+					<td>
+						@ui.TypeIcon(s.Type)
+					</td>
+					<td class="tk-key">{ s.Key }</td>
+					<td class="tk-grow"><a href={ templ.SafeURL("/" + s.Key) }>{ s.Summary }</a></td>
+					<td>
+						@ui.StatusLozenge(s.Status, s.Cat)
+					</td>
+					<td>
+						@ui.PriorityLabel(s.Prio)
+					</td>
+					<td>
+						if s.Who != nil {
+							<span class="tk-cell">
+								@ui.Avatar(ui.AvatarProps{Person: *s.Who, Size: ui.SizeXS, Decorative: true})
+								{ s.Who.Name }
+							</span>
+						} else {
+							<span class="muted">Unassigned</span>
+						}
+					</td>
+					<td class="tk-num">
+						@ui.RelativeTime(ago(p.Now, s.Updated).In(zurich), p.Now)
+					</td>
+				</tr>
+			}
+		</tbody>
+	}
+}
+
+templ people(p Props) {
+	@section("people", "People", "A face is drawn from the person's id alone, in one of sixteen hues that their caret and selection share. Guests show their pseudonym, accounts their name; never an id.") {
+		<div class="sg-grid">
+			@spec("Faces: 1, 1.5, 2 and 3rem; away, deactivated, you", "@ui.Avatar(ui.AvatarProps{Person: person, Size: ui.SizeMD})") {
+				<div class="cluster">
+					@ui.Avatar(ui.AvatarProps{Person: sunny, Size: ui.SizeXS})
+					@ui.Avatar(ui.AvatarProps{Person: sunny, Size: ui.SizeSM})
+					@ui.Avatar(ui.AvatarProps{Person: sunny, Size: ui.SizeMD})
+					@ui.Avatar(ui.AvatarProps{Person: sunny, Size: ui.SizeLG})
+					<span class="sg-gap"></span>
+					@ui.Avatar(ui.AvatarProps{Person: finch, Size: ui.SizeMD})
+					@ui.Avatar(ui.AvatarProps{Person: ada, Size: ui.SizeMD})
+					<span class="sg-you">
+						@ui.Avatar(ui.AvatarProps{Person: me, Size: ui.SizeMD, You: true})
+					</span>
+				</div>
+				<div class="cluster">
+					for _, x := range []ui.Person{heron, lynx, mbolli, badger, marten, ibex, wren, vole} {
+						@ui.Avatar(ui.AvatarProps{Person: x, Size: ui.SizeMD})
+					}
+				</div>
+			}
+			@spec("Presence (MP-02): you first, at most 8 then +n, away dimmed, an editor's pencil", "@ui.PresenceRow(ui.PresenceProps{Label: \"People on this page\", People: entries})") {
+				@ui.PresenceRow(ui.PresenceProps{Label: "People on this page", People: presence(true)})
+			}
+			@spec("Byline and mention", "@ui.Byline(ui.BylineProps{Person: p, Verb: \"edited\", At: t, Now: now}) · @ui.Mention(id, name, href)") {
+				@ui.Byline(ui.BylineProps{Person: sunny, Verb: "edited", At: ago(p.Now, 5*time.Minute).In(zurich), Now: p.Now})
+				<p>Thanks to @ui.Mention(heron.Seed, heron.Name, "#people") the fix went out today.</p>
+			}
+		</div>
+	}
+}
+
+templ issueParts(p Props) {
+	@section("issues", "Issues", "Type, priority and status always show a shape and a name. Chips are the same element in documents and lists, live: they show the issue as it is now.") {
+		<div class="sg-grid">
+			@spec("Types and priorities with their names", "@ui.TypeLabel(ui.Story) · @ui.PriorityLabel(ui.Critical)") {
+				<div class="cluster">
+					for _, t := range ui.IssueTypes {
+						@ui.TypeLabel(t)
+					}
+				</div>
+				<div class="cluster">
+					for _, pr := range ui.Priorities {
+						@ui.PriorityLabel(pr)
+					}
+				</div>
+			}
+			@spec("Status lozenges: the name and the category's marker", "@ui.StatusLozenge(\"In Review\", ui.InProgress)") {
+				<div class="cluster">
+					@ui.StatusLozenge("Backlog", ui.ToDo)
+					@ui.StatusLozenge("To Do", ui.ToDo)
+					@ui.StatusLozenge("In Progress", ui.InProgress)
+					@ui.StatusLozenge("In Review", ui.InProgress)
+					@ui.StatusLozenge("Done", ui.Done)
+					@ui.StatusLozenge("Won't do", ui.Done)
+				</div>
+			}
+			@spec("Issue chips (FR-100): live, deleted, unknown, compact", "@ui.IssueChip(ui.IssueChipProps{Key, Summary, Type, Status, Category, Href})") {
+				<div class="stack">
+					<div>
+						@ui.IssueChip(find("WEB-12").chip())
+					</div>
+					<div class="cluster">
+						@ui.IssueChip(ui.IssueChipProps{Key: "WEB-4", Href: "/WEB-4", State: ui.ChipDeleted})
+						@ui.IssueChip(ui.IssueChipProps{Key: "OPS-99", Href: "/OPS-99", State: ui.ChipUnknown})
+						@ui.IssueChip(ui.IssueChipProps{Key: "WEB-7", Type: ui.Task, Status: "To Do", Category: ui.ToDo, Href: "/WEB-7", Compact: true})
+					</div>
+				</div>
+			}
+			@spec("Labels, points, due dates", "@ui.Label(\"a11y\", href) · @ui.Points(\"3\") · @ui.Due(at, now, overdue)") {
+				<div class="cluster">
+					@ui.Label("board", "#issues")
+					@ui.Label("a11y", "#issues")
+					@ui.Label("security", "#issues")
+					@ui.Label("design", "#issues")
+					@ui.Points("5")
+					@ui.Due(p.Now.AddDate(0, 0, 4), p.Now, false)
+					@ui.Due(p.Now.AddDate(0, 0, -3), p.Now, true)
+				</div>
+			}
+			@spec("Card states: idle, pending, refused with its reason, landed, picked, dragged", "@ui.Card(ui.CardProps{..., State: ui.CardPending})") {
+				<ol class="sg-cards" role="list">
+					@ui.Card(find("WEB-14").card(p.Now, ui.CardIdle, ""))
+					@ui.Card(find("WEB-22").card(p.Now, ui.CardPending, ""))
+					@ui.Card(find("WEB-12").card(p.Now, ui.CardRefused, "Sunny Otter moved WEB-12 to In Review first."))
+					@ui.Card(find("WEB-18").card(p.Now, ui.CardLanded, ""))
+					@ui.Card(find("WEB-7").card(p.Now, ui.CardPicked, ""))
+					@ui.Card(find("WEB-15").card(p.Now, ui.CardDragged, ""))
+				</ol>
+			}
+		</div>
+	}
+}
+
+templ feedback(p Props) {
+	@section("feedback", "Feedback", "Outcomes sit next to the control that caused them. Notices tell about the page; toasts bring news from elsewhere. Every tone has an icon and words.") {
+		<div class="sg-grid">
+			@spec("Notices in four tones", "@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Title: \"...\"}) { text }") {
+				<div class="stack">
+					@ui.Notice(ui.NoticeProps{Tone: ui.ToneInfo, Title: "This issue moved to Platform"}) {
+						<p>It is PLAT-31 now. Links to WEB-12 still lead here.</p>
+					}
+					@ui.Notice(ui.NoticeProps{Tone: ui.ToneOK}) {
+						<p>The board's columns are saved.</p>
+					}
+					@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Title: "Over the limit", Dismissible: true}) {
+						<p>In Review holds 5 issues; its limit is 4.</p>
+					}
+					@ui.Notice(ui.NoticeProps{Tone: ui.ToneDanger, Action: ui.Button(ui.ButtonProps{Label: "Use Critical anyway", Size: ui.SizeSM})}) {
+						<p>Sunny Otter changed the priority to High 5 seconds ago. Your Critical was not saved.</p>
+					}
+				</div>
+			}
+			@spec("Outcomes (MP-09): refused, did not go through with Retry, ok", "@ui.Outcome(ui.OutcomeProps{Kind: ui.OutcomeFailed, RetryAttrs: retry})") {
+				<div class="stack">
+					@ui.Outcome(ui.OutcomeProps{Kind: ui.OutcomeRefused, Text: "Move the 4 child issues first."})
+					@ui.Outcome(ui.OutcomeProps{Kind: ui.OutcomeFailed})
+					@ui.Outcome(ui.OutcomeProps{Kind: ui.OutcomeOK, Text: "Copied the link to WEB-12."})
+				</div>
+			}
+			@spec("Toasts: sb-toast, filled by the server", "@ui.Toasts(ui.ToastsProps{Toasts: []ui.Toast{...}})") {
+				@ui.Toasts(ui.ToastsProps{Placement: "inline", Toasts: []ui.Toast{
+					{ID: "t1", Title: "Sunny Otter mentioned you", Text: "in Release checklist", Tone: ui.ToneInfo, Sticky: true},
+					{ID: "t2", Text: "The demo resets in 10 minutes.", Tone: ui.ToneWarn, Sticky: true},
+				}})
+			}
+			@spec("Skeletons, progress, stats", "@ui.Skeleton(\"card\", 3) · @ui.Progress(5, 8, \"Board v1\") · @ui.Stats([]ui.Stat{...})") {
+				<div class="stack">
+					<div class="sg-skeletons">
+						@ui.Skeleton("card", 3)
+						@ui.Skeleton("text", 4)
+					</div>
+					@ui.Progress(5, 8, "Board v1")
+					@ui.Stats([]ui.Stat{{Label: "Open", Value: "47", Note: "12 in review"}, {Label: "Overdue", Value: "3", Tone: ui.ToneDanger, Note: "WEB-7 the oldest"}, {Label: "Done this week", Value: "18", Tone: ui.ToneOK}})
+				</div>
+			}
+			@spec("Empty state", "@ui.EmptyState(ui.EmptyProps{Icon: \"search\", Title: \"No issues match\", Text: \"...\", Action: ...})") {
+				@ui.EmptyState(ui.EmptyProps{Icon: "search", Title: "No issues match", Text: "Nothing in Website has the label safari and the status Done. Clear a filter to see more.", Action: ui.Button(ui.ButtonProps{Label: "Clear filters", Icon: "close"})})
+			}
+		</div>
+	}
+}

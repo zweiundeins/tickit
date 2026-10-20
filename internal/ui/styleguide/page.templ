@@ -1,0 +1,371 @@
+package styleguide
+
+import "github.com/mbolli/tickit/internal/ui"
+
+// importMap is the page's import map with the request's nonce: the
+// Starbase modules import 'datastar', which it maps to the vendored build.
+func importMap(p Props) templ.Component {
+	return templ.Raw(`<script type="importmap" nonce="` + templ.EscapeString(p.Nonce) + `">` + p.ImportMap + `</script>`)
+}
+
+var sections = []struct{ id, label string }{
+	{"principles", "Principles"},
+	{"colour", "Colour"},
+	{"type", "Type"},
+	{"icons", "Icons"},
+	{"buttons", "Buttons"},
+	{"forms", "Forms"},
+	{"overlays", "Menus and layers"},
+	{"navigation", "Navigation"},
+	{"tables", "Tables"},
+	{"people", "People"},
+	{"issues", "Issues"},
+	{"feedback", "Feedback"},
+	{"prose", "Prose"},
+	{"editor", "Editor"},
+	{"screens", "Screens"},
+}
+
+templ sideNav() {
+	<div class="tk-sidenav">
+		<a class="tk-sidenav__project" href="#principles">
+			<span class="tk-sidenav__key" data-hue="9" aria-hidden="true">D</span>
+			<span class="tk-sidenav__title">
+				Design system
+				<small>internal/ui</small>
+			</span>
+		</a>
+		<div class="tk-sidenav__section">
+			<p class="tk-eyebrow tk-sidenav__label">On this page</p>
+			<ul role="list">
+				for i, s := range sections {
+					<li>
+						<a class="tk-sidenav__item" href={ templ.SafeURL("#" + s.id) }>
+							<span class="sg-navnum" aria-hidden="true">{ num(i) }</span>
+							<span class="tk-sidenav__text">{ s.label }</span>
+						</a>
+					</li>
+				}
+			</ul>
+		</div>
+	</div>
+}
+
+func num(i int) string {
+	if i < 9 {
+		return "0" + itoa(i+1)
+	}
+	return itoa(i + 1)
+}
+
+// Page is /design.
+templ Page(p Props) {
+	<!DOCTYPE html>
+	<html lang="en" { p.Prefs.Attrs()... }>
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<meta name="color-scheme" content={ p.Prefs.ColorScheme() }/>
+			<title>Design system · tickit</title>
+			<link rel="icon" type="image/svg+xml" href={ p.Mark }/>
+			for _, f := range p.Fonts {
+				<link rel="preload" href={ f } as="font" type="font/woff2" crossorigin/>
+			}
+			<link rel="stylesheet" href={ p.CSS }/>
+			<link rel="stylesheet" href={ p.DesignCSS }/>
+			@importMap(p)
+			<script type="module" src={ p.Datastar }></script>
+			for _, s := range p.Scripts {
+				<script type="module" src={ s }></script>
+			}
+		</head>
+		<body>
+			@ui.Shell(ui.ShellProps{
+				Header:       header(p),
+				Sidebar:      sideNav(),
+				SidebarLabel: "Design system",
+				Notice:       ui.DemoNotice(ui.DemoProps{NextReset: "5 h", PrivacyHref: "/privacy"}),
+				Footer:       ui.FooterProps{Version: "design system", Links: []ui.NavItem{{Label: "Privacy", Href: "/privacy"}, {Label: "Source", Href: "https://github.com/mbolli/tickit"}}},
+				Class:        "sg",
+			}) {
+				@intro(p)
+				@foundations(p)
+				@controls(p)
+				@overlays(p)
+				@navigation(p)
+				@tables(p)
+				@people(p)
+				@issueParts(p)
+				@feedback(p)
+				@proseSection(p)
+				@editorSection(p)
+				@screens(p)
+			}
+			@createDialog(p)
+			@issuePanel(p)
+			@ui.CardMenu(ui.CardMenuProps{ID: "sg-card-menu", Lanes: lanes})
+		</body>
+	</html>
+}
+
+func header(p Props) ui.HeaderProps {
+	return ui.HeaderProps{
+		Nav:           ui.MainNav("projects"),
+		Admin:         []ui.NavItem{{Label: "Moderation", Href: "#screens", Icon: "lock"}},
+		CreateFor:     "sg-create",
+		Unread:        3,
+		Notifications: notificationPanel(p),
+		Me:            me,
+		MeMenu:        meMenu(),
+		Display:       ui.DisplayProps{Prefs: p.Prefs, Href: p.Href},
+	}
+}
+
+templ meMenu() {
+	@ui.MenuItem(ui.MenuItemProps{Label: "Your work", Icon: "home", Href: "#screen-home", Autofocus: true})
+	@ui.MenuItem(ui.MenuItemProps{Label: "Profile", Icon: "user", Href: "#people"})
+	@ui.MenuItem(ui.MenuItemProps{Label: "Preferences", Icon: "settings", Href: "#principles"})
+	@ui.MenuSeparator()
+	@ui.MenuItem(ui.MenuItemProps{Label: "Log out", Icon: "logout", Href: "#principles"})
+}
+
+// section is a numbered part of the page.
+templ section(id, title, lede string) {
+	<section class="sg-section" id={ id } aria-labelledby={ id + "-h" }>
+		<header class="sg-section__head">
+			<p class="sg-num" aria-hidden="true">{ sectionNum(id) }</p>
+			<h2 class="sg-title" id={ id + "-h" }>{ title }</h2>
+			<p class="sg-lede">{ lede }</p>
+		</header>
+		{ children... }
+	</section>
+}
+
+func sectionNum(id string) string {
+	for i, s := range sections {
+		if s.id == id {
+			return num(i)
+		}
+	}
+	return ""
+}
+
+// spec is one specimen: a title, the component, and the call that makes it.
+templ spec(title, code string) {
+	<figure class="sg-spec">
+		<figcaption class="tk-eyebrow">{ title }</figcaption>
+		<div class="sg-spec__stage">
+			{ children... }
+		</div>
+		if code != "" {
+			<pre class="sg-code"><code>{ code }</code></pre>
+		}
+	</figure>
+}
+
+templ intro(p Props) {
+	<div class="sg-hero" id="principles">
+		<div class="sg-hero__mark" aria-hidden="true">
+			@ui.Brand("#principles")
+		</div>
+		<h1 class="sg-hero__title">The tickit design system</h1>
+		<p class="sg-hero__lede">Tide on slate, with 8-bit corners. A sibling of lith and Starbase, built for dense screens that many people change at once. Every part below is a component of <code>internal/ui</code>; copy the call under it.</p>
+		<div class="sg-switch" role="group" aria-label="Preview">
+			<span class="tk-eyebrow">Preview</span>
+			<div class="tk-choice">
+				<a
+					href={ templ.SafeURL(p.Href("theme", "dark")) }
+					if p.Prefs.Normal().Theme == "dark" {
+						aria-current="true"
+					}
+				>
+					@ui.Icon("moon")
+					Dark
+				</a>
+				<a
+					href={ templ.SafeURL(p.Href("theme", "light")) }
+					if p.Prefs.Normal().Theme == "light" {
+						aria-current="true"
+					}
+				>
+					@ui.Icon("sun")
+					Light
+				</a>
+				<a
+					href={ templ.SafeURL(p.Href("theme", "system")) }
+					if p.Prefs.Normal().Theme == "system" {
+						aria-current="true"
+					}
+				>
+					@ui.Icon("system")
+					System
+				</a>
+			</div>
+			<div class="tk-choice">
+				<a
+					href={ templ.SafeURL(p.Href("style", "pixel")) }
+					if p.Prefs.Normal().Style == "pixel" {
+						aria-current="true"
+					}
+				>
+					@ui.Icon("pixel")
+					8-bit
+				</a>
+				<a
+					href={ templ.SafeURL(p.Href("style", "smooth")) }
+					if p.Prefs.Normal().Style == "smooth" {
+						aria-current="true"
+					}
+				>
+					@ui.Icon("smooth")
+					Smooth
+				</a>
+			</div>
+			<div class="tk-choice">
+				<a
+					href={ templ.SafeURL(p.Href("density", "comfortable")) }
+					if p.Prefs.Normal().Density == "comfortable" {
+						aria-current="true"
+					}
+				>Roomy</a>
+				<a
+					href={ templ.SafeURL(p.Href("density", "compact")) }
+					if p.Prefs.Normal().Density == "compact" {
+						aria-current="true"
+					}
+				>Compact</a>
+			</div>
+		</div>
+		<ul class="sg-rules" role="list">
+			<li><b>Tokens, never raw values.</b> Colours, sizes and motion come from <code>--tk-*</code>; there is no <code>style=</code> in any markup.</li>
+			<li><b>Colour is never alone.</b> Types, priorities and statuses each have a shape and a name; overdue has an icon and a word.</li>
+			<li><b>Every icon has a name.</b> Beside it as text, or as its label with a tooltip.</li>
+			<li><b>Focus is always visible,</b> and everything works by keyboard: menus, trees, toolbars, board moves.</li>
+			<li><b>Pending, then the outcome.</b> A sent change stays read-only and busy until its frame; a refusal says why, next to the control.</li>
+			<li><b>Data stays in the UI face.</b> Pixelify Sans is for display; names, titles and documents are set in the system face.</li>
+		</ul>
+	</div>
+}
+
+var surfaceTokens = []struct{ token, use string }{
+	{"bg", "page"},
+	{"surface-1", "panels, cards, tables"},
+	{"surface-2", "heads, chips, counts"},
+	{"surface-inset", "fields, lanes, code"},
+	{"surface-hover", "hover"},
+	{"surface-overlay", "menus, dialogs"},
+}
+
+var inkTokens = []struct{ token, use string }{
+	{"text-1", "text"},
+	{"text-2", "secondary text"},
+	{"text-muted", "meta, hints"},
+	{"accent", "fills: primary, marks"},
+	{"accent-text", "links, current"},
+	{"focus", "focus ring"},
+	{"ok", "done, saved"},
+	{"warn", "warnings, the demo"},
+	{"danger", "refusals, overdue"},
+	{"info", "notices"},
+	{"border", "edges"},
+	{"control-border", "field edges (3:1)"},
+}
+
+templ foundations(p Props) {
+	@section("colour", "Colour", "Slate neutrals so that status, type and priority carry the colour; tide is the one signal. Both themes come from one set of tokens through light-dark(): a theme is only a color-scheme, on <html> or any element.") {
+		<div class="sg-grid sg-grid--swatches">
+			for _, t := range surfaceTokens {
+				<div class="sg-swatch" data-token={ t.token }>
+					<span class="sg-swatch__chip"></span>
+					<code>--tk-{ t.token }</code>
+					<small>{ t.use }</small>
+				</div>
+			}
+			for _, t := range inkTokens {
+				<div class="sg-swatch" data-token={ t.token }>
+					<span class="sg-swatch__chip"></span>
+					<code>--tk-{ t.token }</code>
+					<small>{ t.use }</small>
+				</div>
+			}
+		</div>
+		@spec("Hues: elements that carry one set --h by an attribute, and read --tk-hue-text, -fill, -on, -wash, -edge, -tile", "data-type=\"bug\" · data-prio=\"high\" · data-cat=\"progress\" · data-hue=\"0\" to \"15\"") {
+			<div class="sg-hues">
+				for _, t := range ui.IssueTypes {
+					@ui.TypeLabel(t)
+				}
+				for _, pr := range ui.Priorities {
+					@ui.PriorityLabel(pr)
+				}
+				@ui.StatusLozenge("To Do", ui.ToDo)
+				@ui.StatusLozenge("In Progress", ui.InProgress)
+				@ui.StatusLozenge("Done", ui.Done)
+			</div>
+			<div class="sg-hues sg-hues--faces">
+				for i := range 16 {
+					<span class="sg-hue" data-hue={ itoa(i) }><span></span>{ itoa(i) }</span>
+				}
+			</div>
+		}
+		@spec("Both themes side by side: data-tk-theme on any element", "<div data-tk-theme=\"light\">…</div>") {
+			<div class="sg-themes">
+				for _, th := range []string{"light", "dark"} {
+					<div class="sg-theme" data-tk-theme={ th }>
+						<p class="tk-eyebrow">{ th }</p>
+						<div class="cluster">
+							@ui.Button(ui.ButtonProps{Label: "Create", Icon: "plus", Variant: ui.Primary})
+							@ui.Button(ui.ButtonProps{Label: "Watch", Icon: "eye"})
+							@ui.StatusLozenge("In Review", ui.InProgress)
+							@ui.IssueChip(find("WEB-12").chip())
+						</div>
+					</div>
+				}
+			</div>
+		}
+	}
+	@section("type", "Type", "The system face reads; JetBrains Mono sets labels, keys and counts; Pixelify Sans is display only. Body text is 14px in the UI and 16px in documents.") {
+		<div class="sg-type">
+			<p class="sg-type__row" data-size="4xl"><span class="tk-eyebrow">4xl · display</span><span class="display">Nothing here yet</span></p>
+			<p class="sg-type__row" data-size="3xl"><span class="tk-eyebrow">3xl · doc title</span><span>Release checklist for Board v1</span></p>
+			<p class="sg-type__row" data-size="2xl"><span class="tk-eyebrow">2xl · summary, doc h2</span><span>Card drag drops the card in the wrong lane</span></p>
+			<p class="sg-type__row" data-size="xl"><span class="tk-eyebrow">xl · doc h3, dialogs</span><span>Create an issue</span></p>
+			<p class="sg-type__row" data-size="lg"><span class="tk-eyebrow">lg · documents</span><span>A move the workflow forbids is refused, and the card returns to its column.</span></p>
+			<p class="sg-type__row" data-size="md"><span class="tk-eyebrow">md · UI body</span><span>Assign the issue to someone who works on the board.</span></p>
+			<p class="sg-type__row" data-size="sm"><span class="tk-eyebrow">sm · cells, cards, menus</span><span>Umlauts and long words: Übersicht der Größenänderungen</span></p>
+			<p class="sg-type__row" data-size="xs"><span class="tk-eyebrow">xs · meta</span><span>Updated 5 minutes ago by Sunny Otter</span></p>
+			<p class="sg-type__row" data-size="2xs"><span class="tk-eyebrow">2xs · mono labels</span><span class="mono">WEB-12 · IN REVIEW · 3 SP</span></p>
+		</div>
+	}
+	@section("icons", "Icons", "Pixel icons on a grid of 16, two-pixel strokes, crisp at 16px and 32px. Draw one as 16 rows of # and . in internal/ui/sprites.go. Decorative with ui.Icon; with ui.LabeledIcon when nothing beside it names it.") {
+		<ul class="sg-icons" role="list">
+			for _, name := range ui.IconNames() {
+				<li>
+					@ui.Icon(name)
+					<code>{ name }</code>
+				</li>
+			}
+		</ul>
+		@spec("Issue types (FR-19), priorities (FR-18), status markers, at 16 and 32 pixels", "@ui.TypeIcon(ui.Bug) · @ui.PriorityIcon(ui.High) · @ui.StatusLozenge(\"Done\", ui.Done)") {
+			<div class="sg-glyphs">
+				for _, t := range ui.IssueTypes {
+					@ui.TypeIcon(t)
+				}
+				<span class="sg-gap"></span>
+				for _, pr := range ui.Priorities {
+					@ui.PriorityIcon(pr)
+				}
+			</div>
+			<div class="sg-glyphs sg-glyphs--lg">
+				for _, t := range ui.IssueTypes {
+					@ui.TypeIcon(t)
+				}
+				<span class="sg-gap"></span>
+				for _, pr := range ui.Priorities {
+					@ui.PriorityIcon(pr)
+				}
+				<span class="sg-gap"></span>
+				@ui.Brand("#icons")
+			</div>
+		}
+	}
+}

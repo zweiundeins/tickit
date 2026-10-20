@@ -73,6 +73,7 @@ func (s *Server) Routes() *http.ServeMux {
 	mux.HandleFunc("GET /stream", s.stream)
 	mux.HandleFunc("POST /cmd/sign", s.sign)
 	mux.Handle("GET /static/", s.static)
+	s.designRoutes(mux)
 	return mux
 }
 
