@@ -1,0 +1,64 @@
+package views
+
+import "github.com/mbolli/tickit/internal/ui"
+
+// Account is an account's own page: its password (FR-125) and its login
+// sessions (FR-129). An account whose first password a site admin set
+// lands here first (FR-141.1).
+templ Account(a AccountPage) {
+	<div class="tk-account" data-signals={ accountSignals } data-effect={ pwSettled }>
+		<header class="tk-pagehead">
+			<div>
+				<p class="tk-eyebrow">{ a.Me.Name }</p>
+				<h1>Your account</h1>
+			</div>
+		</header>
+		if a.Me.MustChange {
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneInfo, Icon: "lock", Title: "Choose your own password"}) {
+				<p>A site admin set your first password. Choose one of your own before you go on.</p>
+			}
+		}
+		<div class="tk-admin__grid">
+			<section class="tk-box" aria-labelledby="account-password">
+				<header><h2 class="tk-eyebrow" id="account-password">Change password</h2></header>
+				<form class="stack" data-on:submit__prevent={ pwChange } data-on:datastar-fetch={ pwFailed }>
+					{{ cur := ui.FieldProps{ID: "pw-current", Label: "Current password", Required: true} }}
+					@ui.Field(cur) {
+						@ui.Input(ui.InputProps{ID: cur.ID, Type: "password", Autocomplete: "current-password", Required: true, MaxLength: 128, DescribedBy: cur.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_pw.current"}})
+					}
+					{{ pw := ui.FieldProps{ID: "pw-new", Label: "New password", Required: true, Hint: "8 to 128 characters; every one counts."} }}
+					@ui.Field(pw) {
+						@ui.Input(ui.InputProps{ID: pw.ID, Type: "password", Autocomplete: "new-password", Required: true, MaxLength: 128, DescribedBy: pw.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_pw.password", "minlength": "8"}})
+					}
+					{{ again := ui.FieldProps{ID: "pw-again", Label: "New password again", Required: true} }}
+					@ui.Field(again) {
+						@ui.Input(ui.InputProps{ID: again.ID, Type: "password", Autocomplete: "new-password", Required: true, MaxLength: 128, DescribedBy: again.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_pw.again", "minlength": "8"}})
+					}
+					@ui.Outcome(ui.OutcomeProps{ID: "pw-outcome", Attrs: templ.Attributes{"data-text": "$_pw.msg", "data-attr:data-kind": pwKind}})
+					@ui.Button(ui.ButtonProps{Label: "Change password", Icon: "lock", Type: "submit", Variant: ui.Primary, Attrs: templ.Attributes{"data-attr:aria-busy": pwBusy}})
+				</form>
+			</section>
+			<section class="tk-box" aria-labelledby="account-sessions">
+				<header><h2 class="tk-eyebrow" id="account-sessions">Where you are logged in</h2></header>
+				<ul class="tk-modlog" role="list">
+					for _, s := range a.Sessions {
+						<li class="split">
+							<div>
+								<p class="truncate">{ browserName(s.UserAgent) }</p>
+								<p class="muted">
+									if s.Current {
+										This browser ·
+									}
+									since { ui.Ago(s.Created, a.Now) }, last seen { ui.Ago(s.Seen, a.Now) }
+								</p>
+							</div>
+							if !s.Current {
+								@ui.Button(ui.ButtonProps{Label: "End", Icon: "logout", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-session": s.ID, "data-on:click": sessionEnd, "data-on:datastar-fetch": pwFailed}})
+							}
+						</li>
+					}
+				</ul>
+			</section>
+		</div>
+	</div>
+}

@@ -1,0 +1,453 @@
+package views
+
+import (
+	"time"
+
+	"github.com/mbolli/tickit/internal/demo"
+	"github.com/mbolli/tickit/internal/people"
+	"github.com/mbolli/tickit/internal/ui"
+)
+
+// Admin is an admin page (FR-140 to FR-144): the tabs, then the tab's
+// content (the children). One outcome line serves every action of the
+// page.
+templ Admin(tab AdminTab) {
+	<div class="tk-admin" data-signals={ adminSignals } data-effect={ adminSettled }>
+		<header class="tk-pagehead">
+			<div>
+				<p class="tk-eyebrow">Site admin</p>
+				<h1>Administration</h1>
+			</div>
+			@ui.Outcome(ui.OutcomeProps{ID: "admin-outcome", Attrs: templ.Attributes{"data-text": "$_admin.msg", "data-attr:data-kind": adminKind}})
+		</header>
+		@ui.TabNav("Administration", adminTabs(tab))
+		<div class="tk-admin__body">
+			{ children... }
+		</div>
+	</div>
+}
+
+// AdminAccountsTab is the accounts tab: the filter, the list and the form
+// that creates an account (FR-140.1, FR-141).
+templ AdminAccountsTab(a AdminAccounts) {
+	<div class="tk-admin__grid">
+		<div class="stack">
+			<form class="tk-admin__filter cluster" method="get" action="/admin" role="search">
+				{{ q := ui.FieldProps{ID: "admin-q", Label: "Search accounts", HideLabel: true} }}
+				@ui.Field(q) {
+					@ui.Input(ui.InputProps{ID: q.ID, Name: "q", Type: "search", Value: a.Filter.Search, Placeholder: "Name or email", Icon: "search", MaxLength: 100, Size: ui.SizeSM})
+				}
+				{{ role := ui.FieldProps{ID: "admin-role", Label: "Site role", HideLabel: true} }}
+				@ui.Field(role) {
+					@ui.Select(ui.SelectProps{ID: role.ID, Name: "role", Size: ui.SizeSM, Options: []ui.Option{
+						{Value: "", Label: "Any role", Selected: a.Filter.Role == ""},
+						{Value: "admin", Label: "Site admins", Selected: a.Filter.Role == people.Admin},
+						{Value: "moderator", Label: "Moderators", Selected: a.Filter.Role == people.Moderator},
+						{Value: "none", Label: "No role", Selected: a.Filter.Role == people.NoRole},
+					}})
+				}
+				{{ status := ui.FieldProps{ID: "admin-status", Label: "Status", HideLabel: true} }}
+				@ui.Field(status) {
+					@ui.Select(ui.SelectProps{ID: status.ID, Name: "status", Size: ui.SizeSM, Options: []ui.Option{
+						{Value: "", Label: "Any status", Selected: a.Filter.Status == ""},
+						{Value: "active", Label: "Active", Selected: a.Filter.Status == "active"},
+						{Value: "inactive", Label: "Deactivated", Selected: a.Filter.Status == "inactive"},
+						{Value: "pending", Label: "Pending", Selected: a.Filter.Status == "pending"},
+					}})
+				}
+				@ui.Button(ui.ButtonProps{Label: "Filter", Icon: "filter", Type: "submit", Size: ui.SizeSM})
+			</form>
+			@AdminAccountsTable(a)
+		</div>
+		@adminCreateForm()
+	</div>
+}
+
+// AdminAccountsTable is the list of accounts, which its view renders
+// again when an account changes.
+templ AdminAccountsTable(a AdminAccounts) {
+	<div id={ AdminAccountsID } class="stack">
+		if len(a.Rows) == 0 {
+			<p class="muted">No account matches.</p>
+		} else {
+			@ui.Table(ui.TableProps{Caption: "Accounts", HideCaption: true, Class: "tk-admin__table"}) {
+				<thead>
+					<tr>
+						<th scope="col">Name</th>
+						<th scope="col">Email</th>
+						<th scope="col">Site role</th>
+						<th scope="col">Status</th>
+						<th scope="col">Last login</th>
+						<th scope="col"><span class="visually-hidden">Actions</span></th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, r := range a.Rows {
+						<tr>
+							<td>
+								<span class="tk-admin__who">
+									@ui.Avatar(ui.AvatarProps{Person: UIPerson(r.Person), Size: ui.SizeSM, Decorative: true})
+									<span>
+										<span class="tk-admin__name">{ r.Person.Name }</span>
+										<span class="tk-admin__sub mono">{ r.Username }</span>
+									</span>
+								</span>
+							</td>
+							<td class="truncate">{ r.Email }</td>
+							<td>{ roleName(r.Person.Role) }</td>
+							<td>
+								<span class={ "tk-admin__status tk-admin__status--" + string(statusTone(r.Status)) }>
+									{ statusLabel(r.Status) }
+								</span>
+								if r.MustChange {
+									<span class="tk-admin__sub">first password</span>
+								}
+							</td>
+							<td>
+								if r.LastLogin.IsZero() {
+									<span class="muted">never</span>
+								} else {
+									@ui.RelativeTime(r.LastLogin, a.Now)
+								}
+							</td>
+							<td class="tk-admin__actions">
+								@ui.Menu(ui.MenuProps{ID: "role-" + r.Person.ID, Label: "Change " + r.Person.Name + "'s role or status", Icon: "more", IconOnly: true, Size: ui.SizeSM, Align: "end"}) {
+									@ui.MenuLabel("Site role")
+									for _, role := range []people.SiteRole{people.NoRole, people.Moderator, people.Admin} {
+										{{ checked := r.Person.Role == role }}
+										@ui.MenuItem(ui.MenuItemProps{Label: roleName(role), Checked: &checked, Attrs: templ.Attributes{"data-account": r.Person.ID, "data-role": string(role), "data-on:click": adminRole, "data-on:datastar-fetch": adminFailed}})
+									}
+									@ui.MenuSeparator()
+									if r.Status == "inactive" {
+										@ui.MenuItem(ui.MenuItemProps{Label: "Reactivate", Icon: "restore", Attrs: templ.Attributes{"data-account": r.Person.ID, "data-active": "true", "data-on:click": adminActive, "data-on:datastar-fetch": adminFailed}})
+									} else if r.Person.ID != a.Me {
+										@ui.MenuItem(ui.MenuItemProps{Label: "Deactivate", Icon: "lock", Danger: true, Attrs: templ.Attributes{"data-account": r.Person.ID, "data-active": "false", "data-on:click": adminActive, "data-on:datastar-fetch": adminFailed}})
+									}
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			}
+		}
+		@ui.Pagination(ui.PaginationProps{Page: max(a.Filter.Page, 1), Pages: a.Pages(), Total: a.Total, Noun: "accounts", Href: a.href})
+	</div>
+}
+
+func statusLabel(s string) string {
+	if s == "inactive" {
+		return "Deactivated"
+	}
+	return capitalized(s)
+}
+
+// adminCreate is the form that creates a staff account (FR-141): its
+// first password must be changed at the first login.
+templ adminCreateForm() {
+	<section class="tk-box" aria-labelledby="admin-create">
+		<header>
+			<h2 class="tk-eyebrow" id="admin-create">New account</h2>
+		</header>
+		<form class="stack" data-on:submit__prevent={ adminCreate } data-on:datastar-fetch={ adminFailed }>
+			{{ email := ui.FieldProps{ID: "new-email", Label: "Email", Required: true} }}
+			@ui.Field(email) {
+				@ui.Input(ui.InputProps{ID: email.ID, Type: "email", Autocomplete: "off", Required: true, MaxLength: 254, Size: ui.SizeSM, DescribedBy: email.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_admin.email"}})
+			}
+			{{ username := ui.FieldProps{ID: "new-username", Label: "Username", Required: true, Hint: "2 to 50 letters, digits, . - _"} }}
+			@ui.Field(username) {
+				@ui.Input(ui.InputProps{ID: username.ID, Autocomplete: "off", Required: true, MaxLength: 50, Size: ui.SizeSM, DescribedBy: username.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_admin.username"}})
+			}
+			{{ name := ui.FieldProps{ID: "new-name", Label: "Full name", Optional: true} }}
+			@ui.Field(name) {
+				@ui.Input(ui.InputProps{ID: name.ID, Autocomplete: "off", MaxLength: 100, Size: ui.SizeSM, DescribedBy: name.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_admin.name"}})
+			}
+			{{ role := ui.FieldProps{ID: "new-role", Label: "Site role"} }}
+			@ui.Field(role) {
+				@ui.Select(ui.SelectProps{ID: role.ID, Size: ui.SizeSM, DescribedBy: role.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_admin.role"}, Options: []ui.Option{
+					{Value: "moderator", Label: "Moderator", Selected: true},
+					{Value: "admin", Label: "Site admin"},
+					{Value: "none", Label: "No role"},
+				}})
+			}
+			{{ pw := ui.FieldProps{ID: "new-password", Label: "First password", Required: true, Hint: "8 to 128 characters. They change it when they first log in."} }}
+			@ui.Field(pw) {
+				@ui.Input(ui.InputProps{ID: pw.ID, Type: "password", Autocomplete: "new-password", Required: true, MaxLength: 128, Size: ui.SizeSM, DescribedBy: pw.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_admin.password", "minlength": "8"}})
+			}
+			@ui.Button(ui.ButtonProps{Label: "Create account", Icon: "plus", Type: "submit", Variant: ui.Primary, Size: ui.SizeSM, Attrs: templ.Attributes{"data-attr:aria-busy": adminBusy}})
+		</form>
+	</section>
+}
+
+// AdminGuestsTab lists the guests who acted in the last 24 hours
+// (FR-140.2).
+templ AdminGuestsTab(g AdminGuests) {
+	if len(g.Rows) == 0 {
+		@ui.EmptyState(ui.EmptyProps{Icon: "users", Title: "No guests today", Text: "Guests who change something show here for 24 hours."})
+	} else {
+		@ui.Table(ui.TableProps{Caption: "Guests active in the last 24 hours", Class: "tk-admin__table"}) {
+			<thead>
+				<tr>
+					<th scope="col">Name</th>
+					<th scope="col">First seen</th>
+					<th scope="col">Last seen</th>
+					<th scope="col" class="num">Changes</th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, r := range g.Rows {
+					<tr>
+						<td>
+							<span class="tk-admin__who">
+								@ui.Avatar(ui.AvatarProps{Person: UIPerson(r.Person), Size: ui.SizeSM, Decorative: true})
+								<span>
+									<span class="tk-admin__name">{ r.Person.Name }</span>
+									<span class="tk-admin__sub mono">{ r.Person.ID }</span>
+								</span>
+							</span>
+						</td>
+						<td>
+							@ui.RelativeTime(r.First, g.Now)
+						</td>
+						<td>
+							@ui.RelativeTime(r.Last, g.Now)
+						</td>
+						<td class="num">{ itoa(r.Changes) }</td>
+					</tr>
+				}
+			</tbody>
+		}
+	}
+}
+
+// AdminStatsTab holds the statistics, which its view renders every few
+// seconds (FR-144).
+templ AdminStatsTab(s AdminStats) {
+	<div id={ AdminStatsID } class="stack">
+		<section class="tk-box" aria-labelledby="stats-demo">
+			<header><h2 class="tk-eyebrow" id="stats-demo">The demo</h2></header>
+			@ui.Stats(s.Counts)
+		</section>
+		<section class="tk-box" aria-labelledby="stats-writer">
+			<header><h2 class="tk-eyebrow" id="stats-writer">Writer</h2></header>
+			@ui.Stats(s.Writer)
+		</section>
+		<section class="tk-box" aria-labelledby="stats-hub">
+			<header><h2 class="tk-eyebrow" id="stats-hub">Render loop</h2></header>
+			@ui.Stats(s.Hub)
+		</section>
+	</div>
+}
+
+// AdminSecurityTab is the security log, filtered by account and kind
+// (FR-156.2).
+templ AdminSecurityTab(s AdminSecurity) {
+	<div class="stack">
+		<form class="tk-admin__filter cluster" method="get" action="/admin/security">
+			{{ acc := ui.FieldProps{ID: "sec-account", Label: "Account", HideLabel: true} }}
+			@ui.Field(acc) {
+				@ui.Select(ui.SelectProps{ID: acc.ID, Name: "account", Size: ui.SizeSM, Options: accountOptions(s)})
+			}
+			{{ kind := ui.FieldProps{ID: "sec-kind", Label: "Kind", HideLabel: true} }}
+			@ui.Field(kind) {
+				@ui.Select(ui.SelectProps{ID: kind.ID, Name: "kind", Size: ui.SizeSM, Options: kindOptions(s.Filter.Kind)})
+			}
+			@ui.Button(ui.ButtonProps{Label: "Filter", Icon: "filter", Type: "submit", Size: ui.SizeSM})
+			<p class="muted tk-admin__note">Entries go after 90 days.</p>
+		</form>
+		if len(s.Entries) == 0 {
+			<p class="muted">No entry matches.</p>
+		} else {
+			@ui.Table(ui.TableProps{Caption: "Security log", HideCaption: true, Class: "tk-admin__table"}) {
+				<thead>
+					<tr>
+						<th scope="col">When</th>
+						<th scope="col">What</th>
+						<th scope="col">Account</th>
+						<th scope="col">By</th>
+						<th scope="col">Outcome</th>
+						<th scope="col">Detail</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, e := range s.Entries {
+						<tr>
+							<td>
+								@ui.RelativeTime(e.At, s.Now)
+							</td>
+							<td>{ kindLabel(e.Kind) }</td>
+							<td>
+								if e.Person != "" {
+									{ personOr(s.People, e.Person).Name }
+								} else {
+									<span class="muted">unknown email</span>
+								}
+							</td>
+							<td>
+								if e.Actor != "" && e.Actor != e.Person {
+									{ personOr(s.People, e.Actor).Name }
+								}
+							</td>
+							<td>
+								<span class={ "tk-admin__status tk-admin__status--" + string(outcomeTone(e.Outcome)) }>{ outcomeLabel(e.Outcome) }</span>
+							</td>
+							<td class="tk-admin__detail">{ e.Detail }</td>
+						</tr>
+					}
+				</tbody>
+			}
+		}
+		if next := s.next(); next != "" {
+			@ui.Button(ui.ButtonProps{Label: "Older entries", Icon: "chevron-right", Variant: ui.Ghost, Size: ui.SizeSM, Href: next})
+		}
+	</div>
+}
+
+func accountOptions(s AdminSecurity) []ui.Option {
+	out := []ui.Option{{Value: "", Label: "Every account", Selected: s.Filter.Person == ""}}
+	for _, a := range s.Accounts {
+		out = append(out, ui.Option{Value: a.Person.ID, Label: a.Person.Name + " (" + a.Email + ")", Selected: s.Filter.Person == a.Person.ID})
+	}
+	return out
+}
+
+func kindOptions(cur string) []ui.Option {
+	out := []ui.Option{{Value: "", Label: "Every kind", Selected: cur == ""}}
+	for _, k := range append(people.SecurityKinds, demo.EventReset) {
+		out = append(out, ui.Option{Value: k, Label: kindLabel(k), Selected: cur == k})
+	}
+	return out
+}
+
+func kindLabel(k string) string {
+	switch k {
+	case people.EventLogin:
+		return "Login"
+	case people.EventLogout:
+		return "Logout"
+	case people.EventAccountCreated:
+		return "Account created"
+	case people.EventRoleChanged:
+		return "Role changed"
+	case people.EventPassword:
+		return "Password changed"
+	case people.EventDeactivated:
+		return "Deactivation"
+	case people.EventModeration:
+		return "Moderation"
+	case demo.EventReset:
+		return "Demo reset"
+	}
+	return k
+}
+
+func outcomeLabel(o string) string {
+	switch o {
+	case people.OutcomeOK:
+		return "OK"
+	case people.OutcomeWrong:
+		return "Wrong password"
+	case people.OutcomeLocked:
+		return "Locked out"
+	case people.OutcomeInactive:
+		return "Deactivated"
+	case people.OutcomePending:
+		return "Pending"
+	}
+	return o
+}
+
+func outcomeTone(o string) ui.Tone {
+	if o == people.OutcomeOK {
+		return ui.ToneOK
+	}
+	return ui.ToneDanger
+}
+
+// AdminDemoTab is the demo's state: when it resets next, what guests
+// created against the caps, "Reset now", and the last resets (DM-03,
+// DM-04.3). Its view renders it again when a reset starts or ends.
+templ AdminDemoTab(d AdminDemo) {
+	<div id={ AdminDemoID } class="stack">
+		<section class="tk-box" aria-labelledby="demo-next">
+			<header>
+				<h2 class="tk-eyebrow" id="demo-next">Nightly reset</h2>
+				@ui.Button(ui.ButtonProps{Label: "Reset now", Icon: "restore", Variant: ui.Danger, Size: ui.SizeSM, Disabled: d.Status.Resetting, Attrs: templ.Attributes{"data-on:click": adminReset, "data-on:datastar-fetch": adminFailed, "data-attr:aria-busy": adminBusy}})
+			</header>
+			if d.Status.Resetting {
+				<p>The demo is resetting now.</p>
+			} else {
+				<p>Next at { d.Next.Format("15:04") } Swiss time, in { d.Status.Remaining }. A reset deletes every visitor's issues, pages, comments, notifications and guests, keeps the staff accounts, the security log and the moderation log, and seeds the demo again.</p>
+			}
+			@ui.Stats(capStats(d.Created))
+		</section>
+		<section class="tk-box" aria-labelledby="demo-resets">
+			<header><h2 class="tk-eyebrow" id="demo-resets">Last resets</h2></header>
+			if len(d.Resets) == 0 {
+				<p class="muted">No reset yet.</p>
+			} else {
+				@ui.Table(ui.TableProps{Caption: "Last resets", HideCaption: true, Class: "tk-admin__table"}) {
+					<thead>
+						<tr>
+							<th scope="col">Started</th>
+							<th scope="col">By</th>
+							<th scope="col">Outcome</th>
+							<th scope="col" class="num">Took</th>
+							<th scope="col">Detail</th>
+						</tr>
+					</thead>
+					<tbody>
+						for _, r := range d.Resets {
+							<tr>
+								<td>
+									@ui.RelativeTime(r.Started, d.Now)
+								</td>
+								<td>
+									if r.By == "" {
+										<span class="muted">the schedule</span>
+									} else {
+										{ personOr(d.People, r.By).Name }
+									}
+								</td>
+								<td>
+									<span class={ "tk-admin__status tk-admin__status--" + string(resetTone(r.Outcome)) }>{ capitalized(r.Outcome) }</span>
+								</td>
+								<td class="num">{ took(r) }</td>
+								<td class="tk-admin__detail">{ r.Detail }</td>
+							</tr>
+						}
+					</tbody>
+				}
+			}
+		</section>
+	</div>
+}
+
+func capStats(created map[string]int) []ui.Stat {
+	var out []ui.Stat
+	for _, k := range []struct{ kind, label string }{{demo.CapIssue, "New issues"}, {demo.CapPage, "New pages"}, {demo.CapImage, "New images"}} {
+		n, cap := created[k.kind], demo.Caps[k.kind]
+		tone := ui.ToneNeutral
+		if n >= cap {
+			tone = ui.ToneDanger
+		}
+		out = append(out, ui.Stat{Label: k.label, Value: itoa(n), Note: "of " + thousands(cap) + " a day", Tone: tone})
+	}
+	return out
+}
+
+func resetTone(o string) ui.Tone {
+	switch o {
+	case "ok":
+		return ui.ToneOK
+	case "failed":
+		return ui.ToneDanger
+	}
+	return ui.ToneWarn
+}
+
+func took(r demo.ResetEntry) string {
+	if r.Finished.IsZero() {
+		return ""
+	}
+	return r.Finished.Sub(r.Started).Round(time.Second).String()
+}

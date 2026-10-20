@@ -59,6 +59,10 @@ var errGone = errors.New("gone")
 // errGone for 410.
 func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, build func(ctx context.Context, q sqlite.Querier) (Page, error)) {
 	ctx := r.Context()
+	if people.Actor(ctx).MustChange && r.URL.Path != PasswordPath { // FR-141.1
+		http.Redirect(w, r, PasswordPath, http.StatusSeeOther)
+		return
+	}
 	var buf bytes.Buffer
 	err := s.db.View(ctx, func(tx *sql.Tx) error {
 		p, err := build(ctx, tx)

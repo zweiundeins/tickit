@@ -1,0 +1,144 @@
+package views
+
+import (
+	"github.com/mbolli/tickit/internal/demo"
+	"github.com/mbolli/tickit/internal/ui"
+)
+
+// ModerationPage is the moderation page (DM-07.3): a reason for the next
+// action, then the live region of what visitors wrote, the blocks and the
+// log.
+templ ModerationPage(m Moderation) {
+	<div class="tk-admin tk-moderation" data-signals={ modSignals } data-effect={ modSettled }>
+		<header class="tk-pagehead">
+			<div>
+				<p class="tk-eyebrow">Moderators and site admins</p>
+				<h1>Moderation</h1>
+			</div>
+			<div class="tk-moderation__reason cluster">
+				{{ reason := ui.FieldProps{ID: "mod-reason", Label: "Reason", Optional: true, Hint: "Goes with the next action into the log."} }}
+				@ui.Field(reason) {
+					@ui.Input(ui.InputProps{ID: reason.ID, MaxLength: 200, Size: ui.SizeSM, Placeholder: "Spam, abuse, personal data", DescribedBy: reason.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_mod.reason"}})
+				}
+			</div>
+		</header>
+		@ui.Outcome(ui.OutcomeProps{ID: "mod-outcome", Attrs: templ.Attributes{"data-text": "$_mod.msg", "data-attr:data-kind": modKind}})
+		@ModerationRegion(m)
+	</div>
+}
+
+// ModerationRegion is what the moderation view renders again whenever
+// visitors write or moderators act.
+templ ModerationRegion(m Moderation) {
+	<div id={ ModerationID } class="tk-admin__grid">
+		<section class="tk-box" aria-labelledby="mod-newest">
+			<header><h2 class="tk-eyebrow" id="mod-newest">Newest from visitors</h2></header>
+			if len(m.Items) == 0 {
+				<p class="muted">Nothing yet. What guests and staff write shows here, newest first.</p>
+			} else {
+				<ul class="tk-modlist" role="list">
+					for _, t := range m.Items {
+						<li
+							class="tk-modlist__item"
+							if t.Hidden {
+								data-hidden
+							}
+						>
+							<div class="tk-modlist__head">
+								<span class="tk-modlist__kind">{ m.Names[t.Kind] }</span>
+								if t.Href != "" && !(t.Kind == "issue" && t.Hidden) {
+									<a class="tk-key mono" href={ templ.SafeURL(t.Href) }>{ t.Label }</a>
+								} else {
+									<span class="tk-key mono">{ t.Label }</span>
+								}
+								if t.Hidden {
+									<span class="tk-admin__status tk-admin__status--warn">Hidden</span>
+								}
+							</div>
+							<p class="tk-modlist__text">{ t.Text }</p>
+							<div class="tk-modlist__foot">
+								@ui.Byline(ui.BylineProps{Person: UIPerson(personOr(m.People, t.Author)), At: t.At, Now: m.Now})
+								<div class="cluster tk-modlist__actions">
+									if t.Hidden {
+										@ui.Button(ui.ButtonProps{Label: "Restore", Icon: "restore", Size: ui.SizeSM, Attrs: modAttrs(t, demo.ActRestore, modAct)})
+									} else {
+										@ui.Button(ui.ButtonProps{Label: "Hide", Icon: "eye", Size: ui.SizeSM, Attrs: modAttrs(t, demo.ActHide, modAct)})
+									}
+									if m.Delete[t.Kind] {
+										@ui.Button(ui.ButtonProps{Label: "Delete", Icon: "trash", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: modAttrs(t, demo.ActDelete, modDelete)})
+									}
+									if isGuest(t.Author) {
+										@ui.Button(ui.ButtonProps{Label: "Block " + personOr(m.People, t.Author).Name + " for 24 hours", Icon: "lock", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-person": t.Author, "data-on:click": modBlock, "data-on:datastar-fetch": modFailed, "data-attr:aria-busy": modBusy}})
+									}
+								</div>
+							</div>
+						</li>
+					}
+				</ul>
+			}
+		</section>
+		<div class="stack">
+			<section class="tk-box" aria-labelledby="mod-blocks">
+				<header><h2 class="tk-eyebrow" id="mod-blocks">Paused guests</h2></header>
+				if len(m.Blocks) == 0 {
+					<p class="muted">No guest is blocked. A block pauses a guest's changes, and those from their address, for 24 hours; they still read.</p>
+				} else {
+					<ul class="tk-worklist" role="list">
+						for _, b := range m.Blocks {
+							<li>
+								@ui.Avatar(ui.AvatarProps{Person: UIPerson(personOr(m.People, b.Person)), Size: ui.SizeXS, Decorative: true})
+								<span class="truncate">{ personOr(m.People, b.Person).Name }</span>
+								<span class="muted">until { b.Until.In(zurich).Format("Mon 15:04") }</span>
+								@ui.Button(ui.ButtonProps{Label: "Unblock", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-person": b.Person, "data-on:click": modUnblock, "data-on:datastar-fetch": modFailed}})
+							</li>
+						}
+					</ul>
+				}
+			</section>
+			<section class="tk-box" aria-labelledby="mod-log">
+				<header><h2 class="tk-eyebrow" id="mod-log">Moderation log</h2></header>
+				if len(m.Log) == 0 {
+					<p class="muted">Every hide, restore, delete and block goes here, with who, why and when.</p>
+				} else {
+					<ul class="tk-modlog" role="list">
+						for _, e := range m.Log {
+							<li>
+								<p>
+									<strong>{ personOr(m.People, e.Moderator).Name }</strong>
+									{ actionVerb(e.Action) }
+									<span>{ e.Label }</span>
+								</p>
+								if e.Reason != "" {
+									<p class="muted">{ e.Reason }</p>
+								}
+								@ui.RelativeTime(e.At, m.Now)
+							</li>
+						}
+					</ul>
+				}
+			</section>
+		</div>
+	</div>
+}
+
+func modAttrs(t demo.Target, action, expr string) templ.Attributes {
+	return templ.Attributes{"data-action": action, "data-kind": t.Kind, "data-id": t.ID, "data-on:click": expr, "data-on:datastar-fetch": modFailed, "data-attr:aria-busy": modBusy}
+}
+
+func isGuest(id string) bool { return len(id) > 2 && id[:2] == "g-" }
+
+func actionVerb(a string) string {
+	switch a {
+	case demo.ActHide:
+		return "hid"
+	case demo.ActRestore:
+		return "restored"
+	case demo.ActDelete:
+		return "deleted"
+	case demo.ActBlock:
+		return "blocked"
+	case demo.ActUnblock:
+		return "unblocked"
+	}
+	return a
+}
