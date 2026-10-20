@@ -53,7 +53,7 @@ func TestRebuild(t *testing.T) {
 	e.must(SetType{By: e.by(sunny), Issue: web3, Seen: 1 << 40, Type: Bug})
 	e.must(Move{By: e.by(sunny), Issue: web4, Status: StatusInProgress, After: web1, Seen: 1 << 40})
 	e.must(Move{By: e.by(sunny), Issue: web1, Before: web2, Seen: 1 << 40})
-	e.must(SetDescription{By: e.by(sunny), Issue: web1, Seen: 1 << 40, Description: PlainDoc("Now with words")})
+	e.must(SetDescription{By: e.by(sunny), Issue: web1, Seen: 1 << 40, Description: PlainDoc("Now with words, a < b & c")})
 	e.must(SetDue{By: e.by(sunny), Issue: web1, Seen: 1 << 40, Due: "2026-12-24"})
 	e.must(SetPoints{By: e.by(sunny), Issue: web1, Seen: 1 << 40, Points: ptr(8)})
 	e.must(SetEstimate{By: e.by(sunny), Issue: web1, Seen: 1 << 40, Estimate: ptr(60)})
