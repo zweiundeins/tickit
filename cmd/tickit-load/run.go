@@ -858,5 +858,8 @@ func (l *load) sustain(r *Results, db string, d time.Duration) error {
 	stop()
 	wg.Wait()
 	_, r.RSSPeakSustain = l.srv.rss()
+	l.srv.mu.Lock()
+	r.AnonMaxSustain = l.srv.maxAnon
+	l.srv.mu.Unlock()
 	return nil
 }

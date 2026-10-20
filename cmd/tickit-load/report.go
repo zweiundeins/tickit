@@ -66,24 +66,24 @@ type Results struct {
 	Times map[string]Dist
 	Codes map[string]int64
 
-	ServerCores, ClientCores      float64
-	RSS, RSSPeak, RSSMaxSampled   int64
-	AnonMax, FileMax              int64
-	RSSAfterRestart               int64
-	RSSPeakSustain                int64
-	Ticks, Overrun                float64
-	Renders, Deferred             float64
-	FramesSent, FramesDropped     float64
-	Commands, Batches, WriterBusy float64
-	CommitP99                     float64
-	RateLimited                   float64
-	BudgetRefused                 float64
-	BudgetTiers                   map[string]float64
-	BudgetReserved, GoSys, Heap   float64
-	TickHist                      map[string]float64
-	Overruns                      []string
-	Unseen                        map[string]string
-	Regions                       map[string]RegionStats
+	ServerCores, ClientCores       float64
+	RSS, RSSPeak, RSSMaxSampled    int64
+	AnonMax, FileMax               int64
+	RSSAfterRestart                int64
+	RSSPeakSustain, AnonMaxSustain int64
+	Ticks, Overrun                 float64
+	Renders, Deferred              float64
+	FramesSent, FramesDropped      float64
+	Commands, Batches, WriterBusy  float64
+	CommitP99                      float64
+	RateLimited                    float64
+	BudgetRefused                  float64
+	BudgetTiers                    map[string]float64
+	BudgetReserved, GoSys, Heap    float64
+	TickHist                       map[string]float64
+	Overruns                       []string
+	Unseen                         map[string]string
+	Regions                        map[string]RegionStats
 
 	Typed, DocChars int
 	DBBytesAfter    int64
@@ -246,6 +246,6 @@ func (r *Results) Print(w io.Writer) {
 		for _, g := range r.Growth {
 			p("  %5.1f  %s (WAL %s)  free %d  %v  folded %.0f  folds %.0f  over 5 ms %.0f  mean %.2f ms  rss %s", g.Minute, mib(g.Bytes), mib(g.WAL), g.FreePages, g.Events, g.Folded, g.Folds, g.FoldsOver5ms, 1000*g.FoldMean, mib(g.RSS))
 		}
-		p("  peak RSS over the whole run %s", mib(r.RSSPeakSustain))
+		p("  peak RSS over the whole run %s (VmHWM of the restarted process), anonymous at most %s", mib(r.RSSPeakSustain), mib(r.AnonMaxSustain))
 	}
 }
