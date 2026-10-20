@@ -104,7 +104,7 @@ The builds: **v0.3.0** recorded (`ff4d49a`, above), the **control**, v0.3.0 agai
 
 Every run passed NFR-38.1 (200 streams, every frame of every change to every watcher), the 201st stream's 503, MP-05.1 and NFR-42's state after the restart. NFR-35's field changes still miss the median by 0.7 ms of an upper bound, and the overruns stay above 0.1 %.
 
-**Short runs side by side.** Since the load average moves the numbers by more than the builds differ, the builds also ran 120 s each (no sustain), one after the other: **B** is v0.4.1 with the feeds' topics, **C** adds the home page's cache, **D** the feeds' reads (the tuned build adds the issue page's indexes to D).
+**Short runs side by side.** Since the load average moves the numbers by more than the builds differ, the builds also ran 120 s each (no sustain), one after the other: **B** is v0.4.1 with the feeds' topics, **C** adds the home page's cache, **D** the feeds' reads (the tuned build adds the issue page's indexes to D, and the final one the 503 below).
 
 | Run (load at start) | move p50 / p95 | field p50 / p95 | commit p50 / p95 | overruns | ticks summed, renders |
 | --- | --- | --- | --- | --- | --- |
@@ -118,6 +118,7 @@ Every run passed NFR-38.1 (200 streams, every frame of every change to every wat
 | C (2.9) | 56.3 / 77.6 ms | 58.4 / 87.3 ms | 45.9 / 80.1 ms | 1.09 % | 40.5 s, 73,967 |
 | D (2.5) | 48.0 / 70.1 ms | 51.6 / 80.8 ms | 43.3 / 71.1 ms | 0.04 % | 33.5 s, 74,887 |
 | v0.4.1 (2.4) | 55.9 / 82.7 ms | 56.4 / 85.8 ms | 54.3 / 80.3 ms | 0.75 % | 63.6 s, 86,928 |
+| final, `679294f` (2.9) | 50.9 / 75.0 ms | 50.3 / 79.5 ms | 43.7 / 70.6 ms | 0 of 2,400 | 75,263 renders; NFR-42 stop 52 ms |
 
 **What v0.4.1 gives by itself.** Next to v0.3.0 at a similar load it is about the same: commit to frame within a few ms either way, overruns 0.4 to 1 %, ticks summed 64 to 65 s; the hub's fewer allocations do not show at this load, whose ticks are reads in SQLite. Compared with the control under the heavier load of the same afternoon it is clearly better (p95 81 to 86 ms against 116 to 134 ms, overruns 0.7 % against 6 %), but that control ran beside this work's tests.
 
@@ -131,7 +132,7 @@ Every run passed NFR-38.1 (200 streams, every frame of every change to every wat
 **What is still open.**
 
 - NFR-35: field changes 0.7 ms over the median, and overruns at 0.5 %. The largest renders left are the editors' own views (20, each on every commit, 16 % of the CPU in the last profile), whose reads of a 20-row table cost what a cold page cache costs: with 100 commits a second each read transaction starts without cached pages and looks them up in the WAL (`walFindFrame`, `btreeInitPage`: 13 % of the samples), and the issue view, 324 KB a frame with its history of about 100 entries. Splitting the issue's history and comments into views of their own would spread its render over the workers.
-- NFR-42: the stop took 139 ms in the tuned run (46 ms before). An action still waiting for its tab's stream when the hub stopped would hold the shutdown for up to 2 s; it now answers 503 at once (`fix: an action waiting...`). Not measured again.
+- NFR-42: the stop took 139 ms in the tuned run (46 ms before): an action still waiting for its tab's stream when the hub stopped held the shutdown, for up to 2 s. It now answers 503 at once (`679294f`), and the stop took 52 ms in the last short run.
 - NFR-41: anonymous memory reached 530 MiB over the 27 minutes of the tuned run, above the unit's `MemoryHigh=512M`, as before.
 - NFR-43.3: lith v0.4.1 did not change `events.Compact`, and a fold command still holds the writer about 21 ms (16 to 20 ms with `tickit-load fold` on the run's database whatever the batch, 1 to 200 events). Its profile: `events.Compact` 82 %, of it `StateAt` loading the stream 39 %, the DELETE and the snapshot's UPDATE 34 %, the cut 10 %; applying the steps 2 %. All three walk the page's whole entry of the unique index `(stream, stream_id, version)`, about 92,000 rows, because they bound it by position: `DELETE ... WHERE stream = ? AND stream_id = ? AND position < ?` deleting nothing takes 6.1 ms in the sqlite3 shell, and the same bounded by `version <` 0.017 ms; `LoadUntil`'s `version > ? AND position <= ? ORDER BY version` walks the same way. tickit cannot avoid it without lith: a larger batch keeps the time per command, a smaller stream needs versions more often than every 10 minutes (each a full document, against NFR-43.2), and deleting from `lith_events` itself would bypass Compact's checks of projectors and upcasters. lith would need Compact to read the cut event's version once (a lookup by position) and bound the DELETE and `StateAt` by version, and to find its cut from the kind's compacted position on rather than from the kind's start.
 
