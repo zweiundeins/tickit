@@ -1,0 +1,70 @@
+package views
+
+import (
+	"github.com/mbolli/tickit/internal/notify"
+	"github.com/mbolli/tickit/internal/ui"
+)
+
+// NotificationPanel is the bell's popover content (FR-110.1): the
+// person's notifications newest first, each with the actor's face, what
+// they did, a link to the subject and the time, and buttons to mark it
+// read and to dismiss it; marking all read and dismissing all (FR-115).
+// It carries the panel's signals and keeps the window title's count. The
+// header renders it inside #tk-notifications; the person view patches it.
+templ NotificationPanel(b Bell) {
+	<div id={ NotifyPanelID } class="tk-notif" data-signals__ifmissing={ notifySignals(b.Unread) } data-effect={ notifyEffects }>
+		<header class="tk-notif__head">
+			<h2 class="tk-eyebrow">Notifications</h2>
+			if len(b.Items) > 0 {
+				<div class="cluster tk-notif__all">
+					if b.Unread > 0 {
+						@ui.Button(ui.ButtonProps{Label: "Mark all read", Icon: "check", Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": readAll, "data-on:datastar-fetch": notifyFail, "data-attr:aria-busy": notifyBusy}})
+					}
+					@ui.Button(ui.ButtonProps{Label: "Dismiss all", Icon: "close", Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": dismissAll, "data-on:datastar-fetch": notifyFail, "data-attr:aria-busy": notifyBusy}})
+				</div>
+			}
+		</header>
+		if len(b.Items) == 0 {
+			@ui.EmptyState(ui.EmptyProps{Icon: "bell", Title: "Nothing new", Text: "Mentions, assignments and changes to what you watch show here.", Class: "tk-empty--sm"})
+		} else {
+			<div class="tk-notif__list">
+				@ui.Feed("Notifications") {
+					for _, n := range b.Items {
+						@notificationItem(b, n)
+					}
+				}
+			</div>
+		}
+		if b.More > 0 {
+			<footer class="tk-notif__foot">{ olderText(b.More) } not shown. Dismiss some to see them.</footer>
+		}
+	</div>
+}
+
+templ notificationItem(b Bell, n notify.Notification) {
+	{{ actor := b.person(n.Actor) }}
+	{{ before, after := n.Phrase() }}
+	@ui.FeedItem(ui.FeedItemProps{Person: UIPerson(actor), At: n.Updated, Now: b.Now, Unread: !n.Read, Href: n.Subject.Href, Attrs: templ.Attributes{"id": notificationDOMID(n.ID)}}) {
+		<b>{ actor.Name }</b> { before } { " " }
+		<a class="tk-notif__subject" href={ templ.SafeURL(n.Subject.Href) } data-id={ itoa64(n.ID) } data-on:click={ openOne } data-on:datastar-fetch={ openFailed }>{ n.Subject.Label }</a>
+		if after != "" {
+			{ " " + after }
+		}
+		if n.Text != "" {
+			<q class="tk-notif__quote">{ n.Text }</q>
+		}
+		<span class="tk-notif__actions">
+			if !n.Read {
+				@ui.Button(ui.ButtonProps{Label: "Mark read", Icon: "check", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-id": itoa64(n.ID), "data-on:click": readOne, "data-on:datastar-fetch": notifyFail, "data-attr:aria-busy": notifyBusy}})
+			}
+			@ui.Button(ui.ButtonProps{Label: "Dismiss", Icon: "close", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-id": itoa64(n.ID), "data-on:click": dismissOne, "data-on:datastar-fetch": notifyFail, "data-attr:aria-busy": notifyBusy}})
+		</span>
+	}
+}
+
+// NotifySeen marks the person's notifications about a subject read as its
+// page opens (FR-115.2): an issue or page renders it when
+// notify.HasUnread says there are any. It posts once, from data-init.
+templ NotifySeen(subject string) {
+	<span hidden data-subject={ subject } data-init={ seenSubject }></span>
+}

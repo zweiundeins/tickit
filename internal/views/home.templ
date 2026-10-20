@@ -1,0 +1,123 @@
+package views
+
+import "github.com/mbolli/tickit/internal/ui"
+
+// Home is the home page (FR-59): the person's work (HomeWork, live per
+// person), and the activity of everything they may read (live, shared).
+// The demo notice and the first-visit hint (DM-10, DM-11) are the
+// document's.
+templ Home(w Work, feed ActivityFeed) {
+	<div class="tk-pagehead">
+		<div>
+			<p class="tk-eyebrow">{ weekday(w.Now) }</p>
+			<h1>Your work</h1>
+		</div>
+		<p class="tk-home__lead muted">Open a board, an issue or a page in two windows to see others arrive and their changes appear as they happen.</p>
+	</div>
+	<div class="tk-home">
+		@HomeWork(w)
+		<section class="tk-box tk-home__activity" aria-labelledby="home-activity">
+			<header>
+				<h2 class="tk-eyebrow" id="home-activity">Activity</h2>
+			</header>
+			@Activity(feed)
+		</section>
+	</div>
+}
+
+// HomeWork is the person's part of the home page: counts, the open issues
+// assigned to them, what they changed lately, and the projects and spaces
+// they may read.
+templ HomeWork(w Work) {
+	<div id={ HomeWorkID } class="tk-home__work">
+		@ui.Stats(w.stats())
+		<section class="tk-box" aria-labelledby="home-assigned">
+			<header>
+				<h2 class="tk-eyebrow" id="home-assigned">Assigned to you</h2>
+				if w.Total > len(w.Assigned) {
+					<a href={ templ.SafeURL(assignedHref) }>All { openIssues(w.Total) }</a>
+				}
+			</header>
+			if len(w.Assigned) == 0 {
+				<p class="muted">Nothing is assigned to you. Issues someone assigns to you show here, and the bell tells you.</p>
+			} else {
+				<ul class="tk-worklist" role="list">
+					for _, i := range w.Assigned {
+						<li>
+							@ui.TypeIcon(ui.IssueType(i.Type))
+							<span class="tk-key mono">{ i.Key }</span>
+							<a class="truncate" href={ templ.SafeURL("/" + i.Key) }>{ i.Summary }</a>
+							if i.Due != "" {
+								@ui.Due(dueDate(i.Due, w.Now), w.Now, i.Overdue(w.Now))
+							}
+							@ui.StatusLozenge(i.StatusName, uiCategory(string(i.Category)))
+						</li>
+					}
+				</ul>
+			}
+		</section>
+		<section class="tk-box" aria-labelledby="home-recent">
+			<header>
+				<h2 class="tk-eyebrow" id="home-recent">Recently edited by you</h2>
+			</header>
+			if len(w.Recent) == 0 {
+				<p class="muted">Issues and pages you create, change or comment on show here.</p>
+			} else {
+				<ul class="tk-worklist" role="list">
+					for _, e := range w.Recent {
+						<li>
+							if e.Subject.Kind == "page" {
+								@ui.Icon("page")
+								<a class="truncate" href={ templ.SafeURL(e.Subject.Href) }>{ e.Subject.Label }</a>
+							} else {
+								@ui.TypeIcon(ui.IssueType(e.Subject.Type))
+								<span class="tk-key mono">{ e.Subject.Label }</span>
+								<a class="truncate" href={ templ.SafeURL(e.Subject.Href) }>{ e.Subject.Summary }</a>
+							}
+							@ui.RelativeTime(e.At, w.Now)
+						</li>
+					}
+				</ul>
+			}
+		</section>
+		<section class="tk-box" aria-labelledby="home-projects">
+			<header>
+				<h2 class="tk-eyebrow" id="home-projects">Projects</h2>
+				<a href="/projects">All projects</a>
+			</header>
+			if len(w.Projects) == 0 {
+				<p class="muted">No projects yet.</p>
+			} else {
+				<ul class="tk-worklist" role="list">
+					for _, p := range w.Projects {
+						<li>
+							@ui.Icon("folder")
+							<span class="tk-key mono">{ p.Key }</span>
+							<a class="truncate" href={ templ.SafeURL(projectHref(p.Key)) }>{ p.Name }</a>
+							<span class="muted nowrap">{ openIssues(p.OpenIssues) }</span>
+						</li>
+					}
+				</ul>
+			}
+		</section>
+		<section class="tk-box" aria-labelledby="home-spaces">
+			<header>
+				<h2 class="tk-eyebrow" id="home-spaces">Spaces</h2>
+				<a href="/spaces">All spaces</a>
+			</header>
+			if len(w.Spaces) == 0 {
+				<p class="muted">No spaces yet.</p>
+			} else {
+				<ul class="tk-worklist" role="list">
+					for _, s := range w.Spaces {
+						<li>
+							@ui.Icon("space")
+							<span class="tk-key mono">{ s.Key }</span>
+							<a class="truncate" href={ templ.SafeURL(spaceHref(s.Key)) }>{ s.Name }</a>
+						</li>
+					}
+				</ul>
+			}
+		</section>
+	</div>
+}

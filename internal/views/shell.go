@@ -57,7 +57,7 @@ type Shell struct {
 	Moderates, Administers bool
 	NextReset              string // when the demo resets: "5 h" (DM-10.1)
 	Prefs                  tabs.Prefs
-	Unread                 int    // the bell's count
+	Bell                   Bell   // the bell's count and panel (notify, web.Server.bell)
 	Path                   string // the page's path and query, for the way back after a login
 }
 

@@ -108,6 +108,10 @@ func (s *Server) shell(r *http.Request, q sqlite.Querier, p Page) (views.Shell, 
 	if err != nil {
 		return views.Shell{}, err
 	}
+	bell, err := s.bell(ctx, q, me) // routes_notify.go
+	if err != nil {
+		return views.Shell{}, err
+	}
 	return views.Shell{
 		Title:        p.Title,
 		Nav:          p.Nav,
@@ -130,6 +134,7 @@ func (s *Server) shell(r *http.Request, q sqlite.Querier, p Page) (views.Shell, 
 		Administers:  access.SiteCan(me, access.Administer),
 		NextReset:    demo.Remaining(time.Now()),
 		Prefs:        prefs,
+		Bell:         bell,
 		Path:         path,
 	}, nil
 }
