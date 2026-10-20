@@ -34,7 +34,10 @@ var wikiStore = sync.OnceValue(func() *events.Store {
 
 func startWiki(t *testing.T) *webtest.Env {
 	t.Helper()
-	return webtest.StartWith(t, webtest.Options{Store: wikiStore()})
+	st := wikiStore()
+	tracker.Bind(st) // again: a test before may have bound another store, and unbound it
+	wiki.Bind(st)
+	return webtest.StartWith(t, webtest.Options{Store: st})
 }
 
 var gotoRe = regexp.MustCompile(`"_goto":"([^"]+)"`)
