@@ -394,8 +394,8 @@ func renderDoc(raw json.RawMessage, r *docResolver) (string, string, error) {
 }
 
 // docResolver answers what documents name, in the read they render in: an
-// issue chip's issue as it is now, a mention's person by name. Pages come
-// with the wiki.
+// issue chip's issue as it is now, a mention's person by name, a page by
+// its title.
 type docResolver struct {
 	ctx    context.Context
 	q      sqlite.Querier
@@ -426,7 +426,15 @@ func (r *docResolver) Person(id string) (string, bool) {
 	return p.Name, true
 }
 
-func (r *docResolver) Page(string) (string, bool) { return "", false }
+// Page is a linked page's title while it is current; one in the trash or
+// deleted shows as removed.
+func (r *docResolver) Page(id string) (string, bool) {
+	var title string
+	if err := r.q.QueryRowContext(r.ctx, `SELECT title FROM pages WHERE id = ? AND state = 'current'`, id).Scan(&title); err != nil {
+		return "", false
+	}
+	return title, true
+}
 
 // textResolver answers what a person's markup names while it is parsed:
 // issues by key and people by id, unknown ones staying text.
