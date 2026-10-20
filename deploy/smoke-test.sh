@@ -28,7 +28,12 @@ for ((i = 0; i < 100; i++)); do
 done
 
 [[ "$(curl -fsS "$URL/healthz")" == "ok $version" ]] || fail "/healthz does not answer ok $version"
-curl -fsS -o /dev/null "$URL/readyz" || fail "/readyz is not 200"
+# Ready once the static files are compressed, which takes a few seconds on a slow machine.
+for ((i = 0; i < 300; i++)); do
+	curl -fsS -o /dev/null "$URL/readyz" 2>/dev/null && break
+	sleep 0.1
+done
+curl -fsS -o /dev/null "$URL/readyz" || fail "/readyz is not 200 after 30 s"
 headers=$(curl -fsS -D - -o /dev/null "$URL/") || fail "/ is not 2xx"
 grep -qi '^strict-transport-security:' <<<"$headers" || fail "no HSTS with -secure"
 grep -qi '^set-cookie: __Host-' <<<"$headers" || echo ">> (no __Host- cookie on /: set on the first action)"
