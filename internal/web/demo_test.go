@@ -390,6 +390,15 @@ func TestAccounts(t *testing.T) {
 	if code, _ := webtest.Get(t, bea, e.URL+"/admin"); code != http.StatusOK {
 		t.Errorf("the new admin's next page: %d", code)
 	}
+	// NFR-01.2: a removed role takes the staff's views off the open streams.
+	stream := webtest.Listen(t, bea, e.URL+"/stream?tab=tab2&v=admin-demo:", nil)
+	webtest.Next(t, stream, `id="admin-demo"`)
+	webtest.Post(t, admin, e.URL+"/cmd/admin/role", `{"tab":"tab1","op":"r3","account":"`+beaID+`","role":"moderator"}`)
+	for deadline := time.Now().Add(2 * time.Second); len(e.Hub.Watchers("admin-demo")) > 0; time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("the demoted admin still watches the demo tab")
+		}
+	}
 
 	// FR-143: deactivation ends the sessions.
 	webtest.Post(t, admin, e.URL+"/cmd/admin/active", `{"tab":"tab1","op":"a1","account":"`+beaID+`","active":false}`)

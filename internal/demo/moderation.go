@@ -313,6 +313,9 @@ func (c blockCmd) Apply(tx *writer.Tx) error {
 		return tabs.Refuse("reason", "A reason has at most 200 characters.")
 	}
 	at := c.by.At
+	if at.IsZero() {
+		at = time.Now()
+	}
 	p, err := people.Get(tx.Context(), tx, c.person)
 	if err != nil {
 		return err

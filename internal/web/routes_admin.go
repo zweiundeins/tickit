@@ -394,7 +394,9 @@ func (s *Server) adminRole(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	s.act(w, r, a, people.SetRole{Admin: a.By.Actor, Account: req.Account, Role: people.SiteRole(req.Role), At: a.By.At})
+	if s.actStaff(w, r, a, people.SetRole{Admin: a.By.Actor, Account: req.Account, Role: people.SiteRole(req.Role), At: a.By.At}) {
+		s.dropStaffViews(req.Account)
+	}
 }
 
 // adminActive deactivates an account, or activates it again (FR-143).
@@ -408,7 +410,44 @@ func (s *Server) adminActive(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	s.act(w, r, a, people.SetActive{Admin: a.By.Actor, Account: req.Account, Active: req.Active, At: a.By.At})
+	if s.actStaff(w, r, a, people.SetActive{Admin: a.By.Actor, Account: req.Account, Active: req.Active, At: a.By.At}) {
+		s.dropStaffViews(req.Account)
+	}
+}
+
+// actStaff is act for a change of an account's rights, and reports whether
+// it went through.
+func (s *Server) actStaff(w http.ResponseWriter, r *http.Request, a action, cmd writer.Command) bool {
+	res, ok := s.run(w, r, a, cmd)
+	switch {
+	case !ok:
+		return false
+	case res.Denied:
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return false
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return res.OK
+}
+
+// dropStaffViews takes the staff's views off the open streams of an
+// account whose role or status changed (NFR-01.2): a page it opens again
+// asks for them anew, and gets 403 without the right. Its other views
+// follow the role at their next render.
+func (s *Server) dropStaffViews(account string) {
+	keys := []string{"moderation", "admin-stats", "admin-demo"}
+	for key := range s.hub.Stats().RendersByKey {
+		if strings.HasPrefix(key, "admin-accounts:"+account+":") {
+			keys = append(keys, key)
+		}
+	}
+	for _, key := range keys {
+		for _, id := range s.hub.Watchers(key) {
+			if personOf(id) == account {
+				s.hub.Unwatch(id, key)
+			}
+		}
+	}
 }
 
 // adminReset is "Reset now" (DM-03.1): the command checks the right and
