@@ -11,7 +11,7 @@ import (
 // Datastar, so that the component decides when to resend.
 const (
 	editorSignals = `{_editor: {status: 'saved', stopped: '', unsaved: 0, problem: ''}, _carets: '[]', _wkTitle: '',` +
-		` _title: {value: '', focus: false, op: '', msg: ''}, _pick: {kind: '', q: '', label: ''}}`
+		` _title: {focus: false, op: '', msg: ''}, _pick: {kind: '', q: '', label: ''}}`
 	editorCommit = `@post('/cmd/pages/' + evt.detail.page + '/commit', {payload: {...evt.detail, tab: $_tab, client: el.getAttribute('client')}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0})` +
 		`.then(() => el.posted(evt.detail.ref, true), () => el.posted(evt.detail.ref, false))`
 	editorPresence = `@post('/cmd/pages/' + evt.detail.page + '/presence', {payload: {...evt.detail, tab: $_tab}, retry: 'never', retryMaxCount: 0}).catch(() => {})`
