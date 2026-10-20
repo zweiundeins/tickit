@@ -480,3 +480,49 @@ func TestViewLifetime(t *testing.T) {
 		t.Error("MP-11.2: a view another tab watches went")
 	}
 }
+
+// /alive refuses what no page sends (NFR-16) and, without Datastar's
+// header or from another site, is refused by the edge (NFR-03); another
+// person's answer for the same tab id keeps no stream of mine open
+// (NFR-02.3).
+func TestAliveInput(t *testing.T) {
+	d := web.AliveTimeout
+	web.AliveTimeout = 2 * time.Second
+	e := webtest.Start(t)
+	web.AliveTimeout = d
+	ada, eve := webtest.Client(t), webtest.Client(t)
+	me := guest(t, e, ada)
+	guest(t, e, eve)
+	for _, u := range []string{"/alive?tab=no%20tab", "/alive"} {
+		if code, _ := webtest.Post(t, ada, e.URL+u, ""); code != http.StatusBadRequest {
+			t.Errorf("%s: %d, want 400", u, code)
+		}
+	}
+	for name, h := range map[string]http.Header{"no Datastar": {"Sec-Fetch-Site": {"same-origin"}}, "cross-site": {"Sec-Fetch-Site": {"cross-site"}, "Datastar-Request": {"true"}}} {
+		req, _ := http.NewRequest("POST", e.URL+"/alive?tab=tab1", nil)
+		req.Header = h
+		res, err := ada.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if res.StatusCode != http.StatusForbidden {
+			t.Errorf("%s: %d, want 403", name, res.StatusCode)
+		}
+	}
+	webtest.Listen(t, ada, e.URL+"/stream?tab=tab1&alive=1&v=", nil)
+	for deadline := time.Now().Add(time.Second); !e.Hub.HasStream(me.ID + ".tab1"); time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("no stream")
+		}
+	}
+	for range 4 {
+		time.Sleep(time.Second)
+		if code, _ := webtest.Post(t, eve, e.URL+"/alive?tab=tab1", ""); code != http.StatusNoContent {
+			t.Fatalf("another's answer: %d", code)
+		}
+	}
+	if e.Hub.HasStream(me.ID + ".tab1") {
+		t.Error("another person's answers kept the stream open")
+	}
+}
