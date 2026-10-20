@@ -350,3 +350,36 @@ func TestChipsLive(t *testing.T) {
 	webtest.Post(t, c, e.URL+"/cmd/pages/"+page+"/commit", fmt.Sprintf(`{"tab":"tab1","epoch":%q,"base":%d,"ref":"c2","client":"0123456789ab","steps":[{"stepType":"replace","from":1,"to":2}]}`, h.Epoch, h.Version+1))
 	webtest.Next(t, issueView, `No page shows this issue yet`)
 }
+
+// FR-90 (as FR-66 for issues): the author edits their own page comment,
+// which then says "edited" on every open page; someone else may not.
+func TestPageCommentEdit(t *testing.T) {
+	e := startWiki(t)
+	c, o := webtest.Client(t), webtest.Client(t)
+	webtest.Get(t, c, e.URL+"/")
+	webtest.Get(t, o, e.URL+"/")
+	space, home := wikiSpace(t, e, c, "ENG")
+	page := wikiPage(t, e, c, space, home, "Notes")
+	if code, body := act(t, e, c, "/cmd/pages/comment", "tab1", map[string]any{"page": page, "body": "First words"}); code != http.StatusNoContent {
+		t.Fatalf("comment: %d %s", code, body)
+	}
+	var id string
+	if err := e.DB.R.QueryRow(`SELECT id FROM comments WHERE subject = 'page' AND subject_id = ?`, page).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	read := webtest.Listen(t, o, e.URL+"/stream?tab=rtab&v=page:"+page, nil)
+	webtest.Next(t, read, "First words")
+	if _, html := webtest.Get(t, c, e.URL+wiki.PageURL("ENG", page, "Notes")); !strings.Contains(html, `data-text="First words"`) || !strings.Contains(html, `id="comment-edit"`) {
+		t.Error("the page offers no Edit for a comment")
+	}
+	if code, _ := act(t, e, o, "/cmd/pages/comment/edit", "tabo", map[string]any{"comment": id, "body": "Not mine"}); code != http.StatusForbidden {
+		t.Errorf("someone else's edit: %d", code)
+	}
+	if code, body := act(t, e, c, "/cmd/pages/comment/edit", "tab1", map[string]any{"comment": id, "body": "Second words"}); code != http.StatusNoContent {
+		t.Fatalf("edit: %d %s", code, body)
+	}
+	frame := webtest.Next(t, read, "Second words")
+	if !strings.Contains(frame, `>edited</span>`) || strings.Contains(frame, "First words") || strings.Contains(frame, "Not mine") {
+		t.Errorf("the edited comment: %s", frame)
+	}
+}

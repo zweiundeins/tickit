@@ -70,6 +70,7 @@ func (s *Server) routesWiki() {
 	s.post("POST /cmd/pages/save-version", s.saveVersion)
 	s.post("POST /cmd/pages/restore-version", s.restoreVersion)
 	s.post("POST /cmd/pages/comment", s.addComment)
+	s.post("POST /cmd/pages/comment/edit", s.editComment)
 	s.post("POST /cmd/pages/comment/delete", s.deleteComment)
 	s.post("POST /cmd/pages/comment/hide", s.hideComment)
 
@@ -418,7 +419,7 @@ func comments(ctx context.Context, q sqlite.Querier, page string) ([]views.Comme
 		for _, c := range cs {
 			it := views.CommentItem{Comment: c, Author: who[c.Author], Replies: conv(c.Replies)}
 			if d, ok := docs[c.ID]; ok {
-				it.HTML = doc.RenderHTML(d, res)
+				it.HTML, it.Text = doc.RenderHTML(d, res), doc.Text(d)
 			}
 			out = append(out, it)
 		}
@@ -1176,6 +1177,22 @@ func (s *Server) addComment(w http.ResponseWriter, r *http.Request) {
 		body = json.RawMessage(`{"type":"doc","content":[{"type":"paragraph"}]}`)
 	}
 	s.act(w, r, a, wiki.AddComment{By: a.By, Page: req.Page, Parent: req.Parent, Body: body})
+}
+
+// editComment changes one's own page comment (FR-90, as FR-66 for
+// issues): plain text, a paragraph per line; the comment then says
+// "edited".
+func (s *Server) editComment(w http.ResponseWriter, r *http.Request) {
+	var req commentRequest
+	a, ok := s.decode(w, r, classComment, &req)
+	if !ok {
+		return
+	}
+	body := tracker.PlainDoc(req.Body)
+	if body == nil {
+		body = json.RawMessage(`{"type":"doc","content":[{"type":"paragraph"}]}`)
+	}
+	s.act(w, r, a, tracker.EditComment{By: a.By, Comment: req.Comment, Body: body})
 }
 
 func (s *Server) deleteComment(w http.ResponseWriter, r *http.Request) {

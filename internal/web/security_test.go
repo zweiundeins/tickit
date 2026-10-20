@@ -165,6 +165,7 @@ var secCases = []secCase{
 			f.e.Do(f.t, wiki.SetDocument{By: f.by(wOwner), Page: f.id("page", false), Doc: tracker.PlainDoc("Another text"), Message: "Two"})
 		}},
 	{name: "pages/comment", pattern: "POST /cmd/pages/comment", need: read, guard: true, outcome: true, by: wViewer, req: at("/cmd/pages/comment", "page", "@page", "body", "A reply")},
+	{name: "pages/comment/edit", pattern: "POST /cmd/pages/comment/edit", need: ownComment, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/comment/edit", "comment", "@pcomment", "body", "Edited")},
 	{name: "pages/comment/delete", pattern: "POST /cmd/pages/comment/delete", need: ownComment, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/comment/delete", "comment", "@pcomment")},
 	{name: "pages/comment/hide", pattern: "POST /cmd/pages/comment/hide", need: admin, guard: true, outcome: true, by: wOwner, req: at("/cmd/pages/comment/hide", "comment", "@pcomment", "hidden", true)},
 	{name: "pages/open", pattern: "POST /cmd/pages/{id}/open", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/{page}/open", "base", 0, "client", "0123456789ab")},
