@@ -268,6 +268,7 @@ templ OldVersion(p VersionProps) {
 					<p>Version { itoa(p.Version.Number) } of { itoa(p.Newest) }, saved by { editorNames(p.Version) }. <a href={ templ.SafeURL(p.URL) }>Go to the current version</a></p>
 				}
 			}
+			@versionSlider(p)
 			<h1 class="wk-title">{ p.Version.Title }</h1>
 			<p class="wk-byline muted">
 				Saved
@@ -282,6 +283,25 @@ templ OldVersion(p VersionProps) {
 			@templ.Raw(p.HTML)
 		</div>
 	</article>
+}
+
+// versionSlider moves through the page's versions (FR-70): each position
+// opens that version read-only; Now goes back to the live page.
+templ versionSlider(p VersionProps) {
+	<form class="wk-slider" data-base={ "/spaces/" + p.Space.Key + "/pages/" + p.Page.ID + "/versions/" } data-on:submit__prevent="evt.preventDefault()">
+		<label for="version-slider">Version <output data-text="$_wk.at">{ itoa(p.Version.Number) }</output> of { itoa(p.Newest) }</label>
+		<input
+			id="version-slider"
+			type="range"
+			min="1"
+			max={ itoa(p.Newest) }
+			value={ itoa(p.Version.Number) }
+			data-signals={ "{_wk: {at: " + itoa(p.Version.Number) + "}}" }
+			data-bind="_wk.at"
+			data-on:change="location.assign(el.form.dataset.base + el.value)"
+		/>
+		@ui.Button(ui.ButtonProps{Label: "Now", Size: ui.SizeSM, Href: p.URL})
+	</form>
 }
 
 templ oldVersionActions(p VersionProps) {

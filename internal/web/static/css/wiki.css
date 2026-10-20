@@ -466,4 +466,19 @@
 		font-size: var(--tk-text-xs);
 		text-align: end;
 	}
+
+	/* The versions' slider (FR-70). */
+	.wk-slider {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-2) var(--tk-space-3);
+		font-size: var(--tk-text-sm);
+		color: var(--tk-text-2);
+
+		& input[type="range"] {
+			flex: 1 1 12rem;
+			accent-color: var(--tk-accent);
+		}
+	}
 }
