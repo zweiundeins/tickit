@@ -29,6 +29,7 @@ templ CreateIssueDialog(p CreateIssueProps) {
 		"data-effect":            createSettle + "; " + createdOpen,
 		"data-on:keydown":        createKeys,
 		"data-on:datastar-fetch": createFailed,
+		"data-on:close":          createClosed,
 	}}) {
 		if len(p.Projects) == 0 {
 			<p>There is no project to create an issue in yet.</p>
@@ -45,6 +46,10 @@ templ CreateIssueDialog(p CreateIssueProps) {
 						@ui.Icon("chevron-down")
 					</span>
 				}
+				<p class="tk-issue__where muted" { showIf(`$_new.status !== '' && $_new.where !== ''`)... }>
+					@ui.Icon("board")
+					<span>Goes into the column <strong data-text="$_new.where"></strong>.</span>
+				</p>
 				@ui.RadioGroup(ui.RadioGroupProps{Name: "type", Legend: "Type", Segmented: true, Required: true, Options: typeOptions(), Attrs: templ.Attributes{"data-on:change": createType}})
 				<p class="tk-field__error" aria-live="polite" { createError("type")... }></p>
 				{{ fs := ui.FieldProps{ID: "create-summary", Label: "Summary", Required: true, ErrorAttrs: createError("summary")} }}
@@ -70,7 +75,7 @@ templ CreateIssueDialog(p CreateIssueProps) {
 							@ui.Icon("chevron-down")
 						</span>
 					}
-					{{ fpar := ui.FieldProps{ID: "create-parent", Label: "Parent or epic", Optional: true, Hint: "Its key: WEB-3.", ErrorAttrs: createError("parent")} }}
+					{{ fpar := ui.FieldProps{ID: "create-parent", Label: "Parent or epic", Optional: true, Hint: "The key of its epic, or of the issue a subtask belongs to.", ErrorAttrs: createError("parent")} }}
 					@ui.Field(fpar) {
 						@ui.Input(ui.InputProps{ID: fpar.ID, Placeholder: "WEB-3", DescribedBy: fpar.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_new.parent"}})
 					}

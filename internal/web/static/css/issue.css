@@ -412,6 +412,19 @@
 		position: relative;
 	}
 
+	/* The create dialog says which column a board's + puts the issue in. */
+	.tk-issue__where {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-2);
+		margin: 0;
+		font-size: var(--tk-text-sm);
+
+		& strong {
+			color: var(--tk-text-1);
+		}
+	}
+
 	/* A menu in the flow, not a popover: shown as soon as it is shown. */
 	.tk-issue__mentions {
 		position: static;
