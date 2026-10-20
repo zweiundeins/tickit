@@ -229,14 +229,13 @@ templ Header(p HeaderProps, sidebar bool) {
 				type="button"
 				popovertarget="tk-notifications"
 				aria-expanded="false"
-				aria-label={ "Notifications, " + unreadText(p.Unread) }
+				aria-label="Notifications"
+				aria-describedby="tk-unread"
 			>
 				@Icon("bell")
-				if p.Unread > 0 {
-					<span class="tk-bell__count" aria-hidden="true">{ unreadCount(p.Unread) }</span>
-				}
+				@BellCount(p.Unread)
 			</button>
-			<span class="visually-hidden" id="tk-unread" role="status">{ unreadText(p.Unread) }</span>
+			@UnreadStatus(p.Unread)
 			<div id="tk-notifications" class="tk-menu tk-menu--end tk-notifications" popover data-on:toggle={ syncExpanded }>
 				if p.Notifications != nil {
 					@p.Notifications
@@ -257,6 +256,24 @@ templ Header(p HeaderProps, sidebar bool) {
 			}
 		</div>
 	</header>
+}
+
+// BellCount is the bell's badge, hidden at 0, and UnreadStatus the count
+// in words in a polite live region (NFR-48.2): the person's view patches
+// both by their ids as notifications come and go (FR-110.3).
+templ BellCount(n int) {
+	<span
+		id="tk-bell-count"
+		class="tk-bell__count"
+		aria-hidden="true"
+		if n == 0 {
+			hidden
+		}
+	>{ unreadCount(n) }</span>
+}
+
+templ UnreadStatus(n int) {
+	<span class="visually-hidden" id="tk-unread" role="status">{ unreadText(n) }</span>
 }
 
 func unreadCount(n int) string {

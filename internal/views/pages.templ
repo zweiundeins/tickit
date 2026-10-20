@@ -2,39 +2,6 @@ package views
 
 import "github.com/mbolli/tickit/internal/ui"
 
-// Home is the home page, until the home area fills it with the seeded
-// projects and spaces (FR-59): a welcome that says what the demo is.
-templ Home() {
-	<section class="tk-welcome" aria-labelledby="welcome-title">
-		<div class="tk-empty">
-			<div class="tk-empty__art">
-				@ui.IconSized("users", "xl")
-			</div>
-			<h1 class="tk-empty__title" id="welcome-title">Welcome to tickit</h1>
-			<p class="tk-empty__text">An issue tracker and a wiki that several people use at once. Open a board, a page or an issue and see the others on it, and their changes as they happen.</p>
-			<div class="cluster tk-welcome__actions">
-				@ui.Button(ui.ButtonProps{Label: "Projects", Icon: "folder", Variant: ui.Primary, Href: "/projects"})
-				@ui.Button(ui.ButtonProps{Label: "Spaces", Icon: "space", Href: "/spaces"})
-				@ui.Button(ui.ButtonProps{Label: "The design system", Icon: "display", Variant: ui.Ghost, Href: "/design"})
-			</div>
-		</div>
-		<ul class="tk-welcome__points" role="list">
-			<li>
-				@ui.Icon("user")
-				<p><strong>No account needed.</strong> You are a guest with a name and a face of your own, which others see beside what you do. Change the name in the menu at the top right.</p>
-			</li>
-			<li>
-				@ui.Icon("users")
-				<p><strong>Live for everyone.</strong> Boards, issues and pages change in every open tab as soon as someone changes them.</p>
-			</li>
-			<li>
-				@ui.Icon("clock")
-				<p><strong>Reset every night.</strong> Everything written here is public and goes at 04:00 Swiss time, when the demo starts again from its seed.</p>
-			</li>
-		</ul>
-	</section>
-}
-
 // Login is the login page of staff (FR-122). Visitors need no account
 // (DM-01), and the page publishes no shared password (DM-01.3).
 templ Login() {

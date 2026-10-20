@@ -84,8 +84,8 @@ func header(s Shell) ui.HeaderProps {
 		SearchAttrs:   SearchBoxAttrs(),
 		SearchSuggest: SearchSuggestSlot(),
 		CreateFor:     CreateID,
-		Unread:        s.Unread,
-		Notifications: notificationsPlaceholder(),
+		Unread:        s.Bell.Unread,
+		Notifications: NotificationPanel(s.Bell),
 		Me:            UIPerson(s.Me),
 		MeMenu:        personMenu(s),
 		Display:       ui.DisplayProps{Prefs: UIPrefs(s.Prefs), Attrs: displayAttrs},
@@ -159,12 +159,6 @@ templ personMenu(s Shell) {
 templ PersonName(p people.Person) {
 	@ui.MeLabel(p.Name)
 	@ui.MeName(p.Name)
-}
-
-// notificationsPlaceholder is the bell's panel until notifications come
-// (FR-110).
-templ notificationsPlaceholder() {
-	@ui.EmptyState(ui.EmptyProps{Icon: "bell", Title: "Nothing new", Text: "Mentions, assignments and changes to what you watch show here.", Class: "tk-empty--sm"})
 }
 
 // createPlaceholder is the create dialog until the tracker and the wiki
