@@ -40,7 +40,7 @@ func issueData(t testing.TB, e *webtest.Env) issues {
 	e.Do(t, tracker.CreateIssue{By: by(ben), ID: d.story, Project: d.project, Type: tracker.Story, Parent: d.epic,
 		Summary: "Cards glide between lanes when someone else moves them", Priority: tracker.High, Assignee: ada.ID,
 		Labels: []string{"board", "motion"}, Components: []string{"Checkout"}, Points: &pts, Estimate: &est,
-		Due: time.Now().AddDate(0, 0, 4).Format(time.DateOnly),
+		Due:         time.Now().AddDate(0, 0, 4).Format(time.DateOnly),
 		Description: []byte(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"When "},{"type":"text","marks":[{"type":"strong"}],"text":"someone else"},{"type":"text","text":" moves a card, it glides to its new place instead of jumping."}]},{"type":"bullet_list","content":[{"type":"list_item","content":[{"type":"paragraph","content":[{"type":"text","text":"Use view transitions where the browser has them."}]}]},{"type":"list_item","content":[{"type":"paragraph","content":[{"type":"text","text":"Respect reduced motion."}]}]}]}]}`)})
 	e.Do(t, tracker.CreateIssue{By: by(ben), ID: d.bug, Project: d.project, Type: tracker.Bug, Parent: d.epic, Summary: "Safari drops a card one lane to the right", Priority: tracker.Critical})
 	for _, s := range []string{"Measure the transition", "Fallback without view transitions"} {
