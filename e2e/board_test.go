@@ -251,3 +251,23 @@ func TestBoardQuickFilter(t *testing.T) {
 		t.Errorf("the page reported: %q", errs)
 	}
 }
+
+// FR-40.3: a click on a card opens the issue in the side panel; a
+// column's "+" opens the create dialog in that column's status.
+func TestBoardPanelAndCreate(t *testing.T) {
+	e := webtest.Start(t)
+	pr := trackertest.Board(t, e.W, "WEB", 12)
+	b := browsertest.Start(t)
+	p := boardPage(t, b, e.URL+"/projects/WEB/board", 1440, 900)
+	key := pr.Keys[1]
+	p.Eval(t, `document.querySelector('#c-`+key+` .tk-card__title').click()`, nil)
+	p.Wait(t, `document.getElementById('issue-panel').open && location.pathname === '/`+key+`'`, 3*time.Second)
+	p.Wait(t, `document.getElementById('issue-panel').textContent.includes('`+key+`')`, 3*time.Second)
+	p.Press(t, "Escape")
+	p.Wait(t, `!document.getElementById('issue-panel').open && location.pathname === '/projects/WEB/board'`, 3*time.Second)
+	p.Eval(t, `document.querySelector('.tk-lane[data-lane="inreview"] .tk-lane__add').click()`, nil)
+	p.Wait(t, `document.getElementById('create').open`, 2*time.Second)
+	if errs := p.Errors(); len(errs) > 0 {
+		t.Errorf("the page reported: %q", errs)
+	}
+}
