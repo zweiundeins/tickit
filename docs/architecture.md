@@ -16,10 +16,12 @@ tickit is a multiplayer issue tracker and wiki on lith v0.3.0: one Go binary, on
 | `internal/search` | the FTS5 index over issues and pages (a projection), queries | projection |
 | `internal/notify` | notifications, the catch-up projectors that create them | relational |
 | `internal/activity` | feeds read from `lith_events` | none |
-| `internal/demo` | the seed, the nightly reset, rate-limit classes, content limits, the word list, moderation | mixed |
+| `internal/demo` | the seed, the nightly reset and its notice, content limits, the word list, moderation | mixed |
 | `internal/ui` | the design system: templ components (shell, buttons, fields, menus, dialogs, panels, avatars, chips, icons) | none |
 | `internal/views` | the app's pages and regions, built from `internal/ui` | none |
-| `internal/web` | routes, handlers, live views, static files | none |
+| `internal/web` | routes, handlers, live views, the edge chain, rate-limit classes, static files | none |
+| `internal/web/webtest` | the server in process behind the whole edge, a browser's requests, streams read event by event, a fingerprint of the database (tests only) | none |
+| `internal/dbtest` | a migrated database with a writer whose commits are recorded by topic, an events runner (tests only) | none |
 | `internal/browsertest` | headless Chromium and Firefox for browser tests (from lith's site) | none |
 | `editor/` | source of the `sb-rich-editor` Rocket component (ProseMirror); its bundle is built into `internal/web/static/editor/` and committed | |
 | `e2e/` | browser tests of the multiplayer criteria; skipped without Chromium | |
@@ -35,27 +37,31 @@ Domain packages never import `internal/web` or `internal/views`. `internal/views
 ## Identity and access
 
 - `edge.Sessions` gives every browser an opaque session id. `people.Middleware` resolves it to an actor for the request: a login session row (`login_sessions`, keyed by SHA-256 of the session id, not expired) gives the account's person; otherwise the guest person derived from the session. `people.Actor(ctx)` returns it. GET never writes: a guest's row in `people` appears with the first command that needs it (`people.Ensure(tx, actor)`), and a guest's name and face derive from the id alone, so a guest without a row still renders.
-- `access.Can(q, actor, right, scope)` answers from `scopes` and `memberships`, which commands write directly (no projector writes them). Every command that changes a project or a space checks its right inside `Apply`, from those tables or from the stream's state row, and refuses with a `*writer.Refusal` whose message says why (NFR-01).
+- `access.Can(ctx, q, actor, right, scope)` answers from `scopes` and `memberships`, which commands write directly (no projector writes them; `access.AddScope` writes a scope with its creator as Admin). Every command that changes a project or a space checks its right inside `Apply` with `access.Require(tx, actor, right, scope)`, which refuses with an `*access.Denial`: a `*writer.Refusal` whose message says why, which the action answers with 403 (NFR-01). A scope the actor may not read answers `access.ErrNotFound`, as an unknown one does.
 - Under Q14 a guest has Member rights in every open scope; staff log in. Site roles: none, moderator, admin.
 
 ## Actions
 
 Every change is `POST /cmd/<area>/<action>` with a Datastar payload `{tab, op, ...}` (NFR-02). The handler, in `internal/web`:
 
-1. checks the rate-limit class of the action per session and per client address (DM-04, `edge.ClientKey`),
+1. checks the rate-limit class of the action per client address, then per person (DM-04, `edge.ClientKey`; the classes are in `internal/web/action.go`),
 2. reads the payload with `sse.ReadSignalsLimit` and validates its shape (400 on malformed input, never 500, NFR-16),
-3. takes the actor from the session, never from the payload,
-4. runs `w.Do(ctx, writer.Once(sid+":"+op, tabs.Act{...Cmd: cmd}))` and answers 204, or 400, 403, 404, 429, 503 for requests that reached no outcome.
+3. takes the actor from the session, never from the payload (`tabs.By{Actor, Op, At}`, which commands carry and turn into `events.Meta` with `By.Meta()`),
+4. runs `w.Do(ctx, writer.OnceResult(sid+":"+op, tabs.Act{...Cmd: cmd}))` and answers 204, or 403 when the command was refused for want of a right, or 400, 404, 429, 503 for requests that reached no outcome.
 
-`tabs.Act` runs the command in a savepoint and records its outcome in the tab's row whatever it was: the op id, and for a refusal its message and the field it belongs to. The tab row keeps the newest outcomes (not only the last), so two quick actions in one tab both settle. The tab view patches them as the signal `_outcomes` (op id to `{ok, msg, field}`), which the page's controls read to end their pending state (MP-09) and to show a refusal next to the control.
+In an area's handler that is `a, ok := s.decode(w, r, classField, &req)`, then `s.act(w, r, a, cmd)`. `OnceResult` rather than `Once`, so that a retry gets the first answer (a denial's 403, a result) while `tabs.Act` records refusals as outcomes either way.
 
-An action whose answer the page needs, such as the key of a new issue to navigate to, uses `writer.OnceResult` and answers with a signal patch only (`_goto`), never with elements.
+`tabs.Act` gives a guest acting for the first time a row in `people`, runs the command in a savepoint and records its outcome in the tab's row whatever it was: the op id, and for a refusal its message and the field it belongs to (`tabs.Refuse(field, msg)`). The tab row keeps the newest 16 outcomes (not only the last), so two quick actions in one tab both settle. The tab view patches them as the signal `_outcomes` (op id to `{ok, msg, field}`), which the page's controls read to end their pending state (MP-09) and to show a refusal next to the control (`views.Act`, `views.Settle`, `views.Failed` build those expressions).
+
+An action whose answer the page needs, such as the key of a new issue to navigate to, uses `s.actResult` and answers with a signal patch only (`_goto`), never with elements.
+
+Login and logout are actions too (`POST /cmd/login`, `POST /cmd/logout`), outside `tabs.Act`: they answer with signals, the login form's message or `_goto`. The password is checked outside the writer (argon2id is too slow for it); the `people.Login` command checks again that nothing changed and writes the login session.
 
 ## Streams, views and topics
 
-- Each document opens one stream, `GET /stream?tab=<tab>&v=<view>,<view>`, from `data-init` on `#stream`. Each `v` names a view factory registered by an area (`issue:<id>`, `board:<projectID>`, `list:<hash>`, `page:<id>`, `tree:<spaceID>`), and the stream handler builds the views after checking that the actor may read them. Every stream also gets the tab view, the person's view (bell, unread count) and the demo view (reset notice).
-- The stream's `Spec.ID` is `<personID>.<tab>`, so `hub.Watchers(key)` yields who watches a view without a read (MP-01, MP-02).
-- A side panel or a tab switch adds a view to the open stream with `POST /cmd/watch` (`hub.Watch`), and records it in the tab row so that a reconnect restores it.
+- Each document opens one stream, `GET /stream?tab=<tab>&v=<view>,<view>`, from `data-init` on `#stream`. Each `v` names a view factory registered by an area (`issue:<id>`, `board:<projectID>`, `list:<hash>`, `page:<id>`, `tree:<spaceID>`) with `s.views.Register(kind, f)`, where `f(ctx, q, actor, arg) (live.View, error)` checks that the actor may read it (`access.ErrNotFound` answers 404, a denial 403, an unknown kind 400). Every stream also gets the person's view (`person:<id>`: name, bell, unread count), the demo view (`demo`: the reset notice), a `connected` view that hides "Reconnecting", and the tab view last. The page's views reach `openStream` as the signal `_views`, never inside an expression.
+- The stream's `Spec.ID` is `<personID>.<tab>`, so `hub.Watchers(key)` yields who watches a view without a read (MP-01, MP-02). A kind registered with `s.views.RegisterWithPresence` makes every stream that watches one of its views watch `presence:<key>` too: a shared view with `Presence: true` that lists one face per person in the order they came, with the tab count in the tooltip. The page puts `views.Presence(views.PresenceID(key), nil)` where the row goes; the document's own style puts the viewer's face first and shows at most 8.
+- A side panel or a tab switch adds a view to the open stream with `POST /cmd/watch` (`hub.Watch`), and records it in the tab row so that a reconnect restores it; `POST /cmd/unwatch` takes it off.
 - A view's key holds everything its render depends on. Shared views render nothing about the viewer; per-viewer parts go in `tab:<id>`, `person:<id>` or signals.
 - Topics: `project:<id>`, `issue:<id>`, `issues` (any change to any issue: lists, search, chips), `board:<projectID>`, `space:<id>`, `page:<id>`, `pages` (any page change), `person:<id>`, `people` (names and faces), `tab:<id>`, `demo`. A command touches every topic whose views it changes.
 
@@ -66,6 +72,10 @@ An action whose answer the page needs, such as the key of a new issue to navigat
 - Deciders decide from the stream's state row, never from a projection. Pages render from projections. Inline projectors keep read models; reactions (notifications) are catch-up projectors that send their command with `writer.Once` keyed by the event's position.
 - Every event carries `Meta{At, Actor: personID, Causation: opID}` (FR-155).
 - Per-field conflicts (MP-08): an issue's state row records, per field, the stream version that last changed it, who changed it and when. A change carries the version the page showed; it applies when its field has not changed since, and is refused otherwise with the message of MP-08.3.
+
+## The edge
+
+`web.Server.Handler` puts the edge around the routes, inside out: the actor (`people.Middleware`), `edge.Sessions` (`__Host-sid` with `-secure`), `edge.CSRF` with `Datastar: ["POST /cmd/"]` and no exemptions, `edge.SecurityHeaders` with `DefaultCSP` and HSTS with `-secure`, `X-Robots-Tag: noindex, nofollow`, `edge.Compress`, `edge.Recover`, `edge.LogRequests`. `cmd/tickit` mounts `/healthz` and `/readyz` beside it and serves metrics on a loopback listener of their own (`-metrics`, 127.0.0.1:7205). Pages register with `s.get(pattern, handler, probes...)` and actions with `s.post`, which refuses anything outside `POST /cmd/`.
 
 ## Migrations
 
@@ -93,5 +103,6 @@ Projection tables are created by migrations too, since the runner needs them to 
 
 - `go test ./...` runs everything that needs no browser. The race detector is slow: run `go tool task test-race` at milestones, not after every change.
 - Every decider has `eventstest` cases; every event type a JSON sample in `testdata/<kind>/<type>.json` checked by `eventstest.Samples`; a test rebuilds every read model from the events (FR-155.2).
-- `internal/web` has helpers that run the server in process, open a stream, post an action as a browser would (Datastar and `Sec-Fetch-Site` headers) and read frames.
+- `internal/web/webtest` runs the server in process behind the whole edge, opens a stream, posts an action as a browser would (Datastar and `Sec-Fetch-Site` headers) and reads frames; `internal/dbtest` runs commands against a fresh database and records the topics they touch.
+- GET never writes (NFR-06): every GET route registers with `s.get` and a probe URL (a pattern with wildcards needs one), and `TestGetNeverWrites` requests every probe as four kinds of visitor and compares a fingerprint of every table before and after. An area that adds a page with an id in its path gives a probe that names something its test data holds.
 - `e2e/` drives real browsers with `internal/browsertest`; it skips when no Chromium is found (`CHROME` names the binary; `/usr/bin/chromium` on the development machine).
