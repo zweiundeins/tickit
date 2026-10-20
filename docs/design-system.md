@@ -28,10 +28,11 @@ The look: tide (a teal-cyan, hue 203) as the one signal colour, slate neutrals s
 | `css/prose.css` | components | rich text, inline issue chips, mentions, page links, diffs |
 | `css/editor.css` | components | editor frame, toolbar, save status, remote carets and selections |
 | `css/board.css` | components | board, lanes, cards and the states of a move |
+| `css/app.css` | components | the app's own pages: home, login, privacy, 404 and 410, the person's menu, the first-visit hint, the floating notices |
 | `css/utilities.css` | utilities | `.visually-hidden`, `.pixel-frame`, `.muted`, `.mono`, `.truncate` |
 | `css/design.css` | components | the styleguide's own layout, loaded by `/design` only |
 
-A page links one stylesheet. `web.BundleCSS` joins `web.Stylesheets` in the order above into `css/tickit.css`, with the font URLs rewritten to their hashed names, and `edge.Static` fingerprints, minifies and precompresses it. One request, nothing imported at runtime, and the font preloads ask for the same immutable URLs as the stylesheet. A new stylesheet goes into `web.Stylesheets`. `designRoutes` registers the bundle and `art/mark.svg` (the favicon) for now; when the app's own pages arrive, that registration moves to `New`.
+A page links one stylesheet. `web.BundleCSS` joins `web.Stylesheets` in the order above into `css/tickit.css`, with the font URLs rewritten to their hashed names, and `edge.Static` fingerprints, minifies and precompresses it. One request, nothing imported at runtime, and the font preloads ask for the same immutable URLs as the stylesheet. A new stylesheet goes into `web.Stylesheets`. `web.New` registers the bundle and `art/mark.svg` (the favicon, `web.Mark`), and every page links them and preloads the fonts (`views.Layout`).
 
 The head of a page, as `/design` writes it:
 
@@ -47,7 +48,7 @@ The head of a page, as `/design` writes it:
 <script type="module" src="/static/vendor/starbase/select/select.<hash>.js"></script>
 ```
 
-`ui.Prefs{Theme, Style, Density}` gives the `<html>` attributes (`Prefs.Attrs()`) and the `color-scheme` meta (`Prefs.ColorScheme()`). The person's choice will come from their prefs row (NFR-31 allows one cookie only); `/design` takes it from the query.
+`ui.Prefs{Theme, Style, Density}` gives the `<html>` attributes (`Prefs.Attrs()`) and the `color-scheme` meta (`Prefs.ColorScheme()`). The app's pages take the session's choice from its prefs row (`tabs.Prefs`; NFR-31 allows one cookie only), with `system` as the default theme; `/design` takes it from the query.
 
 ## Themes, styles and density
 
@@ -186,7 +187,7 @@ Plain tables (NFR-50). In cells: `.tk-key` for keys, `.tk-grow` for the column t
 @ui.Mention(id, "Sunny Otter", "/people/"+id)
 ```
 
-`ui.FaceOf(seed)` draws lith's identicon from the person's id: a mirrored 5 by 5 face and one of sixteen hues, which their caret and selection share. Sizes: `SizeXS` 1rem, `SizeSM` 1.5rem, `SizeMD` 2rem, `SizeLG` 3rem. `Person.Away` dims a face, `Person.Deactivated` greys it; `Photo` replaces the face in the same tile. `PresenceRow` puts the viewer first and outlined, shows eight faces and then "+n", marks editors with a pencil, and gives each face its name, tab count and state on hover and focus; it announces nothing by itself (MP-02, NFR-48.2).
+`ui.FaceOf(seed)` draws lith's identicon from the person's id: a mirrored 5 by 5 face and one of sixteen hues, which their caret and selection share. `Person.Hue` sets a person's own hue in its place (a seeded person's); app code makes a `ui.Person` with `views.UIPerson`, which always passes the stored hue, an index of 0 to 15 like `data-hue`. Sizes: `SizeXS` 1rem, `SizeSM` 1.5rem, `SizeMD` 2rem, `SizeLG` 3rem. `Person.Away` dims a face, `Person.Deactivated` greys it; `Photo` replaces the face in the same tile. `PresenceRow` puts the viewer first and outlined, shows eight faces and then "+n", marks editors with a pencil, and gives each face its name, tab count and state on hover and focus; it announces nothing by itself (MP-02, NFR-48.2). With `Shared: true` (and an `ID`) the row is the same for every viewer, as a shared view renders it: every face carries `data-who`, those after the eighth `data-overflow`, and the document's own style orders, outlines and reveals the viewer's face (`views.Presence`).
 
 ### Issues
 
