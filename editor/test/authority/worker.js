@@ -70,6 +70,9 @@ function handle(port, m) {
 			// Refuse every commit whose document holds this text, with message.
 			auth.refuse = m.text ? (doc) => (doc.textContent.includes(m.text) ? m.message : '') : null
 			return true
+		case 'touch':
+			// A stream that opens again gets a frame at once.
+			return auth.touch()
 		case 'chips':
 			auth.chips = m.chips
 			return auth.touch()

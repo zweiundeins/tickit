@@ -38,6 +38,8 @@ function csp(nonce, strict) {
 const image = (id) =>
 	`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 30"><rect width="40" height="30" fill="#9cd"/><text x="4" y="18" font-size="8">${id.replace(/[^\w.-]/g, '')}</text></svg>`
 
+const hits = { drop: 0 }
+
 export function startServer(port = 0) {
 	const server = createServer(async (req, res) => {
 		const url = new URL(req.url, 'http://x')
@@ -49,7 +51,8 @@ export function startServer(port = 0) {
 				res.writeHead(+p.split('/').pop() || 204).end()
 				return
 			}
-			if (p === '/cmd/test/drop') return void req.socket.destroy()
+			if (p === '/cmd/test/drop') return void (hits.drop++, req.socket.destroy())
+			if (p === '/cmd/test/hits') return void res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(hits))
 			if (p.startsWith('/img/lib/')) return void res.writeHead(200, { 'Content-Type': 'image/svg+xml' }).end(image(p.slice(9)))
 			const prefix = Object.keys(roots).find((r) => p.startsWith(r))
 			if (!prefix) return void res.writeHead(404).end()

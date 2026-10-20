@@ -80,17 +80,24 @@ function hostHTML(f, doc = '') {
 function patch(elements, extra = {}) {
 	document.dispatchEvent(new CustomEvent('datastar-fetch', { detail: { type: 'datastar-patch-elements', el: document.documentElement, argsRaw: { elements, ...extra } } }))
 }
+// A slow stream skips frames the way lith's newest-frame.js does: a frame
+// that a newer one overtakes is never applied, and the newest one always is,
+// late. skip is the share of frames held back for 2 to 6 ticks.
 let lastFrame = null
+let seqIn = 0
 async function frame(f) {
 	stats.framesIn++
+	const seq = ++seqIn
 	if (mode.offline || mode.frozen) return
-	if (Math.random() < mode.skip) return void stats.framesSkipped++
-	await sleep(mode.delay)
+	await sleep(mode.delay + (Math.random() < mode.skip ? 100 + Math.random() * 200 : 0))
 	if (mode.offline || mode.frozen) return
+	if (seq < appliedSeq) return void stats.framesSkipped++
+	appliedSeq = seq
 	lastFrame = f
 	patch(hostHTML(f))
 	stats.framesApplied++
 }
+let appliedSeq = 0
 
 // --- Measurements -----------------------------------------------------------
 // typed: [char, time] of this tab's keystrokes. arrivals[j][n]: when the n-th
@@ -144,6 +151,11 @@ window.harness = {
 	hostHTML,
 	get lastFrame() {
 		return lastFrame
+	},
+	// reconnect ends offline or frozen; the stream's view renders again.
+	reconnect() {
+		mode.offline = mode.frozen = mode.loseResponse = false
+		return rpc({ type: 'touch' })
 	},
 	setAlphabets(a) {
 		alphabets = a
