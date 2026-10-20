@@ -43,13 +43,13 @@ templ BoardCard(p CardProps) {
 		}
 		if !p.Due.IsZero() {
 			if p.Overdue {
-				<span class="tk-due" data-overdue><span class="visually-hidden">Overdue, due </span><time datetime={ p.Due.Format("2006-01-02") }>{ Date(p.Due, p.Now) }</time></span>
+				<span class="tk-due" data-overdue><b>Overdue</b> <time datetime={ p.Due.Format("2006-01-02") }>{ Date(p.Due, p.Now) }</time></span>
 			} else {
 				<span class="tk-due"><span class="visually-hidden">Due </span><time datetime={ p.Due.Format("2006-01-02") }>{ Date(p.Due, p.Now) }</time></span>
 			}
 		}
 		for _, l := range p.Labels {
-			@Label(l, "")
+			@Label(l, labelHref(p.LabelHref, l))
 		}
 		if p.Assignee != nil {
 			<i class="tk-av" data-face={ FaceRef(p.Assignee.Seed) } role="img" title={ p.Assignee.Name }></i>

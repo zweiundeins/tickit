@@ -732,6 +732,27 @@
 		inline-size: 12rem;
 	}
 
+	/* The saved filter the board applies (FR-56.2). */
+	.tk-bd__saved {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-1);
+		max-inline-size: 16rem;
+		color: var(--tk-accent-text);
+		font-size: var(--tk-text-sm);
+		font-weight: var(--tk-weight-semibold);
+
+		&[hidden] {
+			display: none;
+		}
+
+		& > span:last-child {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+	}
+
 	.tk-bd__faces {
 		display: inline-flex;
 		align-items: center;

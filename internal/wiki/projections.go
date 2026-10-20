@@ -347,6 +347,8 @@ var chipsProjector = events.NewProjector(tracker.IssueStream, "wiki_chips", 1,
 	events.Ignore(tracker.WatchersAddedType),
 	events.Ignore(tracker.WatcherRemovedType),
 	events.Ignore(tracker.LinkAddedType),
+	events.Ignore(tracker.PageLinkedType),
+	events.Ignore(tracker.PageUnlinkedType),
 	events.Ignore(tracker.LinkRemovedType),
 	events.Handle(tracker.IssueDeletedType, chipChanged[tracker.IssueDeleted]),
 	events.Handle(tracker.ProjectChangedType, chipChanged[tracker.ProjectChanged]),
@@ -355,7 +357,8 @@ var chipsProjector = events.NewProjector(tracker.IssueStream, "wiki_chips", 1,
 )
 
 func chipChanged[T any](tx *writer.Tx, r events.Record[string, T]) error {
-	pages, err := column(tx, `SELECT DISTINCT c.page_id FROM issue_keys k JOIN page_chips c ON c.key = k.key WHERE k.issue_id = ?`, r.ID)
+	pages, err := column(tx, `SELECT c.page_id FROM issue_keys k JOIN page_chips c ON c.key = k.key WHERE k.issue_id = ?1
+		UNION SELECT page_id FROM issue_pages WHERE issue_id = ?1`, r.ID)
 	if err != nil {
 		return err
 	}

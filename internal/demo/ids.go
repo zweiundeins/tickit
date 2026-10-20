@@ -29,6 +29,9 @@ const (
 	kindPageComment
 	kindTemplate
 	kindImage
+	kindDashboard
+	kindGadget
+	kindFilter
 )
 
 // stableID is the id of the n-th thing of a kind with key.

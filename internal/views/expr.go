@@ -59,7 +59,7 @@ const keepPlace = `(() => { let at = null, top = 0; ` +
 	`const note = () => { at = document.activeElement; top = at && at !== document.body ? at.getBoundingClientRect().top : 0 }; ` +
 	`addEventListener('scroll', note, {passive: true}); document.addEventListener('focusin', note); document.addEventListener('input', note, true); ` +
 	`new ResizeObserver(() => { const a = document.activeElement; ` +
-	`if (a && a !== document.body && a === at && a.isConnected) { const d = a.getBoundingClientRect().top - top; if (Math.abs(d) > 0.5) scrollBy(0, d) } note() }).observe(document.body) })()`
+	`if (a && a !== document.body && a === at && a.isConnected) { const d = a.getBoundingClientRect().top - top; if (Math.abs(d) >= 2) scrollBy(0, d) } note() }).observe(document.body) })()`
 
 // startStream is the stream element's data-init.
 const startStream = `$_beat = Date.now(); ` + openStream

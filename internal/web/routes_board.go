@@ -351,6 +351,7 @@ func (s *Server) removeMember(w http.ResponseWriter, r *http.Request) {
 func (s *Server) boardPage(w http.ResponseWriter, r *http.Request) {
 	me := people.Actor(r.Context())
 	quick := views.QuickFilterOf(r.URL.Query())
+	savedID := views.SavedOf(r.URL.Query())
 	create := r.URL.Query().Get("create")
 	if !statusPattern.MatchString(create) {
 		create = ""
@@ -360,7 +361,15 @@ func (s *Server) boardPage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return Page{}, err
 		}
-		lanes, err := readLanes(ctx, q, p.ID, quick.Normalize(me.ID))
+		saved, err := tracker.SavedFilters(ctx, q, me.ID)
+		if err != nil {
+			return Page{}, err
+		}
+		saved = slices.DeleteFunc(saved, func(sf tracker.SavedFilter) bool { // those of other projects alone
+			return len(sf.Filter.Projects) > 0 && !slices.Contains(sf.Filter.Projects, p.Key) && sf.ID != savedID
+		})
+		applied, f := boardFilter(saved, savedID, quick)
+		lanes, err := readLanes(ctx, q, p.ID, f.Normalize(me.ID))
 		if err != nil {
 			return Page{}, err
 		}
@@ -377,12 +386,23 @@ func (s *Server) boardPage(w http.ResponseWriter, r *http.Request) {
 		}
 		return Page{
 			Title: p.Name + " board", Nav: "projects", Width: "full", Project: p.ID,
-			Views: []string{"board:" + views.BoardArg(p.Key, quick), "boardhead:" + p.Key},
-			Body: views.Board(views.BoardPage{Project: p, Filter: quick, Labels: labels, Lanes: lanes, Head: head,
+			Views: []string{"board:" + views.BoardArg(p.Key, quick, savedID), "boardhead:" + p.Key},
+			Body: views.Board(views.BoardPage{Project: p, Filter: quick, Saved: saved, Applied: applied, Labels: labels, Lanes: lanes, Head: head,
 				CanEdit: can(ctx, q, me, access.EditIssues, p.ID), Admin: can(ctx, q, me, access.Configure, p.ID), CreateStatus: create,
-				Me: me.ID, Moderates: access.SiteCan(me, access.Moderate)}),
+				Me: me.ID, Moderates: access.SiteCan(me, access.Moderate), Deletes: deletes(ctx, q, me, []string{p.ID})}),
 		}, nil
 	})
+}
+
+// boardFilter is the saved filter a board's page names among saved, if
+// it still exists, and the quick filter with what it adds (FR-56.2).
+func boardFilter(saved []tracker.SavedFilter, id string, quick tracker.Filter) (*tracker.SavedFilter, tracker.Filter) {
+	for i, sf := range saved {
+		if sf.ID == id {
+			return &saved[i], quick.With(sf.Filter.BoardPart())
+		}
+	}
+	return nil, quick
 }
 
 // readLanes reads a board for a quick filter normalized for its viewer.
@@ -440,13 +460,21 @@ func lanesFrame(ctx context.Context, l views.Lanes) ([]byte, error) {
 // boardView is a project's lanes for a quick filter: one view for every
 // tab whose filter selects the same cards for the same person (MP-11).
 func (s *Server) boardView(ctx context.Context, q sqlite.Querier, actor people.Person, arg string) (live.View, error) {
-	key, f, err := views.ParseBoardArg(arg)
+	key, f, savedID, err := views.ParseBoardArg(arg)
 	if err != nil {
 		return live.View{}, fmt.Errorf("%w: %v", errBadView, err)
 	}
 	p, err := readableProject(ctx, q, actor, key)
 	if err != nil {
 		return live.View{}, err
+	}
+	if savedID != "" {
+		switch sf, err := tracker.SavedFilterByID(ctx, q, savedID); {
+		case err == nil:
+			f = f.With(sf.Filter.BoardPart())
+		case !errors.Is(err, access.ErrNotFound):
+			return live.View{}, err
+		}
 	}
 	f = f.Normalize(actor.ID)
 	return live.View{
@@ -613,7 +641,7 @@ func (s *Server) backlogPage(w http.ResponseWriter, r *http.Request) {
 		return Page{
 			Title: p.Name + " backlog", Nav: "projects", Project: p.ID, Views: []string{"backlog:" + p.Key},
 			Body: views.Backlog(views.BacklogPage{Project: p, Data: d, CanEdit: can(ctx, q, me, access.EditIssues, p.ID), Admin: can(ctx, q, me, access.Configure, p.ID),
-				Me: me.ID, Moderates: access.SiteCan(me, access.Moderate)}),
+				Me: me.ID, Moderates: access.SiteCan(me, access.Moderate), Deletes: deletes(ctx, q, me, []string{p.ID})}),
 		}, nil
 	})
 }

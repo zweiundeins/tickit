@@ -93,6 +93,14 @@
 		text-align: center;
 	}
 
+	/* ── A person's page (FR-67.2): the face beside the name. ───────── */
+	.tk-pagehead.tk-person {
+		flex-wrap: nowrap;
+		justify-content: start;
+		align-items: center;
+		gap: var(--tk-space-3);
+	}
+
 	/* ── Home ──────────────────────────────────────────────────────── */
 	.tk-home__lead {
 		max-inline-size: 30rem;

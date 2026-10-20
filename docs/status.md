@@ -7,19 +7,19 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | Area | Must done | Must partly | Must not done | Should done | Should partly | Should not done |
 | --- | --- | --- | --- | --- | --- | --- |
 | Projects | 1 | 0 | 0 | 1 | 0 | 0 |
-| Issues | 8 | 1 | 0 | 6 | 2 | 0 |
-| Workflows and statuses | 1 | 0 | 0 | 0 | 1 | 0 |
+| Issues | 8 | 1 | 0 | 8 | 0 | 0 |
+| Workflows and statuses | 1 | 0 | 0 | 1 | 0 | 0 |
 | Boards, backlog and sprints | 2 | 0 | 0 | 2 | 0 | 0 |
-| Search, filters, bulk edit and dashboards | 7 | 0 | 0 | 0 | 2 | 0 |
-| Comments, mentions, activity and history | 2 | 0 | 0 | 3 | 1 | 0 |
+| Search, filters, bulk edit and dashboards | 7 | 0 | 0 | 2 | 0 | 0 |
+| Comments, mentions, activity and history | 2 | 0 | 0 | 4 | 0 | 0 |
 | Spaces and pages | 7 | 0 | 0 | 8 | 0 | 0 |
-| Links between pages and issues | 2 | 0 | 0 | 1 | 0 | 1 |
+| Links between pages and issues | 2 | 0 | 0 | 2 | 0 | 0 |
 | Notifications | 4 | 0 | 0 | 3 | 0 | 0 |
-| Identity, accounts and sign-in | 4 | 1 | 0 | 1 | 0 | 0 |
+| Identity, accounts and sign-in | 5 | 0 | 0 | 1 | 0 | 0 |
 | Administration | 0 | 0 | 0 | 3 | 0 | 0 |
 | Import, export and API | 0 | 0 | 0 | 0 | 0 | 0 |
 | Audit | 1 | 0 | 0 | 1 | 0 | 0 |
-| Multiplayer | 9 | 1 | 0 | 3 | 0 | 0 |
+| Multiplayer | 10 | 0 | 0 | 3 | 0 | 0 |
 | Demo operation | 8 | 0 | 0 | 1 | 0 | 0 |
 | Non-functional: Security | 17 | 0 | 0 | 3 | 0 | 0 |
 | Non-functional: Privacy | 4 | 2 | 0 | 1 | 0 | 0 |
@@ -29,7 +29,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | Non-functional: Deployment on the shared host | 8 | 0 | 0 | 0 | 0 | 0 |
 | Non-functional: Backups | 2 | 0 | 0 | 1 | 0 | 0 |
 | Non-functional: Observability | 3 | 0 | 0 | 1 | 0 | 0 |
-| **All** | **99** | **10** | **0** | **41** | **9** | **1** |
+| **All** | **101** | **8** | **0** | **49** | **2** | **0** |
 
 ## Projects
 
@@ -55,8 +55,8 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | FR-20 | Epics and their issues | Should | done | internal/tracker/commands_test.go: TestEpicsAndSubtasks |  |
 | FR-21 | Subtasks | Should | done | internal/tracker/commands_test.go: TestEpicsAndSubtasks; internal/web/issue_actions_test.go: TestIssueActionsAccepted |  |
 | FR-22 | Issue links | Should | done | internal/tracker/commands_test.go: TestLinks; internal/tracker/decide_test.go: TestSetDeciders; internal/web/issue_actions_test.go: TestIssueActionsRefused |  |
-| FR-23 | Labels on issues | Should | partly | internal/tracker/search_test.go: TestLabels; internal/tracker/decide_test.go: TestCreateIssue; internal/web/issue_actions_test.go: TestIssueActionsAccepted | Labels link to their issues only on the issue page; board cards render them as plain text and the issue list shows no labels (FR-23.2). |
-| FR-25 | Due date | Should | partly | internal/web/issue_actions_test.go: TestIssueActionsAccepted | Overdue shows as a warning icon in the list and only as red bold text on cards, and the word "Overdue" is visually hidden in both (FR-25.2). |
+| FR-23 | Labels on issues | Should | done | internal/tracker/search_test.go: TestLabels; internal/tracker/decide_test.go: TestCreateIssue; internal/web/issue_actions_test.go: TestIssueActionsAccepted; internal/web/ux_test.go: TestLabelsAndOverdue | Labels on cards, in the issue list (beside the summary) and on the issue page link to the list of their issues (FR-23.2). |
+| FR-25 | Due date | Should | done | internal/web/issue_actions_test.go: TestIssueActionsAccepted; internal/web/ux_test.go: TestLabelsAndOverdue | An overdue issue says "Overdue" in visible text beside the warning icon on cards, in lists and on the home page (FR-25.2). |
 | FR-27 | Watchers | Should | done | internal/tracker/decide_test.go: TestCreateIssue; internal/tracker/decide_test.go: TestEditIssue; internal/tracker/commands_test.go: TestComments; internal/web/issue_actions_test.go: TestIssueActionsAccepted; internal/notify/notify_test.go: TestWatchers |  |
 | FR-28 | Delete an issue | Should | done | internal/tracker/commands_test.go: TestKeys; internal/web/issue_actions_test.go: TestIssueURLs | No test checks that a deleted issue leaves open boards and lists in the next frame (FR-28.1). |
 
@@ -65,7 +65,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | ID | Title | Priority | Status | Tests | Note |
 | --- | --- | --- | --- | --- | --- |
 | FR-35 | Default workflow | Must | done | internal/tracker/commands_test.go: TestProjects; internal/tracker/decide_test.go: TestCreateIssue; internal/tracker/search_test.go: TestSearchSorts |  |
-| FR-38 | Resolution time | Should | partly | internal/tracker/commands_test.go: TestBoardAndBacklog | The resolved time is set, cleared and shown on the issue page, but the issue list has no Resolved column or filter and there are no dashboards. |
+| FR-38 | Resolution time | Should | done | internal/tracker/commands_test.go: TestBoardAndBacklog; internal/web/ux_test.go: TestListResolved; internal/web/dashboards_test.go: TestDashboards | The resolved time is set, cleared and shown on the issue page; the issue list has a Resolved column, sorts and filters by it (resolved_from, resolved_to), and dashboards chart created against resolved per day. |
 
 ## Boards, backlog and sprints
 
@@ -86,9 +86,9 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | FR-53 | Sort issues | Must | done | internal/tracker/search_test.go: TestSearchSorts; internal/web/list_test.go: TestListSortAndPages; internal/web/list_test.go: TestListFilters |  |
 | FR-54 | Pages of results | Must | done | internal/tracker/search_test.go: TestSearchPages; internal/web/list_test.go: TestListSortAndPages | The list view renders again on every issue change; no test moves issues across a page boundary (FR-54.2). |
 | FR-55 | Filter, sort and page in the URL and the tab | Must | done | internal/tracker/search_test.go: TestFilterValues; internal/web/list_test.go: TestListURL; internal/web/list_test.go: TestListChange; e2e/list_test.go: TestListTypingAndHistory (Chromium) |  |
-| FR-56 | Saved filters | Should | partly | internal/tracker/search_test.go: TestSavedFilters; internal/web/list_test.go: TestSavedFilters | Save, star, the Filters menu, rename and delete work, but a saved filter cannot feed a board quick filter (FR-56.2). |
+| FR-56 | Saved filters | Should | done | internal/tracker/search_test.go: TestSavedFilters; internal/web/list_test.go: TestSavedFilters; internal/web/ux_test.go: TestBoardSavedFilter; e2e/ux_test.go: TestTrackerGaps (Chromium); internal/web/dashboards_test.go: TestDashboards | Save, star, the Filters menu, rename and delete work; a saved filter feeds the board's quick filter (a Filters menu above the board, `filter=` in its URL) and a dashboard gadget (FR-56.2). An issue list on a page (FR-104) is a Could and not built. |
 | FR-57 | Search across pages and issues | Must | done | internal/search/search_test.go: TestRanking; internal/search/search_test.go: TestSnippet; internal/search/search_test.go: TestFilters; internal/web/search_test.go: TestSearchPage; internal/web/search_test.go: TestSearchSuggest; internal/wiki/commands_test.go: TestPageSearch; e2e/list_test.go: TestSearchBox (Chromium) |  |
-| FR-59 | Home page with your work | Should | partly | internal/web/notify_test.go: TestHomeAndReactions | Assigned issues, "recently edited by you" and the live feed are there; recently viewed pages and issues are not (FR-59.1). |
+| FR-59 | Home page with your work | Should | done | internal/web/notify_test.go: TestHomeAndReactions; internal/web/ux_test.go: TestRecentlyViewed | Assigned issues, "recently edited by you", "Recently viewed" (the issue and page views post once as they open; the newest 20 per person, swept after 30 days) and the live feed (FR-59.1). |
 
 ## Comments, mentions, activity and history
 
@@ -96,7 +96,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | --- | --- | --- | --- | --- | --- |
 | FR-65 | Comment on an issue | Must | done | internal/tracker/commands_test.go: TestComments; internal/tracker/decide_test.go: TestCommentDeciders; internal/web/issue_actions_test.go: TestIssueActionsAccepted; internal/tracker/issuepage_test.go: TestTyping | The per-tab draft lives in sessionStorage; no test checks it across a reconnect. |
 | FR-66 | Edit and delete own comments | Should | done | internal/tracker/commands_test.go: TestComments; internal/web/issue_actions_test.go: TestIssueActionsAccepted | TestComments cites "FR-65 to FR-67" and covers edit, delete, "Comment deleted" and a moderator's hide. |
-| FR-67 | Mentions | Should | partly | internal/tracker/commands_test.go: TestComments; internal/tracker/decide_test.go: TestCommentDeciders; internal/notify/notify_test.go: TestMentions | A mention renders as "@Name" without an avatar and links to /people/<id>, which no route serves (FR-67.2). |
+| FR-67 | Mentions | Should | done | internal/tracker/commands_test.go: TestComments; internal/tracker/decide_test.go: TestCommentDeciders; internal/notify/notify_test.go: TestMentions; internal/web/ux_test.go: TestMentionsAndPersonPage; e2e/ux_test.go: TestTrackerGaps (Chromium) | A mention shows the person's face and name and links to /people/<id>: their face, name, issues assigned and reported, and what they did lately (FR-67.2). Drafts and texts to edit show names, not ids. |
 | FR-68 | Issue history | Must | done | internal/tracker/commands_test.go: TestHistory; internal/tracker/description_test.go: TestDescriptionVersions; internal/web/desc_test.go: TestDescriptionLive | A description's versions are entries with a comparison to the version before. |
 | FR-69 | Activity feed | Should | done | internal/activity/activity_test.go: TestFeeds; internal/activity/activity_test.go: TestPageEditsMerge; internal/web/notify_test.go: TestHomeAndReactions |  |
 | FR-70 | Issue or page as of an earlier version | Should | done | internal/tracker/commands_test.go: TestHistory | Sliders exist for issues and pages; tests cover only the issue's state at a version, not the slider or the shared render (FR-70.3). |
@@ -127,7 +127,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | --- | --- | --- | --- | --- | --- |
 | FR-100 | Issue chips on pages | Must | done | internal/wiki/commands_test.go: TestChips; internal/web/wiki_test.go: TestChipsLive; internal/doc/rules_test.go: TestRulesRefuse; e2e/editor_reconnect_test.go: TestReaderSeesEdits (Chromium); editor/test/run.mjs: "input rules and shortcuts (FR-82.2)" (Chromium) |  |
 | FR-101 | Pages that mention an issue | Must | done | internal/wiki/commands_test.go: TestChips; internal/web/wiki_test.go: TestChipsLive |  |
-| FR-102 | Link a page from an issue | Should | not done | none | No test cites it; the issue has no "Link page" action, and a page's "Linked issues" lists only its chips. |
+| FR-102 | Link a page from an issue | Should | done | internal/web/ux_test.go: TestLinkPage; internal/tracker/pagelinks_test.go: TestPageLinkDecider; internal/tracker/rebuild_test.go: TestRebuild; e2e/ux_test.go: TestTrackerGaps (Chromium) | "Link page" searches pages by title and links one with issue.page_linked on the issue's stream (projection issue_pages); the issue lists it beside the pages that mention it, the page under "Linked issues", both live. |
 | FR-103 | Links between pages | Should | done | internal/doc/rules_test.go: TestRulesRefuse | Page links name the page id and "Linked from" is listed; no test covers the page picker or the "Linked from" list. |
 
 ## Notifications
@@ -151,7 +151,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | FR-123 | Log out | Must | done | internal/people/people_test.go: TestLoginLogout; internal/web/action_test.go: TestLogin; e2e/login_test.go: TestLogin (Chromium) |  |
 | FR-124 | Login sessions expire | Must | done | internal/people/people_test.go: TestLoginLogout; internal/web/demo_test.go: TestAccounts | Expiry (flag `-session-ttl`), password change and deactivation end sessions; password reset does not exist (FR-128 is Could), and no test asserts that a password change ends the other sessions. |
 | FR-125 | Change password | Should | done | internal/web/demo_test.go: TestAccounts | `/account` asks for the current password and the new one twice; ending the other sessions is in `people.ChangePassword` but no test asserts it. |
-| FR-137 | Header and navigation | Must | partly | internal/web/action_test.go: TestLogin; internal/web/action_test.go: TestAdminLink | The header links to Dashboards, but no `/dashboards` route exists (FR-60 is Could), so the link answers 404. |
+| FR-137 | Header and navigation | Must | done | internal/web/action_test.go: TestLogin; internal/web/action_test.go: TestAdminLink; internal/web/dashboards_test.go: TestDashboards; e2e/ux_test.go: TestTrackerGaps (Chromium) | The header's Dashboards link opens /dashboards; below 30rem the search is an icon button that opens the field. Actions a person may not use are not offered (Delete issue, TestDeleteOfferedToThoseWhoMay). |
 
 ## Administration
 
@@ -178,7 +178,7 @@ No Must or Should requirements.
 | --- | --- | --- | --- | --- | --- |
 | MP-01 | One identity across tabs | Must | done | internal/web/stream_test.go: TestPresence; internal/views/views_test.go: TestPresenceRow; internal/web/notify_test.go: TestBellAndActions; e2e/notify_test.go: TestBellLive (Chromium) |  |
 | MP-02 | Presence | Must | done | internal/web/stream_test.go: TestPresence; internal/web/mp_test.go: TestPresenceGoes; internal/web/mp_test.go: TestAway; internal/web/mp_test.go: TestSpaceTreePresence; internal/ui/ui_test.go: TestPresenceOrder; internal/views/views_test.go: TestPresenceRow; e2e/presence_test.go: TestPresenceRow (Chromium); e2e/board_test.go: TestBoardPresence (Chromium) | A connection that drops without closing ends once its page stops answering heartbeats (`POST /alive`, 50 s); the hub's heartbeat and write deadline alone kept such a face for minutes, since the writes go into the kernel's buffers. Behind Caddy too, since the answer comes from the page. Away is per person: no input in any tab for 5 minutes. |
-| MP-03 | Live updates everywhere | Must | partly | internal/web/list_test.go: TestListLive; internal/web/search_test.go: TestSearchLive; internal/search/search_test.go: TestFollowsChanges; internal/web/issue_actions_test.go: TestIssueActionsAccepted; internal/web/wiki_test.go: TestWikiLive; internal/web/wiki_test.go: TestChipsLive; e2e/issue_test.go: TestIssueTwoPeople (Chromium); e2e/issue_test.go: TestIssueEditInPlace (Chromium); e2e/frames_test.go: TestFramesKeepPlace (Chromium) | Lists, search, issues, boards, trees, chips and the bell update live, and frames keep focus, fields and the place on screen (MP-03.3: the page holds the focused element where it was when a frame changes the layout above it, which the browser's scroll anchoring does not); there are no dashboards (FR-60) to update. |
+| MP-03 | Live updates everywhere | Must | done | internal/web/list_test.go: TestListLive; internal/web/search_test.go: TestSearchLive; internal/search/search_test.go: TestFollowsChanges; internal/web/issue_actions_test.go: TestIssueActionsAccepted; internal/web/wiki_test.go: TestWikiLive; internal/web/wiki_test.go: TestChipsLive; e2e/issue_test.go: TestIssueTwoPeople (Chromium); e2e/issue_test.go: TestIssueEditInPlace (Chromium); e2e/frames_test.go: TestFramesKeepPlace (Chromium); e2e/frames_test.go: TestDashboardKeepsPlace (Chromium) | Lists, search, issues, boards, trees, chips, dashboards and the bell update live, and frames keep focus, fields and the place on screen (MP-03.3: the page holds the focused element where it was when a frame changes the layout above it, which the browser's scroll anchoring does not). |
 | MP-04 | Live board moves | Must | done | internal/web/board_test.go: TestBoardMoveAccepted; internal/web/board_test.go: TestBoardMoveRefused; internal/tracker/commands_test.go: TestMoveConflicts; internal/tracker/decide_test.go: TestMoveDecider; e2e/board_test.go: TestBoardMoveLive (Chromium); e2e/board_test.go: TestBoardMoveConflict (Chromium) |  |
 | MP-05 | Co-editing a page without losing edits | Must | done | internal/wiki/commands_test.go: TestCommits; internal/wiki/commands_test.go: TestConcurrentCommits; e2e/editor_coedit_test.go: TestCoEditing (Chromium); e2e/editor_load_test.go: TestCoEditingLoad; e2e/editor_reconnect_test.go: TestEditorReconnect (Chromium); editor/test/unit/collab.test.js: 'typing only: every character survives, in each editor order (MP-05.1)'; editor/test/unit/collab.test.js: 'undo takes back only the own steps, rebased (MP-05.7)'; editor/test/run.mjs: 'morph: frames, a morph around the editor and a signal patch change nothing in it (Appendix B done 3, MP-05.8)'; editor/test/run.mjs: 'skipped frames: with 60 % of frames held back and overtaken, only timing changes (MP-05.9)' (Chromium); e2e/editor_mp_test.go: TestEditorGapCopy (Chromium); e2e/delay_test.go: TestDelayProxy | MP-05.3 with a 50 ms round trip (a delaying proxy, `COEDIT_DELAY=25ms`): 20 browser editors at 5 characters a second, p95 140 to 148 ms and identical within 179 ms of the last keystroke on a quiet machine; p95 336 ms and more while other jobs saturated its CPUs (benchmarks/RESULTS.md). After a gap the editor cannot merge, the unsaved text shows as a copy beside the page and stays in the tab (MP-05.6). |
 | MP-06 | Other people's carets and selections | Should | done | editor/test/run.mjs: 'remote carets: bar and name in the person\'s hue, at their place, hidden from screen readers (MP-06)' (Chromium) | The 30 s idle state is set in internal/web/routes_editor.go but no Go test cites MP-06. |
@@ -313,9 +313,7 @@ The Must requirements that are partly done, most important first. No Must requir
 - NFR-35 From commit to screen: at NFR-38's load the median is a few milliseconds over 50 ms and 0.38 % of ticks overrun (asks under 0.1 %).
 - NFR-39 Page load: a stream's first frames arrive with the next tick plus its render, up to 74 ms after the request.
 - NFR-38 Capacity: met for streams, data and actions, but not with NFR-35 as it asks.
-- MP-03 Live updates everywhere: there are no dashboards (FR-60) to update.
 - NFR-55 Supported browsers: the browser tests pass in Chromium and Firefox 158; nothing runs Safari, iOS, Android or Edge.
-- FR-137 Header and navigation: the Dashboards link points to `/dashboards`, which answers 404.
 - NFR-28 Log retention: the app's logs hold no content (tested), and Caddy and Loki keep 30 days, but the journal on libretto is capped by size, not by 30 days.
 - NFR-31 One cookie and a privacy page: the legal check of the wording (Q25) is not recorded.
 - FR-16 Change status: status changes by bulk edit are missing, since bulk edit (FR-58, a Could) is not built.

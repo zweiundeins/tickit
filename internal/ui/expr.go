@@ -59,7 +59,21 @@ const toolbarKeys = `['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(evt.key
 
 // searchShortcut focuses the header's search on Ctrl K or Cmd K. On the
 // search field.
-const searchShortcut = `(evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'k' && (evt.preventDefault(), el.focus(), el.select())`
+const searchShortcut = `(evt.ctrlKey || evt.metaKey) && evt.key.toLowerCase() === 'k' && (evt.preventDefault(), el.form.dataset.open = '', el.focus(), el.select())`
+
+// On narrow screens the header's search is a button (searchOpen) that
+// opens the field over the header; it closes when the focus leaves it
+// (searchClose) or on Escape (searchEscape). Wide headers show the field
+// and never the button, so data-open changes nothing there.
+const (
+	searchOpen = `((f) => {
+	f.dataset.open = ''
+	el.setAttribute('aria-expanded', 'true')
+	f.querySelector('input').focus()
+})(document.getElementById('tk-search-form'))`
+	searchClose  = `el.contains(evt.relatedTarget) || (delete el.dataset.open, document.querySelector('.tk-search__open')?.setAttribute('aria-expanded', 'false'))`
+	searchEscape = `evt.key === 'Escape' && el.dataset.open !== undefined && !evt.defaultPrevented && document.querySelector('.tk-search__open')?.checkVisibility() && document.querySelector('.tk-search__open').focus()`
+)
 
 // hushTips hides every tooltip on Escape, until the pointer or the focus
 // moves on (WCAG 1.4.13: content on hover is dismissible). On the shell.

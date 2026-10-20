@@ -4,6 +4,7 @@ import (
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/wiki"
 )
 
 // The issue's page (FR-13): a frame the document renders once, with the
@@ -24,7 +25,10 @@ type IssueFrameProps struct {
 	// ReadOnly is a Viewer's page: controls disabled, comments allowed.
 	ReadOnly  bool
 	Moderates bool // may hide comments (FR-66.2)
-	Panel     bool
+	// Deletes is where the viewer may delete issues: elsewhere the
+	// document hides "Delete issue" (FR-28.1).
+	Deletes Deletes
+	Panel   bool
 }
 
 // IssuePage is the issue's page.
@@ -46,7 +50,7 @@ templ issueFrame(p IssueFrameProps) {
 		data-on:focusout={ issueFocusOut }
 		data-on:input__throttle.2s={ issueTyping }
 	>
-		@viewerStyle(p.Me)
+		@viewerStyle(p.Me, p.Deletes)
 		<div class="tk-issue__head">
 			@region(p, "issue-main", "div")
 			<div class="tk-issue__presence" id="issue-presence-slot">
@@ -202,7 +206,7 @@ templ anywayButton(f string) {
 }
 
 templ issueMain(m Issue) {
-	<div id="issue-main" class="tk-issue__main" data-v={ i64(m.Version) } data-key={ m.Key } data-issue={ m.ID }>
+	<div id="issue-main" class="tk-issue__main" data-v={ i64(m.Version) } data-key={ m.Key } data-issue={ m.ID } data-pid={ m.ProjectID }>
 		@ui.Breadcrumbs(crumbs(m))
 		if m.Hidden {
 			@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Icon: "lock", Title: "This issue is hidden"}) {
@@ -255,9 +259,10 @@ templ issueMain(m Issue) {
 					@ui.MenuItem(ui.MenuItemProps{Label: "Add subtask", Icon: "plus", Autofocus: true, Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-subtask')?.focus()"}})
 				}
 				@ui.MenuItem(ui.MenuItemProps{Label: "Link issue", Icon: "link", Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-link-key')?.focus()"}})
+				@ui.MenuItem(ui.MenuItemProps{Label: "Link page", Icon: "page", Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-page-q')?.focus()"}})
 				@ui.MenuSeparator()
 				@ui.MenuItem(ui.MenuItemProps{Label: "Report issue", Icon: "warning", Attrs: ReportAttrs("issue", m.ID)})
-				@ui.MenuItem(ui.MenuItemProps{Label: "Delete issue", Icon: "trash", Danger: true, Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-delete').showModal()"}})
+				@ui.MenuItem(ui.MenuItemProps{Label: "Delete issue", Icon: "trash", Danger: true, Attrs: templ.Attributes{"data-del": true, "data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-delete').showModal()"}})
 			}
 		</div>
 		@issueNote("status")
@@ -427,19 +432,35 @@ templ issueRelated(m Issue) {
 			@issueNote("unlink")
 		</div>
 		<div class="tk-issue__group">
-			<h2 class="tk-eyebrow">Pages that mention this issue</h2>
-			if len(m.Pages) > 0 {
+			<h2 class="tk-eyebrow">Pages</h2>
+			if len(m.Pages) > 0 || len(m.LinkedPages) > 0 {
 				<ul class="tk-issue__refs" role="list">
+					for _, pg := range m.LinkedPages {
+						<li>
+							<span class="tk-issue__wording">linked</span>
+							@ui.PageLink(pg.ID, pg.Title, pg.URL(), false)
+							<span class="muted">{ pg.SpaceName }</span>
+							@ui.Button(ui.ButtonProps{Label: "Unlink " + pg.Title, Icon: "close", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: merge(locked, choice("pageunlink", pg.ID, ""))})
+						</li>
+					}
 					for _, pg := range m.Pages {
 						<li>
+							<span class="tk-issue__wording">mentions it</span>
 							@ui.PageLink(pg.ID, pg.Title, pg.URL(), false)
 							<span class="muted">{ pg.SpaceName }</span>
 						</li>
 					}
 				</ul>
 			} else {
-				<p class="muted">No page shows this issue yet. Type its key in a page to link it there.</p>
+				<p class="muted">No page shows or links this issue yet.</p>
 			}
+			<div class="tk-issue__addrow tk-issue__pagepick" data-ignore-morph>
+				<label class="visually-hidden" for="issue-page-q">Link a page: search pages by title</label>
+				<input id="issue-page-q" class="tk-input tk-input--sm" type="search" data-bind="_is.pq" placeholder="Link a page: type its title" autocomplete="off" aria-controls={ PagePickID } data-on:input__debounce.250ms={ pagePick } data-attr:readonly={ fieldExpr(editReadonly, "pagelink") } data-attr:disabled={ disabledWhile }/>
+				<ul id={ PagePickID } class="tk-issue__picks" role="list" aria-label="Pages to link"></ul>
+			</div>
+			@issueNote("pagelink")
+			@issueNote("pageunlink")
 		</div>
 	</section>
 }
@@ -496,7 +517,7 @@ templ issueSide(m Issue) {
 				<div class="tk-issue__chips">
 					for _, l := range m.Detail.Labels {
 						<span class="tk-issue__label">
-							@ui.Label(l, "/issues?label="+l)
+							@ui.Label(l, LabelHref(l))
 							<button type="button" class="tk-issue__x" aria-label={ "Remove the label " + l } { merge(locked, choice("labels", l, "remove"))... }>
 								@ui.Icon("close")
 							</button>
@@ -801,6 +822,25 @@ templ commentForm(p IssueFrameProps) {
 	</div>
 }
 
+// PagePicks are the pages "Link page" offers for a search (FR-102): a
+// choice links the page, as the frame's delegated handler sends it.
+templ PagePicks(list []wiki.PageRef, searched bool) {
+	<ul id={ PagePickID } class="tk-issue__picks" role="list" aria-label="Pages to link">
+		for _, pg := range list {
+			<li>
+				<button type="button" class="tk-menu__item" data-act="choose" data-field="pagelink" data-value={ pg.ID }>
+					@ui.Icon("page")
+					<span class="tk-menu__label">{ pg.Title }</span>
+					<span class="muted">{ pg.SpaceName }</span>
+				</button>
+			</li>
+		}
+		if searched && len(list) == 0 {
+			<li class="muted">No page has that title.</li>
+		}
+	</ul>
+}
+
 // issueMentions are the people "@" offers in the comment box (FR-67.1).
 templ issueMentions(m Issue) {
 	<div class="tk-issue__mentions tk-menu" id="issue-mentions" role="listbox" aria-label="Mention a person" { showIf(mentionsShown)... }>
@@ -809,6 +849,9 @@ templ issueMentions(m Issue) {
 				@ui.Avatar(ui.AvatarProps{Person: UIPerson(p), Size: ui.SizeXS, Decorative: true})
 				<span>{ p.Name }</span>
 			</button>
+		}
+		for _, p := range m.Mentioned {
+			<span hidden data-id={ p.ID } data-name={ p.Name }></span>
 		}
 	</div>
 }

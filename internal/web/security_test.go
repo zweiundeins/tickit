@@ -211,6 +211,14 @@ var secCases = []secCase{
 	issueCase("cdelete", ownComment, wMember, "ref", "@comment"),
 	issueCase("chide", admin, wOwner, "value", "hide", "ref", "@comment"),
 	issueCase("delete", admin, wOwner),
+	issueCase("pagelink", edit, wMember, "value", "@page"),
+	func() secCase {
+		c := issueCase("pageunlink", edit, wMember, "value", "@page")
+		c.setup = func(f *fixture) {
+			f.e.Do(f.t, tracker.LinkPage{By: f.by(wOwner), Issue: f.id("issue", false), Page: f.id("page", false), Title: "Linked"})
+		}
+		return c
+	}(),
 	{name: "issues/typing", pattern: "POST /cmd/issues/{id}/{field}", need: read, guard: true, by: wViewer, req: at("/cmd/issues/{issue}/typing", "field", "comment")},
 
 	{name: "list/view", pattern: "POST /cmd/list/view", need: self, by: wViewer, noop: true, req: at("/cmd/list/view", "view", "", "query", "project=SEC")},
@@ -218,6 +226,13 @@ var secCases = []secCase{
 	{name: "filters/rename", pattern: "POST /cmd/filters/rename", need: ownThing, guard: true, outcome: true, by: wMember, req: at("/cmd/filters/rename", "filter", "@filter", "name", "Renamed")},
 	{name: "filters/delete", pattern: "POST /cmd/filters/delete", need: ownThing, guard: true, outcome: true, by: wMember, req: at("/cmd/filters/delete", "filter", "@filter")},
 	{name: "filters/star", pattern: "POST /cmd/filters/star", need: self, guard: true, outcome: true, by: wViewer, req: at("/cmd/filters/star", "filter", "@filter", "star", true)},
+
+	{name: "dashboards/create", pattern: "POST /cmd/dashboards/create", need: self, guard: true, outcome: true, by: wViewer, req: at("/cmd/dashboards/create", "name", "Mine too")},
+	{name: "dashboards/rename", pattern: "POST /cmd/dashboards/rename", need: ownThing, guard: true, outcome: true, by: wMember, req: at("/cmd/dashboards/rename", "dashboard", "@dashboard", "name", "Renamed")},
+	{name: "dashboards/gadget", pattern: "POST /cmd/dashboards/gadget", need: ownThing, guard: true, outcome: true, by: wMember, req: at("/cmd/dashboards/gadget", "dashboard", "@dashboard", "kind", "activity")},
+	{name: "dashboards/gadget/move", pattern: "POST /cmd/dashboards/gadget/move", need: ownThing, guard: true, outcome: true, by: wMember, req: at("/cmd/dashboards/gadget/move", "dashboard", "@dashboard", "gadget", "@gadget2", "earlier", true)},
+	{name: "dashboards/gadget/remove", pattern: "POST /cmd/dashboards/gadget/remove", need: ownThing, guard: true, outcome: true, by: wMember, req: at("/cmd/dashboards/gadget/remove", "dashboard", "@dashboard", "gadget", "@gadget")},
+	{name: "dashboards/delete", pattern: "POST /cmd/dashboards/delete", need: ownThing, guard: true, outcome: true, by: wMember, req: at("/cmd/dashboards/delete", "dashboard", "@dashboard")},
 
 	{name: "admin/create", pattern: "POST /cmd/admin/create", need: siteAdmin, guard: true, outcome: true, by: wRoot, req: at("/cmd/admin/create", "email", "new@example.com", "username", "newbie", "name", "New", "role", "none", "password", "a first password")},
 	{name: "admin/role", pattern: "POST /cmd/admin/role", need: siteAdmin, guard: true, outcome: true, by: wRoot, targets: []string{"account"}, req: at("/cmd/admin/role", "account", "@victim", "role", "moderator")},
@@ -281,7 +296,7 @@ func epochOf(f *fixture, page string) string {
 // issueFields are the fields of POST /cmd/issues/{id}/{field}
 // (issueCommand and issueTyping): each needs a case.
 var issueFields = []string{"summary", "type", "status", "priority", "assignee", "parent", "due", "points", "estimate",
-	"remaining", "sprint", "labels", "components", "watch", "link", "unlink", "subtask", "comment", "cedit", "cdelete", "chide", "delete", "typing"}
+	"remaining", "sprint", "labels", "components", "watch", "link", "unlink", "subtask", "comment", "cedit", "cdelete", "chide", "delete", "typing", "pagelink", "pageunlink"}
 
 // lacking is who lacks c's right, and whether they act in the open scope.
 func (c secCase) lacking() []struct {

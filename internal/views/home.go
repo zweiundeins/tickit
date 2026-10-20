@@ -20,9 +20,26 @@ type Work struct {
 	Assigned []tracker.Issue // open, newest change first
 	Total    int             // all the open issues assigned to them
 	Recent   []activity.Entry
+	// Viewed are the issues and pages they viewed lately (FR-59.1).
+	Viewed   []RecentItem
 	Projects []tracker.Project
 	Spaces   []Space
 }
+
+// RecentItem is an issue or a page a person viewed: Key and Type for an
+// issue, Space for a page.
+type RecentItem struct {
+	Kind  string // "issue" or "page"
+	Href  string
+	Title string
+	Key   string
+	Type  tracker.IssueType
+	Space string
+	At    time.Time
+}
+
+// HomeViewed is how many viewed issues and pages the home page lists.
+const HomeViewed = 8
 
 // Space is a space the home page links to.
 type Space struct {

@@ -80,6 +80,31 @@ templ HomeWork(w Work) {
 				</ul>
 			}
 		</section>
+		<section class="tk-box tk-home__wide" aria-labelledby="home-viewed">
+			<header>
+				<h2 class="tk-eyebrow" id="home-viewed">Recently viewed</h2>
+			</header>
+			if len(w.Viewed) == 0 {
+				<p class="muted">Issues and pages you open show here.</p>
+			} else {
+				<ul class="tk-worklist" role="list">
+					for _, v := range w.Viewed {
+						<li>
+							if v.Kind == "page" {
+								@ui.Icon("page")
+								<a class="truncate" href={ templ.SafeURL(v.Href) }>{ v.Title }</a>
+								<span class="muted nowrap">{ v.Space }</span>
+							} else {
+								@ui.TypeIcon(ui.IssueType(v.Type))
+								<span class="tk-key mono">{ v.Key }</span>
+								<a class="truncate" href={ templ.SafeURL(v.Href) }>{ v.Title }</a>
+							}
+							@ui.RelativeTime(v.At.In(Zone), w.Now)
+						</li>
+					}
+				</ul>
+			}
+		</section>
 		<section class="tk-box" aria-labelledby="home-projects">
 			<header>
 				<h2 class="tk-eyebrow" id="home-projects">Projects</h2>

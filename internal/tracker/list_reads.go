@@ -42,7 +42,7 @@ func SearchAll(ctx context.Context, q sqlite.Querier, query Query, limit int) ([
 	f := query.Filter.Normalize(query.Me)
 	args := filterArgs(query.Readable, f)
 	joins := ` LEFT JOIN people pa ON pa.id = i.assignee LEFT JOIN people pr ON pr.id = i.reporter`
-	rows, err := q.QueryContext(ctx, `SELECT `+issueColumns+issueFrom+joins+filterWhere+query.Sort.orderBy()+` LIMIT ?18`,
+	rows, err := q.QueryContext(ctx, `SELECT `+issueColumns+issueFrom+joins+filterWhere+query.Sort.orderBy()+` LIMIT ?20`,
 		append(args, limit)...)
 	if err != nil {
 		return nil, err

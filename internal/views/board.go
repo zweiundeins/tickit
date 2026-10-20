@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/a-h/templ"
+
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/ui"
@@ -42,6 +44,15 @@ func QuickFilterOf(v url.Values) tracker.Filter { return QuickFilter(tracker.Par
 // QuickQuery is the board page's query for a quick filter.
 func QuickQuery(f tracker.Filter) string { return QuickFilter(f).Values().Encode() }
 
+// SavedOf is the saved filter a board's page names (filter=<id>), "" for
+// none (FR-56.2).
+func SavedOf(v url.Values) string {
+	if id := v.Get("filter"); tracker.ValidID(id) {
+		return id
+	}
+	return ""
+}
+
 // maxBoardText is how much of a text filter the view's name carries: the
 // stream's view names have 200 characters at most.
 const maxBoardText = 60
@@ -52,8 +63,9 @@ var b64 = base64.RawURLEncoding
 // "WEB", then ".a" and an assignee, ".t" and a type, ".l" and a label in
 // base64url, ".q" and the text in base64url, each sorted. Person ids,
 // types and base64url hold only the characters a view's name may (the
-// stream's argPattern); the page builds the same name (boardArg).
-func BoardArg(key string, f tracker.Filter) string {
+// stream's argPattern); the page builds the same name (boardArg). A
+// saved filter's id comes last, after ".f" (FR-56.2).
+func BoardArg(key string, f tracker.Filter, saved string) string {
 	f = QuickFilter(f)
 	var b strings.Builder
 	b.WriteString(key)
@@ -73,26 +85,35 @@ func BoardArg(key string, f tracker.Filter) string {
 		}
 		b.WriteString(".q" + b64.EncodeToString([]byte(string(q))))
 	}
+	if tracker.ValidID(saved) {
+		b.WriteString(".f" + saved)
+	}
 	return b.String()
 }
 
 var errBoardArg = errors.New("views: a malformed board view")
 
-// ParseBoardArg reads BoardArg's name back: the key, and the quick filter
-// with Me kept.
-func ParseBoardArg(arg string) (string, tracker.Filter, error) {
+// ParseBoardArg reads BoardArg's name back: the key, the quick filter
+// with Me kept, and the saved filter's id or "".
+func ParseBoardArg(arg string) (string, tracker.Filter, string, error) {
 	parts := strings.Split(arg, ".")
 	key, ok := tracker.NormalizeKey(parts[0])
 	if !ok || key != parts[0] {
-		return "", tracker.Filter{}, errBoardArg
+		return "", tracker.Filter{}, "", errBoardArg
 	}
 	var f tracker.Filter
+	saved := ""
 	for _, p := range parts[1:] {
 		if len(p) < 2 {
-			return "", f, errBoardArg
+			return "", f, "", errBoardArg
 		}
 		v := p[1:]
 		switch p[0] {
+		case 'f':
+			if !tracker.ValidID(v) || saved != "" {
+				return "", f, "", errBoardArg
+			}
+			saved = v
 		case 'a':
 			f.Assignees = append(f.Assignees, v)
 		case 't':
@@ -100,7 +121,7 @@ func ParseBoardArg(arg string) (string, tracker.Filter, error) {
 		case 'l', 'q':
 			raw, err := b64.DecodeString(v)
 			if err != nil {
-				return "", f, errBoardArg
+				return "", f, "", errBoardArg
 			}
 			if p[0] == 'l' {
 				f.Labels = append(f.Labels, string(raw))
@@ -108,10 +129,10 @@ func ParseBoardArg(arg string) (string, tracker.Filter, error) {
 				f.Text = string(raw)
 			}
 		default:
-			return "", f, errBoardArg
+			return "", f, "", errBoardArg
 		}
 	}
-	return key, QuickFilter(f), nil
+	return key, QuickFilter(f), saved, nil
 }
 
 // BoardKey is the key of a project's board view for a quick filter
@@ -158,7 +179,11 @@ type BoardHead struct {
 type BoardPage struct {
 	Project tracker.Project
 	Filter  tracker.Filter // the quick filter, with Me kept
-	Labels  []string       // the project's labels, for the label filter
+	// Saved are the saved filters of the Filters menu (FR-56.2), Applied
+	// the one the page's URL names, if any.
+	Saved   []tracker.SavedFilter
+	Applied *tracker.SavedFilter
+	Labels  []string // the project's labels, for the label filter
 	Lanes   Lanes
 	Head    BoardHead
 	// Admin shows the Settings tab.
@@ -171,6 +196,7 @@ type BoardPage struct {
 	// Me and Moderates are the issue panel's (docs/architecture.md).
 	Me        string
 	Moderates bool
+	Deletes   Deletes
 }
 
 // HeadID is the id of a board head's region.
@@ -233,7 +259,7 @@ func shortID(id string) string {
 func cardProps(c tracker.Card, who map[string]people.Person, now time.Time, menu string) ui.CardProps {
 	p := ui.CardProps{
 		ID: CardID(c.Key), Key: c.Key, Summary: c.Summary, Href: "/" + c.Key, LinkAttrs: map[string]any{"data-i": shortID(c.ID)},
-		Type: ui.IssueType(c.Type), Priority: ui.Priority(c.Priority), Labels: c.Labels, Now: now, MenuID: menu,
+		Type: ui.IssueType(c.Type), Priority: ui.Priority(c.Priority), Labels: c.Labels, LabelHref: LabelHref, Now: now, MenuID: menu,
 		SlotAttrs: map[string]any{"data-v": strconv.FormatInt(c.Version, 10)},
 	}
 	if c.Assignee != "" {
@@ -328,9 +354,27 @@ func boardSignals(p BoardPage) string {
 	for i, t := range f.Types {
 		types[i] = string(t)
 	}
+	saved, sname := "", ""
+	if p.Applied != nil {
+		saved, sname = p.Applied.ID, p.Applied.Name
+	}
 	return `{_board: {op: '', pcard: '', drag: '', say: '', note: '', ncard: '', problem: '', retry: '', move: {issue: '', status: '', before: '', after: '', seen: 0}}, _bf: {mine: ` +
 		strconv.FormatBool(mine) + `, who: ` + jsString(strings.Join(who, " ")) + `, types: ` + jsString(strings.Join(types, " ")) +
-		`, labels: ` + jsString(strings.Join(f.Labels, " ")) + `, text: ` + jsString(f.Text) + `, q: ` + jsString(f.Text) + `}}`
+		`, labels: ` + jsString(strings.Join(f.Labels, " ")) + `, text: ` + jsString(f.Text) + `, q: ` + jsString(f.Text) +
+		`, saved: ` + jsString(saved) + `, sname: ` + jsString(sname) + `}}`
+}
+
+// savedAttrs are a saved filter's item in the board's Filters menu: its
+// id and name, and its quick parts, which choosing it puts in the quick
+// filter (FR-56.2).
+func savedAttrs(f tracker.SavedFilter) templ.Attributes {
+	q := QuickFilter(f.Filter)
+	types := make([]string, len(q.Types))
+	for i, t := range q.Types {
+		types[i] = string(t)
+	}
+	return templ.Attributes{"data-filter": "saved", "data-v": f.ID, "data-name": f.Name, "data-a": strings.Join(q.Assignees, " "),
+		"data-t": strings.Join(types, " "), "data-l": strings.Join(q.Labels, " "), "data-q": q.Text, "data-attr:aria-checked": savedOn}
 }
 
 // filtered reports whether a quick filter hides anything.

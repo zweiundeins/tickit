@@ -122,7 +122,7 @@ func TestIssuePanel(t *testing.T) {
 	e := webtest.Start(t)
 	d := issueData(t, e)
 	var panel bytes.Buffer
-	if err := views.IssuePanel("", false).Render(context.Background(), &panel); err != nil {
+	if err := views.IssuePanel("", false, views.Deletes{}).Render(context.Background(), &panel); err != nil {
 		t.Fatal(err)
 	}
 	p := browsertest.Start(t).NewPage(t, 1280, 900)

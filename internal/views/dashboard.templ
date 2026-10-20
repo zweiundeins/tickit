@@ -1,0 +1,207 @@
+package views
+
+import (
+	"time"
+
+	"github.com/zweiundeins/tickit/internal/dashboards"
+	"github.com/zweiundeins/tickit/internal/ui"
+)
+
+// DashboardsBody is /dashboards: a form that makes one and the list.
+templ DashboardsBody(p DashboardsPage) {
+	<div class="tk-dashes stack" data-signals={ dashSignals } data-effect={ dashSettled } data-on:datastar-fetch={ dashFailed }>
+		<div class="tk-pagehead">
+			<div>
+				<p class="tk-eyebrow">Dashboards</p>
+				<h1>Dashboards</h1>
+			</div>
+			<p class="tk-home__lead muted">A dashboard is a grid of gadgets: a saved filter's issues, a project's issues by status, created against resolved, your issues, the activity. Everyone sees every dashboard; its owner changes it.</p>
+		</div>
+		<form class="tk-dashes__new" data-on:submit__prevent={ dashCreate }>
+			@ui.Field(ui.FieldProps{ID: "dash-new-name", Label: "New dashboard", ErrorAttrs: templ.Attributes{"data-text": "$_dash.msg"}}) {
+				@ui.Input(ui.InputProps{ID: "dash-new-name", MaxLength: dashboards.MaxName, Placeholder: "Release status", DescribedBy: "dash-new-name-error",
+					Attrs: templ.Attributes{"data-bind": "_dash.name", "data-attr:readonly": dashPending}})
+			}
+			@ui.Button(ui.ButtonProps{Label: "Create dashboard", Icon: "plus", Variant: ui.Primary, Type: "submit", Attrs: templ.Attributes{"data-attr:aria-busy": dashBusy}})
+		</form>
+		@DashboardListRegion(p.List)
+	</div>
+}
+
+// DashboardListRegion is the shared list of every dashboard.
+templ DashboardListRegion(l DashboardList) {
+	<div id={ DashboardListID }>
+		if len(l.Dashboards) == 0 {
+			@ui.EmptyState(ui.EmptyProps{Icon: "dashboard", Title: "No dashboards yet", Text: "Name one above, then add gadgets to it."})
+		} else {
+			@ui.FaceStyles(dashFaces(l))
+			@ui.Table(ui.TableProps{Caption: "Dashboards", HideCaption: true}) {
+				<thead>
+					<tr>
+						<th scope="col">Name</th>
+						<th scope="col">Owner</th>
+						<th scope="col" class="tk-num">Gadgets</th>
+						<th scope="col" class="tk-num">Changed</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, d := range l.Dashboards {
+						<tr>
+							<td class="tk-grow"><a href={ templ.SafeURL(DashboardHref(d.ID)) }>{ d.Name }</a></td>
+							<td>
+								@personCell(l.People[d.Owner])
+							</td>
+							<td class="tk-num">{ itoa(d.Count) }</td>
+							<td class="tk-num">
+								@ui.RelativeTime(d.Updated.In(Zone), l.Now)
+							</td>
+						</tr>
+					}
+				</tbody>
+			}
+		}
+	</div>
+}
+
+// DashboardBody is a dashboard's page: the owner's controls, if the viewer
+// is its owner, and the grid.
+templ DashboardBody(p DashboardPage) {
+	{{ d := p.Grid.Dashboard }}
+	<div class="tk-dash" data-d={ d.ID } data-signals={ dashSignals } data-effect={ dashSettled } data-on:datastar-fetch={ dashFailed } data-on:click={ dashClick }>
+		@dashStyle(p.Me, p.Mine && p.Me != d.Owner)
+		@ui.Glyphs()
+		if p.Mine {
+			<form class="tk-dash__bar" data-d={ d.ID } data-on:submit__prevent={ dashAdd } aria-label="Add a gadget">
+				@ui.Field(ui.FieldProps{ID: "dash-kind", Label: "Add a gadget", ErrorAttrs: templ.Attributes{"data-text": "$_dash.msg"}}) {
+					@ui.Select(ui.SelectProps{ID: "dash-kind", Options: gadgetKinds(), DescribedBy: "dash-kind-error", Attrs: templ.Attributes{"data-bind": "_dash.kind"}})
+				}
+				<div data-show={ needsProject }>
+					@ui.Field(ui.FieldProps{ID: "dash-project", Label: "Project"}) {
+						@ui.Select(ui.SelectProps{ID: "dash-project", Options: projectOptions(p.Projects), Attrs: templ.Attributes{"data-bind": "_dash.project"}})
+					}
+				</div>
+				<div data-show={ needsFilter }>
+					@ui.Field(ui.FieldProps{ID: "dash-filter", Label: "Saved filter"}) {
+						@ui.Select(ui.SelectProps{ID: "dash-filter", Options: filterOptions(p.Filters), Attrs: templ.Attributes{"data-bind": "_dash.filter"}})
+					}
+				</div>
+				@ui.Button(ui.ButtonProps{Label: "Add", Icon: "plus", Variant: ui.Primary, Type: "submit", Attrs: templ.Attributes{"data-attr:aria-busy": dashBusy}})
+				<span class="cluster tk-dash__manage">
+					@ui.Button(ui.ButtonProps{Label: "Rename", Icon: "edit", Variant: ui.Ghost, Command: "show-modal", CommandFor: "dash-rename"})
+					@ui.Button(ui.ButtonProps{Label: "Delete", Icon: "trash", Variant: ui.Ghost, Command: "show-modal", CommandFor: "dash-delete"})
+				</span>
+			</form>
+			@ui.Dialog(ui.DialogProps{ID: "dash-rename", Title: "Rename dashboard", Size: ui.SizeSM, Footer: dashRenameFooter(d.ID)}) {
+				<form id="dash-rename-form" data-d={ d.ID } data-on:submit__prevent={ dashRename }>
+					@ui.Field(ui.FieldProps{ID: "dash-rename-name", Label: "Name", Required: true, ErrorAttrs: templ.Attributes{"data-text": "$_dash.msg"}}) {
+						@ui.Input(ui.InputProps{ID: "dash-rename-name", MaxLength: dashboards.MaxName, Required: true, Value: d.Name, DescribedBy: "dash-rename-name-error",
+							Attrs: templ.Attributes{"data-bind": "_dash.name", "data-attr:readonly": dashPending, "autofocus": true}})
+					}
+				</form>
+			}
+			@ui.Dialog(ui.DialogProps{ID: "dash-delete", Title: "Delete dashboard", Description: "Its gadgets go with it; the filters and issues they show stay.", Size: ui.SizeSM, Footer: dashDeleteFooter(d.ID)}) {
+				<p>Delete <strong>{ d.Name }</strong>?</p>
+			}
+		}
+		@DashboardGridRegion(p.Grid)
+	</div>
+}
+
+templ dashRenameFooter(id string) {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: "dash-rename"})
+	@ui.Button(ui.ButtonProps{Label: "Rename", Variant: ui.Primary, Type: "submit", Attrs: templ.Attributes{"form": "dash-rename-form", "data-attr:aria-busy": dashBusy}})
+}
+
+templ dashDeleteFooter(id string) {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: "dash-delete"})
+	@ui.Button(ui.ButtonProps{Label: "Delete", Variant: ui.Danger, Attrs: templ.Attributes{"data-d": id, "data-on:click": dashDelete, "data-attr:aria-busy": dashBusy}})
+}
+
+// DashboardGridRegion is a dashboard's shared region: its name and owner,
+// and its gadgets in order.
+templ DashboardGridRegion(g DashboardGrid) {
+	{{ d := g.Dashboard }}
+	<div id={ DashboardGridID } data-owner={ d.Owner }>
+		<div class="tk-pagehead">
+			<div>
+				<p class="tk-eyebrow">Dashboard</p>
+				<h1>{ d.Name }</h1>
+			</div>
+			@ui.Byline(ui.BylineProps{Person: UIPerson(g.Owner), Verb: "made it", At: d.Created.In(Zone), Now: g.Now, Href: PersonHref(g.Owner.ID)})
+		</div>
+		if len(g.Gadgets) == 0 {
+			@ui.EmptyState(ui.EmptyProps{Icon: "dashboard", Title: "No gadgets yet", Text: "Its owner adds gadgets: a saved filter's issues, issues by status, created against resolved, their issues and the activity."})
+		} else {
+			<div class="tk-dash__grid">
+				for i, gd := range g.Gadgets {
+					@gadget(gd, g.Now, i == 0, i == len(g.Gadgets)-1)
+				}
+			</div>
+		}
+	</div>
+}
+
+templ gadget(g Gadget, now time.Time, first, last bool) {
+	<section class="tk-box tk-gadget" id={ GadgetID(g.ID) } data-kind={ string(g.Kind) } aria-labelledby={ GadgetID(g.ID) + "-title" }>
+		<header>
+			<h2 class="tk-eyebrow" id={ GadgetID(g.ID) + "-title" }>
+				if g.Href != "" {
+					<a href={ templ.SafeURL(g.Href) }>{ g.Title }</a>
+				} else {
+					{ g.Title }
+				}
+			</h2>
+			<span class="tk-gadget__own">
+				if !first {
+					@ui.Button(ui.ButtonProps{Label: "Move " + g.Title + " earlier", Icon: "arrow-up", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-act": "gearlier", "data-g": g.ID}})
+				}
+				if !last {
+					@ui.Button(ui.ButtonProps{Label: "Move " + g.Title + " later", Icon: "arrow-down", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-act": "glater", "data-g": g.ID}})
+				}
+				@ui.Button(ui.ButtonProps{Label: "Remove " + g.Title, Icon: "close", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-act": "gremove", "data-g": g.ID}})
+			</span>
+		</header>
+		if g.Note != "" {
+			<p class="tk-gadget__note">{ g.Note }</p>
+		}
+		switch {
+			case g.Missing != "":
+				<p class="muted">{ g.Missing }</p>
+			case g.Kind == dashboards.Filter:
+				<p class="tk-gadget__note">{ issueCount(g.Issues.Total) }</p>
+				@IssueWorklist(g.Issues.Issues, GadgetShown, now, "No issue matches this filter.")
+			case g.Kind == dashboards.Status:
+				@ui.CountBars("Issues of "+g.Title, countBars(g))
+			case g.Kind == dashboards.Created:
+				@ui.DayChart("Issues created and resolved per day, the last 14 days", dayPairs(g.Days))
+			case g.Kind == dashboards.Assigned:
+				<div data-ignore-morph>
+					<div id={ AssignedID(g.ID) }>
+						@ui.Skeleton("text", 3)
+					</div>
+				</div>
+			case g.Kind == dashboards.Activity:
+				@Activity(g.Feed)
+		}
+	</section>
+}
+
+// AssignedRegions are the viewer's "Assigned to me" gadgets, each patched
+// into its slot by the view dashme:<id>.
+templ AssignedRegions(a Assigned) {
+	for _, id := range a.Gadgets {
+		<div id={ AssignedID(id) }>
+			if a.Issues.Total > 0 {
+				<p class="tk-gadget__note">{ openIssues(a.Issues.Total) }</p>
+			}
+			@IssueWorklist(a.Issues.Issues, GadgetShown, a.Now, "Nothing is assigned to you.")
+		</div>
+	}
+}
+
+// DashboardGone replaces a dashboard's grid once it is deleted.
+templ DashboardGone() {
+	<div id={ DashboardGridID }>
+		@ui.EmptyState(ui.EmptyProps{Icon: "trash", Title: "This dashboard was deleted", Text: "Its owner deleted it.", Action: ui.Button(ui.ButtonProps{Label: "All dashboards", Href: "/dashboards"})})
+	</div>
+}

@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -8,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -23,8 +25,10 @@ import (
 	"github.com/zweiundeins/tickit/internal/doc"
 	"github.com/zweiundeins/tickit/internal/markup"
 	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/recent"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/ui"
 	"github.com/zweiundeins/tickit/internal/views"
 	"github.com/zweiundeins/tickit/internal/wiki"
 )
@@ -45,6 +49,48 @@ func (s *Server) routesTracker() {
 	s.views.Register("issue-typing", s.issueTypingView)
 	s.post("POST /cmd/issues/create", s.createIssue)
 	s.post("POST /cmd/issues/{id}/{field}", s.issueAction)
+	s.get("GET /issues/link-page", http.HandlerFunc(s.pagePick), "/issues/link-page?q=plan", "/issues/link-page?q=")
+}
+
+// pagePick answers "Link page"'s search (FR-102): the first current pages
+// whose title matches, of the spaces the person may read, as a patch of
+// the list the issue's page shows them in.
+func (s *Server) pagePick(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	me := people.Actor(ctx)
+	text := strings.TrimSpace(r.URL.Query().Get("q"))
+	if len(text) > 100 {
+		text = text[:100]
+	}
+	var list []wiki.PageRef
+	err := s.db.View(ctx, func(tx *sql.Tx) error {
+		if text == "" {
+			return nil
+		}
+		found, err := wiki.SearchPages(ctx, tx, text, 20)
+		if err != nil {
+			return err
+		}
+		for _, p := range found {
+			if len(list) < 8 && canRead(ctx, tx, me, spaceOf(ctx, tx, p.ID)) == nil {
+				list = append(list, p)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	var buf bytes.Buffer
+	if err := views.PagePicks(list, text != "").Render(ctx, &buf); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	h := w.Header()
+	h.Set("Content-Type", "text/event-stream")
+	h.Set("Cache-Control", "no-store")
+	w.Write(sse.PatchElements(buf.Bytes(), sse.Patch{Mode: sse.Replace})) // the list is in data-ignore-morph
 }
 
 // ProbeIssue is the id of WEB-1 in the probes' data (seedProbes).
@@ -125,10 +171,11 @@ func (s *Server) issuePage(w http.ResponseWriter, r *http.Request) {
 			Project: m.ProjectID,
 			Views:   []string{"issue:" + m.ID, "issue-desc:" + m.ID, "issue-typing:" + m.ID},
 			Scripts: []string{"editor/sb-rich-editor.min.js"},
-			Body: views.IssuePage(views.IssueFrameProps{
+			Body: templ.Join(views.IssuePage(views.IssueFrameProps{
 				Issue: &m, ID: m.ID, Key: m.Key, Me: actor.ID,
 				ReadOnly: !edit || m.Project.Archived || !m.Deleted.IsZero(), Moderates: hide,
-			}),
+				Deletes: deletes(ctx, q, actor, []string{m.ProjectID}),
+			}), views.Viewed(recent.Issue, m.ID)),
 		}, nil
 	})
 }
@@ -163,6 +210,28 @@ func (s *Server) oldIssueURL(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Redirect(w, r, "/"+d.Key, http.StatusMovedPermanently)
 	}
+}
+
+// deletes is where actor may delete issues among projects, nil for those
+// they may read (views.Deletes): the document shows "Delete issue" there
+// only (FR-28.1).
+func deletes(ctx context.Context, q sqlite.Querier, actor people.Person, projects []string) views.Deletes {
+	if access.SiteCan(actor, access.Moderate) {
+		return views.Deletes{All: true}
+	}
+	if projects == nil {
+		var err error
+		if projects, err = tracker.Readable(ctx, q, actor); err != nil {
+			return views.Deletes{}
+		}
+	}
+	var d views.Deletes
+	for _, id := range projects {
+		if can(ctx, q, actor, access.DeleteIssue, id) {
+			d.Projects = append(d.Projects, id)
+		}
+	}
+	return d
 }
 
 // readableIssue checks that actor may read the issue id, which exists,
@@ -282,6 +351,15 @@ func loadIssue(ctx context.Context, q sqlite.Querier, id string, now time.Time) 
 	if m.Pages, err = wiki.PagesMentioningIssue(ctx, q, id); err != nil { // FR-101
 		return m, err
 	}
+	if m.LinkedPages, err = wiki.PagesLinkedToIssue(ctx, q, id); err != nil { // FR-102
+		return m, err
+	}
+	m.Pages = slices.DeleteFunc(m.Pages, func(p wiki.PageRef) bool {
+		return slices.ContainsFunc(m.LinkedPages, func(l wiki.PageRef) bool { return l.ID == p.ID })
+	})
+	for _, p := range m.LinkedPages {
+		live.Depends(ctx, wiki.PageTopic(p.ID)) // a linked page's title
+	}
 	project := d.ProjectID
 	if m.Workflow, err = tracker.ProjectWorkflow(ctx, q, project); err != nil {
 		return m, err
@@ -337,6 +415,22 @@ func loadIssue(ctx context.Context, q sqlite.Querier, id string, now time.Time) 
 			return m, err
 		}
 		m.Comments = append(m.Comments, vc)
+	}
+	// The comments to edit show the names of the people they mention,
+	// which the page turns back into ids when it sends them (FR-67.2).
+	var named []string
+	add := func(ids []string) {
+		for _, id := range ids {
+			if !slices.Contains(named, id) {
+				named = append(named, id)
+				m.Mentioned = append(m.Mentioned, m.People[id])
+			}
+		}
+	}
+	for i := range m.Comments {
+		var ids []string
+		m.Comments[i].Markup, ids = views.NamedMentions(m.Comments[i].Markup, m.People)
+		add(ids)
 	}
 	return m, nil
 }
@@ -428,6 +522,15 @@ func (r *docResolver) Person(id string) (string, bool) {
 	}
 	r.people[id] = p
 	return p.Name, true
+}
+
+// Face is a mentioned person's face (FR-67.2), for one Person found.
+func (r *docResolver) Face(id string) string {
+	p, ok := r.people[id]
+	if !ok || p.Kind == people.Deleted {
+		return ""
+	}
+	return ui.FaceHTML(views.UIPerson(p))
 }
 
 // Page is a linked page's title while it is current; one in the trash or
@@ -643,6 +746,11 @@ func (s *Server) issueCommand(ctx context.Context, a action, id, field string, r
 		return tracker.EditComment{By: by, Comment: req.Ref, Body: body}, nil
 	case "delete":
 		return tracker.DeleteIssue{By: by, Issue: id}, nil
+	case "pagelink", "pageunlink":
+		if !tracker.ValidID(v) {
+			return nil, fmt.Errorf("%w: page id", errField)
+		}
+		return linkPage{By: by, Issue: id, Page: v, Unlink: field == "pageunlink"}, nil
 	}
 	return nil, fmt.Errorf("%w %q", errField, field)
 }
@@ -953,6 +1061,32 @@ func (c linkByKey) Apply(tx *writer.Tx) error {
 		return tabs.Refuse(tracker.FieldLinks, "No issue has the key "+strings.ToUpper(key)+".")
 	}
 	return tracker.LinkIssues{By: c.By, Issue: c.Issue, Type: c.Type, Other: ref.ID}.Apply(tx)
+}
+
+// linkPage links a page the actor may read to an issue, or unlinks it
+// (FR-102): the tracker checks the issue's right, this the page's.
+type linkPage struct {
+	By     tabs.By
+	Issue  string
+	Page   string
+	Unlink bool
+}
+
+func (c linkPage) Apply(tx *writer.Tx) error {
+	if _, err := readableIssue(tx.Context(), tx, c.By.Actor, c.Issue); err != nil {
+		return err
+	}
+	title := ""
+	switch p, _, err := readable(tx.Context(), tx, c.By.Actor, c.Page); {
+	case err == nil && p.State == wiki.Current:
+		title = p.Title
+	case c.Unlink && (err == nil || errors.Is(err, access.ErrNotFound)):
+	case err == nil || errors.Is(err, access.ErrNotFound):
+		return tabs.Refuse(tracker.FieldPages, "No such page.")
+	default:
+		return err
+	}
+	return tracker.LinkPage{By: c.By, Issue: c.Issue, Page: c.Page, Title: title, Unlink: c.Unlink}.Apply(tx)
 }
 
 // A subtask is a new issue for the demo's cap (DM-04.3).

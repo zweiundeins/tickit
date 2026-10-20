@@ -17,6 +17,7 @@ import (
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/zweiundeins/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/dashboards"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/tracker"
@@ -148,6 +149,13 @@ func newFixture(t testing.TB) *fixture {
 	// A saved filter and a notification of member's.
 	e.Do(t, tracker.SaveFilter{By: by(wMember), ID: nid("filter"), Name: "Mine", Filter: tracker.Filter{Projects: []string{"SEC"}}})
 	f.ids["o.filter"] = f.ids["filter"]
+	// A dashboard of member's with two gadgets (FR-60).
+	e.Do(t, dashboards.Create{By: by(wMember), ID: nid("dashboard"), Name: "Mine"})
+	e.Do(t, dashboards.AddGadget{By: by(wMember), Dashboard: f.ids["dashboard"], ID: nid("gadget"), Kind: dashboards.Status, Project: f.ids["proj"]})
+	e.Do(t, dashboards.AddGadget{By: by(wMember), Dashboard: f.ids["dashboard"], ID: nid("gadget2"), Kind: dashboards.Assigned})
+	for _, k := range []string{"dashboard", "gadget", "gadget2"} {
+		f.ids["o."+k] = f.ids[k]
+	}
 	e.Do(t, writer.Func(func(tx *writer.Tx) error {
 		res, err := tx.Exec(`INSERT INTO notifications (recipient, kind, subject_kind, subject_id, subject_label, href, actor, source, last_source, created_at, updated_at)
 			VALUES (?, 'assigned', 'issue', ?, 'SEC-1', '/SEC-1', ?, 1, 1, ?, ?)`, f.p[wMember].ID, f.ids["issue"], f.p[wOwner].ID, now.UnixMilli(), now.UnixMilli())

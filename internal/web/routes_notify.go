@@ -21,6 +21,7 @@ import (
 	"github.com/zweiundeins/tickit/internal/activity"
 	"github.com/zweiundeins/tickit/internal/notify"
 	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/recent"
 	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/ui"
 	"github.com/zweiundeins/tickit/internal/views"
@@ -138,12 +139,37 @@ func (s *Server) notifySeen(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Payload
 		Subject string `json:"subject"`
+		Kind    string `json:"kind"`
 	}
 	a, ok := s.decode(w, r, classView, &req)
 	if !ok {
 		return
 	}
-	s.act(w, r, a, notify.Seen{By: a.By, Subject: req.Subject})
+	var cmd writer.Command = notify.Seen{By: a.By, Subject: req.Subject}
+	if req.Kind != "" { // and a view for "Recently viewed" (FR-59.1), of what the person may read
+		ctx := r.Context()
+		err := s.db.View(ctx, func(tx *sql.Tx) error {
+			switch req.Kind {
+			case recent.Issue:
+				_, err := readableIssue(ctx, tx, a.By.Actor, req.Subject)
+				return err
+			case recent.Page:
+				_, _, err := readable(ctx, tx, a.By.Actor, req.Subject)
+				return err
+			}
+			return errField
+		})
+		switch {
+		case errors.Is(err, errField):
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		case err != nil:
+			s.failAction(w, r, err)
+			return
+		}
+		cmd = also{cmd, recent.Record{By: a.By, Kind: req.Kind, Subject: req.Subject}}
+	}
+	s.act(w, r, a, cmd)
 }
 
 // home is the home page (FR-59): the person's work and the feed of what
@@ -206,6 +232,9 @@ func (s *Server) work(ctx context.Context, q sqlite.Querier, me people.Person, r
 	if w.Recent, err = activity.Mine(ctx, q, me.ID, activity.In(readable), 8); err != nil {
 		return w, err
 	}
+	if w.Viewed, err = recentlyViewed(ctx, q, me, readable); err != nil {
+		return w, err
+	}
 	if w.Projects, err = s.projects.get(ctx, q, projects, seq); err != nil {
 		return w, err
 	}
@@ -232,6 +261,56 @@ func (s *Server) work(ctx context.Context, q sqlite.Querier, me people.Person, r
 	return w, nil
 }
 
+// recentlyViewed are the issues and pages a person viewed lately that
+// they may still read (FR-59.1), newest first.
+func recentlyViewed(ctx context.Context, q sqlite.Querier, me people.Person, readable []access.Scope) ([]views.RecentItem, error) {
+	if me.IsZero() {
+		return nil, nil
+	}
+	seen, err := recent.List(ctx, q, me.ID)
+	if err != nil || len(seen) == 0 {
+		return nil, err
+	}
+	var ids []string
+	for _, v := range seen {
+		if v.Kind == recent.Issue {
+			ids = append(ids, v.Subject)
+		}
+	}
+	issues, err := tracker.IssuesByID(ctx, q, ids)
+	if err != nil {
+		return nil, err
+	}
+	keep := activity.In(readable)
+	var out []views.RecentItem
+	for _, v := range seen {
+		if len(out) == views.HomeViewed {
+			break
+		}
+		switch v.Kind {
+		case recent.Issue:
+			i, ok := issues[v.Subject]
+			if ok && keep(access.ProjectScope(i.ProjectID)) {
+				out = append(out, views.RecentItem{Kind: v.Kind, Href: "/" + i.Key, Title: i.Summary, Key: i.Key, Type: i.Type, At: v.At})
+			}
+		case recent.Page:
+			p, err := wiki.PageByID(ctx, q, v.Subject)
+			if errors.Is(err, access.ErrNotFound) || err == nil && (p.State != wiki.Current || !keep(access.SpaceScope(p.Space))) {
+				continue
+			}
+			if err != nil {
+				return nil, err
+			}
+			sp, err := wiki.SpaceByID(ctx, q, p.Space)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, views.RecentItem{Kind: v.Kind, Href: wiki.PageURL(sp.Key, p.ID, p.Title), Title: p.Title, Space: sp.Name, At: v.At})
+		}
+	}
+	return out, nil
+}
+
 // feedTopics are what the feeds and the home page's own view listen to:
 // the topics of the events they show (issues and their comments, projects,
 // pages with their versions and comments, spaces) and names. Not
@@ -249,7 +328,7 @@ func (s *Server) homeView(ctx context.Context, q sqlite.Querier, actor people.Pe
 	}
 	return live.View{
 		Key:    "home:" + actor.ID,
-		Topics: append(slices.Clone(feedTopics), people.PersonTopic(actor.ID)),
+		Topics: append(slices.Clone(feedTopics), people.PersonTopic(actor.ID), recent.Topic(actor.ID)),
 		Every:  time.Minute,
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			q := querier(ctx, tx)

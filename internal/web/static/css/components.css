@@ -1808,6 +1808,14 @@
 			color: var(--tk-danger);
 			font-weight: var(--tk-weight-semibold);
 		}
+
+		/* The word that says it, beside the icon (FR-25.2). */
+		& > b {
+			font-family: var(--tk-font-mono);
+			font-size: var(--tk-text-2xs);
+			letter-spacing: var(--tk-tracking-caps);
+			text-transform: uppercase;
+		}
 	}
 
 	/* ── Notices, outcomes, toasts ─────────────────────────────────── */

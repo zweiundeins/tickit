@@ -256,7 +256,7 @@ func (s *Server) searchPage(w http.ResponseWriter, r *http.Request) {
 			return Page{}, err
 		}
 		page := views.SearchPage{Results: res, Projects: sc.projects, Labels: opts.Labels, People: opts.People, Names: names,
-			Me: actor.ID, Moderates: access.SiteCan(actor, access.Moderate)}
+			Me: actor.ID, Moderates: access.SiteCan(actor, access.Moderate), Deletes: deletes(ctx, q, actor, nil)}
 		for key := range sc.spaces {
 			page.Spaces = append(page.Spaces, key)
 		}

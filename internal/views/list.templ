@@ -30,7 +30,7 @@ templ IssueListBody(p ListPage) {
 			@IssueListRegion(p.List)
 		</div>
 		@saveDialog()
-		@IssuePanel(p.Me, p.Moderates)
+		@IssuePanel(p.Me, p.Moderates, p.Deletes)
 	</div>
 }
 
@@ -86,6 +86,7 @@ templ listForm(p ListPage) {
 		}
 		@rangeMenu("list-f-due", "Due", "due", p.Filter.DueFrom, p.Filter.DueTo)
 		@rangeMenu("list-f-created", "Created", "created", p.Filter.CreatedFrom, p.Filter.CreatedTo)
+		@rangeMenu("list-f-resolved", "Resolved", "resolved", p.Filter.ResolvedFrom, p.Filter.ResolvedTo)
 		<input type="hidden" name="sort" value={ sortBy(p.Sort) }/>
 		<input type="hidden" name="dir" value={ sortDir(p.Sort) }/>
 		<input type="hidden" name="page" value={ pageValue(p.Page) }/>
@@ -184,7 +185,18 @@ templ listRow(l IssueList, i tracker.Issue) {
 			@ui.TypeGlyph(ui.IssueType(i.Type))
 		</td>
 		<td class="tk-key">{ i.Key }</td>
-		<td class="tk-grow"><a href={ templ.SafeURL("/" + i.Key) } { IssueLinkAttrs(i.ID)... }>{ i.Summary }</a></td>
+		<td class="tk-grow">
+			if len(i.Labels) == 0 {
+				<a href={ templ.SafeURL("/" + i.Key) } { IssueLinkAttrs(i.ID)... }>{ i.Summary }</a>
+			} else {
+				<span class="list-summary">
+					<a class="truncate" href={ templ.SafeURL("/" + i.Key) } { IssueLinkAttrs(i.ID)... }>{ i.Summary }</a>
+					for _, lb := range i.Labels {
+						@ui.Label(lb, LabelHref(lb))
+					}
+				</span>
+			}
+		</td>
 		<td>
 			@ui.PriorityGlyphLabel(ui.Priority(i.Priority))
 		</td>
@@ -213,6 +225,13 @@ templ listRow(l IssueList, i tracker.Issue) {
 				@ui.Due(due(i), l.Now, i.Overdue(l.Now))
 			} else {
 				<span class="visually-hidden">No due date</span>
+			}
+		</td>
+		<td class="tk-num">
+			if !i.Resolved.IsZero() {
+				@ui.RelativeTime(i.Resolved.UTC(), l.Now)
+			} else {
+				<span class="visually-hidden">Not resolved</span>
 			}
 		</td>
 	</tr>

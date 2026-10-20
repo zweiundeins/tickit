@@ -434,9 +434,26 @@ templ feedback(p Props) {
 					@ui.Stats([]ui.Stat{{Label: "Open", Value: "47", Note: "12 in review"}, {Label: "Overdue", Value: "3", Tone: ui.ToneDanger, Note: "WEB-7 the oldest"}, {Label: "Done this week", Value: "18", Tone: ui.ToneOK}})
 				</div>
 			}
+			@spec("Charts: counts by status, created against resolved", "@ui.CountBars(caption, []ui.CountBar{...}) · @ui.DayChart(caption, []ui.DayPair{...})") {
+				<div class="stack">
+					@ui.CountBars("Website by status", []ui.CountBar{{Label: "To Do", Category: ui.ToDo, Count: 12}, {Label: "In Progress", Category: ui.InProgress, Count: 7}, {Label: "In Review", Category: ui.InProgress, Count: 3}, {Label: "Done", Category: ui.Done, Count: 21}})
+					@ui.DayChart("Created and resolved per day", sampleDays())
+				</div>
+			}
 			@spec("Empty state", "@ui.EmptyState(ui.EmptyProps{Icon: \"search\", Title: \"No issues match\", Text: \"...\", Action: ...})") {
 				@ui.EmptyState(ui.EmptyProps{Icon: "search", Title: "No issues match", Text: "Nothing in Website has the label safari and the status Done. Clear a filter to see more.", Action: ui.Button(ui.ButtonProps{Label: "Clear filters", Icon: "close"})})
 			}
 		</div>
 	}
+}
+
+func sampleDays() []ui.DayPair {
+	start := time.Date(2026, 10, 7, 0, 0, 0, 0, time.UTC)
+	created := []int{3, 1, 4, 0, 2, 5, 1, 0, 0, 2, 6, 3, 1, 2}
+	resolved := []int{1, 2, 2, 1, 0, 3, 4, 0, 0, 1, 2, 5, 2, 3}
+	out := make([]ui.DayPair, len(created))
+	for i := range out {
+		out[i] = ui.DayPair{Day: start.AddDate(0, 0, i), Created: created[i], Resolved: resolved[i]}
+	}
+	return out
 }

@@ -21,7 +21,7 @@ import (
 var IssueFields = []string{
 	"summary", "type", "status", "priority", "assignee", "parent", "due", "points",
 	"estimate", "remaining", "sprint", "labels", "components", "watch", "link", "unlink", "subtask",
-	"comment", "cedit", "cdelete", "chide", "delete",
+	"comment", "cedit", "cdelete", "chide", "delete", "pagelink", "pageunlink",
 }
 
 // issueSignals are the page's state of the issue it shows. The issue's id,
@@ -38,7 +38,7 @@ func issueSignals(id, key, me string, readOnly, moderates bool) string {
 		"id": id, "key": key, "me": me, "ro": readOnly, "mod": moderates,
 		"edit": "", "val": "", "orig": "", "seen": 0, "ref": "", "desc": false,
 		"ops": per(""), "last": per(""), "msg": per(""), "fail": per(""), "conflict": per(false), "want": per(""), "sent": per(0), "refs": per(""),
-		"aq": "", "lq": "", "mseen": 0, "sub": "", "link": map[string]any{"type": "blocks", "key": ""},
+		"aq": "", "lq": "", "pq": "", "mseen": 0, "sub": "", "link": map[string]any{"type": "blocks", "key": ""},
 		"draft": "", "mq": false, "cedit": "", "ctext": "",
 		"tab": "comments", "at": 0, "max": 1, "copied": false, "back": "", "pop": false,
 	}})
@@ -51,12 +51,18 @@ const curVersion = `+(document.getElementById('issue-main')?.dataset.v || 0)`
 
 // issueSendFn sends field f with value v, seen s and ref r, unless f is
 // pending: a new op id in ops[f], the value kept in want[f] for a retry.
-const issueSendFn = `((f, v, s, r) => (!$_is.ro || f === 'comment' || f === 'cedit' || f === 'cdelete') && $_is.ops[f] === '' && ($_is.msg[f] = '', $_is.fail[f] = '', $_is.conflict[f] = false, $_is.want[f] = v, $_is.sent[f] = s, $_is.refs[f] = r, $_is.ops[f] = ` + newOp + `, @post('/cmd/issues/' + $_is.id + '/' + f, {payload: {tab: $_tab, op: $_is.ops[f], seen: s, value: v, ref: r}, retryMaxCount: 2})))`
+const issueSendFn = `((f, v, s, r) => (v = ['comment', 'cedit'].includes(f) ? ` + mentionIDs + `(v) : v, !$_is.ro || f === 'comment' || f === 'cedit' || f === 'cdelete') && $_is.ops[f] === '' && ($_is.msg[f] = '', $_is.fail[f] = '', $_is.conflict[f] = false, $_is.want[f] = v, $_is.sent[f] = s, $_is.refs[f] = r, $_is.ops[f] = ` + newOp + `, @post('/cmd/issues/' + $_is.id + '/' + f, {payload: {tab: $_tab, op: $_is.ops[f], seen: s, value: v, ref: r}, retryMaxCount: 2})))`
 
 // menuOpened keeps the version a menu showed when it opened: a choice in
 // it sends that version, so a change someone made while the menu was open
 // is a conflict, not overwritten (MP-08.2). On a menu's button.
 const menuOpened = `$_is.mseen = ` + curVersion
+
+// mentionIDs turns the names of mentions in a text ("@Ada Lovelace", as
+// the comment box and the editors show them) back into the ids the markup
+// holds ("@s-ada"): the names of the people the picker offers and the
+// texts mention, longest first (FR-67.2).
+const mentionIDs = `((s) => { const m = new Map(); document.querySelectorAll('#issue-mentions [data-id]').forEach((e) => m.has(e.dataset.name) || m.set(e.dataset.name, e.dataset.id)); for (const n of [...m.keys()].sort((a, b) => b.length - a.length)) s = s.split('@' + n).join('@' + m.get(n)); return s })`
 
 // issueRetry sends field f's request that reached no outcome again with
 // its op id, so that it applies once (MP-09.3, MP-09.4).
@@ -103,7 +109,7 @@ const issueClick = `((t) => {
 	case 'cedit': $_is.cedit = t.dataset.comment; $_is.ctext = (document.getElementById('comment-src-' + t.dataset.comment)?.textContent ?? '').trim(); setTimeout(() => document.getElementById('comment-edit-' + t.dataset.comment)?.focus()); break
 	case 'csave': $_is.ctext.trim() !== '' && ` + issueSendFn + `('cedit', $_is.ctext, 0, t.dataset.comment); break
 	case 'ccancel': $_is.cedit = ''; $_is.msg.cedit = ''; break
-	case 'mention': { const c = document.getElementById('issue-comment'), pos = c.selectionStart, before = c.value.slice(0, pos).replace(/@[^\s@]*$/, '@' + t.dataset.id + ' '); $_is.draft = before + c.value.slice(pos); $_is.mq = false; c.focus(); setTimeout(() => c.setSelectionRange(before.length, before.length)); break }
+	case 'mention': { const c = document.getElementById('issue-comment'), pos = c.selectionStart, before = c.value.slice(0, pos).replace(/@[^\s@]*$/, '@' + t.dataset.name + ' '); $_is.draft = before + c.value.slice(pos); $_is.mq = false; c.focus(); setTimeout(() => c.setSelectionRange(before.length, before.length)); break }
 	}
 })(evt.target.closest?.('[data-act]'))`
 
@@ -157,6 +163,7 @@ const issueSettle = `Object.keys($_is.ops).forEach(f => {
 		if (f === 'subtask') $_is.sub = ''
 		if (f === 'link') $_is.link.key = ''
 		if (f === 'labels') $_is.lq = ''
+		if (f === 'pagelink') { $_is.pq = ''; document.getElementById('` + PagePickID + `')?.replaceChildren() }
 		if (f === 'cedit') $_is.cedit = ''
 		if (f === 'delete') document.getElementById('issue-delete')?.close()
 	} else {
@@ -222,6 +229,13 @@ const (
 	copyLink      = `navigator.clipboard?.writeText(location.origin + '/' + $_is.key).then(() => { $_is.copied = true; setTimeout(() => $_is.copied = false, 1500) })`
 )
 
+// PagePickID is the list of pages that "Link page" offers for its search
+// (FR-102), which GET /issues/link-page patches; pagePick asks for it.
+const (
+	PagePickID = "issue-page-pick"
+	pagePick   = `$_is.pq.trim().length < 2 ? document.getElementById('` + PagePickID + `').replaceChildren() : @get('/issues/link-page?q=' + encodeURIComponent($_is.pq.trim()), {requestCancellation: 'auto'})`
+)
+
 // The tabs of the issue's page: Comments, History, Activity (FR-68).
 const tabKeys = `['ArrowRight', 'ArrowLeft'].includes(evt.key) && ((tabs) => { const i = tabs.indexOf(document.activeElement), n = tabs.length, t = tabs[(i + (evt.key === 'ArrowRight' ? 1 : n - 1)) % n]; t.focus(); t.click() })([...el.querySelectorAll('[role=tab]')])`
 
@@ -280,6 +294,7 @@ const (
 	if (d.open) history.replaceState({issuePanel: id}, '', a.href)
 	else { $_is.back = location.href; history.pushState({issuePanel: id}, '', a.href); d.showModal() }
 	for (const v of ['issue:' + id, 'issue-desc:' + id, 'issue-typing:' + id]) @post('/cmd/watch', {payload: {tab: $_tab, view: v}, requestCancellation: 'disabled'})
+	@post('/cmd/notify/seen', {payload: {tab: $_tab, op: ` + newOp + `, subject: id, kind: 'issue'}, requestCancellation: 'disabled'})
 })(evt.target.closest?.('a[` + IssueLink + `]'))`
 	panelClose = `$_is.id && (` + panelUnwatch + `, $_is.id = '', $_is.at = 0, $_is.pop ? ($_is.pop = false) : history.state?.issuePanel ? history.back() : $_is.back && history.replaceState(null, '', $_is.back))`
 	panelPop   = `((d) => d?.open && !history.state?.issuePanel && ($_is.pop = true, d.close()))(document.getElementById('issue-panel'))`

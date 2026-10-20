@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/zweiundeins/tickit/internal/wiki"
 	"io"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -34,10 +36,36 @@ type Issue struct {
 	DescHTML   string // the description as it is now, rendered (doc.RenderHTML)
 	// Pages are the pages whose head document shows the issue as a chip
 	// (FR-101), live: the wiki touches the issue's topic.
-	Pages    []wiki.PageRef
-	History  []tracker.Entry
-	Activity []tracker.ActivityItem
-	Now      time.Time
+	Pages []wiki.PageRef
+	// LinkedPages are the pages linked to the issue by hand (FR-102).
+	LinkedPages []wiki.PageRef
+	History     []tracker.Entry
+	Activity    []tracker.ActivityItem
+	// Mentioned are the people the comments mention, whose names their
+	// markup shows in place of ids (NamedMentions).
+	Mentioned []people.Person
+	Now       time.Time
+}
+
+// mentionID is a mention in markup: "@" and a person's id.
+var mentionID = regexp.MustCompile(`@(s-[a-z]+|g-[a-z2-7]{20}|a-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`)
+
+// NamedMentions is markup with "@Ada Lovelace" for "@s-ada", for editing
+// it: the page turns the names of the people it knows back into ids when
+// it sends the text (FR-67.2). It returns the ids it named.
+func NamedMentions(text string, who map[string]people.Person) (string, []string) {
+	var ids []string
+	out := mentionID.ReplaceAllStringFunc(text, func(m string) string {
+		p, ok := who[m[1:]]
+		if !ok || p.Kind == people.Deleted || p.Name == "" {
+			return m
+		}
+		if !slices.Contains(ids, p.ID) {
+			ids = append(ids, p.ID)
+		}
+		return "@" + p.Name
+	})
+	return out, ids
 }
 
 // Comment is a comment with its body rendered and as markup.
@@ -222,7 +250,7 @@ func entryText(e tracker.Entry) string {
 		return "changed the description"
 	case tracker.FieldRank:
 		return "changed the rank"
-	case tracker.FieldLabels, tracker.FieldComponents, tracker.FieldWatchers, tracker.FieldLinks:
+	case tracker.FieldLabels, tracker.FieldComponents, tracker.FieldWatchers, tracker.FieldLinks, tracker.FieldPages:
 		switch {
 		case e.New != "" && e.Old != "":
 			return "changed the " + label + ": added " + e.New + ", removed " + e.Old
@@ -244,6 +272,14 @@ func entryText(e tracker.Entry) string {
 	return "changed the " + label + " from " + e.Old + " to " + e.New
 }
 
+// Deletes is where a viewer may delete issues (FR-28.1): in every
+// project, or in those listed. The document decides it, so that the
+// issue's shared regions stay the same for everyone.
+type Deletes struct {
+	All      bool
+	Projects []string
+}
+
 // descVersionURL compares the description an issue's version made with
 // the one before (FR-68).
 func descVersionURL(issue string, version int64) string {
@@ -252,15 +288,29 @@ func descVersionURL(issue string, version int64) string {
 
 // viewerStyle shows the viewer's own parts of the shared regions: the
 // edit and delete buttons of their comments, the watch button's state,
-// and hides their own typing indicator. The views know nothing of who
+// and hides their own typing indicator and the actions they may not use
+// ("Delete issue" outside the projects of del). The views know nothing of who
 // looks at them; the document does (MP-02.1).
-func viewerStyle(me string) templ.Component {
+func viewerStyle(me string, del Deletes) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if !people.ValidID(me) {
 			return nil
 		}
 		var b strings.Builder
 		b.WriteString(`<style>`)
+		if !del.All {
+			var not []string
+			for _, id := range del.Projects {
+				if tracker.ValidID(id) {
+					not = append(not, `[data-pid="`+id+`"]`)
+				}
+			}
+			sel := `.tk-issue__main`
+			if len(not) > 0 {
+				sel += `:not(` + strings.Join(not, ",") + `)`
+			}
+			b.WriteString(`.tk-issue ` + sel + ` [data-del]{display:none}`)
+		}
 		b.WriteString(`.tk-issue .tk-comment[data-author="` + me + `"] .tk-comment__own{display:inline-flex}`)
 		b.WriteString(`.tk-issue .tk-typing [data-who="` + me + `"]{display:none}`)
 		b.WriteString(`.tk-issue:has([data-watcher="` + me + `"]) .tk-watch__off{display:none}`)

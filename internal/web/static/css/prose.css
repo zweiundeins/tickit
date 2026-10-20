@@ -429,6 +429,20 @@
 		&:hover {
 			text-decoration: underline;
 		}
+
+		/* With the person's face before the name (FR-67.2). */
+		&[data-face] {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.25em;
+			padding-inline-start: 0.125em;
+			vertical-align: bottom;
+
+			& > .tk-av {
+				--_s: 1.1em;
+				flex: none;
+			}
+		}
 	}
 
 	.page-link {

@@ -68,3 +68,12 @@ templ notificationItem(b Bell, n notify.Notification) {
 templ NotifySeen(subject string) {
 	<span hidden data-subject={ subject } data-init={ seenSubject }></span>
 }
+
+// Viewed tells the server once, as the page opens, that the person viewed
+// an issue or a page (kind "issue" or "page"): it marks their
+// notifications about it read (FR-115.2) and keeps it for "Recently
+// viewed" on the home page (FR-59.1). GET never writes, so the page posts
+// it.
+templ Viewed(kind, subject string) {
+	<span hidden data-kind={ kind } data-subject={ subject } data-init={ seenSubject }></span>
+}

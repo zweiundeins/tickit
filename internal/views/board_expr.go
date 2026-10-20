@@ -187,6 +187,7 @@ B.arg = () => {
 	for (const x of words($_bf.labels).map(B.b64).sort()) a += '.l' + x
 	const q = $_bf.q.trim().split(/\s+/).join(' ')
 	if (q) a += '.q' + B.b64([...q].slice(0, 60).join(''))
+	if ($_bf.saved) a += '.f' + $_bf.saved
 	return a
 }
 B.query = () => {
@@ -196,6 +197,7 @@ B.query = () => {
 	words($_bf.types).forEach((x) => u.append('type', x))
 	words($_bf.labels).forEach((x) => u.append('label', x))
 	$_bf.q.trim() && u.set('q', $_bf.q.trim())
+	$_bf.saved && u.set('filter', $_bf.saved)
 	return u.toString()
 }
 B.applied = el.dataset.arg
@@ -213,7 +215,7 @@ window.tkQuietTransitions = true`
 // tab's id replaces the old one on the server.
 const boardRefilter = `const B = el.closest('.tk-bd')?.bd
 if (!B) return
-$_bf.mine; $_bf.who; $_bf.types; $_bf.labels; $_bf.q
+$_bf.mine; $_bf.who; $_bf.types; $_bf.labels; $_bf.q; $_bf.saved
 const arg = B.arg()
 if (arg === B.applied) return
 B.applied = arg
@@ -300,7 +302,19 @@ if (b.dataset.filter) {
 	else if (k === 'who') $_bf.who = B.toggle($_bf.who, v)
 	else if (k === 'types') $_bf.types = B.toggle($_bf.types, v)
 	else if (k === 'labels') $_bf.labels = B.toggle($_bf.labels, v)
-	else if (k === 'clear') { $_bf.mine = false; $_bf.who = ''; $_bf.types = ''; $_bf.labels = ''; $_bf.text = ''; $_bf.q = '' }
+	else if (k === 'clear') { $_bf.mine = false; $_bf.who = ''; $_bf.types = ''; $_bf.labels = ''; $_bf.text = ''; $_bf.q = ''; $_bf.saved = ''; $_bf.sname = '' }
+	else if (k === 'saved') {
+		b.closest('[popover]')?.hidePopover()
+		if ($_bf.saved === v) { $_bf.saved = ''; $_bf.sname = ''; return }
+		const a = (b.dataset.a || '').split(' ').filter(Boolean)
+		$_bf.mine = a.includes('me')
+		$_bf.who = a.filter((x) => x !== 'me').join(' ')
+		$_bf.types = b.dataset.t || ''
+		$_bf.labels = b.dataset.l || ''
+		$_bf.text = $_bf.q = b.dataset.q || ''
+		$_bf.sname = b.dataset.name
+		$_bf.saved = v
+	}
 	return
 }
 if (b.dataset.retry !== undefined) { B.retry() && ` + boardPost + `; return }
@@ -360,7 +374,9 @@ const (
 	whoOn     = `$_bf.who.split(' ').includes(el.dataset.v) ? 'true' : 'false'`
 	typeOn    = `$_bf.types.split(' ').includes(el.dataset.v) ? 'true' : 'false'`
 	labelOn   = `$_bf.labels.split(' ').includes(el.dataset.v) ? 'true' : 'false'`
-	anyFilter = `$_bf.mine || $_bf.who || $_bf.types || $_bf.labels || $_bf.q.trim()`
+	anyFilter = `$_bf.mine || $_bf.who || $_bf.types || $_bf.labels || $_bf.q.trim() || $_bf.saved`
+	// savedOn marks the saved filter the board applies (FR-56.2).
+	savedOn = `$_bf.saved === el.dataset.v ? 'true' : 'false'`
 	// textApply copies the text box to the filter 300 ms after the last
 	// keystroke (FR-52.2).
 	textApply = `$_bf.q = $_bf.text`

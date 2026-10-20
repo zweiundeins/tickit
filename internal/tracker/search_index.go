@@ -96,6 +96,8 @@ var issueSearchProjector = events.NewProjector(IssueStream, search.IssuesProject
 	events.Ignore(WatchersAddedType),
 	events.Ignore(WatcherRemovedType),
 	events.Ignore(LinkAddedType),
+	events.Ignore(PageLinkedType),
+	events.Ignore(PageUnlinkedType),
 	events.Ignore(LinkRemovedType),
 ).Tables(search.Tables(search.Issue)...)
 

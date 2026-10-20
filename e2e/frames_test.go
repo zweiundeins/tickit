@@ -3,10 +3,12 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/zweiundeins/tickit/internal/browsertest"
+	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
@@ -170,4 +172,59 @@ func TestFramesKeepPlace(t *testing.T) {
 			t.Errorf("the page reported: %q", errs)
 		}
 	})
+}
+
+// MP-03.3 on a dashboard (FR-60): frames of the shared grid that grow a
+// gadget above the focused link and change the feed around it keep the
+// link where it is on screen and the focus on it. The browser's scroll
+// anchoring holds this one too (NO_KEEP=1 turns keepPlace off); keepPlace
+// must not fight it.
+func TestDashboardKeepsPlace(t *testing.T) {
+	s, ids := uxSeeded(t)
+	b := browsertest.Start(t)
+	p := b.NewPage(t, 1200, 600)
+	if os.Getenv("NO_KEEP") != "" {
+		p.AddInitScript(t, `window.ResizeObserver = class { observe() {} }`)
+	}
+	p.Navigate(t, s.URL+"/dashboards/"+ids.dashboard)
+	p.Wait(t, `document.querySelectorAll('.tk-bars tbody tr').length > 3`, 5*time.Second)
+	// The lowest link of the dashboard below the counts by status.
+	var ok bool
+	p.Eval(t, `(() => {
+		const bars = document.querySelector('.tk-bars').getBoundingClientRect().bottom + scrollY
+		const links = [...document.querySelectorAll('main a[href]')].filter(a => a.getBoundingClientRect().top + scrollY > bars)
+		const a = links[links.length - 1]
+		if (!a) return false
+		a.scrollIntoView({block: 'center'}); a.focus(); window.__mark = a
+		return document.activeElement === a && scrollY > 0
+	})()`, &ok)
+	if !ok {
+		t.Skip("no link below the counts by status to focus")
+	}
+	read := `(() => ({focus: document.activeElement === window.__mark ? 'mark' : document.activeElement?.tagName || '', top: window.__mark.getBoundingClientRect().top, scroll: scrollY}))()`
+	var before, after where
+	p.Eval(t, read, &before)
+	var rows int
+	p.Eval(t, `document.querySelectorAll('.tk-bars tbody tr').length`, &rows)
+	for i, st := range []string{tracker.StatusBlocked, tracker.StatusInReview, "done"} {
+		if err := s.do(tracker.SetStatus{By: byAt(fmt.Sprint("kp", i)), Issue: ids.web1ID, Seen: 1 << 40, Status: st}); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(150 * time.Millisecond)
+	}
+	var web string
+	s.db.R.QueryRow(`SELECT id FROM projects WHERE key = 'WEB'`).Scan(&web)
+	for i := range 3 { // the open bugs above grow
+		if err := s.do(tracker.CreateIssue{By: byAt(fmt.Sprint("kb", i)), Project: web, Type: tracker.Bug, Summary: fmt.Sprintf("A new bug while you looked, number %d", i)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	time.Sleep(400 * time.Millisecond)
+	p.Eval(t, read, &after)
+	if after.Focus != "mark" {
+		t.Errorf("MP-03.3: the focus moved to %q", after.Focus)
+	}
+	if d := after.Top - before.Top; d >= 2 || d <= -2 {
+		t.Errorf("MP-03.3: the focused link moved on screen by %.1f px (%d rows of counts before)", d, rows)
+	}
 }

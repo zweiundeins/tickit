@@ -19,7 +19,7 @@ templ Board(p BoardPage) {
 		class="tk-bd"
 		data-project={ p.Project.Key }
 		data-pid={ p.Project.ID }
-		data-arg={ BoardArg(p.Project.Key, p.Filter) }
+		data-arg={ BoardArg(p.Project.Key, p.Filter, appliedID(p.Applied)) }
 		if p.CanEdit {
 			data-edit="1"
 		}
@@ -63,6 +63,26 @@ templ Board(p BoardPage) {
 						}
 					}
 				}
+				@ui.Menu(ui.MenuProps{ID: "board-saved", Label: "Filters", Icon: "filter", Caret: true, Size: ui.SizeSM, Variant: ui.Secondary}) {
+					if len(p.Saved) == 0 {
+						@ui.MenuLabel("No saved filters yet")
+					}
+					for i, f := range p.Saved {
+						if i < 15 {
+							<button class="tk-menu__item" type="button" role="menuitemradio" aria-checked="false" { savedAttrs(f)... }>
+								@ui.Icon(savedIcon(f.Starred))
+								<span class="tk-menu__label">{ f.Name }</span>
+							</button>
+						}
+					}
+					@ui.MenuSeparator()
+					@ui.MenuItem(ui.MenuItemProps{Label: "All filters", Href: "/filters"})
+				}
+				<span class="tk-bd__saved" hidden data-attr:hidden="!$_bf.saved">
+					@ui.Icon("filter")
+					<span class="visually-hidden">Saved filter: </span>
+					<span data-text="$_bf.sname">{ appliedName(p.Applied) }</span>
+				</span>
 				<button class="tk-btn tk-btn--ghost tk-btn--sm" type="button" data-filter="clear" hidden data-attr:hidden={ "!(" + anyFilter + ")" }>Clear filters</button>
 			</div>
 			@Presence(PresenceID(BoardHeadKey(p.Project.ID)), nil)
@@ -92,7 +112,28 @@ templ Board(p BoardPage) {
 			<span hidden data-init={ CreateWithStatus } data-status={ p.CreateStatus } data-project={ p.Project.ID }></span>
 		}
 	</div>
-	@IssuePanel(p.Me, p.Moderates)
+	@IssuePanel(p.Me, p.Moderates, p.Deletes)
+}
+
+func appliedID(f *tracker.SavedFilter) string {
+	if f == nil {
+		return ""
+	}
+	return f.ID
+}
+
+func appliedName(f *tracker.SavedFilter) string {
+	if f == nil {
+		return ""
+	}
+	return f.Name
+}
+
+func savedIcon(starred bool) string {
+	if starred {
+		return "star"
+	}
+	return "filter"
 }
 
 // BoardLanes is the board's shared region: the same bytes for every tab

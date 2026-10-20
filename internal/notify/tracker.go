@@ -73,6 +73,8 @@ var issueReactions = events.NewProjector(tracker.IssueStream, "notify_issues", 1
 	events.Ignore(tracker.WatchersAddedType),
 	events.Ignore(tracker.WatcherRemovedType),
 	events.Ignore(tracker.LinkAddedType),
+	events.Ignore(tracker.PageLinkedType),
+	events.Ignore(tracker.PageUnlinkedType),
 	events.Ignore(tracker.LinkRemovedType),
 	events.Ignore(tracker.IssueDeletedType),
 	events.Ignore(tracker.ProjectChangedType),

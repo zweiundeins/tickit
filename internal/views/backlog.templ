@@ -33,6 +33,7 @@ type BacklogPage struct {
 	// Me and Moderates are the issue panel's (docs/architecture.md).
 	Me        string
 	Moderates bool
+	Deletes   Deletes
 }
 
 // BacklogRowID is the id of an issue's row.
@@ -89,7 +90,7 @@ templ Backlog(p BacklogPage) {
 		<p class="visually-hidden" aria-live="assertive" data-text="$_bl.say"></p>
 		@createSprint()
 	</div>
-	@IssuePanel(p.Me, p.Moderates)
+	@IssuePanel(p.Me, p.Moderates, p.Deletes)
 }
 
 // BacklogSprints are the sprints the checked issues move to; the

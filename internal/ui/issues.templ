@@ -151,6 +151,13 @@ templ Label(name, href string) {
 	}
 }
 
+func labelHref(f func(string) string, label string) string {
+	if f == nil {
+		return ""
+	}
+	return f(label)
+}
+
 // Points is an issue's story points.
 templ Points(points string) {
 	<span class="tk-points"><span class="visually-hidden">Story points: </span>{ points }</span>
@@ -167,7 +174,8 @@ templ Due(at, now time.Time, overdue bool) {
 	>
 		if overdue {
 			@Icon("warning")
-			<span class="visually-hidden">Overdue, due </span>
+			<b>Overdue</b>
+			<span class="visually-hidden">{ ", due " }</span>
 		} else {
 			@Icon("calendar")
 			<span class="visually-hidden">Due </span>
@@ -201,6 +209,9 @@ type CardProps struct {
 	// Assignee is nil when nobody is assigned.
 	Assignee *Person
 	Labels   []string
+	// LabelHref links a label to the issues that carry it (FR-23.2); nil
+	// draws labels as text.
+	LabelHref func(label string) string
 	// Due is zero without a due date; Overdue is the tracker's word.
 	Due     time.Time
 	Overdue bool
@@ -286,7 +297,7 @@ templ Card(p CardProps) {
 				if len(p.Labels) > 0 {
 					<span class="tk-card__labels">
 						for _, l := range p.Labels {
-							@Label(l, "")
+							@Label(l, labelHref(p.LabelHref, l))
 						}
 					</span>
 				}

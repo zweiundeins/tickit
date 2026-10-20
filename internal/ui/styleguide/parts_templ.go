@@ -2186,17 +2186,51 @@ func feedback(p Props) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "<div class=\"stack\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = ui.CountBars("Website by status", []ui.CountBar{{Label: "To Do", Category: ui.ToDo, Count: 12}, {Label: "In Progress", Category: ui.InProgress, Count: 7}, {Label: "In Review", Category: ui.InProgress, Count: 3}, {Label: "Done", Category: ui.Done, Count: 21}}).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = ui.DayChart("Created and resolved per day", sampleDays()).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 94, "</div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				return nil
+			})
+			templ_7745c5c3_Err = spec("Charts: counts by status, created against resolved", "@ui.CountBars(caption, []ui.CountBar{...}) · @ui.DayChart(caption, []ui.DayPair{...})").Render(templ.WithChildren(ctx, templ_7745c5c3_Var71), templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Var72 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+				if !templ_7745c5c3_IsBuffer {
+					defer func() {
+						templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+						if templ_7745c5c3_Err == nil {
+							templ_7745c5c3_Err = templ_7745c5c3_BufErr
+						}
+					}()
+				}
+				ctx = templ.InitializeContext(ctx)
 				templ_7745c5c3_Err = ui.EmptyState(ui.EmptyProps{Icon: "search", Title: "No issues match", Text: "Nothing in Website has the label safari and the status Done. Clear a filter to see more.", Action: ui.Button(ui.ButtonProps{Label: "Clear filters", Icon: "close"})}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = spec("Empty state", "@ui.EmptyState(ui.EmptyProps{Icon: \"search\", Title: \"No issues match\", Text: \"...\", Action: ...})").Render(templ.WithChildren(ctx, templ_7745c5c3_Var71), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = spec("Empty state", "@ui.EmptyState(ui.EmptyProps{Icon: \"search\", Title: \"No issues match\", Text: \"...\", Action: ...})").Render(templ.WithChildren(ctx, templ_7745c5c3_Var72), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 93, "</div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 95, "</div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2208,6 +2242,17 @@ func feedback(p Props) templ.Component {
 		}
 		return nil
 	})
+}
+
+func sampleDays() []ui.DayPair {
+	start := time.Date(2026, 10, 7, 0, 0, 0, 0, time.UTC)
+	created := []int{3, 1, 4, 0, 2, 5, 1, 0, 0, 2, 6, 3, 1, 2}
+	resolved := []int{1, 2, 2, 1, 0, 3, 4, 0, 0, 1, 2, 5, 2, 3}
+	out := make([]ui.DayPair, len(created))
+	for i := range out {
+		out[i] = ui.DayPair{Day: start.AddDate(0, 0, i), Created: created[i], Resolved: resolved[i]}
+	}
+	return out
 }
 
 var _ = templruntime.GeneratedTemplate

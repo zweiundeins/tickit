@@ -338,7 +338,38 @@
 		}
 	}
 
+	.tk-search__open {
+		display: none;
+	}
+
+	/* Below 30rem the search is an icon button: the field opens over the
+	 * header and closes when the focus leaves it. */
 	@container header (width < 30rem) {
+		.tk-search__open {
+			display: inline-flex;
+			margin-inline-start: auto;
+		}
+
+		.tk-search:not([data-open]) {
+			display: none;
+		}
+
+		.tk-search[data-open] {
+			position: absolute;
+			inset-block: 0;
+			inset-inline: var(--tk-space-2);
+			z-index: var(--tk-z-raised);
+			display: flex;
+			align-items: center;
+			max-inline-size: none;
+			margin: 0;
+			background: var(--tk-bg);
+
+			& > .tk-icon {
+				inset-inline-start: var(--tk-space-2);
+			}
+		}
+
 		.tk-brand__word {
 			display: none;
 		}

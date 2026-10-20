@@ -255,6 +255,8 @@ var issuesProjector = events.NewProjector(IssueStream, "tracker_issues", issuesV
 	}),
 	events.Handle(IssueHiddenType, projectHidden),
 	events.Handle(IssueUnhiddenType, projectUnhidden),
+	events.Handle(PageLinkedType, projectPageLinked),
+	events.Handle(PageUnlinkedType, projectPageUnlinked),
 	events.Handle(ProjectChangedType, func(tx *writer.Tx, r events.Record[string, ProjectChanged]) error {
 		e := r.Data
 		tx.Touch(BoardTopic(e.FromProject))
@@ -272,7 +274,7 @@ var issuesProjector = events.NewProjector(IssueStream, "tracker_issues", issuesV
 		}
 		return setStatus(tx, r.ID, r.Version, millis(r.At), e.Status, e.Category, e.Rank)
 	}),
-).Tables("issues", "issue_labels", "labels", "issue_links", "issue_watchers")
+).Tables("issues", "issue_labels", "labels", "issue_links", "issue_watchers", "issue_pages")
 
 func nonNil(s []string) []string {
 	if s == nil {
