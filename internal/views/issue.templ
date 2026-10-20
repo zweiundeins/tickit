@@ -953,7 +953,7 @@ templ deleteFooter() {
 templ IssueNotFound(key string) {
 	<div class="stack tk-issue__missing">
 		@ui.EmptyState(ui.EmptyProps{Icon: "search", Title: "No issue " + key, Text: "No issue has this key, or you may not see it. Search for it instead."})
-		<form class="tk-issue__search" role="search" action="/search" method="get">
+		<form class="tk-issue__search" role="search" aria-label="Search for the issue" action="/search" method="get">
 			<label class="visually-hidden" for="missing-q">Search issues and pages</label>
 			@ui.Input(ui.InputProps{ID: "missing-q", Name: "q", Type: "search", Icon: "search", Value: key, Placeholder: "Search issues and pages"})
 			@ui.Button(ui.ButtonProps{Label: "Search", Type: "submit", Variant: ui.Primary})

@@ -193,7 +193,7 @@ templ Header(p HeaderProps, sidebar bool) {
 				@navLink(it)
 			}
 		</nav>
-		<form class="tk-search" role="search" action={ templ.SafeURL(iconOr(p.SearchAction, "/search")) } method="get">
+		<form class="tk-search" role="search" aria-label="Search everything" action={ templ.SafeURL(iconOr(p.SearchAction, "/search")) } method="get">
 			<label class="visually-hidden" for="tk-search">Search issues and pages</label>
 			@Icon("search")
 			<input
