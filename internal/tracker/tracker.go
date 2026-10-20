@@ -32,8 +32,10 @@
 // command's) and read the projections: ProjectByKey, ProjectByID,
 // Projects, Readable, Statuses, Components, Sprints, IssueByKey,
 // IssueDetail, Watchers, EpicChildren, Epics, Board, Backlog, Search,
-// Comments, Labels, Assignable, SavedFilters; History, Activity and
-// StateAt read an issue's own stream.
+// Comments, Labels, Assignable, SavedFilters, RefByKey, Typing; History,
+// Activity and StateAt read an issue's own stream, ProjectWorkflow a
+// project's. SetTyping records who types in an issue's field (MP-07): no
+// event, a row of issue_typing.
 package tracker
 
 import (

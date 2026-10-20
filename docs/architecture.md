@@ -13,6 +13,7 @@ tickit is a multiplayer issue tracker and wiki on lith v0.3.0: one Go binary, on
 | `internal/tracker` | projects, workflows, issues, comments, links, labels, components, watchers, board ranks, sprints, saved filters | event-sourced, projections |
 | `internal/wiki` | spaces, pages, page versions, page comments, templates, trash, references between pages and issues | event-sourced, projections |
 | `internal/doc` | the rich-text document: schema, ProseMirror steps applied in Go, HTML rendering, plain text, references, diffs | none (pure Go) |
+| `internal/markup` | the text markup of the seed and of what people type into descriptions and comments: `Parse` (strict), `ParseMode` (`Text`, `Comment`: what the markup does not define stays text), `Write` (a document back to markup, for editing it) | none (pure Go) |
 | `internal/search` | the FTS5 index over issues and pages (a projection), queries | projection |
 | `internal/notify` | notifications, the catch-up projectors that create them | relational |
 | `internal/activity` | feeds read from `lith_events` | none |
@@ -87,6 +88,35 @@ Display preferences (theme `system`, `dark` or `light`; style `pixel` or `smooth
 
 A person's face is `ui.FaceOf(id)`, and their hue an index of 0 to 15 (`people.Person.Hue`, `data-hue`; the stylesheet turns it into degrees, times 22.5). `views.UIPerson` is the one place that makes a `ui.Person` of a `people.Person`; seeded people keep their own hue.
 
+## The issue page
+
+`GET /{key}` (`/WEB-12`, any case) is the issue's page; another spelling or an old key answers 301 to the key now, an unknown key 404 with a search box, a deleted issue's key 410 with who deleted it and when, and `/ticket/<id>` and `/dashboard/<id>` 301 to the key (FR-12). The page is a static frame (`views.IssuePage`, `issueFrame`) holding the regions of three views:
+
+| View spec | Key | Topics | Renders |
+| --- | --- | --- | --- |
+| `issue:<id>` (with presence) | `issue:<id>` | `issue:<id>`, `people`, `project:<project>`; again every 30 s for relative times | `#issue-main`, `#issue-desc`, `#issue-related`, `#issue-side`, `#issue-comments`, `#issue-history`, `#issue-activity`, `#issue-mentions`, and the signal `$_is.max` (the version) |
+| `issue-typing:<id>` | `issue-typing:<id>` | `issue-typing:<id>`, `people`; every second | `#issue-typing-summary`, `#issue-typing-description`, `#issue-typing-comment` (MP-07) |
+| `issue-at:<id>.<v>` | `issue:<id>:at:<v>` | `people` | `#issue-asof`: the issue at version v (FR-70); tabs at one version share it |
+
+The regions are siblings, never nested, since a patch skips an element inside a `data-ignore-morph` one. Fields people type in are in the frame (the comment box) or marked `data-ignore-morph` with their value in a `_is` signal (the editors in place), so no frame resets them. Elements the morph would reset keep their state with `data-preserve-attr` (`hidden`, `aria-busy`, `disabled`).
+
+The page's state is the signal `_is`: the issue's id and key, the viewer's id, and per field the pending op (`ops`), the refusal (`msg`), a conflict's data (`conflict`), a request with no outcome (`fail`) and the value sent (`want`). Every change is `POST /cmd/issues/{id}/{field}` with `{tab, op, seen, value, ref}` through `tabs.Act`; `seen` is the version the control showed (a menu keeps the version it opened at). The fields: `summary`, `description` (markup, `markup.Text`), `type`, `status`, `priority`, `assignee` (`me` for the actor), `parent`, `due`, `points`, `estimate`, `remaining` ("2h 30m"), `sprint`, `labels` and `components` (`ref` add or remove), `watch` (toggles), `link` (`value` a key, `ref` the link type), `unlink`, `subtask`, `comment` (markup, `markup.Comment`), `cedit`, `cdelete`, `chide` (`ref` the comment's id), `delete`. `POST /cmd/issues/{id}/typing {tab, op, field, stop}` is a caret-class action sent without waiting: it writes `issue_typing` (migration 011) and touches `issue-typing:<id>`; an indicator goes 5 s after the last keystroke, and a save or a comment ends it at once. Controls in the regions carry `data-act`, `data-field`, `data-value` and `data-ref`, and the frame's one delegated handler runs them, so frames carry attributes rather than expressions.
+
+What the shared views cannot know about the viewer comes from the document: `viewerStyle` shows the viewer's own comments' Edit and Delete, the watch button's state and hides the viewer's own typing indicator; `$_is.ro` makes a Viewer's page read-only (comments stay open) and `$_is.mod` shows Hide to a project's Admin or a moderator. A comment's draft stays in the tab across a reconnect and a reload (`sessionStorage`, which is per tab).
+
+## Issue panel
+
+From a board, a list or a search, an issue opens in `ui.SidePanel` beside the page (FR-13.2). To wire it:
+
+1. Put `@views.IssuePanel(me.ID, moderates)` once in the page's body (`moderates`: `access.SiteCan(me, access.Moderate)`).
+2. Give every link to an issue the issue's id in `data-issue-panel`: `<a href="/WEB-12" { views.IssueLinkAttrs(issue.ID)... }>`. Keep the `href`: a click with Ctrl, Cmd, Shift or Alt, a middle click, or a page without the panel follows the link to the issue's page.
+
+A plain click opens the panel, puts the issue's URL in the address bar (`history.pushState`) and adds `issue:<id>` and `issue-typing:<id>` to the tab's stream with `POST /cmd/watch`; the stream fills the panel's regions with the same view the issue page shows. Escape, the close button, a click beside the panel or the browser's Back close it: the views come off the stream (`POST /cmd/unwatch`) and the page's own URL comes back. The page never left, so its filter, its page and its scroll position stay. The page needs no view of its own for the panel and no route.
+
+## Create dialog
+
+`views.CreateIssueDialog` is the header's create dialog (FR-10), with the id `views.CreateID`, so the header's Create opens it (`command="show-modal" commandfor="create"`). `s.render` puts it on every page whose `Page.Create` is nil: it lists the projects the person may create issues in and preselects `Page.Project` (a project's id: set it on a board, a backlog or a project's list), else the first. A board column's "+" opens it with that column's status: give the button `data-on:click={ views.CreateWithStatus }`, `data-status="<status id>"` and `data-project="<project id>"`. `POST /cmd/issues/create {tab, op, project, type, summary, description, priority, assignee, labels, parent, status, stay}` answers `$_goto` to the new issue, or, on a page with the issue panel (`stay`), opens the new issue in the panel. A refusal stays next to its field (`$_new.field`, `$_new.msg`) with what the person typed.
+
 ## Event sourcing
 
 - Streams: `project`, `issue`, `space`, `page`, `comment` (issue and page comments). Kind and type names are permanent once the demo runs.
@@ -135,7 +165,7 @@ A person's face is `ui.FaceOf(id)`, and their hue an index of 0 to 15 (`people.P
 | Numbers | Area |
 | --- | --- |
 | 001 to 009 | people, access, tabs, security log |
-| 010 to 029 | tracker |
+| 010 to 029 | tracker (011: who types on an issue) |
 | 030 to 049 | wiki |
 | 050 to 059 | notify, activity |
 | 060 to 069 | search |
