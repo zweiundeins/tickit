@@ -382,3 +382,22 @@ func TestPasswordChangeLockout(t *testing.T) {
 		t.Errorf("the right password after 5 wrong ones: %+v", o)
 	}
 }
+
+// NFR-01.1: typing on an issue, and linking it, ask for the right to read
+// it first: an outsider of a closed project hears 404, not 204.
+func TestClosedIssueTypingAndLink(t *testing.T) {
+	e := webtest.Start(t)
+	seedProbes(t, e)
+	e.Do(t, writer.Func(func(tx *writer.Tx) error {
+		_, err := tx.Exec(`UPDATE scopes SET open = 0 WHERE id = ?`, probeWeb)
+		return err
+	}))
+	g := webtest.Client(t)
+	webtest.Get(t, g, e.URL+"/")
+	if code, _ := webtest.Post(t, g, e.URL+"/cmd/issues/"+web.ProbeIssue+"/typing", `{"tab":"tab1","op":"t1","field":"comment"}`); code != http.StatusNotFound {
+		t.Errorf("typing on a closed project's issue: %d", code)
+	}
+	if code, _ := webtest.Post(t, g, e.URL+"/cmd/issues/"+web.ProbeIssue+"/link", `{"tab":"tab1","op":"l1","value":"APP-9","ref":"relates"}`); code != http.StatusNotFound {
+		t.Errorf("a link from a closed project's issue: %d", code)
+	}
+}

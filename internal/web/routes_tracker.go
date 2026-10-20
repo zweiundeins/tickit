@@ -674,6 +674,11 @@ func (s *Server) issueTyping(w http.ResponseWriter, r *http.Request, id string) 
 	if s.paused(w, r, a.By.Actor) {
 		return
 	}
+	// The read right before it is sent: the command checks it again.
+	if _, err := s.db.ViewValue(r.Context(), func(tx *sql.Tx) (string, error) { return readableIssue(r.Context(), tx, a.By.Actor, id) }); err != nil {
+		s.failAction(w, r, err)
+		return
+	}
 	if err := s.w.Send(cmd); err != nil {
 		s.failAction(w, r, err)
 		return
@@ -934,6 +939,9 @@ type linkByKey struct {
 }
 
 func (c linkByKey) Apply(tx *writer.Tx) error {
+	if _, err := readableIssue(tx.Context(), tx, c.By.Actor, c.Issue); err != nil {
+		return err // the issue first: a refusal of the key tells nothing of it
+	}
 	key, _, _ := strings.Cut(strings.TrimSpace(c.Key), " ")
 	ref, err := readableRef(tx.Context(), tx, c.By.Actor, key)
 	if err != nil {
