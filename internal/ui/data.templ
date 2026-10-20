@@ -1,0 +1,192 @@
+package ui
+
+import (
+	"strconv"
+	"time"
+)
+
+// TableProps is a plain table (NFR-50.1: tables are plain tables).
+type TableProps struct {
+	// Caption names the table; HideCaption keeps it for screen readers.
+	Caption     string
+	HideCaption bool
+	// Sticky keeps the head in view while the page scrolls.
+	Sticky bool
+	Class  string
+	Attrs  templ.Attributes
+}
+
+// Table wraps a table in a region that scrolls sideways on narrow
+// screens; the children are its thead and tbody. Rows are 2rem (the
+// density token), a selected row has aria-selected="true".
+templ Table(p TableProps) {
+	<div class="tk-table-wrap" role="region" aria-label={ p.Caption } tabindex="0">
+		<table class={ classes("tk-table", when(p.Sticky, "tk-table--sticky"), p.Class) } { p.Attrs... }>
+			<caption class={ when(p.HideCaption, "visually-hidden") }>{ p.Caption }</caption>
+			{ children... }
+		</table>
+	</div>
+}
+
+// SortProps is a column head that sorts.
+type SortProps struct {
+	Label string
+	// Dir is "ascending", "descending" or "" (not sorted by this column).
+	Dir string
+	// Align "end" for numbers.
+	Align string
+	Class string
+	// Attrs go on the button (the feature's sort action).
+	Attrs templ.Attributes
+}
+
+func sortIcon(dir string) string {
+	switch dir {
+	case "ascending":
+		return "sort-asc"
+	case "descending":
+		return "sort-desc"
+	}
+	return "sort"
+}
+
+// SortHeader is a th with a button and aria-sort (NFR-47.3).
+templ SortHeader(p SortProps) {
+	<th
+		class={ classes(when(p.Align == "end", "tk-num"), p.Class) }
+		scope="col"
+		if p.Dir != "" {
+			aria-sort={ p.Dir }
+		}
+	>
+		<button class="tk-sort" type="button" { p.Attrs... }>
+			{ p.Label }
+			@Icon(sortIcon(p.Dir))
+		</button>
+	</th>
+}
+
+// Kbd is a key or a chord: Kbd("Ctrl", "K").
+templ Kbd(keys ...string) {
+	<span class="tk-keys">
+		for i, k := range keys {
+			if i > 0 {
+				<span aria-hidden="true">+</span>
+			}
+			<kbd class="tk-kbd">{ k }</kbd>
+		}
+	</span>
+}
+
+// RelativeTime is when something happened, in English, with the absolute
+// date, time and zone on hover (NFR-51). The text is the server's at
+// render time; t's location is the zone it shows.
+templ RelativeTime(t, now time.Time) {
+	<time class="tk-time" datetime={ t.UTC().Format(time.RFC3339) } title={ Absolute(t) }>{ Ago(t, now) }</time>
+}
+
+// Stat is a number on a dashboard.
+type Stat struct {
+	Label string
+	Value string
+	// Note is a line under it: "3 since Monday".
+	Note string
+	Tone Tone
+	Href string
+}
+
+// Stats is a row of numbers that wraps.
+templ Stats(items []Stat) {
+	<dl class="tk-stats">
+		for _, s := range items {
+			<div class={ classes("tk-stat", when(s.Tone != ToneNeutral, "tk-stat--"+string(s.Tone))) }>
+				<dt class="tk-eyebrow">{ s.Label }</dt>
+				<dd class="tk-stat__value">
+					if s.Href != "" {
+						<a href={ templ.SafeURL(s.Href) }>{ s.Value }</a>
+					} else {
+						{ s.Value }
+					}
+				</dd>
+				if s.Note != "" {
+					<dd class="tk-stat__note">{ s.Note }</dd>
+				}
+			</div>
+		}
+	</dl>
+}
+
+// Progress is done against all as a bar of pixel cells and in words: an
+// epic's children (FR-20.1), a sprint.
+templ Progress(done, total int, label string) {
+	{{ cells := progressCells(done, total) }}
+	<div class="tk-progress">
+		<div class="tk-progress__bar" role="progressbar" aria-label={ label } aria-valuemin="0" aria-valuemax={ strconv.Itoa(total) } aria-valuenow={ strconv.Itoa(done) } aria-valuetext={ strconv.Itoa(done) + " of " + strconv.Itoa(total) + " done" }>
+			for i := range 20 {
+				<span
+					if i < cells {
+						data-on
+					}
+				></span>
+			}
+		</div>
+		<span class="tk-progress__text">{ strconv.Itoa(done) } of { strconv.Itoa(total) } done</span>
+	</div>
+}
+
+func progressCells(done, total int) int {
+	if total <= 0 {
+		return 0
+	}
+	return min(20, (done*20+total/2)/total)
+}
+
+// FeedItemProps is an entry of a feed: a notification, an activity.
+type FeedItemProps struct {
+	Person
+	At, Now time.Time
+	// Unread marks a notification not yet read: a dot and the word.
+	Unread bool
+	// Href links the entry's time to what it is about (its text may hold
+	// links of its own: chips, mentions).
+	Href  string
+	Attrs templ.Attributes
+}
+
+// FeedItem is a face, the children (the text: who did what to which
+// issue), and the time.
+templ FeedItem(p FeedItemProps) {
+	<li
+		class="tk-feed__item"
+		if p.Unread {
+			data-unread
+		}
+		{ p.Attrs... }
+	>
+		@Avatar(AvatarProps{Person: p.Person, Size: SizeSM, Decorative: true})
+		<div class="tk-feed__body">
+			<p class="tk-feed__text">
+				{ children... }
+			</p>
+			<p class="tk-feed__meta">
+				if p.Href != "" {
+					<a href={ templ.SafeURL(p.Href) }>
+						@RelativeTime(p.At, p.Now)
+					</a>
+				} else {
+					@RelativeTime(p.At, p.Now)
+				}
+				if p.Unread {
+					<span class="tk-feed__unread">Unread</span>
+				}
+			</p>
+		</div>
+	</li>
+}
+
+// Feed is a list of FeedItem.
+templ Feed(label string) {
+	<ul class="tk-feed" role="list" aria-label={ label }>
+		{ children... }
+	</ul>
+}

@@ -1,0 +1,223 @@
+package ui
+
+// NoticeProps is a message in the page: a banner, an alert in a form.
+type NoticeProps struct {
+	Tone  Tone
+	Title string
+	// Icon overrides the tone's icon.
+	Icon string
+	// Live makes it a polite live region, for a notice that appears
+	// while the page is open.
+	Live bool
+	// Action shows at the end: a button or a link.
+	Action templ.Component
+	// Dismissible adds a close button that hides it in this page.
+	Dismissible bool
+	Class       string
+	Attrs       templ.Attributes
+}
+
+// Notice is a message in a tone; the children are its text. The tone is
+// in its icon and its words, never only its colour.
+templ Notice(p NoticeProps) {
+	<div
+		class={ classes("tk-notice", when(p.Tone != ToneNeutral, "tk-notice--"+string(p.Tone)), p.Class) }
+		if p.Live {
+			role="status"
+		}
+		if p.Dismissible {
+			data-dismissible
+		}
+		{ p.Attrs... }
+	>
+		@Icon(iconOr(p.Icon, p.Tone.icon()))
+		<div class="tk-notice__body">
+			if p.Title != "" {
+				<p class="tk-notice__title">{ p.Title }</p>
+			}
+			{ children... }
+		</div>
+		if p.Action != nil {
+			<div class="tk-notice__action">
+				@p.Action
+			</div>
+		}
+		if p.Dismissible {
+			@Button(ButtonProps{Label: "Dismiss", Icon: "close", IconOnly: true, Variant: Ghost, Size: SizeSM, Attrs: templ.Attributes{"data-on:click": dismiss}})
+		}
+	</div>
+}
+
+// OutcomeKind is what became of an action, for the line beside its
+// control (MP-09).
+type OutcomeKind string
+
+const (
+	// OutcomeNone renders an empty live region, ready for a message.
+	OutcomeNone OutcomeKind = ""
+	// OutcomeRefused: the command refused, with its reason (MP-09.2).
+	OutcomeRefused OutcomeKind = "refused"
+	// OutcomeFailed: no outcome came (network, rate limit, restart):
+	// "This did not go through." and Retry (MP-09.3).
+	OutcomeFailed OutcomeKind = "failed"
+	// OutcomeOK: it went through (only where the page shows nothing else).
+	OutcomeOK OutcomeKind = "ok"
+)
+
+// OutcomeProps is the line beside a control.
+type OutcomeProps struct {
+	ID   string
+	Kind OutcomeKind
+	Text string
+	// RetryAttrs wire Retry (OutcomeFailed); the person's input stays.
+	RetryAttrs templ.Attributes
+	Class      string
+	// Attrs wire a line the stream fills (data-text, data-attr:data-kind).
+	Attrs templ.Attributes
+}
+
+// Outcome says what became of an action, next to its control: a refusal
+// in words that say why, or "This did not go through." with Retry. It is
+// a polite live region (role=status); a failure is an alert.
+templ Outcome(p OutcomeProps) {
+	<p
+		class={ classes("tk-outcome", p.Class) }
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		if p.Kind != OutcomeNone {
+			data-kind={ string(p.Kind) }
+		}
+		if p.Kind == OutcomeFailed {
+			role="alert"
+		} else {
+			role="status"
+		}
+		{ p.Attrs... }
+	>
+		switch p.Kind {
+			case OutcomeRefused:
+				@Icon("warning")
+				<span>{ p.Text }</span>
+			case OutcomeFailed:
+				@Icon("warning")
+				<span>
+					if p.Text != "" {
+						{ p.Text }
+					} else {
+						This did not go through.
+					}
+				</span>
+				@Button(ButtonProps{Label: "Retry", Icon: "undo", Variant: Secondary, Size: SizeSM, Attrs: p.RetryAttrs})
+			case OutcomeOK:
+				@Icon("check")
+				<span>{ p.Text }</span>
+			default:
+				{ p.Text }
+		}
+	</p>
+}
+
+// Toast is one message of the toast region.
+type Toast struct {
+	ID    string `json:"id"`
+	Title string `json:"title,omitempty"`
+	Text  string `json:"text"`
+	// Tone is info, ok, warn or danger.
+	Tone Tone `json:"variant,omitempty"`
+	// Duration in ms before it goes; 0 is the region's default, -1 stays.
+	Duration int `json:"duration,omitempty"`
+}
+
+// ToastsProps is the page's toast region: Starbase's sb-toast, which the
+// server fills and which announces each toast politely. Load "toast".
+type ToastsProps struct {
+	Toasts []Toast
+	// Placement is bottom-end (the default) or inline (in the flow).
+	Placement string
+	Attrs     templ.Attributes
+}
+
+// Toasts is the region. Toasts are for news from elsewhere (a mention, a
+// reset); the outcome of the person's own action goes beside its control.
+templ Toasts(p ToastsProps) {
+	<sb-toast
+		class="tk-toasts"
+		toasts={ jsonAttr(nonNil(p.Toasts)) }
+		placement={ iconOr(p.Placement, "bottom-end") }
+		label="Notifications"
+		data-preserve-attr="toasts"
+		{ p.Attrs... }
+	></sb-toast>
+}
+
+func nonNil(t []Toast) []Toast {
+	if t == nil {
+		return []Toast{}
+	}
+	return t
+}
+
+// Skeleton stands in for content on its way: a few stepped bars. Kind is
+// "text" (the default), "card" or "row".
+templ Skeleton(kind string, lines int) {
+	<div class={ "tk-skeleton tk-skeleton--" + iconOr(kind, "text") } aria-hidden="true">
+		for i := range max(lines, 1) {
+			<span class="tk-skeleton__bar" data-n={ itoa(i % 4) }></span>
+		}
+	</div>
+}
+
+// EmptyProps is what a view shows when it has nothing to show.
+type EmptyProps struct {
+	// Icon is drawn large: board, search, bell, page.
+	Icon   string
+	Title  string
+	Text   string
+	Action templ.Component
+	Class  string
+}
+
+// EmptyState is an icon in a pixel frame, a title in the display face, a
+// line of text and an action.
+templ EmptyState(p EmptyProps) {
+	<div class={ classes("tk-empty", p.Class) }>
+		<div class="tk-empty__art">
+			@IconSized(iconOr(p.Icon, "board"), "xl")
+		</div>
+		<h2 class="tk-empty__title">{ p.Title }</h2>
+		if p.Text != "" {
+			<p class="tk-empty__text">{ p.Text }</p>
+		}
+		if p.Action != nil {
+			@p.Action
+		}
+	</div>
+}
+
+// DemoProps is the demo's notice (DM-10.1).
+type DemoProps struct {
+	// NextReset is when the content goes: "5 h".
+	NextReset   string
+	PrivacyHref string
+	// DismissAttrs replace the default dismiss (this page only), for a
+	// feature that keeps the choice.
+	DismissAttrs templ.Attributes
+}
+
+// DemoNotice tells every visitor that the demo is public and reset each
+// night (DM-10.1), with a link to the privacy page.
+templ DemoNotice(p DemoProps) {
+	<aside class="tk-demo" aria-label="About this demo" data-dismissible>
+		<span class="tk-demo__badge">Demo</span>
+		<p class="tk-demo__text">
+			Public demo. Everything you write is visible to everyone and deleted at the nightly reset (next in { p.NextReset }). Do not enter personal data.
+			<a href={ templ.SafeURL(iconOr(p.PrivacyHref, "/privacy")) }>Privacy</a>
+		</p>
+		if p.DismissAttrs != nil {
+			@Button(ButtonProps{Label: "Hide this notice", Icon: "close", IconOnly: true, Variant: Ghost, Size: SizeSM, Attrs: p.DismissAttrs})
+		} else {
+			@Button(ButtonProps{Label: "Hide this notice", Icon: "close", IconOnly: true, Variant: Ghost, Size: SizeSM, Attrs: templ.Attributes{"data-on:click": dismiss}})
+		}
+	</aside>
+}

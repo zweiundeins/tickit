@@ -1,0 +1,332 @@
+package ui
+
+// Tip shows text on hover and focus beside its children, in the inverted
+// bubble. The bubble is aria-hidden: the children carry the same words for
+// screen readers (an aria-label, visually hidden text). Escape hides it.
+// Make the children focusable when the tip says something sight needs.
+templ Tip(text string) {
+	<span class="tk-tip">
+		{ children... }
+		<span class="tk-tip__bubble" aria-hidden="true">{ text }</span>
+	</span>
+}
+
+// MenuProps is a menu that opens from a button: a native popover, so the
+// browser closes it on Escape or a click outside and returns the focus to
+// the button. Arrow keys move through its items.
+type MenuProps struct {
+	ID string
+	// Label is the button's text, or its accessible name with IconOnly.
+	Label    string
+	Icon     string
+	IconOnly bool
+	// Trigger replaces the button's content (a face and a name); Label
+	// stays its accessible name.
+	Trigger templ.Component
+	Variant ButtonVariant // Ghost by default
+	Size    Size
+	// Align "end" lines the menu up with the button's end edge.
+	Align string
+	// Caret shows a chevron after the label.
+	Caret bool
+	Class string
+	// Attrs go on the button.
+	Attrs templ.Attributes
+}
+
+// Menu is the button and its popover; the children are MenuItem,
+// MenuSeparator and MenuLabel.
+templ Menu(p MenuProps) {
+	<button
+		class={ menuButtonClass(p) }
+		type="button"
+		popovertarget={ p.ID }
+		aria-expanded="false"
+		aria-haspopup="true"
+		if p.IconOnly || p.Trigger != nil {
+			aria-label={ p.Label }
+		}
+		{ p.Attrs... }
+	>
+		if p.Trigger != nil {
+			@p.Trigger
+		} else {
+			if p.Icon != "" {
+				@Icon(p.Icon)
+			}
+			if !p.IconOnly {
+				<span class="tk-btn__label">{ p.Label }</span>
+			}
+		}
+		if p.Caret {
+			@Icon("chevron-down")
+		}
+	</button>
+	<div
+		id={ p.ID }
+		class={ classes("tk-menu", when(p.Align == "end", "tk-menu--end")) }
+		popover
+		data-on:toggle={ syncExpanded }
+		data-on:keydown={ menuKeys }
+	>
+		{ children... }
+	</div>
+}
+
+func menuButtonClass(p MenuProps) string {
+	v := p.Variant
+	if v == "" {
+		v = Ghost
+	}
+	return ButtonProps{Variant: v, Size: p.Size, IconOnly: p.IconOnly, Class: classes("tk-menu-button", p.Class)}.class()
+}
+
+// MenuItemProps is one thing a menu does: a button, or a link with Href.
+type MenuItemProps struct {
+	Label string
+	Icon  string
+	// Hint shows at the end: a shortcut, a count.
+	Hint     string
+	Href     string
+	Danger   bool
+	Disabled bool
+	// Checked marks the current choice of a menu that sets one
+	// (aria-checked on a menuitemradio).
+	Checked *bool
+	// Autofocus takes the focus when the menu opens: the first item.
+	Autofocus bool
+	Attrs     templ.Attributes
+}
+
+// MenuItem is an item of a Menu.
+templ MenuItem(p MenuItemProps) {
+	if p.Href != "" && !p.Disabled {
+		<a
+			class={ classes("tk-menu__item", when(p.Danger, "tk-menu__item--danger")) }
+			href={ templ.SafeURL(p.Href) }
+			if p.Checked != nil && *p.Checked {
+				aria-current="true"
+			}
+			if p.Autofocus {
+				autofocus
+			}
+			{ p.Attrs... }
+		>
+			@menuItemBody(p)
+		</a>
+	} else {
+		<button
+			class={ classes("tk-menu__item", when(p.Danger, "tk-menu__item--danger")) }
+			type="button"
+			if p.Disabled {
+				disabled
+			}
+			if p.Checked != nil {
+				aria-pressed={ boolString(*p.Checked) }
+			}
+			if p.Autofocus {
+				autofocus
+			}
+			{ p.Attrs... }
+		>
+			@menuItemBody(p)
+		</button>
+	}
+}
+
+templ menuItemBody(p MenuItemProps) {
+	if p.Checked != nil {
+		<span class="tk-menu__check">
+			if *p.Checked {
+				@Icon("check")
+			}
+		</span>
+	}
+	if p.Icon != "" {
+		@Icon(p.Icon)
+	}
+	<span class="tk-menu__label">{ p.Label }</span>
+	if p.Hint != "" {
+		<span class="tk-menu__hint">{ p.Hint }</span>
+	}
+}
+
+// MenuSeparator is a line between groups of items.
+templ MenuSeparator() {
+	<hr class="tk-menu__sep"/>
+}
+
+// MenuLabel names the group of items after it.
+templ MenuLabel(text string) {
+	<p class="tk-menu__label-group tk-eyebrow">{ text }</p>
+}
+
+// MenuEntry is an item of an ActionMenu: a value to choose, a divider, or
+// a submenu (Children).
+type MenuEntry struct {
+	Value       string      `json:"value,omitempty"`
+	Label       string      `json:"label,omitempty"`
+	Description string      `json:"description,omitempty"`
+	Danger      bool        `json:"danger,omitempty"`
+	Disabled    bool        `json:"disabled,omitempty"`
+	Divider     bool        `json:"divider,omitempty"`
+	Children    []MenuEntry `json:"children,omitempty"`
+}
+
+// ActionMenuProps is Starbase's sb-dropdown: a menu of actions with
+// submenus and full keyboard support. Choosing an item emits sb-select
+// with {name, value}, which the feature posts (Attrs:
+// data-on:sb-select). Load its bundle on the page ("dropdown").
+type ActionMenuProps struct {
+	Label    string // the trigger's text, or its accessible name with IconOnly
+	Name     string
+	Icon     string
+	IconOnly bool
+	Items    []MenuEntry
+	// Placement is sb-dropdown's: bottom-start (the default), bottom-end...
+	Placement string
+	Class     string
+	Attrs     templ.Attributes
+}
+
+// ActionMenu is sb-dropdown with tickit's trigger.
+templ ActionMenu(p ActionMenuProps) {
+	<sb-dropdown
+		class={ classes("tk-actions", when(p.IconOnly, "tk-actions--icon"), p.Class) }
+		label={ p.Label }
+		if p.Name != "" {
+			name={ p.Name }
+		}
+		items={ jsonAttr(p.Items) }
+		if p.Placement != "" {
+			placement={ p.Placement }
+		}
+		{ p.Attrs... }
+	>
+		if p.Icon != "" || !p.IconOnly {
+			<span slot="trigger" class="tk-actions__trigger">
+				if p.Icon != "" {
+					@Icon(p.Icon)
+				}
+				if !p.IconOnly {
+					{ p.Label }
+				}
+			</span>
+		}
+	</sb-dropdown>
+}
+
+// DialogProps is a modal dialog: the browser's <dialog>, opened with
+// ButtonProps{Command: "show-modal", CommandFor: ID}. It keeps the focus
+// inside, closes on Escape, and returns the focus where it came from
+// (NFR-47.2).
+type DialogProps struct {
+	ID    string
+	Title string
+	// Description is a line under the title, read with it.
+	Description string
+	// Size is SizeSM (24rem), SizeMD (32rem, the default) or SizeLG (48rem).
+	Size Size
+	// Footer holds the actions: Cancel first, the primary action last.
+	Footer templ.Component
+	// Dismissible closes the dialog on a click outside it too.
+	Dismissible bool
+	Class       string
+	Attrs       templ.Attributes
+}
+
+// Dialog is a modal dialog; the children are its body.
+templ Dialog(p DialogProps) {
+	<dialog
+		id={ p.ID }
+		class={ classes("tk-dialog", "tk-dialog--"+string(sizeOr(p.Size, SizeMD)), p.Class) }
+		aria-labelledby={ p.ID + "-title" }
+		if p.Description != "" {
+			aria-describedby={ p.ID + "-desc" }
+		}
+		if p.Dismissible {
+			closedby="any"
+		}
+		data-preserve-attr="open"
+		{ p.Attrs... }
+	>
+		<header class="tk-dialog__head">
+			<div>
+				<h2 class="tk-dialog__title" id={ p.ID + "-title" }>{ p.Title }</h2>
+				if p.Description != "" {
+					<p class="tk-dialog__desc" id={ p.ID + "-desc" }>{ p.Description }</p>
+				}
+			</div>
+			@Button(ButtonProps{Label: "Close", Icon: "close", IconOnly: true, Variant: Ghost, Size: SizeSM, Command: "close", CommandFor: p.ID})
+		</header>
+		<div class="tk-dialog__body">
+			{ children... }
+		</div>
+		if p.Footer != nil {
+			<footer class="tk-dialog__foot">
+				@p.Footer
+			</footer>
+		}
+	</dialog>
+}
+
+func sizeOr(s, def Size) Size {
+	if s == "" {
+		return def
+	}
+	return s
+}
+
+// PanelProps is a side panel: an issue opened beside its board or list.
+// It is a modal <dialog> along the inline end, so it keeps the focus,
+// closes on Escape and returns the focus (NFR-47.2); a click on the page
+// beside it closes it too.
+type PanelProps struct {
+	ID    string
+	Title string
+	// Lead shows before the title: a type icon and a key.
+	Lead templ.Component
+	// Actions show in the head, before the close button.
+	Actions templ.Component
+	Footer  templ.Component
+	// Side "start" opens it from the start edge (navigation on narrow
+	// screens); "end" is the default.
+	Side  string
+	Class string
+	Attrs templ.Attributes
+}
+
+// SidePanel is the panel; the children are its body.
+templ SidePanel(p PanelProps) {
+	<dialog
+		id={ p.ID }
+		class={ classes("tk-panel", when(p.Side == "start", "tk-panel--start"), p.Class) }
+		aria-labelledby={ p.ID + "-title" }
+		closedby="any"
+		data-preserve-attr="open"
+		{ p.Attrs... }
+	>
+		<header class="tk-panel__head">
+			if p.Lead != nil {
+				<div class="tk-panel__lead">
+					@p.Lead
+				</div>
+			}
+			<h2 class="tk-panel__title" id={ p.ID + "-title" }>{ p.Title }</h2>
+			<div class="tk-panel__actions">
+				if p.Actions != nil {
+					@p.Actions
+				}
+				@Button(ButtonProps{Label: "Close", Icon: "close", IconOnly: true, Variant: Ghost, Size: SizeSM, Command: "close", CommandFor: p.ID})
+			</div>
+		</header>
+		<div class="tk-panel__body">
+			{ children... }
+		</div>
+		if p.Footer != nil {
+			<footer class="tk-panel__foot">
+				@p.Footer
+			</footer>
+		}
+	</dialog>
+}

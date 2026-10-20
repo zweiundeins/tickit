@@ -1,0 +1,399 @@
+package ui
+
+import (
+	"strconv"
+	"time"
+)
+
+// TypeIcon is an issue type's icon that names itself (role=img): for
+// places with no room for the name, such as cards and rows (FR-19.1).
+templ TypeIcon(t IssueType) {
+	<span class="tk-tip">
+		@raw(typeSVG(t, "tk-type", t.Name()))
+		<span class="tk-tip__bubble" aria-hidden="true">{ t.Name() }</span>
+	</span>
+}
+
+// TypeLabel is an issue type's icon and its name.
+templ TypeLabel(t IssueType) {
+	<span class="tk-typed">
+		@raw(typeSVG(t, "tk-type", ""))
+		{ t.Name() }
+	</span>
+}
+
+// PriorityIcon is a priority's glyph that names itself, with its name in
+// a tooltip (FR-18.1).
+templ PriorityIcon(p Priority) {
+	<span class="tk-tip">
+		@raw(prioSVG(p, p.Name()+" priority"))
+		<span class="tk-tip__bubble" aria-hidden="true">{ p.Name() } priority</span>
+	</span>
+}
+
+// PriorityLabel is a priority's glyph and its name.
+templ PriorityLabel(p Priority) {
+	<span class="tk-typed tk-typed--prio" data-prio={ string(p) }>
+		@raw(prioSVG(p, ""))
+		{ p.Name() }
+	</span>
+}
+
+// StatusLozenge is a status: its name as text, and the marker of its
+// category, so colour is never alone (NFR-50).
+templ StatusLozenge(name string, c StatusCategory) {
+	<span class="tk-lozenge" data-cat={ c.attr() }>
+		@raw(catSVG(c))
+		{ name }
+	</span>
+}
+
+// ChipState is what became of the issue a chip names.
+type ChipState string
+
+const (
+	ChipLive    ChipState = ""
+	ChipDeleted ChipState = "deleted"
+	ChipUnknown ChipState = "unknown"
+)
+
+// IssueChipProps is an issue named in a text or a list (FR-100).
+type IssueChipProps struct {
+	Key      string
+	Summary  string
+	Type     IssueType
+	Status   string
+	Category StatusCategory
+	Href     string
+	State    ChipState
+	// Compact leaves the summary out (dense lists, link targets).
+	Compact bool
+}
+
+// IssueChip is the chip documents render (a.issue-chip, docs/editor.md):
+// type icon, key, summary and status as they are now. A deleted or unknown
+// issue says so (FR-100.3).
+templ IssueChip(p IssueChipProps) {
+	<a
+		class="issue-chip"
+		data-key={ p.Key }
+		href={ templ.SafeURL(p.Href) }
+		if p.State != ChipLive {
+			data-state={ string(p.State) }
+		}
+	>
+		if p.State == ChipLive {
+			@raw(typeSVG(p.Type, "tk-type", p.Type.Name()))
+		} else {
+			@raw(typeSVG("", "tk-type", ""))
+		}
+		<span class="issue-chip__key">{ p.Key }</span>
+		switch p.State {
+			case ChipDeleted:
+				<span class="issue-chip__summary">deleted issue</span>
+			case ChipUnknown:
+				<span class="issue-chip__summary">unknown issue</span>
+			default:
+				if !p.Compact && p.Summary != "" {
+					<span class="issue-chip__summary">{ p.Summary }</span>
+				}
+				if p.Status != "" {
+					@StatusLozenge(p.Status, p.Category)
+				}
+		}
+	</a>
+}
+
+// PageLink is a link to a wiki page, as documents render it (a.page-link);
+// a removed page is text that says so.
+templ PageLink(id, title, href string, gone bool) {
+	if gone {
+		<span class="page-link" data-state="gone">a removed page</span>
+	} else {
+		<a class="page-link" data-page={ id } href={ templ.SafeURL(href) }>{ title }</a>
+	}
+}
+
+// Label is a label as a chip: a link to the issues that carry it, with a
+// pixel of its own hue. Href "" draws it as text (inside a card).
+templ Label(name, href string) {
+	if href != "" {
+		<a class="tk-label" data-hue={ strconv.Itoa(HueOf(name)) } href={ templ.SafeURL(href) }>{ name }</a>
+	} else {
+		<span class="tk-label" data-hue={ strconv.Itoa(HueOf(name)) }>{ name }</span>
+	}
+}
+
+// Points is an issue's story points.
+templ Points(points string) {
+	<span class="tk-points"><span class="visually-hidden">Story points: </span>{ points }</span>
+}
+
+// Due is a due date, with the overdue state as an icon and a word, not
+// only a colour.
+templ Due(at, now time.Time, overdue bool) {
+	<span
+		class="tk-due"
+		if overdue {
+			data-overdue
+		}
+	>
+		if overdue {
+			@Icon("warning")
+			<span class="visually-hidden">Overdue, due </span>
+		} else {
+			@Icon("calendar")
+			<span class="visually-hidden">Due </span>
+		}
+		<time datetime={ at.Format("2006-01-02") }>{ Date(at, now) }</time>
+	</span>
+}
+
+// CardState is where a card is in a move (MP-04, MP-09).
+type CardState string
+
+const (
+	CardIdle CardState = ""
+	// CardPending: moved here, waiting for the frame that confirms it.
+	CardPending CardState = "pending"
+	// CardRefused: the move was refused; the card shakes and says why.
+	CardRefused CardState = "refused"
+	// CardLanded: it just arrived from someone's move, glowing.
+	CardLanded CardState = "landed"
+	// CardDragged: in the pointer's hand; it leaves a hole.
+	CardDragged CardState = "dragged"
+	// CardPicked: picked up from the keyboard.
+	CardPicked CardState = "picked"
+)
+
+// CardProps is an issue on a board or in a backlog (FR-40.2).
+type CardProps struct {
+	Key, Summary, Href string
+	Type               IssueType
+	Priority           Priority
+	// Assignee is nil when nobody is assigned.
+	Assignee *Person
+	Labels   []string
+	// Due is zero without a due date; Overdue is the tracker's word.
+	Due     time.Time
+	Overdue bool
+	Now     time.Time
+	// Epic is the epic's name; its hue colours the card's edge.
+	Epic   string
+	Points string
+	// Parent is a subtask's parent key (FR-21.2).
+	Parent string
+	State  CardState
+	// Note shows under the card: a refused move's reason (FR-41.3).
+	Note string
+	// MenuID is the board's CardMenu: the card's "…" opens it.
+	MenuID string
+	// Attrs go on the card (data-* for the board's drag).
+	Attrs templ.Attributes
+}
+
+// Card is a board card in its list item. The summary links to the issue
+// and the whole card takes the click; the grip drags it by touch; the "…"
+// button opens the board's menu (Move to, Move up, Move down), the
+// keyboard's way to move it (FR-41.2).
+templ Card(p CardProps) {
+	<li class="tk-slot" data-key={ p.Key }>
+		<div
+			class="tk-card"
+			if p.Epic != "" {
+				data-hue={ strconv.Itoa(HueOf(p.Epic)) }
+			}
+			if p.State != CardIdle {
+				data-state={ string(p.State) }
+			}
+			if p.State == CardPending {
+				aria-busy="true"
+			}
+			{ p.Attrs... }
+		>
+			<span class="tk-card__grip" aria-hidden="true"></span>
+			<div class="tk-card__top">
+				@TypeIcon(p.Type)
+				<span class="tk-card__key">{ p.Key }</span>
+				if p.Parent != "" {
+					<span class="tk-card__parent"><span class="visually-hidden">Subtask of </span>{ p.Parent }</span>
+				}
+				if p.MenuID != "" {
+					<button
+						class="tk-card__menu"
+						type="button"
+						popovertarget={ p.MenuID }
+						aria-expanded="false"
+						aria-label={ "Move or open " + p.Key }
+						data-card={ p.Key }
+					>
+						@Icon("more")
+					</button>
+				}
+			</div>
+			<h3 class="tk-card__title"><a href={ templ.SafeURL(p.Href) }>{ p.Summary }</a></h3>
+			if p.Epic != "" {
+				<p class="tk-card__epic"><span class="visually-hidden">Epic: </span>{ p.Epic }</p>
+			}
+			<div class="tk-card__meta">
+				@PriorityIcon(p.Priority)
+				if p.Points != "" {
+					@Points(p.Points)
+				}
+				if !p.Due.IsZero() {
+					@Due(p.Due, p.Now, p.Overdue)
+				}
+				if len(p.Labels) > 0 {
+					<span class="tk-card__labels">
+						for _, l := range p.Labels {
+							@Label(l, "")
+						}
+					</span>
+				}
+				<span class="tk-card__who">
+					if p.Assignee != nil {
+						@Tip(p.Assignee.Name) {
+							@Avatar(AvatarProps{Person: *p.Assignee, Size: SizeXS})
+						}
+					} else {
+						<span class="tk-card__nobody" aria-label="Unassigned" role="img"></span>
+					}
+				</span>
+			</div>
+		</div>
+		if p.Note != "" {
+			@Outcome(OutcomeProps{Kind: OutcomeRefused, Text: p.Note, Class: "tk-slot__note"})
+		}
+	</li>
+}
+
+// DropMarker is where a dragged card would land, between two cards.
+templ DropMarker() {
+	<li class="tk-drop" aria-hidden="true"></li>
+}
+
+// LaneProps is a board column: a status.
+type LaneProps struct {
+	ID       string
+	Name     string
+	Category StatusCategory
+	Count    int
+	// WIP is the work-in-progress limit, 0 for none (FR-43.1).
+	WIP int
+	// Target lights the lane a dragged card is over.
+	Target bool
+	// CreateAttrs wire the lane's "+" (Create issue in this status); nil
+	// leaves the button out.
+	CreateAttrs templ.Attributes
+	Attrs       templ.Attributes
+}
+
+func issues(n int) string {
+	if n == 1 {
+		return "1 issue"
+	}
+	return strconv.Itoa(n) + " issues"
+}
+
+// Lane is a column of cards; the children are Card and DropMarker. Its
+// head has the status name in the UI face (names are data), the count, and
+// the limit when one is set: over it, the head says so in words too.
+templ Lane(p LaneProps) {
+	<section
+		class="tk-lane"
+		data-cat={ p.Category.attr() }
+		aria-labelledby={ p.ID + "-name" }
+		if p.WIP > 0 && p.Count > p.WIP {
+			data-over
+		}
+		if p.Target {
+			data-target
+		}
+		{ p.Attrs... }
+	>
+		<header class="tk-lane__head">
+			@raw(catSVG(p.Category))
+			<h2 class="tk-lane__name" id={ p.ID + "-name" }>{ p.Name }</h2>
+			<span class="tk-count" aria-label={ issues(p.Count) }>{ strconv.Itoa(p.Count) }</span>
+			if p.WIP > 0 {
+				<span class="tk-lane__wip">
+					if p.Count > p.WIP {
+						@Icon("warning")
+						Over limit of { strconv.Itoa(p.WIP) }
+					} else {
+						Limit { strconv.Itoa(p.WIP) }
+					}
+				</span>
+			}
+			if p.CreateAttrs != nil {
+				@Button(ButtonProps{Label: "Create issue in " + p.Name, Icon: "plus", IconOnly: true, Variant: Ghost, Size: SizeSM, Class: "tk-lane__add", Attrs: p.CreateAttrs})
+			}
+		</header>
+		<ol class="tk-lane__cards" role="list">
+			{ children... }
+		</ol>
+	</section>
+}
+
+// BoardProps is a board.
+type BoardProps struct {
+	Label string // "Board of Website"
+	Class string
+	Attrs templ.Attributes
+}
+
+// Board is the lanes side by side: at least 260px each, scrolling
+// sideways past the page's width (NFR-56). The scrolling region takes the
+// focus, so arrow keys scroll it.
+templ Board(p BoardProps) {
+	<div class={ classes("tk-board", p.Class) } role="region" aria-label={ p.Label } tabindex="0" { p.Attrs... }>
+		<div class="tk-board__lanes">
+			{ children... }
+		</div>
+	</div>
+}
+
+// LaneRef is a lane a card can move to.
+type LaneRef struct {
+	ID   string
+	Name string
+	Cat  StatusCategory
+}
+
+// CardMenuProps is a board's one menu for all its cards.
+type CardMenuProps struct {
+	ID    string
+	Lanes []LaneRef
+	// Attrs go on the menu: one delegated handler reads which item was
+	// chosen (data-lane, data-move, data-open) and which card opened it
+	// (the data-card of its invoker).
+	Attrs templ.Attributes
+}
+
+// CardMenu is the board's card menu: Move to each lane, Move up, Move
+// down, Open. One per board, shared by every card's "…" (FR-41.2).
+templ CardMenu(p CardMenuProps) {
+	<div
+		id={ p.ID }
+		class="tk-menu"
+		popover
+		data-on:toggle={ syncExpanded }
+		data-on:keydown={ menuKeys }
+		{ p.Attrs... }
+	>
+		@MenuLabel("Move to")
+		for i, l := range p.Lanes {
+			<button class="tk-menu__item" type="button" data-lane={ l.ID } if i == 0 {
+				autofocus
+			}>
+				@raw(catSVG(l.Cat))
+				<span class="tk-menu__label">{ l.Name }</span>
+			</button>
+		}
+		@MenuSeparator()
+		@MenuItem(MenuItemProps{Label: "Move up", Icon: "arrow-up", Attrs: templ.Attributes{"data-move": "up"}})
+		@MenuItem(MenuItemProps{Label: "Move down", Icon: "arrow-down", Attrs: templ.Attributes{"data-move": "down"}})
+		@MenuSeparator()
+		@MenuItem(MenuItemProps{Label: "Open", Icon: "external", Attrs: templ.Attributes{"data-open": true}})
+	</div>
+}
