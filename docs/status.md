@@ -12,7 +12,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | Boards, backlog and sprints | 2 | 0 | 0 | 2 | 0 | 0 |
 | Search, filters, bulk edit and dashboards | 7 | 0 | 0 | 0 | 2 | 0 |
 | Comments, mentions, activity and history | 2 | 0 | 0 | 3 | 1 | 0 |
-| Spaces and pages | 7 | 0 | 0 | 7 | 1 | 0 |
+| Spaces and pages | 7 | 0 | 0 | 8 | 0 | 0 |
 | Links between pages and issues | 2 | 0 | 0 | 1 | 0 | 1 |
 | Notifications | 4 | 0 | 0 | 3 | 0 | 0 |
 | Identity, accounts and sign-in | 4 | 1 | 0 | 1 | 0 | 0 |
@@ -20,16 +20,16 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | Import, export and API | 0 | 0 | 0 | 0 | 0 | 0 |
 | Audit | 1 | 0 | 0 | 1 | 0 | 0 |
 | Multiplayer | 6 | 4 | 0 | 1 | 2 | 0 |
-| Demo operation | 8 | 0 | 0 | 0 | 1 | 0 |
+| Demo operation | 8 | 0 | 0 | 1 | 0 | 0 |
 | Non-functional: Security | 16 | 1 | 0 | 3 | 0 | 0 |
-| Non-functional: Privacy | 4 | 2 | 0 | 0 | 1 | 0 |
+| Non-functional: Privacy | 4 | 2 | 0 | 1 | 0 | 0 |
 | Non-functional: Performance and realtime | 4 | 4 | 0 | 1 | 1 | 0 |
 | Non-functional: Accessibility | 5 | 0 | 0 | 1 | 1 | 0 |
-| Non-functional: Browsers | 0 | 1 | 0 | 0 | 1 | 0 |
+| Non-functional: Browsers | 0 | 1 | 0 | 1 | 0 | 0 |
 | Non-functional: Deployment on the shared host | 8 | 0 | 0 | 0 | 0 | 0 |
-| Non-functional: Backups | 1 | 1 | 0 | 0 | 1 | 0 |
-| Non-functional: Observability | 2 | 1 | 0 | 0 | 1 | 0 |
-| **All** | **93** | **16** | **0** | **33** | **17** | **1** |
+| Non-functional: Backups | 2 | 0 | 0 | 1 | 0 | 0 |
+| Non-functional: Observability | 3 | 0 | 0 | 1 | 0 | 0 |
+| **All** | **95** | **14** | **0** | **39** | **11** | **1** |
 
 ## Projects
 
@@ -118,7 +118,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | FR-87 | Page versions | Must | done | internal/wiki/commands_test.go: TestVersions; internal/web/wiki_test.go: TestWikiPages |  |
 | FR-88 | Compare versions | Should | done | internal/doc/diff_test.go: TestDiff |  |
 | FR-89 | Restore a version | Should | done | internal/wiki/commands_test.go: TestVersions; internal/doc/diff_test.go: TestRestoreStep |  |
-| FR-90 | Page comments | Should | partly | internal/wiki/commands_test.go: TestComments | Comments, replies, delete and hide work, but the page offers no Edit for one's own comment and no route posts it. |
+| FR-90 | Page comments | Should | done | internal/wiki/commands_test.go: TestComments; internal/web/wiki_test.go: TestPageCommentEdit | Comments, replies, delete and hide work; the author edits their own comment in a dialog (`POST /cmd/pages/comment/edit`, plain text as when adding), and it then says "edited". |
 | FR-94 | Page trash | Should | done | internal/wiki/commands_test.go: TestTrash |  |
 
 ## Links between pages and issues
@@ -186,7 +186,7 @@ No Must or Should requirements.
 | MP-08 | Conflicts on issue fields | Must | done | internal/tracker/commands_test.go: TestFieldConflicts; internal/tracker/decide_test.go: TestEditConflicts; internal/web/issue_actions_test.go: TestIssueConflict; internal/tabs/tabs_test.go: TestRefusalData; e2e/issue_test.go: TestIssueTwoPeople (Chromium) |  |
 | MP-09 | Pending state and refusals | Must | done | internal/tabs/tabs_test.go: TestAccepted; internal/tabs/tabs_test.go: TestRefused; internal/web/stream_test.go: TestOutcomesOnTheStream; internal/web/issue_actions_test.go: TestIssueActionsAccepted; internal/web/issue_actions_test.go: TestIssueActionsRefused; e2e/issue_test.go: TestIssueEditInPlace (Chromium); e2e/home_test.go: TestHome (Chromium) | "This did not go through" with Retry (MP-09.3) is implemented in internal/views/issue_expr.go but no test drives a request without an outcome. |
 | MP-10 | Reconnect and catch-up | Must | done | internal/web/stream_test.go: TestReconnect; internal/web/stream_test.go: TestWatch; e2e/editor_reconnect_test.go: TestEditorReconnect (Chromium); editor/test/run.mjs: 'reconnect: unconfirmed steps go out again with the same ref and apply once (MP-05.6, MP-10.3)' (Chromium) | The 50 s watchdog comes from lith; no tickit test waits for "Reconnecting" after a silent drop. |
-| MP-11 | One render per shared view | Must | partly | internal/web/list_test.go: TestListOneRender; internal/web/board_test.go: TestBoardOneRenderPerTick; internal/web/board_load_test.go: TestBoardLoad; internal/tracker/search_test.go: TestFilterValues | Renders per view key exist in the hub's Stats but neither the metrics nor the admin statistics show them (MP-11.4), and MP-11.2 and MP-11.3 rest on lith's hub with no tickit test. |
+| MP-11 | One render per shared view | Must | partly | internal/web/list_test.go: TestListOneRender; internal/web/board_test.go: TestBoardOneRenderPerTick; internal/web/board_load_test.go: TestBoardLoad; internal/tracker/search_test.go: TestFilterValues; internal/web/metrics_test.go: TestViewAndStreamMetrics | The metrics show renders by view kind (`tickit_view_renders{kind}`, summed from the hub's renders by key), but the admin statistics do not (MP-11.4), and MP-11.2 and MP-11.3 rest on lith's hub with no tickit test. |
 | MP-13 | Edits caught by a reset or a removed page | Must | done | internal/demo/reset_test.go: TestReset; internal/wiki/rebuild_test.go: TestReset; internal/wiki/commands_test.go: TestCommits; internal/web/wiki_test.go: TestCommitAnswers; editor/test/run.mjs: 'reset: the editor stops sending, keeps its text and copies it (MP-13)' (Chromium); editor/test/run.mjs: 'readonly and gone stop sending (MP-13, MP-14.2)' (Chromium) |  |
 | MP-14 | Refused while editing | Should | partly | editor/test/run.mjs: 'a refused commit is taken out and the refusal shows at the editor (MP-14)' (Chromium); editor/test/run.mjs: 'readonly and gone stop sending (MP-13, MP-14.2)' (Chromium); editor/test/unit/collab.test.js: 'a refused commit is taken out, later steps stay (MP-14)' | A rate-limited editor backs off, resends and says why, but a blocked guest's commit only gets a 403 and the editor is not told why at the editor (MP-14.1); tests use the fake authority only. |
 
@@ -196,11 +196,11 @@ No Must or Should requirements.
 | --- | --- | --- | --- | --- | --- |
 | DM-01 | Visitors write without an account | Must | done | internal/access/access_test.go: TestScopes; internal/web/issue_actions_test.go: TestCreateIssue; internal/web/demo_test.go: TestStaffOnly; e2e/board_test.go: TestBoardMoveLive (Chromium); e2e/editor_coedit_test.go: TestCoEditing (Chromium) | No test cites DM-01; guests create issues, move cards and edit pages in these tests, and the login page names no shared password. |
 | DM-02 | Seeded content | Must | done | internal/demo/seed/content_test.go: TestCheck; internal/demo/seed/content_test.go: TestIssueCounts; internal/demo/seed/content_test.go: TestPageCounts; internal/demo/seed/content_test.go: TestPeopleImagesTemplates; internal/demo/seed/content_test.go: TestDeterministic; internal/demo/seed_test.go: TestSeed; internal/demo/seed_test.go: TestSeedTwice; internal/demo/seed_test.go: TestPageSeeder; internal/people/people_test.go: TestSeedPeople; internal/people/people_test.go: TestSeededAsCompany |  |
-| DM-03 | Periodic reset | Must | done | internal/demo/reset_test.go: TestReset; internal/demo/reset_test.go: TestResetRefusesActions; internal/web/demo_test.go: TestResetNow; internal/demo/notice_test.go: TestNotice; e2e/demo_test.go: TestResettingShows (Chromium) |  |
+| DM-03 | Periodic reset | Must | done | internal/demo/reset_test.go: TestReset; internal/demo/reset_test.go: TestResetRefusesActions; internal/web/demo_test.go: TestResetNow; internal/web/reset_test.go: TestResetShowsNoHalfSeed; internal/demo/notice_test.go: TestNotice; e2e/demo_test.go: TestResettingShows (Chromium) | While a reset runs, views render nothing and documents answer 503 with "The demo is resetting" and load again every 2 s, so no page shows the emptied or half-seeded board; every view renders once the seed is in. |
 | DM-04 | Rate limits on every change | Must | done | internal/web/action_test.go: TestRateLimits; internal/demo/reset_test.go: TestCaps; internal/web/wiki_test.go: TestCommitAnswers | The classes in internal/web/action.go match the table; the image cap counts only images, which have no upload route (FR-85). |
 | DM-05 | Content limits | Must | done | internal/tracker/decide_test.go: TestCreateIssue; internal/tracker/decide_test.go: TestCommentDeciders; internal/doc/rules_test.go: TestRulesRefuse; internal/demo/seed/content_test.go: TestCheck; editor/test/run.mjs: 'limits: input stops at 200 KB and at 50 table rows, and says why (DM-05)' (Chromium) |  |
 | DM-06 | Safe rendering of public content | Must | done | internal/doc/render_test.go: TestEscapes; internal/doc/render_test.go: TestRenderHTML; internal/doc/rules_test.go: TestRulesRefuse; internal/demo/words/words_test.go: TestBlocked; internal/tracker/words_test.go: TestWordList; internal/people/words_test.go: TestRenameWordList; editor/test/run.mjs: 'link dialog (Mod-K) takes http, https and mailto only (DM-06.2)' (Chromium) |  |
-| DM-07 | Moderation | Should | partly | internal/tracker/moderation_test.go: TestHideIssue; internal/web/demo_test.go: TestModerateLive; internal/web/demo_test.go: TestBlockedGuest; e2e/demo_test.go: TestModerationHide (Chromium) | Issues, comments and pages can be hidden, restored or deleted, but page versions and images are not registered as moderated kinds (DM-07.1). |
+| DM-07 | Moderation | Should | done | internal/tracker/moderation_test.go: TestHideIssue; internal/wiki/moderation_test.go: TestHideVersion; internal/wiki/moderation_test.go: TestHideImage; internal/web/demo_test.go: TestModerateLive; internal/web/moderation_test.go: TestModerateVersionsAndImages; internal/web/demo_test.go: TestBlockedGuest; e2e/demo_test.go: TestModerationHide (Chromium) | Issues, comments, pages, page versions and library images are moderated kinds. A hidden version leaves history and compare for everyone but staff (the newest is never hidden); a hidden image shows as "Image hidden by a moderator" in every open reader within a tick and `/img/lib/<id>` answers 404, but the editor shows it as a broken image and a browser that cached it (one day) keeps its copy. DM-08 (a Could) is built too: internal/web/moderation_test.go: TestReports. |
 | DM-09 | Search engines stay out of visitor content | Must | done | internal/web/action_test.go: TestHeaders |  |
 | DM-10 | Demo notice and privacy page | Must | done | internal/demo/notice_test.go: TestNotice; e2e/prefs_test.go: TestDisplayPrefs (Chromium) | The privacy page (internal/views/pages.templ) names the operator and a contact, but no test checks its content (DM-10.2). |
 
@@ -235,8 +235,8 @@ No Must or Should requirements.
 | --- | --- | --- | --- | --- | --- |
 | NFR-25 | Little personal data | Must | done | none | login_sessions keeps user agent and times without an address, and blocked addresses live in memory only (demo/guard.go); no test cites it. |
 | NFR-26 | Events without personal data | Must | done | none | Events carry person ids in Meta only and people are relational with no events; no test checks events for personal fields, no test cites it. |
-| NFR-27 | Erasing a person | Should | partly | internal/demo/reset_test.go: TestReset | 27.2 holds (the reset deletes guests and their content), but there is no admin action to erase an account (27.1); only the "Deleted person" fallback name exists. |
-| NFR-28 | Log retention | Must | partly | none | Caddy keeps the access log 30 days and Loki's 30 days are host config, needs a check on the host; no test checks that app logs hold no issue, page or comment text. |
+| NFR-27 | Erasing a person | Should | done | internal/web/demo_test.go: TestEraseAccount; internal/demo/reset_test.go: TestReset | "Erase" on `/admin` (`POST /cmd/admin/erase`, `people.EraseAccount`) deletes the account's rows of people and accounts, its login sessions, memberships, notifications and saved filters; its events keep the id alone and it shows as "Deleted person", mentions too; the security log records "Account erased". A mention's label in the stored documents and the page search text still hold the name it was made with. |
+| NFR-28 | Log retention | Must | partly | internal/web/logs_test.go: TestLogsHoldNoContent | A full run with marker text in every issue, page and comment leaves none in the app's log (request paths name no page slug or label). On libretto Caddy keeps the access log 720 h and Loki 720 h with retention on (checked 2026-10-20); the journal is capped by size (1 GB, `SystemMaxUse`), not by 30 days. |
 | NFR-29 | No third parties | Must | done | internal/web/vendor_test.go: TestVendored; internal/web/design_test.go: TestDesign |  |
 | NFR-30 | Pseudonyms in presence and activity | Must | done | internal/people/people_test.go: TestGuestIdentity | Guests show as pseudonym and face derived from a hash of the session id, accounts by display name; no test cites NFR-30 itself. |
 | NFR-31 | One cookie and a privacy page | Must | partly | internal/web/prefs_test.go: TestPrefs; internal/web/action_test.go: TestHeaders; e2e/prefs_test.go: TestDisplayPrefs (Chromium) | One cookie and the privacy page are in place; the legal check of the wording against FADP and GDPR (Q25) is not recorded. |
@@ -272,8 +272,8 @@ No Must or Should requirements.
 
 | ID | Title | Priority | Status | Tests | Note |
 | --- | --- | --- | --- | --- | --- |
-| NFR-55 | Supported browsers | Must | partly | internal/web/action_test.go: TestCrossSite; e2e tests (Chromium, Firefox with LITH_BROWSER=firefox) | The browser tests run in Chromium and optionally Firefox only; nothing runs Safari, iOS, Android or Edge, and the brotli fallback for old Safari has no test here. |
-| NFR-56 | Small screens and touch | Should | partly | e2e/board_shots_test.go: TestBoardShots (Chromium) | 260-pixel lanes and touch drag by the grip are built, and TestNarrowPages (e2e/a11y_test.go) checks 320 pixels; no test checks a touch drag, or the editor on touch. |
+| NFR-55 | Supported browsers | Must | partly | internal/web/action_test.go: TestCrossSite; e2e tests (Chromium; Firefox 158.0.1 with LITH_BROWSER=firefox) | The whole e2e suite passes in Chromium and in Firefox 158.0.1 (2026-10-20, docs/accessibility.md); the touch tests skip in Firefox, whose WebDriver BiDi has no touch emulation. Nothing runs Safari, iOS, Android or Edge, and the brotli fallback for old Safari has no test here. |
+| NFR-56 | Small screens and touch | Should | done | e2e/touch_test.go: TestBoardTouchDrag (Chromium); e2e/touch_test.go: TestEditorTouch (Chromium); e2e/a11y_test.go: TestNarrowPages (Chromium); e2e/board_test.go: TestBoardKeyboardMove (Chromium); e2e/board_shots_test.go: TestBoardShots (Chromium) | Touch is Chromium's emulation over CDP, not a real phone: lanes of at least 260 pixels, a card dragged by its grip, and the editor taking typing, a list and a link by taps. |
 
 ## Non-functional: Deployment on the shared host
 
@@ -292,18 +292,18 @@ No Must or Should requirements.
 
 | ID | Title | Priority | Status | Tests | Note |
 | --- | --- | --- | --- | --- | --- |
-| NFR-70 | Daily copies | Should | partly | cmd/tickit/migrations_test.go: TestBackupChecksCopy | The timer, VACUUM INTO, 30 copies and the integrity check are in place; the restore before the cut-over (70.2) is written down in docs/deploy.md but needs a check on the host. |
+| NFR-70 | Daily copies | Should | done | cmd/tickit/migrations_test.go: TestBackupChecksCopy | The timer, VACUUM INTO, 30 copies and the integrity check are in place; the restore of a daily copy was tried on libretto on 2026-10-20 (docs/deploy.md, "A restore, once"). |
 | NFR-71 | A copy before a migrating deploy | Must | done | cmd/tickit/migrations_test.go: TestPending | deploy/tickit-deploy takes the copy; the script itself has no test. |
-| NFR-72 | Recovery by reseed | Must | partly | internal/demo/reset_test.go: TestReset | The procedure is in docs/deploy.md and TestReset proves the reseed, but a restore of a real copy needs a check on the host. |
+| NFR-72 | Recovery by reseed | Must | done | internal/demo/reset_test.go: TestReset | The drill of 2026-10-20 restored the newest daily copy into a scratch database on libretto and served it with the release binary: the staff account was there; the moderation log was empty, since nothing had been moderated yet. TestReset proves the reseed. |
 
 ## Non-functional: Observability
 
 | ID | Title | Priority | Status | Tests | Note |
 | --- | --- | --- | --- | --- | --- |
 | NFR-75 | Health and readiness | Must | done | deploy/smoke-test.sh (go tool task smoke) | No Go test cites it; the 503 naming the failing check comes from lith's edge.Ready and is not tested here. |
-| NFR-76 | Metrics | Must | partly | cmd/tickit/main_test.go: TestLoopback; deploy/smoke-test.sh | The loopback listener exports lith's collector and every listed counter, but the mapping of the grouping document's metrics (76.2) is written down nowhere. |
+| NFR-76 | Metrics | Must | done | cmd/tickit/main_test.go: TestLoopback; internal/web/metrics_test.go: TestViewAndStreamMetrics; deploy/smoke-test.sh | docs/architecture.md, "Metrics", maps the grouping document's metrics onto the exported names (76.2); group sizes (watchers per view) are not exported. |
 | NFR-77 | Logs | Must | done | internal/web/action_test.go: TestLogin | slog text handler at Info by default and edge.LogRequests; TestLogin covers NFR-11, nothing else tests the log lines. |
-| NFR-78 | Alerts and dashboard | Should | partly | none | No test cites it; deploy/observability/rules-tickit.yaml is hand-written. On libretto Grafana loaded it on 2026-10-20 and its three rules evaluate with health ok; none has fired yet, and the file is not yet exported over from Grafana. |
+| NFR-78 | Alerts and dashboard | Should | done | none | No test cites it; deploy/observability/rules-tickit.yaml is hand-written. On libretto on 2026-10-20 Grafana's rules API showed its three rules and the host's rules for probes, tick overruns, parked projectors and failed units evaluating with health ok; none has fired yet. |
 
 ## Gaps
 
@@ -316,12 +316,10 @@ The Must requirements that are partly done, most important first. No Must requir
 - MP-05 Co-editing: MP-05.3 is measured on loopback only, not with the 50 ms round trip it names, and after a long gap the editor offers the text for copying instead of showing it beside the page (MP-05.6).
 - NFR-01 Access control: a changed membership in a closed project or space keeps the person's open views until they reconnect (NFR-01.2 holds for site roles only).
 - MP-02 Presence: "away" (MP-02.4) is never set, a space's page tree has no presence row, and no test covers a face going within 60 s of a lost connection.
-- MP-11 One render per shared view: renders per view key are not shown in the metrics or the admin statistics (MP-11.4).
+- MP-11 One render per shared view: renders by view kind are in the metrics, but not in the admin statistics (MP-11.4).
 - MP-03 Live updates everywhere: there are no dashboards to update, and no test checks that a frame keeps the scroll position (MP-03.3).
-- NFR-55 Supported browsers: tests run in Chromium and optionally Firefox; nothing runs Safari, iOS, Android or Edge.
+- NFR-55 Supported browsers: the browser tests pass in Chromium and Firefox 158; nothing runs Safari, iOS, Android or Edge.
 - FR-137 Header and navigation: the Dashboards link points to `/dashboards`, which answers 404.
-- NFR-76 Metrics: the mapping of the grouping document's metrics onto tickit's (NFR-76.2) is not written down.
-- NFR-28 Log retention: the 30 days of app logs are host configuration (needs a check on the host), and no test checks that app logs hold no content text.
+- NFR-28 Log retention: the app's logs hold no content (tested), and Caddy and Loki keep 30 days, but the journal on libretto is capped by size, not by 30 days.
 - NFR-31 One cookie and a privacy page: the legal check of the wording (Q25) is not recorded.
-- NFR-72 Recovery by reseed: the reseed is tested, but a restore of a real copy needs a check on the host.
 - FR-16 Change status: status changes by bulk edit are missing, since bulk edit (FR-58, a Could) is not built.
