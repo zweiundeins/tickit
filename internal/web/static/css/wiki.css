@@ -323,10 +323,10 @@
 		display: grid;
 		gap: var(--tk-space-3);
 		justify-items: start;
-		overflow-x: auto;
+		min-inline-size: 0;
 
-		& table {
-			inline-size: 100%;
+		& .tk-table-wrap {
+			justify-self: stretch;
 		}
 	}
 
@@ -340,6 +340,7 @@
 
 		& li {
 			display: inline-flex;
+			flex: none;
 			align-items: center;
 			gap: var(--tk-space-1);
 		}

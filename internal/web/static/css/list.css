@@ -94,13 +94,6 @@
 		}
 	}
 
-	/* Visually hidden text in a cell is absolute: the scrolling region is
-	 * its containing block, or it escapes the region's clip. */
-	.list-region .tk-table-wrap,
-	.filters-page .tk-table-wrap {
-		position: relative;
-	}
-
 	.list-table tbody tr[data-href] {
 		cursor: pointer;
 	}

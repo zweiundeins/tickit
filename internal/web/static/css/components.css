@@ -1380,7 +1380,10 @@
 	}
 
 	/* ── Tables: plain tables, 2rem rows. ──────────────────────────── */
+	/* Positioned, so the visually hidden text in its cells, which is
+	 * absolute, stays inside the region's clip. */
 	.tk-table-wrap {
+		position: relative;
 		overflow-x: auto;
 		border: 1px solid var(--tk-border-subtle);
 		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
