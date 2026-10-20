@@ -101,7 +101,7 @@ const backlogPost = `@post('/cmd/backlog/plan', {payload: {tab: $_tab, op: $_bl.
 
 const backlogPress = `if (evt.button !== 0 || $_bl.op || !el.dataset.edit) return
 const li = evt.target.closest('.tk-blrow')
-if (!li || evt.target.closest('a, input, button')) return
+if (!li || evt.target.closest('input, button')) return
 const r = li.getBoundingClientRect(), x = evt.clientX, y = evt.clientY
 const touch = evt.pointerType === 'touch'
 if (touch && x - r.left > 22) return

@@ -38,10 +38,10 @@ func TestBoardShots(t *testing.T) {
 		}
 	}
 	shot("projects", "/projects", "dark", 1440, 900, false)
-	shot("board-dark-1440", "/projects/WEB/board", "dark", 1440, 1000, false)
-	shot("board-light-1440", "/projects/WEB/board", "light", 1440, 1000, false)
-	shot("board-dark-375", "/projects/WEB/board", "dark", 375, 812, false)
-	shot("board-light-375", "/projects/WEB/board", "light", 375, 812, false)
+	shot("dark-1440", "/projects/WEB/board", "dark", 1440, 1000, false)
+	shot("light-1440", "/projects/WEB/board", "light", 1440, 1000, false)
+	shot("dark-375", "/projects/WEB/board", "dark", 375, 812, false)
+	shot("light-375", "/projects/WEB/board", "light", 375, 812, false)
 	shot("backlog", "/projects/WEB/backlog", "dark", 1440, 1000, true)
 	shot("backlog-light", "/projects/WEB/backlog", "light", 1440, 1000, true)
 }

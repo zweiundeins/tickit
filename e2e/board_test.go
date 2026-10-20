@@ -271,3 +271,49 @@ func TestBoardPanelAndCreate(t *testing.T) {
 		t.Errorf("the page reported: %q", errs)
 	}
 }
+
+// FR-45.1, FR-45.2: a backlog row dragged to the top shows there at
+// once and for another browser; checked rows go to the bottom at once.
+func TestBacklogRank(t *testing.T) {
+	e := webtest.Start(t)
+	trackertest.Board(t, e.W, "WEB", 12)
+	b := browsertest.Start(t)
+	open := func() *browsertest.Page {
+		p := b.NewPage(t, 1440, 900)
+		p.Navigate(t, e.URL+"/projects/WEB/backlog")
+		p.Wait(t, `document.querySelector('[id^="presence-backlog"] [data-who]') && document.getElementById('backlog').dataset.rev !== ''`, 5*time.Second)
+		return p
+	}
+	a, c := open(), open()
+	order := `[...document.querySelectorAll('#backlog .tk-blrow')].map(r => r.id).join(' ')`
+	var before string
+	a.Eval(t, order, &before)
+	ids := strings.Fields(before)
+	last := ids[len(ids)-1]
+	var r struct{ X, Y, TX, TY float64 }
+	a.Eval(t, `(() => { const s = document.getElementById('`+last+`').getBoundingClientRect(), f = document.getElementById('`+ids[0]+`').getBoundingClientRect(); return {x: s.left + 120, y: s.top + s.height / 2, tx: f.left + 120, ty: f.top + 4} })()`, &r)
+	mouse := func(typ string, x, y float64, buttons int) {
+		a.Call(t, "Input.dispatchMouseEvent", map[string]any{"type": typ, "x": x, "y": y, "button": "left", "buttons": buttons, "clickCount": 1})
+	}
+	mouse("mousePressed", r.X, r.Y, 1)
+	for i := 1; i <= 8; i++ {
+		f := float64(i) / 8
+		mouse("mouseMoved", r.X+(r.TX-r.X)*f, r.Y+(r.TY-r.Y)*f, 1)
+	}
+	mouse("mouseReleased", r.TX, r.TY, 0)
+	first := `document.querySelector('#backlog .tk-blrow').id === '` + last + `'`
+	a.Wait(t, first, time.Second)
+	a.Wait(t, `!document.querySelector('#backlog .tk-blrow[data-state]')`, 3*time.Second)
+	c.Wait(t, first, 3*time.Second)
+	// Two checked rows to the bottom.
+	a.Eval(t, `(() => { const rows = document.querySelectorAll('#backlog .tk-blrow'); [rows[0], rows[1]].forEach(r => r.querySelector('.tk-blrow__check').click()); return true })()`, nil)
+	a.Eval(t, `document.querySelector('[data-bulk="bottom"]').click()`, nil)
+	end := `(() => { const r = [...document.querySelectorAll('#backlog .tk-blrow')].map(r => r.id); return r[r.length - 2] === '` + last + `' && r[r.length - 1] === '` + ids[0] + `' })()`
+	c.Wait(t, end, 3*time.Second)
+	a.Wait(t, end+` && !document.querySelector('.tk-blrow__check:checked')`, 3*time.Second)
+	for _, p := range []*browsertest.Page{a, c} {
+		if errs := p.Errors(); len(errs) > 0 {
+			t.Errorf("the page reported: %q", errs)
+		}
+	}
+}
