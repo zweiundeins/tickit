@@ -25,7 +25,7 @@ import (
 // view is profile:<id>, keyed by the person and the scopes the viewer
 // reads, so viewers who read the same share one render.
 func (s *Server) routesPeople() {
-	s.get("GET /people/{id}", http.HandlerFunc(s.personPage), "/people/s-ada", "/people/g-aaaaaaaaaaaaaaaaaaaa", "/people/nope", "/people/a-01920000-0000-7000-8000-000000000001")
+	s.get("GET /people/{id}", http.HandlerFunc(s.personPage), "/people/s-priya", "/people/g-aaaaaaaaaaaaaaaaaaaa", "/people/nope", "/people/a-01920000-0000-7000-8000-000000000001")
 	s.views.Register("profile", s.profileView)
 }
 

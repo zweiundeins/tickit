@@ -90,7 +90,7 @@ func (s *Server) pagePick(w http.ResponseWriter, r *http.Request) {
 	h := w.Header()
 	h.Set("Content-Type", "text/event-stream")
 	h.Set("Cache-Control", "no-store")
-	w.Write(sse.PatchElements(buf.Bytes()))
+	w.Write(sse.PatchElements(buf.Bytes(), sse.Patch{Mode: sse.Replace})) // the list is in data-ignore-morph
 }
 
 // ProbeIssue is the id of WEB-1 in the probes' data (seedProbes).

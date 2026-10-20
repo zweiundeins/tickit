@@ -348,6 +348,9 @@ func (s *Server) boardPage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return Page{}, err
 		}
+		saved = slices.DeleteFunc(saved, func(sf tracker.SavedFilter) bool { // those of other projects alone
+			return len(sf.Filter.Projects) > 0 && !slices.Contains(sf.Filter.Projects, p.Key) && sf.ID != savedID
+		})
 		applied, f := boardFilter(saved, savedID, quick)
 		lanes, err := readLanes(ctx, q, p.ID, f.Normalize(me.ID))
 		if err != nil {

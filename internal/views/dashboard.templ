@@ -171,7 +171,7 @@ templ gadget(g Gadget, now time.Time, first, last bool) {
 				<p class="tk-gadget__note">{ issueCount(g.Issues.Total) }</p>
 				@IssueWorklist(g.Issues.Issues, GadgetShown, now, "No issue matches this filter.")
 			case g.Kind == dashboards.Status:
-				@ui.CountBars("Issues of "+g.Title+" by status", countBars(g))
+				@ui.CountBars("Issues of "+g.Title, countBars(g))
 			case g.Kind == dashboards.Created:
 				@ui.DayChart("Issues created and resolved per day, the last 14 days", dayPairs(g.Days))
 			case g.Kind == dashboards.Assigned:
@@ -191,7 +191,9 @@ templ gadget(g Gadget, now time.Time, first, last bool) {
 templ AssignedRegions(a Assigned) {
 	for _, id := range a.Gadgets {
 		<div id={ AssignedID(id) }>
-			<p class="tk-gadget__note">{ openIssues(a.Issues.Total) }</p>
+			if a.Issues.Total > 0 {
+				<p class="tk-gadget__note">{ openIssues(a.Issues.Total) }</p>
+			}
 			@IssueWorklist(a.Issues.Issues, GadgetShown, a.Now, "Nothing is assigned to you.")
 		</div>
 	}

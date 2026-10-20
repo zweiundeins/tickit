@@ -14,6 +14,7 @@ import (
 
 	"github.com/zweiundeins/lith/live"
 	"github.com/zweiundeins/lith/sqlite"
+	"github.com/zweiundeins/lith/sse"
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/zweiundeins/tickit/internal/access"
@@ -316,7 +317,9 @@ func (s *Server) dashmeView(ctx context.Context, q sqlite.Querier, actor people.
 				Sort:   tracker.Sort{By: tracker.SortUpdated, Desc: true}}); err != nil {
 				return nil, err
 			}
-			return patch(ctx, views.AssignedRegions(a))
+			// Replaced, not morphed: the slots sit in data-ignore-morph, so
+			// that the shared grid's frames leave them alone.
+			return patch(ctx, views.AssignedRegions(a), sse.Patch{Mode: sse.Replace})
 		},
 	}, nil
 }
