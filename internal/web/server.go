@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -68,10 +69,11 @@ type Server struct {
 	lockout *people.Lockout // failed logins per email and address (NFR-09.2)
 	metrics *metrics
 
-	mux    *http.ServeMux
-	probes []string // a URL of every GET route, for the test that GET never writes (NFR-06)
-	views  *ViewRegistry
-	demo   *demo.Demo // the reset, caps and blocks (routes_demo.go)
+	mux     *http.ServeMux
+	probes  []string // a URL of every GET route, for the test that GET never writes (NFR-06)
+	actions []string // the pattern of every action, for the security tests (NFR-01, NFR-03)
+	views   *ViewRegistry
+	demo    *demo.Demo // the reset, caps and blocks (routes_demo.go)
 }
 
 // New returns the server of cfg's database, writer and hub, with every
@@ -180,6 +182,7 @@ func (s *Server) post(pattern string, h http.HandlerFunc) {
 		panic("web: " + pattern + " is no action: POST /cmd/...")
 	}
 	s.mux.HandleFunc(pattern, h)
+	s.actions = append(s.actions, pattern)
 }
 
 // Routes returns the handlers without the edge.
@@ -187,6 +190,9 @@ func (s *Server) Routes() http.Handler { return s.mux }
 
 // Probes are a URL of every GET route, for the test that GET never writes.
 func (s *Server) Probes() []string { return s.probes }
+
+// Actions are the patterns of every action, as registered with post.
+func (s *Server) Actions() []string { return slices.Clone(s.actions) }
 
 // Handler returns the routes behind the edge: the session, the actor,
 // the CSRF check, the security headers, compression, recovery and the log

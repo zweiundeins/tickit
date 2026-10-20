@@ -39,6 +39,8 @@ type Options struct {
 	Store      *events.Store // the event store; an empty one by default
 	SessionTTL time.Duration // how long a login lasts; 24 hours by default
 	Secure     bool          // as over HTTPS: a __Host- cookie and HSTS
+	// Configure changes the server before it serves (a test's limits).
+	Configure func(*web.Server)
 }
 
 // Env is a running server.
@@ -81,6 +83,9 @@ func StartWith(t testing.TB, o Options) *Env {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if o.Configure != nil {
+		o.Configure(site)
+	}
 	e := &Env{DB: db, W: w, Hub: hub, Server: site, logs: logs, hubDone: make(chan struct{})}
 	var hubCtx context.Context
 	hubCtx, e.stopHub = context.WithCancel(context.Background())
@@ -96,6 +101,7 @@ func StartWith(t testing.TB, o Options) *Env {
 		srv.Close()
 		w.Close()
 		db.Close()
+		checkSecrets(t, logs.String()) // NFR-11
 		if t.Failed() {
 			t.Logf("server log:\n%s", logs.String())
 		}
@@ -128,6 +134,7 @@ func (e *Env) Account(t testing.TB, email, password string, role people.SiteRole
 	if err != nil {
 		t.Fatal(err)
 	}
+	Secret(password)
 	id := people.NewAccountID()
 	e.Do(t, people.CreateAccount{ID: id, Email: email, Username: strings.Split(email, "@")[0], Role: role, PasswordHash: h, At: time.Now()})
 	return id
@@ -211,7 +218,7 @@ func Client(t testing.TB) *http.Client {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &http.Client{Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	return &http.Client{Jar: jar, Transport: recorder{}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 }
 
 // Get requests url and returns the status and the body.
