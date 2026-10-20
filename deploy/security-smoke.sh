@@ -7,21 +7,26 @@
 # header refused with 403, and the stream's views refused without a tab.
 #
 #   bash deploy/security-smoke.sh [./tickit]
+#   bash deploy/security-smoke.sh https://tickit.zweiundeins.gmbh   a running site, without the log check
 set -euo pipefail
-BIN=$(realpath "${1:-./tickit}")
-PORT=${PORT:-17305}
-URL=http://127.0.0.1:$PORT
 tmp=$(mktemp -d)
 pid=
 trap '[[ -n $pid ]] && kill -9 "$pid" 2>/dev/null; rm -rf "$tmp"' EXIT
 fail() { echo "!! $*" >&2; [[ -f $tmp/log ]] && tail -n 20 "$tmp/log" >&2; exit 1; }
 
-"$BIN" serve -addr "127.0.0.1:$PORT" -metrics "127.0.0.1:$((PORT + 100))" -db "$tmp/tickit.db" -secure 2>"$tmp/log" &
-pid=$!
-for ((i = 0; i < 100; i++)); do
-	curl -fsS "$URL/healthz" >/dev/null 2>&1 && break
-	sleep 0.1
-done
+if [[ "${1:-}" =~ ^https?:// ]]; then
+	URL=${1%/}
+else
+	BIN=$(realpath "${1:-./tickit}")
+	PORT=${PORT:-17305}
+	URL=http://127.0.0.1:$PORT
+	"$BIN" serve -addr "127.0.0.1:$PORT" -metrics "127.0.0.1:$((PORT + 100))" -db "$tmp/tickit.db" -secure 2>"$tmp/log" &
+	pid=$!
+	for ((i = 0; i < 100; i++)); do
+		curl -fsS "$URL/healthz" >/dev/null 2>&1 && break
+		sleep 0.1
+	done
+fi
 
 for path in / /privacy /login /projects /spaces /no/such/page; do
 	h=$(curl -sS -D - -o /dev/null "$URL$path")
@@ -51,9 +56,10 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Sec-Fetch-Site: same-o
 [[ $code == 403 ]] || fail "a POST without Datastar's header answers $code"
 code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 "$URL/stream?v=admin-demo:")
 [[ $code == 400 ]] || fail "a stream without a tab answers $code"
-grep -qiE 'password|__Host-sid=' "$tmp/log" && fail "the log holds a password or a cookie"
-
-kill -TERM "$pid"
-wait "$pid" 2>/dev/null || true
-pid=
+if [[ -n $pid ]]; then
+	grep -qiE 'password|__Host-sid=' "$tmp/log" && fail "the log holds a password or a cookie"
+	kill -TERM "$pid"
+	wait "$pid" 2>/dev/null || true
+	pid=
+fi
 echo ">> ok: headers, cookie, robots.txt, no debug routes, cross-site POSTs refused"
