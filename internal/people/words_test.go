@@ -7,9 +7,9 @@ import (
 
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/dbtest"
-	"github.com/mbolli/tickit/internal/demo/words"
-	"github.com/mbolli/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/dbtest"
+	"github.com/zweiundeins/tickit/internal/demo/words"
+	"github.com/zweiundeins/tickit/internal/people"
 )
 
 // DM-06.4, FR-121.1: a display name with a word of the list is refused

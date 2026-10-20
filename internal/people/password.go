@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"unicode/utf8"
 
 	"golang.org/x/crypto/argon2"
@@ -45,11 +46,19 @@ const (
 // process (NFR-41). The others wait their turn.
 const MaxHashing = 4
 
-var hashing = make(chan struct{}, MaxHashing)
+var (
+	hashing = make(chan struct{}, MaxHashing)
+	// hashingNow and hashingPeak count the hashes running, for the test of MaxHashing.
+	hashingNow, hashingPeak atomic.Int32
+)
 
 func idKey(password, salt []byte, time, memory uint32, threads uint8, n uint32) []byte {
 	hashing <- struct{}{}
 	defer func() { <-hashing }()
+	now := hashingNow.Add(1)
+	defer hashingNow.Add(-1)
+	for p := hashingPeak.Load(); now > p && !hashingPeak.CompareAndSwap(p, now); p = hashingPeak.Load() {
+	}
 	return argon2.IDKey(password, salt, time, memory, threads, n)
 }
 

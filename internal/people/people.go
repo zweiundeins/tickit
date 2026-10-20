@@ -26,7 +26,7 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/demo/words"
+	"github.com/zweiundeins/tickit/internal/demo/words"
 )
 
 // Kind is what kind of person someone is.

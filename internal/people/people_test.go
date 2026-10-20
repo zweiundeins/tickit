@@ -16,10 +16,10 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/dbtest"
-	"github.com/mbolli/tickit/internal/demo/seed"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/migrations"
+	"github.com/zweiundeins/tickit/internal/dbtest"
+	"github.com/zweiundeins/tickit/internal/demo/seed"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/migrations"
 )
 
 var now = time.Unix(1_800_000_000, 0)
