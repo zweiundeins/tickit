@@ -100,6 +100,25 @@ func (s *Server) editorPage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// withResult runs a command with a result and keeps it.
+type withResult struct {
+	cmd writer.ResultCommand
+	res *[]byte
+}
+
+func (w withResult) Validate() error {
+	if v, ok := w.cmd.(writer.Validator); ok {
+		return v.Validate()
+	}
+	return nil
+}
+
+func (w withResult) Apply(tx *writer.Tx) error {
+	r, err := w.cmd.ApplyResult(tx)
+	*w.res = r
+	return err
+}
+
 // imagesJSON is the image library as the editor's Image button offers it.
 // The library is fixed in the binary; it is read once, not at every
 // render of an editor frame (seed.Load parses the whole seed).
@@ -252,8 +271,11 @@ func (s *Server) commit(w http.ResponseWriter, r *http.Request) {
 		Epoch: req.Epoch, Base: req.Base, Ref: req.Ref, Client: req.Client, Steps: req.Steps,
 	}
 	// The demo's guard: no edits during a reset (503), none from a blocked
-	// guest (403, MP-14.2: the text stays in the browser).
-	op := writer.OnceResult("commit:"+page+":"+req.Ref, s.demo.Guard(actor, edge.ClientKey(r), c).(writer.ResultCommand))
+	// guest (403, MP-14.2: the text stays in the browser). A resent commit
+	// applies once by its ref (wiki.Commit), so no op id is kept per commit:
+	// at 100 commits a second they would hold 1.4 GB a day (NFR-43.2).
+	var res []byte
+	op := withResult{s.demo.Guard(actor, edge.ClientKey(r), c).(writer.ResultCommand), &res}
 	if err := s.w.Do(ctx, op); err != nil {
 		var denial interface{ Denied() bool }
 		if errors.As(err, &denial) && denial.Denied() {
@@ -263,10 +285,7 @@ func (s *Server) commit(w http.ResponseWriter, r *http.Request) {
 		s.failAction(w, r, err)
 		return
 	}
-	if !op.Replayed() {
-		CommitTimes.Observe(c.Took)
-	}
-	res := op.Result()
+	CommitTimes.Observe(c.Took)
 	switch {
 	case len(res) == 0:
 		w.WriteHeader(http.StatusNoContent)

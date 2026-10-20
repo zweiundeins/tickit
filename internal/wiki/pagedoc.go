@@ -319,9 +319,9 @@ const (
 
 // Commit applies an editor's commit to a page's document: it maps its
 // steps over the commits since Base (doc.Rebase), checks the result
-// (doc.Rules) and appends it with events.Exactly(head). Run it as
-// writer.OnceResult("commit:" + page + ":" + ref, c): a resent commit
-// applies once. Its result is a CommitAnswer; a refusal by a rule goes
+// (doc.Rules) and appends it with events.Exactly(head). A resent commit
+// applies once: its ref and client among the commits since its base answer
+// Applied, so it needs no op id. Its result is a CommitAnswer; a refusal by a rule goes
 // into the editing tab's row (page_editors.refusal) for its view.
 type Commit struct {
 	By           tabs.By
@@ -439,6 +439,9 @@ func (c *Commit) apply(tx *writer.Tx) (string, error) {
 	for _, s := range since {
 		if s.Snapshot != nil {
 			return "", errStale
+		}
+		if s.Ref == c.Ref && s.Client == c.Client {
+			return "", nil // resent: it applied already, after its base (NFR-43: no op id kept per commit)
 		}
 		mapped = append(mapped, s.Steps...)
 	}

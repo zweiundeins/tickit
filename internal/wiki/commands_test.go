@@ -227,8 +227,11 @@ func TestCommits(t *testing.T) {
 	if got, want := e.head(p), string(paras("HelloHi ")); got != want {
 		t.Errorf("head %s, want %s", got, want)
 	}
-	// A resent commit applies once.
-	e.commit(rainy, p, 1, "r1", steps(insert(1, "Hi ")))
+	// A resent commit applies once, by its ref among the commits since its
+	// base, without an op id (NFR-43.2).
+	resent := &Commit{By: e.by(rainy), Session: "sid-" + rainy.ID, Tab: "tab-" + rainy.ID, Page: p, Epoch: e.docState(p).Epoch, Base: 1, Ref: "r1",
+		Client: Client("tab-" + rainy.ID), Steps: json.RawMessage(steps(insert(1, "Hi ")))}
+	e.must(resent)
 	if v := e.docState(p).Version; v != 3 {
 		t.Errorf("version %d after a resend", v)
 	}
