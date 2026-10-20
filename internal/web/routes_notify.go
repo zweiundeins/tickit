@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -210,13 +211,21 @@ func (s *Server) work(ctx context.Context, q sqlite.Querier, me people.Person, r
 		if sc.Kind != access.Space {
 			continue
 		}
-		sp, err := wiki.SpaceByID(ctx, q, sc.ID)
+		info, err := access.Get(ctx, q, sc)
 		if err != nil {
 			return w, err
 		}
-		if !sp.Archived {
-			w.Spaces = append(w.Spaces, views.Space{Key: sp.Key, Name: sp.Name})
+		if info.Archived {
+			continue
 		}
+		name := info.Key
+		switch sp, err := wiki.SpaceByID(ctx, q, sc.ID); {
+		case err == nil:
+			name = sp.Name
+		case !errors.Is(err, access.ErrNotFound):
+			return w, err
+		}
+		w.Spaces = append(w.Spaces, views.Space{Key: info.Key, Name: name})
 	}
 	return w, nil
 }
