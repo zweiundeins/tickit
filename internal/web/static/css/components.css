@@ -186,7 +186,7 @@
 	}
 
 	/* Tips at the inline end of a bar open towards the start. */
-	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head) > .tk-tip > .tk-tip__bubble,
+	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head, .tk-presence__item) > .tk-tip > .tk-tip__bubble,
 	.tk-tip--end > .tk-tip__bubble {
 		inset-inline: auto 0;
 		translate: 0 0.25rem;
@@ -197,7 +197,7 @@
 		}
 	}
 
-	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head) > .tk-tip:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble,
+	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head, .tk-presence__item) > .tk-tip:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble,
 	.tk-tip--end:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble {
 		translate: 0 0;
 	}
