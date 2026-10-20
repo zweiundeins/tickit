@@ -230,6 +230,7 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		Views:     unique(list),
 		Reconnect: views.StreamID,
 		Slow:      edge.SlowLink(r),
+		Ack:       ackEvent(tab), // paced once the page reports it fell behind (pace.go)
 	}
 	if actor.Kind == people.Account { // NFR-04.2: a logout ends the login's streams too
 		ctx, stop := context.WithCancel(ctx)

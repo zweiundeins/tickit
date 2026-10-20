@@ -65,7 +65,8 @@ type Server struct {
 
 	limits  *limits         // the rate limits of actions (DM-04)
 	signIn  *edge.Limiter   // logins and logouts per address (NFR-09.1)
-	streams *streamLimits   // streams opened and open per address (NFR-41)
+	streams *streamLimits   // streams opened per address (NFR-41)
+	pacing  *paceLimits     // /pace and /ack (pace.go)
 	lockout *people.Lockout // failed logins per email and address (NFR-09.2)
 	metrics *metrics
 
@@ -125,6 +126,7 @@ func New(cfg Config) (*Server, error) {
 		limits:   newLimits(),
 		signIn:   edge.NewLimiter(0.5, 10), // 30 a minute, 10 at once
 		streams:  newStreamLimits(),
+		pacing:   newPaceLimits(),
 		lockout:  people.NewLockout(),
 		metrics:  newMetrics(cfg.DB),
 		mux:      http.NewServeMux(),
@@ -207,7 +209,7 @@ func (s *Server) Handler() http.Handler {
 		actor.ServeHTTP(w, r)
 	}))
 	h = s.sessions.Handler(h) // inside CSRF: a refused request gets no cookie
-	h = edge.CSRF{Datastar: []string{"POST /cmd/"}}.Handler(h)
+	h = edge.CSRF{Datastar: []string{"POST /cmd/", "POST /pace", "POST /ack"}}.Handler(h)
 	h = edge.SecurityHeaders{CSP: edge.DefaultCSP(), HSTS: s.secure}.Handler(h)
 	h = noIndex(h)
 	h = edge.Compress(h)
