@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"errors"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -245,8 +246,15 @@ func (s *Server) commit(w http.ResponseWriter, r *http.Request) {
 		By: tabs.By{Actor: actor, Op: req.Ref, At: time.Now()}, Session: edge.SessionID(ctx), Tab: req.Tab, Page: page,
 		Epoch: req.Epoch, Base: req.Base, Ref: req.Ref, Client: req.Client, Steps: req.Steps,
 	}
-	op := writer.OnceResult("commit:"+page+":"+req.Ref, c)
+	// The demo's guard: no edits during a reset (503), none from a blocked
+	// guest (403, MP-14.2: the text stays in the browser).
+	op := writer.OnceResult("commit:"+page+":"+req.Ref, s.demo.Guard(actor, edge.ClientKey(r), c).(writer.ResultCommand))
 	if err := s.w.Do(ctx, op); err != nil {
+		var denial interface{ Denied() bool }
+		if errors.As(err, &denial) && denial.Denied() {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
 		s.failAction(w, r, err)
 		return
 	}
