@@ -25,6 +25,8 @@ type metrics struct {
 	resets       *prometheus.CounterVec // demo resets, by outcome (demo)
 	resetSeconds prometheus.Histogram   // how long a reset took (demo)
 	guests       prometheus.GaugeFunc   // guests who acted in the last 24 hours
+	folded       prometheus.Counter     // events the fold deleted (NFR-43)
+	foldSeconds  prometheus.Histogram   // a fold command's time in the writer (NFR-43.3)
 }
 
 func newMetrics(db *sqlite.DB) *metrics {
@@ -45,6 +47,10 @@ func newMetrics(db *sqlite.DB) *metrics {
 			Help: "Resets of the demo, by outcome: ok or failed."}, []string{"outcome"}),
 		resetSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{Namespace: namespace, Name: "reset_seconds",
 			Help: "How long a reset of the demo took.", Buckets: []float64{1, 2, 5, 10, 20, 30, 60}}),
+		folded: prometheus.NewCounter(prometheus.CounterOpts{Namespace: namespace, Name: "folded_events_total",
+			Help: "Page edits the fold folded into snapshots."}),
+		foldSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{Namespace: namespace, Name: "fold_seconds",
+			Help: "How long one fold command held the writer.", Buckets: []float64{0.0005, 0.001, 0.002, 0.003, 0.004, 0.005, 0.0075, 0.01, 0.02, 0.05}}),
 		guests: prometheus.NewGaugeFunc(prometheus.GaugeOpts{Namespace: namespace, Name: "guests_active",
 			Help: "Guests who acted in the last 24 hours."}, func() float64 {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -74,5 +80,5 @@ func (m *metrics) reset(ok bool, took time.Duration) {
 // listener.
 func (s *Server) Collectors() []prometheus.Collector {
 	m := s.metrics
-	return []prometheus.Collector{m.limited, m.refusals, m.logins, m.editBatches, m.editors, m.moderations, m.resets, m.resetSeconds, m.guests}
+	return []prometheus.Collector{m.limited, m.refusals, m.logins, m.editBatches, m.editors, m.moderations, m.resets, m.resetSeconds, m.guests, m.folded, m.foldSeconds}
 }

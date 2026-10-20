@@ -137,7 +137,8 @@ func serve(args []string) error {
 	if err != nil {
 		return err
 	}
-	hub := live.New(live.Options{Read: db.R, MaxStreams: *streams, HeartbeatSignal: "_ping", Log: log})
+	hub := live.New(live.Options{Read: db.R, MaxStreams: *streams, HeartbeatSignal: "_ping", Log: log,
+		OnTick: func(d time.Duration) { tickSeconds.Observe(d.Seconds()) }})
 	w, err := writer.New(db, writer.Options{OnCommit: hub.Changed, Log: log})
 	if err != nil {
 		return errors.Join(err, db.Close())
@@ -280,6 +281,16 @@ func loopback(addr string) error {
 	return nil
 }
 
+// tickSeconds are the render loop's ticks (NFR-35): the time from a
+// commit to its frame is the wait for the next tick plus one of these.
+var tickSeconds = prometheus.NewHistogram(prometheus.HistogramOpts{Namespace: "tickit", Name: "tick_seconds",
+	Help:    "How long each tick that rendered views took.",
+	Buckets: []float64{0.001, 0.002, 0.005, 0.01, 0.02, 0.03, 0.05, 0.075, 0.1, 0.2, 0.5}})
+
+// debugHandlers adds pprof to the metrics listener in a binary built with
+// -tags pprof (pprof.go), for load tests; never in the deployed one.
+var debugHandlers func(*http.ServeMux)
+
 // metricsServer serves Prometheus' text format at /metrics: the Go
 // runtime, the process, lith's writer, hub, stream budget, event store and
 // runner, and tickit's own numbers (NFR-76).
@@ -289,6 +300,7 @@ func metricsServer(w *writer.Writer, hub *live.Hub, runner *events.Runner, store
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		prom.New("tickit", prom.Sources{Writer: w, Hub: hub, Events: runner, Store: store}),
+		tickSeconds,
 		prometheus.NewGaugeFunc(prometheus.GaugeOpts{
 			Namespace: "tickit", Name: "build_info", Help: "1, labelled with the running version.",
 			ConstLabels: prometheus.Labels{"version": buildVersion()},
@@ -297,6 +309,9 @@ func metricsServer(w *writer.Writer, hub *live.Hub, runner *events.Runner, store
 	reg.MustRegister(site.Collectors()...)
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{ErrorLog: slog.NewLogLogger(log.Handler(), slog.LevelWarn)}))
+	if debugHandlers != nil {
+		debugHandlers(mux)
+	}
 	return &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 }
 

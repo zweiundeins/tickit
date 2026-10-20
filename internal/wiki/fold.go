@@ -34,9 +34,12 @@ type Fold struct {
 	At time.Time
 
 	Deleted int64
+	Took    time.Duration // in the writer: NFR-43.3 wants at most 5 ms
 }
 
 func (c *Fold) Apply(tx *writer.Tx) error {
+	start := time.Now()
+	defer func() { c.Took = time.Since(start) }()
 	since := c.At.Add(-FoldAfter)
 	var oldest sql.NullInt64
 	err := tx.QueryRow(`SELECT min(e.at) FROM (SELECT page_id, max(upto) upto FROM page_versions GROUP BY page_id) v
