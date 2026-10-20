@@ -7,21 +7,25 @@
 #   tickit-deploy -           the same, reading the binary from stdin (CI over SSH)
 #   tickit-deploy rollback    go back to the previous binary
 #
+# A binary that would migrate the database gets a copy of it first, in
+# /var/lib/tickit/backups/pre-deploy (NFR-71). A binary that refuses the
+# database (its schema is newer) is not started at all.
+#
 # The new binary only ever runs as the unprivileged tickit user.
 set -euo pipefail
 
 NAME=tickit
 DIR=/opt/$NAME
+STATE=/var/lib/$NAME
+DB=$STATE/$NAME.db
+PRE=$STATE/backups/pre-deploy
+HEALTH=http://127.0.0.1:7105/healthz
 HEALTH_TIMEOUT=30
 MAX_BYTES=$((200 << 20))
 
-# /healthz through the unit's socket. With a loopback port instead:
-# healthz() { curl -fsS --max-time 2 http://127.0.0.1:8080/healthz; }
-healthz() { curl -fsS --max-time 2 --unix-socket "/run/$NAME/$NAME.sock" "http://$NAME/healthz"; }
-
 healthy() { # waits for /healthz to answer "ok <version>"
 	for ((i = 0; i < HEALTH_TIMEOUT; i++)); do
-		[[ "$(healthz 2>/dev/null || true)" == "ok $1" ]] && return 0
+		[[ "$(curl -fsS --max-time 2 "$HEALTH" 2>/dev/null || true)" == "ok $1" ]] && return 0
 		sleep 1
 	done
 	return 1
@@ -37,7 +41,32 @@ version_of() {
 		"$1" --version | awk '{print $2}'
 }
 
+# Runs a binary as the tickit user without network; only the state directory
+# is writable (a read-only open of a WAL database still needs its -shm file).
+in_state() {
+	timeout 300 systemd-run --quiet --pipe --wait --collect \
+		--uid="$NAME" --gid="$NAME" -p RuntimeMaxSec=290 -p UMask=0077 \
+		-p PrivateNetwork=yes -p ProtectSystem=strict -p ProtectHome=yes -p PrivateTmp=yes \
+		-p PrivateDevices=yes -p NoNewPrivileges=yes -p CapabilityBoundingSet= \
+		-p ReadWritePaths="$STATE" "$@" </dev/null
+}
+
+# The migrated database goes aside and the copy from before the deploy takes
+# its place, for an old binary that refuses the migrated schema.
+restore_copy() {
+	local aside x
+	aside=$DB.failed-$(date -u +%Y%m%dT%H%M%SZ)
+	systemctl stop "$NAME"
+	for x in "" -wal -shm; do
+		[[ -f "$DB$x" ]] && mv -f "$DB$x" "$aside$x"
+	done
+	install -o "$NAME" -g "$NAME" -m 0600 "$1" "$DB"
+	echo "!! restored $1; the migrated database is $aside" >&2
+}
+
+MODE=deploy
 if [[ "${1:-}" == rollback ]]; then
+	MODE=rollback
 	[[ -x "$DIR/$NAME.prev" ]] || { echo "!! no previous binary" >&2; exit 2; }
 	cp -f "$DIR/$NAME.prev" "$DIR/$NAME.new"
 else
@@ -60,6 +89,26 @@ NEW=$(version_of "$DIR/$NAME.new") || { rm -f "$DIR/$NAME.new"; echo "!! the bin
 OLD=$([[ -x "$DIR/$NAME" ]] && version_of "$DIR/$NAME" || echo none)
 echo ">> $OLD -> $NEW"
 
+# Does the new binary migrate the database, or refuse it?
+COPY=
+if [[ -f "$DB" ]]; then
+	PENDING=$(in_state "$DIR/$NAME.new" migrations-pending -db "$DB") && [[ "$PENDING" =~ ^[0-9]+$ ]] || {
+		rm -f "$DIR/$NAME.new"
+		echo "!! $NEW refuses the database (its schema is newer?); nothing changed" >&2
+		[[ $MODE == rollback ]] && echo "!! to go back past a migration, restore a copy from $PRE first (docs/deploy.md)" >&2
+		exit 2
+	}
+	if ((PENDING > 0)); then
+		BIN=$DIR/$NAME
+		[[ -x "$BIN" ]] || BIN=$DIR/$NAME.new
+		in_state "$BIN" backup -db "$DB" -backups "$PRE" -keep 10 || {
+			rm -f "$DIR/$NAME.new"; echo "!! no copy of the database, so no deploy" >&2; exit 2; }
+		copies=("$PRE/$NAME"-*.db)
+		COPY=${copies[-1]}
+		echo ">> $NEW applies $PENDING migration(s); the copy from before: $COPY"
+	fi
+fi
+
 # The running binary becomes $NAME.prev only once the new one is healthy, so a
 # failed deploy leaves the rollback target alone.
 [[ -x "$DIR/$NAME" ]] && cp -f "$DIR/$NAME" "$DIR/$NAME.running"
@@ -75,6 +124,10 @@ echo "!! $NEW is not healthy after ${HEALTH_TIMEOUT}s, going back to $OLD" >&2
 journalctl -u "$NAME" -n 20 --no-pager >&2 || true
 if [[ -f "$DIR/$NAME.running" ]]; then
 	mv -f "$DIR/$NAME.running" "$DIR/$NAME"
+	# The new binary may have migrated the database, which the old one refuses.
+	if [[ -n "$COPY" ]] && ! in_state "$DIR/$NAME" migrations-pending -db "$DB" >/dev/null; then
+		restore_copy "$COPY"
+	fi
 	systemctl restart "$NAME"
 	healthy "$OLD" && echo ">> back on $OLD" >&2
 fi
