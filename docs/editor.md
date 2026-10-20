@@ -84,7 +84,7 @@ The component emits `sb-commit` (the page posts it as the payload, never as sign
 - `pagedoc` stream, keyed by page id: `pagedoc.created {epoch, doc}`, `pagedoc.committed {ref, client, base, steps}` (the steps as applied), `pagedoc.snapshot {epoch, doc}` (written by the fold). Its stream version is the collab version.
 - `page` stream: title, place, labels, state, and `page.version_cut {number, upto, doc, editors, message, reason}`; never folded.
 - `page_doc` (the head document per page, with a checkpoint every K commits), `page_versions`, `page_editors` (the editing tabs' rows: ack, selection, seq), `page_chips` (issue keys per page, for live chips and FR-101).
-- `issuedoc` stream, keyed by issue id, with the same three types; `issue_doc` and `issue_editors` (migration 074), and `issues.desc_upto`, the description stream's version that the issue's last `issue.description_changed` holds.
+- `issuedoc` stream, keyed by issue id, with the same three types; `issue_doc` and `issue_editors` (migration 076), and `issues.desc_upto`, the description stream's version that the issue's last `issue.description_changed` holds.
 - An in-process LRU of immutable documents keyed by kind, subject, epoch, version and last ref, shared by the writer, the views and the jobs of every Kind.
 
 ## How the server side is built
