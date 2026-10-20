@@ -60,7 +60,7 @@ templ searchFacets(p SearchPage) {
 	if len(p.Spaces) > 0 && prm.Kind != "issue" {
 		@facetGroup("Space") {
 			for _, sp := range p.Spaces {
-				@facetToggle(sp, prm, "space", sp)
+				@facetToggle(spaceName(p.Results.Spaces, sp), prm, "space", sp)
 			}
 		}
 	}
@@ -175,7 +175,7 @@ templ searchHit(r SearchResults, h search.Hit) {
 			<p class="search-hit__title">
 				<a href={ templ.SafeURL(h.Href) }>{ h.Title }</a>
 				if h.Place != "" {
-					<span class="search-hit__place">{ h.Place }</span>
+					<span class="search-hit__place">{ spaceName(r.Spaces, h.Place) }</span>
 				}
 			</p>
 			@snippet(h)
@@ -220,7 +220,7 @@ templ SearchSuggest(s Suggestions) {
 					<li>
 						<a class="search-suggest__item" href={ templ.SafeURL(h.Href) } { IssueLinkAttrs(h.ID)... }>
 							<span class="search-hit__key">{ h.Key }</span>
-							<span>{ h.Title }</span>
+							<span class="search-suggest__title">{ h.Title }</span>
 						</a>
 					</li>
 				}
@@ -233,7 +233,10 @@ templ SearchSuggest(s Suggestions) {
 					<li>
 						<a class="search-suggest__item" href={ templ.SafeURL(h.Href) }>
 							@ui.Icon("page")
-							<span>{ h.Title }</span>
+							<span class="search-suggest__title">{ h.Title }</span>
+							if h.Place != "" {
+								<span class="search-hit__place">{ spaceName(s.Spaces, h.Place) }</span>
+							}
 						</a>
 					</li>
 				}

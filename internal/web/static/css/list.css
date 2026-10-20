@@ -212,6 +212,11 @@
 		font-weight: var(--tk-weight-regular);
 	}
 
+	/* A space's name is data: the UI face. */
+	.search-hit__place {
+		font-family: var(--tk-font-ui);
+	}
+
 	.search-hit__snippet {
 		grid-column: 2;
 		color: var(--tk-text-2);
@@ -293,11 +298,17 @@
 			background: var(--tk-surface-hover);
 		}
 
-		& .search-hit__key {
+		& .search-hit__key,
+		& .search-hit__place {
 			flex: none;
 		}
 
-		& span:last-child {
+		& .search-hit__place {
+			margin-inline-start: auto;
+		}
+
+		& .search-suggest__title {
+			min-inline-size: 0;
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;

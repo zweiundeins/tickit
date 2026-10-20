@@ -68,6 +68,7 @@ type SearchResults struct {
 	Params  SearchParams
 	Results search.Results
 	Issues  map[string]tracker.Issue // the issues among the hits, by id
+	Spaces  map[string]string        // space key to name, for the pages among them
 	People  map[string]people.Person
 	Now     time.Time
 }
@@ -107,6 +108,15 @@ type Suggestions struct {
 	Q      string
 	Issues []search.Hit
 	Pages  []search.Hit
+	Spaces map[string]string // space key to name
+}
+
+// spaceName is the name of the space a page's hit names by its key.
+func spaceName(names map[string]string, key string) string {
+	if n := names[key]; n != "" {
+		return n
+	}
+	return key
 }
 
 func (s Suggestions) count() string {
