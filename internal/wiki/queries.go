@@ -412,6 +412,9 @@ func Resolve(ctx context.Context, q sqlite.Querier, refs doc.Refs) (doc.StaticRe
 			return r, err
 		}
 		c.Deleted = deleted
+		if c.Category == "inprogress" { // the tracker's name; documents say "progress"
+			c.Category = "progress"
+		}
 		r.Issues[k] = c
 	}
 	if len(refs.People) > 0 {
