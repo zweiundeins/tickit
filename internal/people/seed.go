@@ -7,15 +7,16 @@ import (
 )
 
 // Seeded are the six people of the demo's history (DM-02.3): the staff of
-// Alpenrose Outfitters, a fictional maker of outdoor gear. They act in the
+// Alpenglow, a fictional Swiss shop for outdoor gear (internal/demo/seed's
+// company.json, whose hue index times 22.5 gives these degrees). They act in the
 // seed's history and cannot log in: they have no accounts.
 var Seeded = []Person{
-	{ID: "s-ada", Kind: Seed, Name: "Ada Brunner", Hue: 22, Role: NoRole},
-	{ID: "s-bruno", Kind: Seed, Name: "Bruno Keller", Hue: 200, Role: NoRole},
-	{ID: "s-chiara", Kind: Seed, Name: "Chiara Rossi", Hue: 320, Role: NoRole},
-	{ID: "s-david", Kind: Seed, Name: "David Meier", Hue: 140, Role: NoRole},
-	{ID: "s-elif", Kind: Seed, Name: "Elif Yilmaz", Hue: 265, Role: NoRole},
-	{ID: "s-fabian", Kind: Seed, Name: "Fabian Weber", Hue: 75, Role: NoRole},
+	{ID: "s-priya", Kind: Seed, Name: "Priya Raman", Hue: 248, Role: NoRole},
+	{ID: "s-tomasz", Kind: Seed, Name: "Tomasz Nowak", Hue: 68, Role: NoRole},
+	{ID: "s-mateo", Kind: Seed, Name: "Mateo Silva", Hue: 135, Role: NoRole},
+	{ID: "s-yuki", Kind: Seed, Name: "Yuki Tanaka", Hue: 203, Role: NoRole},
+	{ID: "s-amara", Kind: Seed, Name: "Amara Okafor", Hue: 315, Role: NoRole},
+	{ID: "s-lena", Kind: Seed, Name: "Lena Brunner", Hue: 23, Role: NoRole},
 }
 
 func init() {

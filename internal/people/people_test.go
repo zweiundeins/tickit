@@ -78,7 +78,7 @@ func TestLookup(t *testing.T) {
 	e.Do(t, writer.Func(func(tx *writer.Tx) error { return people.Ensure(tx, ada, now) }))
 	e.Do(t, people.Rename{Person: ada.ID, Name: "Ada L."})
 	e.View(t, func(tx *sql.Tx) error {
-		got, err := people.Lookup(context.Background(), tx, ada.ID, bob.ID, "s-ada", "a-gone", "")
+		got, err := people.Lookup(context.Background(), tx, ada.ID, bob.ID, "s-priya", "a-gone", "")
 		if err != nil {
 			return err
 		}
@@ -88,8 +88,8 @@ func TestLookup(t *testing.T) {
 		if got[bob.ID] != bob {
 			t.Errorf("a guest without a row: %+v, not %+v", got[bob.ID], bob)
 		}
-		if got["s-ada"].Name != "Ada Brunner" || got["s-ada"].Kind != people.Seed {
-			t.Errorf("a seeded person before the seed: %+v", got["s-ada"])
+		if got["s-priya"].Name != "Priya Raman" || got["s-priya"].Kind != people.Seed {
+			t.Errorf("a seeded person before the seed: %+v", got["s-priya"])
 		}
 		if got["a-gone"].Name != people.DeletedName || got["a-gone"].Kind != people.Deleted || got[""].Name != people.DeletedName {
 			t.Errorf("an id of nobody: %+v %+v", got["a-gone"], got[""])
