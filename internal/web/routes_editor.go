@@ -84,8 +84,8 @@ func (s *Server) editorPage(w http.ResponseWriter, r *http.Request) {
 		host := views.EditorHost{
 			Page: p.ID, Epoch: h.Epoch, Client: newClient(), State: "ok", Base: h.Version, Head: h.Version,
 			Batches: "[]", Chips: chips, Images: imagesJSON(),
-			// The script must not hold "</script": < goes out as <.
-			Doc: strings.ReplaceAll(string(raw), "<", `<`),
+			// The script must not hold "</script": < goes out as \u003c.
+			Doc: strings.ReplaceAll(string(raw), "<", `\u003c`),
 		}
 		sidebar, err := s.sidebar(ctx, q, sp, p.ID, "")
 		if err != nil {
