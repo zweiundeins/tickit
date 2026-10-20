@@ -42,7 +42,7 @@ var (
 	ibex   = ui.Person{Seed: "g-hardy-ibex", Name: "Hardy Ibex"}
 	wren   = ui.Person{Seed: "g-plucky-wren", Name: "Plucky Wren"}
 	vole   = ui.Person{Seed: "g-quick-vole", Name: "Quick Vole"}
-	ada    = ui.Person{Seed: "s-ada", Name: "Ada Quartz", Deactivated: true}
+	ada    = ui.Person{Seed: "s-priya", Name: "Ada Quartz", Deactivated: true}
 )
 
 // me is the viewer on every mock screen.

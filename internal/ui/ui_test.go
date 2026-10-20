@@ -7,12 +7,12 @@ import (
 )
 
 func TestFaceOf(t *testing.T) {
-	a, b := FaceOf("s-ada"), FaceOf("s-ada")
+	a, b := FaceOf("s-priya"), FaceOf("s-priya")
 	if a != b {
 		t.Fatal("the same seed drew two faces")
 	}
 	hues := map[int]bool{}
-	for _, seed := range []string{"s-ada", "s-bob", "g-ABCDEF", "a-0192", "s-sunny", "s-heron", "s-lynx"} {
+	for _, seed := range []string{"s-priya", "s-bob", "g-ABCDEF", "a-0192", "s-sunny", "s-heron", "s-lynx"} {
 		f := FaceOf(seed)
 		if f.Hue < 0 || f.Hue > 15 || !strings.HasPrefix(f.Path, "M") {
 			t.Errorf("%s: %+v", seed, f)

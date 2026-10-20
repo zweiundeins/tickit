@@ -185,9 +185,9 @@ func TestFieldConflicts(t *testing.T) {
 	if got := refusal(t, err); got != rainy.Name+" changed the description 1 second ago. Your changes were not saved." {
 		t.Errorf("the description's conflict: %q", got)
 	}
-	e.must(Assign{By: e.by(rainy), Issue: id, Seen: v, Assignee: "s-ada"})
+	e.must(Assign{By: e.by(rainy), Issue: id, Seen: v, Assignee: "s-priya"})
 	err = e.do(Assign{By: e.by(sunny), Issue: id, Seen: v, Assignee: sunny.ID})
-	if got := refusal(t, err); got != rainy.Name+" changed the assignee to Ada Brunner 1 second ago. Your "+sunny.Name+" was not saved." {
+	if got := refusal(t, err); got != rainy.Name+" changed the assignee to Priya Raman 1 second ago. Your "+sunny.Name+" was not saved." {
 		t.Errorf("the assignee's conflict: %q", got)
 	}
 }
@@ -404,13 +404,13 @@ func TestAssign(t *testing.T) {
 	for _, p := range got {
 		names = append(names, p.Name)
 	}
-	if !slices.Contains(names, sunny.Name) || !slices.Contains(names, "Ada Brunner") || !slices.Contains(names, "Adam Admin") || slices.Contains(names, rainy.Name) {
+	if !slices.Contains(names, sunny.Name) || !slices.Contains(names, "Priya Raman") || !slices.Contains(names, "Adam Admin") || slices.Contains(names, rainy.Name) {
 		t.Errorf("assignable: %v", names)
 	}
 	if got, _ := Assignable(ctx, e.DB.R, open, "", e.now.Add(25*time.Hour)); slices.ContainsFunc(got, func(p people.Person) bool { return p.ID == sunny.ID }) {
 		t.Error("a guest is assignable a day after acting")
 	}
-	if got, _ := Assignable(ctx, e.DB.R, open, "BRUNNER", e.now); len(got) != 1 || got[0].ID != "s-ada" {
+	if got, _ := Assignable(ctx, e.DB.R, open, "BRUNNER", e.now); len(got) != 1 || got[0].ID != "s-lena" {
 		t.Errorf("assignable brunner: %v", got)
 	}
 	e.now = e.now.Add(25 * time.Hour)
@@ -505,10 +505,10 @@ func TestComments(t *testing.T) {
 	e := newEnv(t)
 	p := e.project("WEB", true)
 	id := e.issue(sunny, CreateIssue{Project: p})
-	body := json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Ask "},{"type":"mention","attrs":{"personId":"s-ada","label":"Ada"}}]}]}`)
+	body := json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Ask "},{"type":"mention","attrs":{"personId":"s-priya","label":"Ada"}}]}]}`)
 	c := e.result(AddComment{By: e.by(rainy), Issue: id, Body: body})["id"]
 	ws, _ := Watchers(ctx, e.DB.R, id)
-	if !slices.Equal(ws, []string{sunny.ID, rainy.ID, "s-ada"}) {
+	if !slices.Equal(ws, []string{sunny.ID, rainy.ID, "s-priya"}) {
 		t.Errorf("watchers %v", ws)
 	}
 	if got := refusal(t, e.do(EditComment{By: e.by(sunny), Comment: c, Body: PlainDoc("No")})); got != "Only moderators can change other people's comments." {
@@ -543,7 +543,7 @@ func TestHistory(t *testing.T) {
 	p := e.project("WEB", true)
 	id := e.issue(sunny, CreateIssue{Project: p, Summary: "Old"})
 	e.must(SetPriority{By: e.by(rainy), Issue: id, Seen: 1, Priority: Critical})
-	e.must(Assign{By: e.by(rainy), Issue: id, Seen: 2, Assignee: "s-ada"})
+	e.must(Assign{By: e.by(rainy), Issue: id, Seen: 2, Assignee: "s-priya"})
 	e.result(AddComment{By: e.by(rainy), Issue: id, Body: PlainDoc("Done soon")})
 	e.must(Move{By: e.by(sunny), Issue: id, Status: StatusInReview, Seen: 4})
 	e.must(SetEstimate{By: e.by(sunny), Issue: id, Seen: 4, Estimate: ptr(150)})
@@ -558,8 +558,8 @@ func TestHistory(t *testing.T) {
 	want := []string{
 		"1 " + sunny.ID[:4] + " created:  -> WEB-1",
 		"2 " + rainy.ID[:4] + " priority: Medium -> Critical",
-		"3 " + rainy.ID[:4] + " assignee:  -> Ada Brunner",
-		"4 " + rainy.ID[:4] + " watchers:  -> Ada Brunner",
+		"3 " + rainy.ID[:4] + " assignee:  -> Priya Raman",
+		"4 " + rainy.ID[:4] + " watchers:  -> Priya Raman",
 		"5 " + rainy.ID[:4] + " watchers:  -> " + rainy.Name, // the comment's author watches
 		"6 " + sunny.ID[:4] + " status: To Do -> In Review",
 		"7 " + sunny.ID[:4] + " estimate:  -> 2h 30m",
@@ -724,10 +724,10 @@ func TestSeedCommands(t *testing.T) {
 	past := t0.AddDate(0, 0, -12)
 	by := tabs.By{Actor: ada, Op: "seed:1", At: past}
 	p := e.result(CreateProject{By: by, Key: "OPS", Name: "Platform", Open: true})["id"]
-	id := e.result(CreateIssue{By: by, Project: p, Type: Task, Summary: "Seeded", Assignee: "s-bruno"})["id"]
+	id := e.result(CreateIssue{By: by, Project: p, Type: Task, Summary: "Seeded", Assignee: "s-tomasz"})["id"]
 	e.must(SetStatus{By: tabs.By{Actor: people.Seeded[1], Op: "seed:2", At: past.Add(time.Hour)}, Issue: id, Seen: 1, Status: StatusDone})
 	h, _ := History(ctx, e.DB.R, id)
-	if len(h) != 2 || !h[0].At.Equal(past) || h[0].Actor != "s-ada" || h[1].Actor != "s-bruno" {
+	if len(h) != 2 || !h[0].At.Equal(past) || h[0].Actor != "s-priya" || h[1].Actor != "s-tomasz" {
 		t.Errorf("seeded history: %+v", h)
 	}
 	if got := e.row(`SELECT created_at FROM issues`); got != fmt.Sprint(past.UnixMilli()) {
@@ -744,7 +744,7 @@ func TestTopics(t *testing.T) {
 	other := e.issue(sunny, CreateIssue{Project: p})
 	e.must(LinkIssues{By: e.by(sunny), Issue: id, Type: Blocks, Other: other})
 	e.Touched()
-	e.must(Assign{By: e.by(sunny), Issue: id, Seen: 1 << 40, Assignee: "s-ada"})
+	e.must(Assign{By: e.by(sunny), Issue: id, Seen: 1 << 40, Assignee: "s-priya"})
 	_ = e.Touched()
 	e.must(SetPriority{By: e.by(sunny), Issue: id, Seen: 1 << 40, Priority: High})
 	got := e.Touched()

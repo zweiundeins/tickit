@@ -10,7 +10,7 @@ var testResolver = StaticResolver{
 		"WEB-12": {Summary: "Fix the <login>", Status: "In Review", Category: "progress", Type: "bug"},
 		"WEB-13": {Deleted: true},
 	},
-	People: map[string]string{"s-ada": "Ada \"Countess\""},
+	People: map[string]string{"s-priya": "Ada \"Countess\""},
 	Pages:  map[string]string{"0192f0c4-7b1e-7cc3-9d2a-5f6e7a8b9c0d": "Release <plan>"},
 }
 
@@ -49,7 +49,7 @@ func TestRenderHTML(t *testing.T) {
 		{inPara(text("a") + `,{"type":"hard_break"},` + text("b")), `<p>a<br>b</p>`},
 		{inPara(`{"type":"issue_chip","attrs":{"key":"WEB-12"}}`), `<p><a class="issue-chip" data-key="WEB-12" href="/WEB-12"><svg class="tk-type" data-type="bug" viewBox="0 0 16 16" aria-hidden="true"><path class="tk-type__tile" d="` + typeTile + `"></path><path class="tk-type__glyph" d="` + typeGlyphs["bug"] + `"></path></svg><span class="issue-chip__key">WEB-12</span><span class="issue-chip__summary">Fix the &lt;login&gt;</span><span class="tk-lozenge issue-chip__status" data-cat="progress">In Review</span></a></p>`},
 		{inPara(`{"type":"issue_chip","attrs":{"key":"WEB-13"}},{"type":"issue_chip","attrs":{"key":"WEB-99"}}`), `<p><a class="issue-chip" data-key="WEB-13" href="/WEB-13" data-state="deleted"><span class="issue-chip__key">WEB-13</span><span class="issue-chip__summary">deleted issue</span></a><a class="issue-chip" data-key="WEB-99" href="/WEB-99" data-state="unknown"><span class="issue-chip__key">WEB-99</span><span class="issue-chip__summary">unknown issue</span></a></p>`},
-		{inPara(`{"type":"mention","attrs":{"personId":"s-ada","label":"Old"}},{"type":"mention","attrs":{"personId":"s-bob","label":"Bob"}}`), `<p><a class="mention" data-person="s-ada" href="/people/s-ada">@Ada &#34;Countess&#34;</a><a class="mention" data-person="s-bob" href="/people/s-bob">@Bob</a></p>`},
+		{inPara(`{"type":"mention","attrs":{"personId":"s-priya","label":"Old"}},{"type":"mention","attrs":{"personId":"s-bob","label":"Bob"}}`), `<p><a class="mention" data-person="s-priya" href="/people/s-priya">@Ada &#34;Countess&#34;</a><a class="mention" data-person="s-bob" href="/people/s-bob">@Bob</a></p>`},
 		{inPara(`{"type":"page_link","attrs":{"pageId":"0192f0c4-7b1e-7cc3-9d2a-5f6e7a8b9c0d"}},{"type":"page_link","attrs":{"pageId":"gone"}}`), `<p><a class="page-link" data-page="0192f0c4-7b1e-7cc3-9d2a-5f6e7a8b9c0d" href="/pages/0192f0c4-7b1e-7cc3-9d2a-5f6e7a8b9c0d">Release &lt;plan&gt;</a><span class="page-link" data-state="gone">a removed page</span></p>`},
 		{inPara(text("b", strong) + `,` + text("i", em) + `,` + text("s", `{"type":"strike"}`) + `,` + text("c", `{"type":"code"}`)), `<p><strong>b</strong><em>i</em><s>s</s><code>c</code></p>`},
 		// Marks shared with the previous node stay open.
@@ -106,7 +106,7 @@ func TestBlockCache(t *testing.T) {
 func TestTextAndReferences(t *testing.T) {
 	d := mustDoc(t, docOf(
 		`{"type":"heading","attrs":{"level":1},"content":[`+text("Title")+`]}`,
-		`{"type":"paragraph","content":[`+text("see ")+`,{"type":"issue_chip","attrs":{"key":"WEB-12"}},`+text(" and ")+`,{"type":"mention","attrs":{"personId":"s-ada","label":"Ada"}},{"type":"hard_break"},`+text("x")+`,{"type":"page_link","attrs":{"pageId":"p2"}},{"type":"issue_chip","attrs":{"key":"WEB-12"}}]}`,
+		`{"type":"paragraph","content":[`+text("see ")+`,{"type":"issue_chip","attrs":{"key":"WEB-12"}},`+text(" and ")+`,{"type":"mention","attrs":{"personId":"s-priya","label":"Ada"}},{"type":"hard_break"},`+text("x")+`,{"type":"page_link","attrs":{"pageId":"p2"}},{"type":"issue_chip","attrs":{"key":"WEB-12"}}]}`,
 		`{"type":"bullet_list","content":[{"type":"list_item","content":[`+para+`]}]}`,
 		`{"type":"image","attrs":{"imageId":"img-1","alt":"diagram"}}`,
 		`{"type":"horizontal_rule"}`,
@@ -116,7 +116,7 @@ func TestTextAndReferences(t *testing.T) {
 		t.Errorf("Text: %q, want %q", got, want)
 	}
 	r := References(d)
-	if strings.Join(r.Issues, ",") != "WEB-12" || strings.Join(r.People, ",") != "s-ada" || strings.Join(r.Pages, ",") != "p2" {
+	if strings.Join(r.Issues, ",") != "WEB-12" || strings.Join(r.People, ",") != "s-priya" || strings.Join(r.Pages, ",") != "p2" {
 		t.Errorf("References: %+v", r)
 	}
 }

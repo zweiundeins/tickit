@@ -22,7 +22,7 @@ func TestProjectDeciders(t *testing.T) {
 	eventstest.For(createProject).Given(webCreated).When(webCreated).ThenError(t, errorString("tracker: the project exists"))
 
 	web := eventstest.For(editProject).Given(webCreated)
-	name, same, long, desc, lead := "Shop", "Web shop", strings.Repeat("x", 101), "All of it", "s-ada"
+	name, same, long, desc, lead := "Shop", "Web shop", strings.Repeat("x", 101), "All of it", "s-priya"
 	web.When(EditProject{Name: &name}).Then(t, ProjectEdited{Name: &name})
 	web.When(EditProject{Name: &same}).Then(t)                                                         // FR-14.3: nothing changes
 	web.When(EditProject{Name: &long}).ThenError(t, refuse("name", "A name has 1 to 100 characters.")) // FR-02
@@ -108,13 +108,13 @@ func TestCreateIssue(t *testing.T) {
 	none := eventstest.For(createIssue)
 	none.When(c(nil)).Then(t, base) // FR-10.2: To Do, Medium, the actor reports
 
-	desc := json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hi "},{"type":"mention","attrs":{"personId":"s-ada","label":"Ada"}}]}]}`)
+	desc := json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hi "},{"type":"mention","attrs":{"personId":"s-priya","label":"Ada"}}]}]}`)
 	full := base
 	full.Type, full.Priority, full.Status, full.Category = Bug, High, StatusInProgress, InProgress
 	full.Assignee, full.Labels, full.Components, full.Due = rainy.ID, []string{"checkout", "ux"}, []string{"Search"}, "2026-11-01"
 	full.Points, full.Estimate, full.Remaining, full.Sprint = ptr(5), ptr(90), ptr(90), "s1"
-	full.Description, full.Mentions = desc, []string{"s-ada"}
-	full.Watchers = []string{sunny.ID, rainy.ID, "s-ada"} // FR-27.2
+	full.Description, full.Mentions = desc, []string{"s-priya"}
+	full.Watchers = []string{sunny.ID, rainy.ID, "s-priya"} // FR-27.2
 	none.When(c(func(n *newIssue) {
 		n.Type, n.Priority, n.Status, n.Assignee, n.assign = Bug, High, StatusInProgress, rainy.ID, assignCheck{OK: true}
 		n.Labels, n.Components, n.Due = []string{"Checkout", "ux", "checkout"}, []string{"search"}, "2026-11-01"
@@ -185,7 +185,7 @@ func ed(field, value string, seen int64) edit {
 func TestEditIssue(t *testing.T) {
 	s := eventstest.For(editDecider).Given(story)
 	doc := PlainDoc("Steps to reproduce")
-	mention := json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"personId":"s-ada"}}]}]}`)
+	mention := json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"personId":"s-priya"}}]}]}`)
 	for _, x := range []struct {
 		name string
 		c    edit
@@ -194,8 +194,8 @@ func TestEditIssue(t *testing.T) {
 		{"summary", ed(FieldSummary, " Fix logins ", 1), []IssueEvent{SummaryChanged{From: "Fix the login", To: "Fix logins"}}},
 		{"same summary", ed(FieldSummary, "Fix the login ", 1), nil}, // FR-14.3
 		{"description", edit{Field: FieldDescription, Doc: doc, Seen: 1}, []IssueEvent{DescriptionChanged{To: doc}}},
-		{"mention", edit{Field: FieldDescription, Doc: mention, Seen: 1}, []IssueEvent{DescriptionChanged{To: mention, Mentions: []string{"s-ada"}},
-			WatchersAdded{People: []string{"s-ada"}}}}, // FR-27.2
+		{"mention", edit{Field: FieldDescription, Doc: mention, Seen: 1}, []IssueEvent{DescriptionChanged{To: mention, Mentions: []string{"s-priya"}},
+			WatchersAdded{People: []string{"s-priya"}}}}, // FR-27.2
 		{"no description", edit{Field: FieldDescription, Doc: json.RawMessage(`null`), Seen: 1}, nil},
 		{"type", ed(FieldType, "bug", 1), []IssueEvent{TypeChanged{From: Story, To: Bug}}},
 		{"status", ed(FieldStatus, StatusInReview, 1), []IssueEvent{StatusChanged{From: StatusToDo, To: StatusInReview, Category: InProgress}}},
@@ -365,12 +365,12 @@ func TestProjectMoveDecider(t *testing.T) {
 }
 
 func TestCommentDeciders(t *testing.T) {
-	body := json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Looks good "},{"type":"mention","attrs":{"personId":"s-ada","label":"Ada"}}]}]}`)
+	body := json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Looks good "},{"type":"mention","attrs":{"personId":"s-priya","label":"Ada"}}]}]}`)
 	add := eventstest.For(addComment)
 	nc := func(b json.RawMessage) newComment {
 		return newComment{AddComment: AddComment{Issue: "i1", Body: b}, project: "p1"}
 	}
-	add.When(nc(body)).Then(t, CommentAdded{Subject: SubjectIssue, SubjectID: "i1", Project: "p1", Body: body, Mentions: []string{"s-ada"}})
+	add.When(nc(body)).Then(t, CommentAdded{Subject: SubjectIssue, SubjectID: "i1", Project: "p1", Body: body, Mentions: []string{"s-priya"}})
 	add.When(nc(PlainDoc("  "))).ThenError(t, refuse("body", "Write something first.")) // FR-65.1
 	add.When(nc(PlainDoc(strings.Repeat("x", 10001)))).ThenError(t, refuse("body", "A comment has at most 10,000 characters."))
 	add.When(nc(json.RawMessage(`{"type":"doc","content":[{"type":"heading","content":[{"type":"text","text":"H"}]}]}`))).
@@ -386,11 +386,11 @@ func TestCommentDeciders(t *testing.T) {
 	gone.deleted = true
 	add.When(gone).ThenError(t, errDeleted)
 
-	c := CommentAdded{Subject: SubjectIssue, SubjectID: "i1", Project: "p1", Body: PlainDoc("First"), Mentions: []string{"s-ada"}}
+	c := CommentAdded{Subject: SubjectIssue, SubjectID: "i1", Project: "p1", Body: PlainDoc("First"), Mentions: []string{"s-priya"}}
 	edit := eventstest.For(editCommentDecider).Given(c)
-	both := json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"personId":"s-ada"}},{"type":"mention","attrs":{"personId":"s-bruno"}}]}]}`)
-	edit.When(editComment{both}).Then(t, CommentEdited{Body: both, Mentions: []string{"s-bruno"}})                                           // FR-67.3: Ada was told already
-	edit.Given(CommentEdited{Body: PlainDoc("x")}).When(editComment{both}).Then(t, CommentEdited{Body: both, Mentions: []string{"s-bruno"}}) // once, even when she comes back
+	both := json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"personId":"s-priya"}},{"type":"mention","attrs":{"personId":"s-tomasz"}}]}]}`)
+	edit.When(editComment{both}).Then(t, CommentEdited{Body: both, Mentions: []string{"s-tomasz"}})                                           // FR-67.3: Ada was told already
+	edit.Given(CommentEdited{Body: PlainDoc("x")}).When(editComment{both}).Then(t, CommentEdited{Body: both, Mentions: []string{"s-tomasz"}}) // once, even when she comes back
 	edit.When(editComment{PlainDoc("First")}).Then(t)
 	edit.When(editComment{PlainDoc("")}).ThenError(t, refuse("body", "Write something first."))
 	edit.Given(CommentDeleted{}).When(editComment{PlainDoc("x")}).ThenError(t, &writer.Refusal{Msg: "This comment was deleted."})

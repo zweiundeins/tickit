@@ -58,7 +58,7 @@ func TestCheckAgreesWithOracle(t *testing.T) {
 		docOf(`{"type":"table","content":[{"type":"table_row","content":[{"type":"table_cell","attrs":{"colwidth":[100,{"b":1,"2":0,"a":[]}]},"content":[` + para + `]}]}]}`),
 		docOf(`{"type":"bullet_list","content":[{"type":"list_item","content":[{"type":"bullet_list","content":[{"type":"list_item","content":[` + para + `]}]}]}]}`),
 		docOf(`{"type":"paragraph","content":[{"type":"text","text":"tab\tquote\" back\\ ctl\u0001 é 😀 \u2028"}]}`),
-		docOf(`{"type":"paragraph","content":[{"type":"mention","attrs":{"personId":"s-ada"},"marks":[{"type":"link","attrs":{"href":"https://x.y"}}]}]}`),
+		docOf(`{"type":"paragraph","content":[{"type":"mention","attrs":{"personId":"s-priya"},"marks":[{"type":"link","attrs":{"href":"https://x.y"}}]}]}`),
 		`{"type":"paragraph"}`,
 	}
 	for i, c := range cases {

@@ -49,7 +49,7 @@ func newSearch(t *testing.T) *searchEnv {
 	day(4)
 	add("WEB-3", sunny, CreateIssue{Project: e.web, Summary: "under_score and Über", Status: StatusDone, Priority: Low, Sprint: e.sprint})
 	day(5)
-	add("WEB-4", sunny, CreateIssue{Project: e.web, Summary: "Comment holds the word", Status: StatusBacklog, Assignee: "s-ada"})
+	add("WEB-4", sunny, CreateIssue{Project: e.web, Summary: "Comment holds the word", Status: StatusBacklog, Assignee: "s-priya"})
 	e.must(DeleteIssue{By: e.by(admin), Issue: e.issue(sunny, CreateIssue{Project: e.web, Summary: "gone"})})
 	e.result(AddComment{By: e.by(rainy), Issue: e.ids["WEB-4"], Body: PlainDoc("A ZEBRA crossed")})
 	day(6)
@@ -98,7 +98,7 @@ func TestSearchFilters(t *testing.T) {
 		{"priority", Filter{Priorities: []Priority{Critical, Low}}, "WEB-2 WEB-3"},
 		{"assignee me", Filter{Assignees: []string{Me}}, "WEB-1"},
 		{"assignee unassigned", Filter{Assignees: []string{Unassigned}}, "APP-1 WEB-3"},
-		{"assignee ids", Filter{Assignees: []string{rainy.ID, "s-ada"}}, "WEB-2 WEB-4"},
+		{"assignee ids", Filter{Assignees: []string{rainy.ID, "s-priya"}}, "WEB-2 WEB-4"},
 		{"reporter", Filter{Reporters: []string{Me}}, "WEB-2 WEB-3 WEB-4"},
 		{"label", Filter{Labels: []string{"UX", "checkout"}}, "WEB-1 WEB-2"},
 		{"component", Filter{Components: []string{"Search"}}, "WEB-1"},
@@ -154,7 +154,7 @@ func TestSearchSorts(t *testing.T) {
 		{Sort{By: SortStatus}, "WEB-4 WEB-1 WEB-2 WEB-3"}, // Backlog, To Do, In Review, Done
 		{Sort{By: SortType}, "WEB-1 WEB-3 WEB-4 WEB-2"},   // story, task, task, bug; ties by key
 		{Sort{By: SortSummary}, "WEB-2 WEB-4 WEB-1 WEB-3"},
-		{Sort{By: SortAssignee}, "WEB-4 WEB-1 WEB-2 WEB-3"}, // Ada, then Sunny and Rainy by name, unassigned last
+		{Sort{By: SortAssignee}, "WEB-4 WEB-1 WEB-2 WEB-3"}, // by name, unassigned last
 		{Sort{By: SortDue}, "WEB-1 WEB-2 WEB-3 WEB-4"},
 		{Sort{By: SortDue, Desc: true}, "WEB-2 WEB-1 WEB-3 WEB-4"}, // none last both ways
 		{Sort{By: SortKey, Desc: true}, "WEB-4 WEB-3 WEB-2 WEB-1"},
@@ -163,9 +163,11 @@ func TestSearchSorts(t *testing.T) {
 	} {
 		want := c.want
 		if c.s.By == SortAssignee {
-			if strings.Compare(strings.ToLower(sunny.Name), strings.ToLower(rainy.Name)) > 0 {
-				want = "WEB-4 WEB-2 WEB-1 WEB-3"
-			}
+			byName := []struct{ key, name string }{{"WEB-4", "Priya Raman"}, {"WEB-1", sunny.Name}, {"WEB-2", rainy.Name}}
+			slices.SortStableFunc(byName, func(a, b struct{ key, name string }) int {
+				return strings.Compare(strings.ToLower(a.name), strings.ToLower(b.name))
+			})
+			want = byName[0].key + " " + byName[1].key + " " + byName[2].key + " WEB-3"
 		}
 		if got := strings.Join(e.keys(t, web, c.s), " "); got != want {
 			t.Errorf("%+v: %q, want %q", c.s, got, want)
@@ -216,12 +218,12 @@ func TestSearchPages(t *testing.T) {
 func TestFilterValues(t *testing.T) {
 	f := Filter{Projects: []string{"app", "WEB", "WEB"}, Types: []IssueType{"bug", "Story"}, Statuses: []string{"inreview"},
 		Categories: []Category{Done}, Priorities: []Priority{High, "urgent"}, Assignees: []string{Unassigned, Me, "nobody"},
-		Reporters: []string{"s-ada"}, Labels: []string{"UX"}, Components: []string{" Search "}, Sprints: []string{NoSprint},
+		Reporters: []string{"s-priya"}, Labels: []string{"UX"}, Components: []string{" Search "}, Sprints: []string{NoSprint},
 		DueFrom: "2026-10-01", DueTo: "2026-13-01", CreatedFrom: "2026-10-01", CreatedTo: "2026-10-31", Text: "  100%  done "}
 	n := f.Normalize("")
 	want := Filter{Projects: []string{"APP", "WEB"}, Types: []IssueType{Bug, Story}, Statuses: []string{"inreview"},
 		Categories: []Category{Done}, Priorities: []Priority{High}, Assignees: []string{Me, Unassigned},
-		Reporters: []string{"s-ada"}, Labels: []string{"ux"}, Components: []string{"Search"}, Sprints: []string{NoSprint},
+		Reporters: []string{"s-priya"}, Labels: []string{"ux"}, Components: []string{"Search"}, Sprints: []string{NoSprint},
 		DueFrom: "2026-10-01", CreatedFrom: "2026-10-01", CreatedTo: "2026-10-31", Text: "100% done"}
 	if fmt.Sprint(n) != fmt.Sprint(want) {
 		t.Errorf("normalized:\n%+v\nwant\n%+v", n, want)
@@ -235,7 +237,7 @@ func TestFilterValues(t *testing.T) {
 		t.Error("the key changed through the URL")
 	}
 	shuffled := Filter{Projects: []string{"WEB", "APP"}, Types: []IssueType{Story, Bug}, Statuses: []string{"inreview"}, Categories: []Category{Done},
-		Priorities: []Priority{High}, Assignees: []string{Unassigned, Me}, Reporters: []string{"s-ada"}, Labels: []string{"ux"},
+		Priorities: []Priority{High}, Assignees: []string{Unassigned, Me}, Reporters: []string{"s-priya"}, Labels: []string{"ux"},
 		Components: []string{"Search"}, Sprints: []string{NoSprint}, DueFrom: "2026-10-01", CreatedFrom: "2026-10-01",
 		CreatedTo: "2026-10-31", Text: "100% done"}
 	if shuffled.Normalize("").Key() != n.Key() || (Filter{Text: "x"}).Key() == n.Key() {

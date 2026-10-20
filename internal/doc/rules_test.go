@@ -56,7 +56,7 @@ func TestRulesRefuse(t *testing.T) {
 		{inPara(`{"type":"issue_chip","attrs":{"key":"WEB-0"}}`), "An issue chip needs an issue key such as WEB-12."},
 		{inPara(`{"type":"issue_chip","attrs":{"key":"web-1"}}`), "An issue chip needs an issue key such as WEB-12."},
 		{inPara(`{"type":"mention","attrs":{"personId":"p1"}}`), "A mention names a person of this site."},
-		{inPara(`{"type":"mention","attrs":{"personId":"s-ada","label":"A"}}`), "A mention's name has 2 to 30 characters."},
+		{inPara(`{"type":"mention","attrs":{"personId":"s-priya","label":"A"}}`), "A mention's name has 2 to 30 characters."},
 		{inPara(`{"type":"page_link","attrs":{"pageId":"pg1"}}`), "A page link names a page of this site."},
 		{inPara(`{"type":"text","text":"x","marks":[{"type":"link","attrs":{"href":"javascript:alert(1)"}}]}`), "A link must start with http://, https:// or mailto: and be at most 2,048 characters."},
 		{inPara(`{"type":"text","text":"x","marks":[{"type":"link","attrs":{"href":"https://` + strings.Repeat("a", 2050) + `"}}]}`), "A link or attribute holds at most 2,048 characters."},
