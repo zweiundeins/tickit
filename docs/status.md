@@ -7,7 +7,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | Area | Must done | Must partly | Must not done | Should done | Should partly | Should not done |
 | --- | --- | --- | --- | --- | --- | --- |
 | Projects | 1 | 0 | 0 | 1 | 0 | 0 |
-| Issues | 8 | 1 | 0 | 5 | 3 | 0 |
+| Issues | 8 | 1 | 0 | 6 | 2 | 0 |
 | Workflows and statuses | 1 | 0 | 0 | 0 | 1 | 0 |
 | Boards, backlog and sprints | 2 | 0 | 0 | 2 | 0 | 0 |
 | Search, filters, bulk edit and dashboards | 7 | 0 | 0 | 0 | 2 | 0 |
@@ -47,7 +47,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | FR-12 | Open an issue by key | Must | done | internal/tracker/commands_test.go: TestKeys; internal/web/issue_actions_test.go: TestIssueURLs |  |
 | FR-13 | View an issue | Must | done | e2e/issue_test.go: TestIssuePanel (Chromium); e2e/issue_test.go: TestIssueTwoPeople (Chromium) | No test checks every field of FR-13.1, but the issue page renders all of them with names and faces. |
 | FR-14 | Edit summary and description | Must | done | e2e/issue_test.go: TestIssueEditInPlace (Chromium); internal/tracker/decide_test.go: TestEditIssue; internal/tracker/commands_test.go: TestFieldConflicts; internal/web/issue_actions_test.go: TestIssueActionsAccepted; internal/web/issue_actions_test.go: TestIssueActionsRefused |  |
-| FR-15 | Rich-text description | Should | partly | none | No test cites it. Descriptions are typed as text markup and rendered rich (chips, mentions, lists, code), but they do not use the page editor and are not co-edited (FR-15.1, FR-15.2). |
+| FR-15 | Rich-text description | Should | done | internal/tracker/description_test.go: TestDescriptionCommits; internal/tracker/description_test.go: TestDescriptionVersions; internal/tracker/description_test.go: TestDescriptionFold; internal/tracker/description_test.go: TestDescriptionReset; internal/tracker/decide_test.go: TestCutDescription; internal/notify/notify_test.go: TestMentions; internal/activity/activity_test.go: TestFeeds; internal/web/desc_test.go: TestDescriptionLive; internal/web/desc_test.go: TestDescriptionAnswers; e2e/desc_coedit_test.go: TestDescriptionCoEditing (Chromium) | The description is a co-edited document in the page editor (docs/editor.md, "Issue descriptions"), whose versions are cut as issue.description_changed; the create dialog still takes text markup. In the issue panel, Edit opens the issue's page with the editor. |
 | FR-16 | Change status | Must | partly | internal/tracker/issuepage_test.go: TestProjectWorkflow; internal/web/issue_actions_test.go: TestIssueActionsAccepted; internal/web/board_test.go: TestBoardMoveAccepted | Status changes from the menu and the board work live, but the bulk edit path of FR-16.1 is missing because FR-58 (a Could) is not built. |
 | FR-17 | Assign and unassign | Must | done | internal/tracker/commands_test.go: TestAssign; internal/tracker/decide_test.go: TestEditIssue; internal/notify/notify_test.go: TestAssignment |  |
 | FR-18 | Change priority | Must | done | internal/ui/ui_test.go: TestIcons; internal/web/issue_actions_test.go: TestIssueActionsAccepted |  |
@@ -97,7 +97,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | FR-65 | Comment on an issue | Must | done | internal/tracker/commands_test.go: TestComments; internal/tracker/decide_test.go: TestCommentDeciders; internal/web/issue_actions_test.go: TestIssueActionsAccepted; internal/tracker/issuepage_test.go: TestTyping | The per-tab draft lives in sessionStorage; no test checks it across a reconnect. |
 | FR-66 | Edit and delete own comments | Should | done | internal/tracker/commands_test.go: TestComments; internal/web/issue_actions_test.go: TestIssueActionsAccepted | TestComments cites "FR-65 to FR-67" and covers edit, delete, "Comment deleted" and a moderator's hide. |
 | FR-67 | Mentions | Should | partly | internal/tracker/commands_test.go: TestComments; internal/tracker/decide_test.go: TestCommentDeciders; internal/notify/notify_test.go: TestMentions | A mention renders as "@Name" without an avatar and links to /people/<id>, which no route serves (FR-67.2). |
-| FR-68 | Issue history | Must | done | internal/tracker/commands_test.go: TestHistory |  |
+| FR-68 | Issue history | Must | done | internal/tracker/commands_test.go: TestHistory; internal/tracker/description_test.go: TestDescriptionVersions; internal/web/desc_test.go: TestDescriptionLive | A description's versions are entries with a comparison to the version before. |
 | FR-69 | Activity feed | Should | done | internal/activity/activity_test.go: TestFeeds; internal/activity/activity_test.go: TestPageEditsMerge; internal/web/notify_test.go: TestHomeAndReactions |  |
 | FR-70 | Issue or page as of an earlier version | Should | done | internal/tracker/commands_test.go: TestHistory | Sliders exist for issues and pages; tests cover only the issue's state at a version, not the slider or the shared render (FR-70.3). |
 
@@ -253,7 +253,7 @@ No Must or Should requirements.
 | NFR-40 | Search speed | Should | done | internal/web/perf_test.go: TestSearchSpeed | 10,000 issues and 2,000 pages, p95 under 200 ms, recorded in benchmarks/RESULTS.md; pages go into the index through its hook, not the wiki's commands. |
 | NFR-41 | Bounded resources | Must | done | internal/tabs/tabs_test.go: TestSweep; internal/demo/reset_test.go: TestReset; cmd/tickit-load (go tool task load) | The 201st stream answers 503, and an address holds 40 streams (the hub's per-client cap, 429 beyond); anonymous memory at most 530 MiB under MemoryMax 640M, though above MemoryHigh 512M, where systemd throttles. |
 | NFR-42 | Reconnect after a deploy | Must | done | internal/web/stream_test.go: TestReconnect; e2e/editor_reconnect_test.go: TestEditorReconnect (Chromium); cmd/tickit-load (go tool task load) | All 200 streams back with current frames 1.0 s after /healthz. |
-| NFR-43 | Growth of the event log from co-editing | Must | partly | internal/wiki/bench_test.go: TestFoldTime; internal/wiki/commands_test.go: TestFold; internal/wiki/commands_test.go: TestCommits; cmd/tickit-load (go tool task load) (-sustain; tickit-load fold) | The fold keeps up and co-editing adds about 76 MB a day, but the issue changes of NFR-38 add 620 MB a day, and each fold command holds the writer 24 ms, not 5 (lith's Compact scans the page's stream). |
+| NFR-43 | Growth of the event log from co-editing | Must | partly | internal/wiki/bench_test.go: TestFoldTime; internal/wiki/commands_test.go: TestFold; internal/wiki/commands_test.go: TestCommits; internal/tracker/description_test.go: TestDescriptionFold; cmd/tickit-load (go tool task load) (-sustain; tickit-load fold) | The fold keeps up and co-editing adds about 76 MB a day, but the issue changes of NFR-38 add 620 MB a day, and each fold command holds the writer 24 ms, not 5 (lith's Compact scans the page's stream). |
 | NFR-44 | Search stays right through rebuilds | Must | done | internal/search/search_test.go: TestRebuild |  |
 
 ## Non-functional: Accessibility

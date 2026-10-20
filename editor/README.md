@@ -88,15 +88,16 @@ All bubble and are composed. The detail never goes into a signal; commits and pr
 ## Wiring the page
 
 ```html
-data-on:sb-commit="@post('/cmd/pages/' + evt.detail.page + '/commit',
+data-on:sb-commit="@post(el.dataset.cmd + '/commit',
     {payload: {...evt.detail, tab: $_tab}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0})
   .then(() => el.posted(evt.detail.ref, true), () => el.posted(evt.detail.ref, false))"
-data-on:sb-presence="@post('/cmd/pages/' + evt.detail.page + '/presence',
+data-on:sb-presence="@post(el.dataset.cmd + '/presence',
     {payload: {...evt.detail, tab: $_tab}, retry: 'never', retryMaxCount: 0}).catch(() => {})"
 data-on:sb-status="$_editor.status = evt.detail.status"
 data-on:sb-stopped="$_editor.stopped = evt.detail.state"
 ```
 
+- `data-cmd` on the host is where the subject's actions are: `/cmd/pages/<id>` for a page, `/cmd/issues/<id>/description` for an issue's description (docs/editor.md, "Subjects").
 - `requestCancellation: 'disabled'` keeps a commit from being aborted by the next post to the same URL. Presence may keep the default: a newer position replaces an older one anyway.
 - `retryMaxCount: 0` makes a network failure reject at once, so the component decides when to resend. Datastar retries network errors up to `retryMaxCount` even with `retry: 'never'`; `retry` governs only HTTP statuses.
 - The `{...evt.detail}` spread is fine in a Datastar expression; `el` is the host.
