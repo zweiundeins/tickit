@@ -5,6 +5,7 @@
 	/* ── A page ────────────────────────────────────────────────────── */
 	.wk-page {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-4);
 		max-inline-size: var(--tk-prose-max);
 		min-inline-size: 0;
@@ -110,7 +111,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--tk-space-2);
-		inline-size: 12rem;
+		inline-size: min(12rem, 100%);
 	}
 
 	.wk-problem {
@@ -310,8 +311,10 @@
 
 	/* ── History, versions, trash ──────────────────────────────────── */
 	.wk-history,
-	.wk-trash {
+	.wk-trash,
+	.wk-spaces {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-4);
 		min-inline-size: 0;
 	}
