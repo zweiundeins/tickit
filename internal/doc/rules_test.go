@@ -43,7 +43,9 @@ func TestRulesRefuse(t *testing.T) {
 	cell := func(attrs string) string {
 		return `{"type":"table_cell","attrs":` + attrs + `,"content":[` + para + `]}`
 	}
-	row := func(cells ...string) string { return `{"type":"table_row","content":[` + strings.Join(cells, ",") + `]}` }
+	row := func(cells ...string) string {
+		return `{"type":"table_row","content":[` + strings.Join(cells, ",") + `]}`
+	}
 	cases := []struct{ doc, msg string }{
 		{docOf(`{"type":"heading","attrs":{"level":4}}`), "A heading has level 1, 2 or 3."},
 		{docOf(`{"type":"heading","attrs":{"level":1.5}}`), "A heading has level 1, 2 or 3."},
