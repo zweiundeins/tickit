@@ -70,8 +70,7 @@ templ Shell(p ShellProps) {
 		if p.Sidebar != nil && p.Collapsed {
 			data-sidebar="collapsed"
 		}
-		else
-		if p.Sidebar != nil {
+		if p.Sidebar != nil && !p.Collapsed {
 			data-sidebar="open"
 		}
 		data-preserve-attr="data-sidebar"
