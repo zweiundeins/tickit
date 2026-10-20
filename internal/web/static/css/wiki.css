@@ -271,6 +271,10 @@
 		gap: var(--tk-space-2);
 	}
 
+	.wk-tree__presence {
+		margin-block-end: var(--tk-space-2);
+	}
+
 	/* ── Spaces (FR-75) ────────────────────────────────────────────── */
 	.wk-spacelist {
 		display: grid;

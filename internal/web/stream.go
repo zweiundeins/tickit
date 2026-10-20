@@ -42,8 +42,10 @@ import (
 type ViewFactory func(ctx context.Context, q sqlite.Querier, actor people.Person, arg string) (live.View, error)
 
 type viewKind struct {
-	make     ViewFactory
-	presence bool
+	make ViewFactory
+	// presenceOf names the view whose presence row a view of the kind
+	// joins, from the view's key; nil: none.
+	presenceOf func(key string) string
 }
 
 // ViewRegistry holds the kinds of views pages may name. Areas register
@@ -62,21 +64,30 @@ func newViewRegistry() *ViewRegistry { return &ViewRegistry{kinds: map[string]vi
 var kindPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
 
 // Register adds a kind of view.
-func (vr *ViewRegistry) Register(kind string, f ViewFactory) { vr.add(kind, f, false) }
+func (vr *ViewRegistry) Register(kind string, f ViewFactory) { vr.add(kind, f, nil) }
 
 // RegisterWithPresence adds a kind of view whose watchers show as faces:
 // a stream that watches one of its views watches its presence view too
 // (presenceView, MP-02).
-func (vr *ViewRegistry) RegisterWithPresence(kind string, f ViewFactory) { vr.add(kind, f, true) }
+func (vr *ViewRegistry) RegisterWithPresence(kind string, f ViewFactory) {
+	vr.add(kind, f, func(key string) string { return key })
+}
 
-func (vr *ViewRegistry) add(kind string, f ViewFactory, presence bool) {
+// RegisterWithPresenceOf adds a kind of view whose watchers show in the
+// presence row of another: of(key) names it, so that views of many keys
+// share one row (a space's page tree, MP-02.1).
+func (vr *ViewRegistry) RegisterWithPresenceOf(kind string, f ViewFactory, of func(key string) string) {
+	vr.add(kind, f, of)
+}
+
+func (vr *ViewRegistry) add(kind string, f ViewFactory, presenceOf func(string) string) {
 	if !kindPattern.MatchString(kind) || f == nil {
 		panic("web: view kind " + kind + ": lowercase letters, digits and -, and a factory")
 	}
 	if _, ok := vr.kinds[kind]; ok {
 		panic("web: view kind " + kind + " registered twice")
 	}
-	vr.kinds[kind] = viewKind{make: f, presence: presence}
+	vr.kinds[kind] = viewKind{make: f, presenceOf: presenceOf}
 }
 
 // MaxViews is how many views a document may name in its stream's URL.
@@ -132,8 +143,8 @@ func (s *Server) resolve(ctx context.Context, q sqlite.Querier, actor people.Per
 	if v.Key == "" || v.Render == nil {
 		return nil, fmt.Errorf("web: view %s has no key or no render", spec)
 	}
-	if k.presence {
-		return []live.View{v, s.presenceView(v.Key)}, nil
+	if k.presenceOf != nil {
+		return []live.View{v, s.presenceView(k.presenceOf(v.Key))}, nil
 	}
 	return []live.View{v}, nil
 }
@@ -232,6 +243,9 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		Slow:      edge.SlowLink(r),
 		Ack:       ackEvent(tab), // paced once the page reports it fell behind (pace.go)
 	}
+	ctx, ended := s.track(r, spec.ID, &openStream{actor: actor, sid: sid, tab: tab, specs: specs})
+	defer ended()
+	r = r.WithContext(ctx)
 	if actor.Kind == people.Account { // NFR-04.2: a logout ends the login's streams too
 		ctx, stop := context.WithCancel(ctx)
 		defer stop()
@@ -423,8 +437,9 @@ const MaxPresent = 50
 // presenceView is the row of faces of the people who watch the view with
 // key: one face per person, however many tabs they have on it, in the
 // order they came (MP-01, MP-02). It renders again when a stream starts or
-// stops watching (Presence) and when names change (people.Topic). It is
-// shared: the document marks the viewer's own face (views.Shell.Me).
+// stops watching (Presence), when names change (people.Topic) and when one
+// of them turns away or comes back (present). It is shared: the document
+// marks the viewer's own face (views.Shell.Me).
 func (s *Server) presenceView(of string) live.View {
 	key := presenceKey(of)
 	return live.View{
@@ -432,22 +447,9 @@ func (s *Server) presenceView(of string) live.View {
 		Topics:   []string{people.Topic},
 		Presence: true,
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
-			var ids []string
-			count := map[string]int{}
-			for _, id := range s.hub.Watchers(key) {
-				p := personOf(id)
-				if count[p] == 0 && len(ids) < MaxPresent {
-					ids = append(ids, p)
-				}
-				count[p]++
-			}
-			found, err := people.Lookup(ctx, querier(ctx, tx), ids...)
+			list, err := s.present(ctx, querier(ctx, tx), key, time.Now())
 			if err != nil {
 				return nil, err
-			}
-			list := make([]views.Present, 0, len(ids))
-			for _, id := range ids {
-				list = append(list, views.Present{Person: found[id], Tabs: count[id]})
 			}
 			return patch(ctx, views.Presence(views.PresenceID(of), list))
 		},

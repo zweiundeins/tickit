@@ -105,6 +105,7 @@ var secCases = []secCase{
 	{name: "login", pattern: "POST /cmd/login", need: public, by: wGuest, mustOK: true, req: at("/cmd/login", "email", "nobody@example.com", "password", "not the password")},
 	{name: "logout", pattern: "POST /cmd/logout", need: public, by: wViewer, mustOK: true, req: at("/cmd/logout")},
 	{name: "rename", pattern: "POST /cmd/people/rename", need: self, guard: true, outcome: true, by: wGuest, req: at("/cmd/people/rename", "name", "Renamed")},
+	{name: "input", pattern: "POST /cmd/input", need: self, guard: true, by: wGuest, req: at("/cmd/input")},
 	{name: "prefs", pattern: "POST /cmd/prefs", need: self, guard: true, outcome: true, by: wGuest, req: at("/cmd/prefs", "key", "theme", "value", "dark")},
 
 	{name: "projects/create", pattern: "POST /cmd/projects/create", need: self, guard: true, outcome: true, by: wGuest, req: at("/cmd/projects/create", "key", "NEWP", "name", "New project")},

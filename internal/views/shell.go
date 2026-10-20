@@ -106,7 +106,7 @@ func jsString(s string) string {
 func signals(s Shell) string {
 	prefs, _ := json.Marshal(s.Prefs.Normal())
 	return "{_tab: " + jsString(s.Tab) + ", _views: " + jsString(strings.Join(s.Views, ",")) + ", _slow: " + slowLink +
-		", _outcomes: {}, _ping: 0, _beat: 0, _stale: false, _goto: '', _problem: '', _prefs: " + string(prefs) +
+		", _outcomes: {}, _ping: 0, _beat: 0, _input: 0, _stale: false, _goto: '', _problem: '', _prefs: " + string(prefs) +
 		", _display: {op: ''}, _dismiss: {op: ''}, _rename: {op: '', name: '', msg: '', ok: false}}"
 }
 
@@ -142,13 +142,22 @@ const Shown = 8
 type Present struct {
 	people.Person
 	Tabs int
+	// Away: no input for five minutes (MP-02.4).
+	Away bool
+}
+
+// PresenceEntry is someone in a presence row as internal/ui draws them.
+func PresenceEntry(p Present) ui.PresenceEntry {
+	e := ui.PresenceEntry{Person: UIPerson(p.Person), Tabs: p.Tabs}
+	e.Person.Away = p.Away
+	return e
 }
 
 // entries are the presence row's people as internal/ui draws them.
 func entries(list []Present) []ui.PresenceEntry {
 	out := make([]ui.PresenceEntry, len(list))
 	for i, p := range list {
-		out[i] = ui.PresenceEntry{Person: UIPerson(p.Person), Tabs: p.Tabs}
+		out[i] = PresenceEntry(p)
 	}
 	return out
 }

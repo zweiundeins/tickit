@@ -298,6 +298,17 @@ templ moveFooter() {
 	@ui.Button(ui.ButtonProps{Label: "Move", Variant: ui.Primary, Type: "submit", Attrs: templ.Attributes{"form": "move-form", "data-attr:aria-busy": Busy("_wk.move.op")}})
 }
 
+// SpaceTree is the sidebar's tree of a space, with the faces of the
+// people on its pages above it when presence names its row's id (MP-02.1).
+templ SpaceTree(label string, items []ui.TreeItem, presence string) {
+	if presence != "" {
+		<div class="wk-tree__presence">
+			@Presence(presence, nil)
+		</div>
+	}
+	@PageTree(label, items)
+}
+
 // PageTree is the space's tree beside the page (FR-78): the current page
 // highlighted and its ancestors open; a person opens and closes nodes in
 // the page, which frames keep (ui.Tree, data-preserve-attr).

@@ -117,6 +117,7 @@ func (s *realServer) Start() {
 	jobsCtx, stopJobs := context.WithCancel(context.Background())
 	jobsDone := make(chan struct{})
 	go func() { defer close(jobsDone); site.WikiJobs(jobsCtx) }()
+	go site.PresenceJobs(jobsCtx)
 	s.closed = make(chan struct{})
 	go func() { defer close(s.closed); s.srv.Serve(ln) }()
 	s.stop = func() {

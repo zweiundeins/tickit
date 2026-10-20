@@ -18,13 +18,26 @@ const slowLink = `((c, n) => c ? c.saveData || ['slow-2g', '2g', '3g'].includes(
 // through network errors, 502s and 503s and never gives up, but leaves a
 // stream the server ends closed: on a deploy the server ends it with
 // sse.Reconnect, which runs this again.
-const openStream = `@get('/stream?tab=' + $_tab + '&v=' + encodeURIComponent($_views), {headers: $_slow ? {'Save-Data': 'on'} : {}, retry: 'error', retryMaxCount: Infinity, retryMaxWait: 10000})`
+const openStream = `@get('/stream?tab=' + $_tab + '&alive=1&v=' + encodeURIComponent($_views), {headers: $_slow ? {'Save-Data': 'on'} : {}, retry: 'error', retryMaxCount: Infinity, retryMaxWait: 10000})`
 
 // behind asks the server to pace the tab's stream each time newest-frame.js
 // reports that the page fell behind it (newest-frame-behind); /pace counts
 // the report too. It runs on <body>, where the event bubbles to: a @post
 // from the stream's element would abort its stream.
 const behind = `@post('/pace?tab=' + $_tab, {requestCancellation: 'disabled'})`
+
+// alive answers each heartbeat ($_ping), which the stream promised with
+// alive=1: the server ends the stream of a page that went away without
+// closing its connection, and with it the page's faces (MP-02.3). It runs
+// on an element of its own: a @post from the stream's element would abort
+// its stream.
+const alive = `$_ping > 0 && @post('/alive?tab=' + $_tab, {requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0}).catch(() => {})`
+
+// inputSeen reports that the person gave input (MP-02.4): as the page
+// opens, then at most once a minute while there is input, so a person
+// with no input for 5 minutes shows as away and one who comes back shows
+// at once. $_input is when it last reported.
+const inputSeen = `Date.now() - $_input > 60000 && ($_input = Date.now(), @post('/cmd/input', {payload: {tab: $_tab, op: ` + newOp + `}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0}).catch(() => {}))`
 
 // startStream is the stream element's data-init.
 const startStream = `$_beat = Date.now(); ` + openStream

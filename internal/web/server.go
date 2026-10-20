@@ -74,7 +74,9 @@ type Server struct {
 	limits   *limits         // the rate limits of actions (DM-04)
 	signIn   *edge.Limiter   // logins and logouts per address (NFR-09.1)
 	streams  *streamLimits   // streams opened per address (NFR-41)
-	pacing   *paceLimits     // /pace and /ack (pace.go)
+	pacing   *paceLimits     // /pace, /ack and /alive (pace.go, alive.go)
+	open     *openStreams    // the open streams (alive.go)
+	aliveFor time.Duration   // AliveTimeout as the server started
 	lockout  *people.Lockout // failed logins per email and address (NFR-09.2)
 	metrics  *metrics
 	projects *projectsCache // the home page's projects and open counts
@@ -140,6 +142,8 @@ func New(cfg Config) (*Server, error) {
 		signIn:   edge.NewLimiter(0.5, 10), // 30 a minute, 10 at once
 		streams:  newStreamLimits(),
 		pacing:   newPaceLimits(),
+		open:     newOpenStreams(),
+		aliveFor: AliveTimeout,
 		lockout:  people.NewLockout(),
 		metrics:  newMetrics(cfg.DB, cfg.Hub),
 		projects: newProjectsCache(cfg.Hub),
@@ -220,7 +224,7 @@ func (s *Server) Actions() []string { return slices.Clone(s.actions) }
 func (s *Server) Handler() http.Handler {
 	h := people.Middleware(s.db, s.log)(s.mux)
 	h = s.sessions.Handler(h) // inside CSRF: a refused request gets no cookie
-	h = edge.CSRF{Datastar: []string{"POST /cmd/", "POST /pace", "POST /ack"}}.Handler(h)
+	h = edge.CSRF{Datastar: []string{"POST /cmd/", "POST /pace", "POST /ack", "POST /alive"}}.Handler(h)
 	h = edge.SecurityHeaders{CSP: edge.DefaultCSP(), HSTS: s.secure}.Handler(h)
 	h = noIndex(h)
 	h = edge.Compress(h)

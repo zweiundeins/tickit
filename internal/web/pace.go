@@ -24,6 +24,8 @@ import (
 type paceLimits struct {
 	paceAddrs, paces *edge.Limiter
 	ackAddrs, acks   *edge.Limiter
+	// /alive (alive.go): a page answers a heartbeat every 20 s.
+	aliveAddrs, alives *edge.Limiter
 }
 
 func newPaceLimits() *paceLimits {
@@ -32,6 +34,9 @@ func newPaceLimits() *paceLimits {
 		paces:     edge.NewLimiter(1, 5),    // per session: a page reports every 3 s at most
 		ackAddrs:  edge.NewLimiter(80, 160), // per client address: four paced streams
 		acks:      edge.NewLimiter(20, 40),  // per stream: a paced page acknowledges ten writes a second at most
+		// per client address: 40 streams' heartbeats; per stream: one a 20 s heartbeat, and a few more
+		aliveAddrs: edge.NewLimiter(4, 80),
+		alives:     edge.NewLimiter(0.5, 5),
 	}
 }
 

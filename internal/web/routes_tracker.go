@@ -671,7 +671,7 @@ func (s *Server) issueTyping(w http.ResponseWriter, r *http.Request, id string) 
 	if !ok {
 		return
 	}
-	cmd := tracker.SetTyping{By: a.By, Issue: id, Field: req.Field, Stop: req.Stop}
+	cmd := tracker.SetTyping{By: a.By, Issue: id, Field: req.Field, Stop: req.Stop, Tab: a.Tab}
 	if err := cmd.Validate(); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return

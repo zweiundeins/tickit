@@ -66,6 +66,9 @@ type SetTyping struct {
 	Issue string
 	Field string
 	Stop  bool
+	// Tab is the tab that types, whose stream's end takes the indicator
+	// away (EndTyping, MP-07.4).
+	Tab string
 }
 
 func (c SetTyping) Validate() error {
@@ -101,14 +104,46 @@ func (c SetTyping) Apply(tx *writer.Tx) error {
 	if c.Stop {
 		_, err = tx.Exec(`DELETE FROM issue_typing WHERE issue_id = ? AND person_id = ? AND field = ?`, c.Issue, c.By.Actor.ID, c.Field)
 	} else {
-		_, err = tx.Exec(`INSERT INTO issue_typing (issue_id, person_id, field, at) VALUES (?, ?, ?, ?)
-			ON CONFLICT (issue_id, person_id, field) DO UPDATE SET at = excluded.at`, c.Issue, c.By.Actor.ID, c.Field, now)
+		_, err = tx.Exec(`INSERT INTO issue_typing (issue_id, person_id, field, at, tab) VALUES (?, ?, ?, ?, ?)
+			ON CONFLICT (issue_id, person_id, field) DO UPDATE SET at = excluded.at, tab = excluded.tab`, c.Issue, c.By.Actor.ID, c.Field, now, c.Tab)
 	}
 	if err != nil {
 		return err
 	}
 	tx.Touch(TypingTopic(c.Issue))
 	return nil
+}
+
+// EndTyping takes away the indicators a tab put up: its stream ended, as
+// when the tab closed (MP-07.4).
+type EndTyping struct {
+	Person, Tab string
+}
+
+func (c EndTyping) Apply(tx *writer.Tx) error {
+	rows, err := tx.Query(`DELETE FROM issue_typing WHERE person_id = ? AND tab = ? RETURNING issue_id`, c.Person, c.Tab)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var issue string
+		if err := rows.Scan(&issue); err != nil {
+			return err
+		}
+		tx.Touch(TypingTopic(issue))
+	}
+	return rows.Err()
+}
+
+// TabTypes reports whether a tab of the person has a typing indicator up.
+func TabTypes(ctx context.Context, q sqlite.Querier, person, tab string) (bool, error) {
+	var one int
+	err := q.QueryRowContext(ctx, `SELECT 1 FROM issue_typing WHERE person_id = ? AND tab = ? LIMIT 1`, person, tab).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 // Typist is someone typing in a field of an issue.

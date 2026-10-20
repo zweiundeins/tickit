@@ -132,6 +132,10 @@ const issueFocusOut = `((ed) => ed && ed.dataset.editor === $_is.edit && !ed.con
 // (MP-07); throttled on the frame.
 const issueTyping = `((t) => t && $_is.at === 0 && @post('/cmd/issues/' + $_is.id + '/typing', {payload: {tab: $_tab, op: ` + newOp + `, field: t.dataset.typing === 'edit' ? $_is.edit : t.dataset.typing, stop: false}, retryMaxCount: 0}))(evt.target.closest?.('[data-typing]'))`
 
+// commentStopTyping ends the comment box's indicator when the focus
+// leaves it (MP-07.4); a comment sent ends it too.
+const commentStopTyping = `$_is.at === 0 && @post('/cmd/issues/' + $_is.id + '/typing', {payload: {tab: $_tab, op: ` + newOp + `, field: 'comment', stop: true}, retryMaxCount: 0}).catch(() => {})`
+
 // issueStopTyping ends the indicator of the open editor at once (MP-07.4).
 const issueStopTyping = `(($_is.edit === 'summary' || $_is.edit === 'description') && @post('/cmd/issues/' + $_is.id + '/typing', {payload: {tab: $_tab, op: ` + newOp + `, field: $_is.edit, stop: true}, retryMaxCount: 0}))`
 

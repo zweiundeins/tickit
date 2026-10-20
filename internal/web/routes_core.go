@@ -25,6 +25,8 @@ func (s *Server) routesCore() {
 	s.post("POST /cmd/unwatch", s.unwatch)
 	s.mux.HandleFunc("POST /pace", s.pace) // no actions: they change only how the stream sends (pace.go)
 	s.mux.HandleFunc("POST /ack", s.ack)
+	s.mux.HandleFunc("POST /alive", s.alive) // the page answers a heartbeat (alive.go)
+	s.post("POST /cmd/input", s.input)       // the person gave input: not away (presence.go)
 	s.get("GET /login", http.HandlerFunc(s.loginPage), "/login", "/login?next=/projects")
 	s.post("POST /cmd/login", s.login)
 	s.post("POST /cmd/logout", s.logout)

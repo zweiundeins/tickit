@@ -751,6 +751,7 @@ templ commentForm(p IssueFrameProps) {
 			data-init={ commentInit }
 			data-on:input={ commentInput }
 			data-on:keydown={ commentKeys }
+			data-on:blur={ commentStopTyping }
 			data-attr:readonly={ fieldExpr(editReadonly, "comment") }
 			data-attr:aria-busy={ fieldExpr(noteBusy, "comment") }
 			data-attr:disabled="$_is.at !== 0"

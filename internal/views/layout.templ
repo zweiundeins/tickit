@@ -37,6 +37,16 @@ templ Layout(s Shell) {
 		<body data-newest-frame data-on:newest-frame-behind={ behind } data-signals={ signals(s) } data-effect={ follow + "; " + applyPrefs }>
 			<div id={ StreamID } hidden data-init={ startStream } data-effect={ beat } data-on-interval__duration.10s={ watchdog } data-on:datastar-fetch={ streamFailed }></div>
 			<span hidden data-effect={ displaySettled + "; " + dismissSettled }></span>
+			<span hidden data-effect={ alive }></span>
+			<span
+				hidden
+				data-init={ inputSeen }
+				data-on:keydown__window={ inputSeen }
+				data-on:pointerdown__window={ inputSeen }
+				data-on:pointermove__window__throttle.5s={ inputSeen }
+				data-on:wheel__window__throttle.5s={ inputSeen }
+				data-on:touchstart__window={ inputSeen }
+			></span>
 			@ui.Shell(ui.ShellProps{
 				Header:       header(s),
 				Sidebar:      s.Sidebar,

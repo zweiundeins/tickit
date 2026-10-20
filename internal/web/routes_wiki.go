@@ -77,7 +77,7 @@ func (s *Server) routesWiki() {
 	s.views.Register("page", s.pageHeadView)
 	s.views.Register("pagedoc", s.readerView)
 	s.views.Register("pagepeople", s.pagePeopleView)
-	s.views.Register("tree", s.treeView)
+	s.views.RegisterWithPresenceOf("tree", s.treeView, treePresence)
 	s.views.Register("history", s.historyView)
 	s.views.Register("trash", s.trashView)
 }
@@ -467,13 +467,17 @@ func (s *Server) sidebar(ctx context.Context, q sqlite.Querier, sp wiki.Space, c
 	if err != nil {
 		return nil, err
 	}
+	presenceRow := "" // a page's tree has the space's presence row (MP-02.1)
+	if current != "" {
+		presenceRow = views.PresenceID(spacePresenceKey(sp.ID))
+	}
 	return ui.SideNav(ui.SideNavProps{
 		Title: sp.Name, Key: sp.Key, Href: "/spaces/" + sp.Key,
 		Sections: []ui.NavSection{{Items: []ui.NavItem{
 			{Label: "Overview", Href: "/spaces/" + sp.Key, Icon: "home", Current: section == "home"},
 			{Label: "Trash", Href: "/spaces/" + sp.Key + "/trash", Icon: "trash", Current: section == "trash"},
 		}}},
-		Extra:       views.PageTree("Pages in "+sp.Name, items),
+		Extra:       views.SpaceTree("Pages in "+sp.Name, items, presenceRow),
 		Collapsible: true,
 	}), nil
 }
@@ -505,16 +509,27 @@ func treeItems(ctx context.Context, q sqlite.Querier, sp wiki.Space, current str
 	return items, nil
 }
 
+// spacePresenceKey names the presence row of a space's page tree: the
+// people on any page of the space (MP-02.1), whose tree views join it.
+func spacePresenceKey(space string) string { return "pages-in:" + space }
+
+// treePresence is the presence row a tree view's key joins.
+func treePresence(key string) string {
+	parts := strings.Split(key, ":")
+	return spacePresenceKey(parts[1])
+}
+
 // treeView is a space's tree as one page shows it, shared by the tabs on
 // that page; a page created, renamed, moved or trashed touches its space
 // (FR-78.3).
+// Its key names the space too, for its presence row (treePresence).
 func (s *Server) treeView(ctx context.Context, q sqlite.Querier, actor people.Person, arg string) (live.View, error) {
 	p, sp, err := readable(ctx, q, actor, arg)
 	if err != nil {
 		return live.View{}, err
 	}
 	return live.View{
-		Key:    "tree:" + p.ID,
+		Key:    "tree:" + sp.ID + ":" + p.ID,
 		Topics: []string{wiki.SpaceTopic(sp.ID), wiki.PageTopic(p.ID)},
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			q := querier(ctx, tx)
@@ -669,22 +684,15 @@ func (s *Server) pagePeopleView(ctx context.Context, q sqlite.Querier, actor peo
 			for _, id := range s.hub.Watchers(caretsKey(p.ID)) {
 				editing[personOf(id)] = true
 			}
-			var ids []string
-			count := map[string]int{}
-			for _, id := range s.hub.Watchers(key) {
-				pid := personOf(id)
-				if count[pid] == 0 && len(ids) < MaxPresent {
-					ids = append(ids, pid)
-				}
-				count[pid]++
-			}
-			found, err := people.Lookup(ctx, querier(ctx, tx), ids...)
+			present, err := s.present(ctx, querier(ctx, tx), key, time.Now())
 			if err != nil {
 				return nil, err
 			}
-			list := make([]ui.PresenceEntry, 0, len(ids))
-			for _, id := range ids {
-				list = append(list, ui.PresenceEntry{Person: views.UIPerson(found[id]), Tabs: count[id], Editing: editing[id]})
+			list := make([]ui.PresenceEntry, 0, len(present))
+			for _, pr := range present {
+				e := views.PresenceEntry(pr)
+				e.Editing = editing[pr.ID]
+				list = append(list, e)
 			}
 			return patch(ctx, ui.PresenceRow(ui.PresenceProps{ID: views.PagePresenceID(p.ID), Label: "People on this page", People: list, Max: views.Shown, Shared: true}))
 		},
