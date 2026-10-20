@@ -61,6 +61,21 @@ const observe = `(() => {
 		}
 	};
 	new MutationObserver(look).observe(mount, {subtree: true, childList: true, characterData: true});
+	// For the breakdown: when each own commit went out, and when a frame
+	// first brought each commit to Datastar.
+	window.__sent = [];
+	ed.addEventListener('sb-commit', (e) => window.__sent.push([Date.now(), e.detail.ref]), true);
+	window.__frames = {};
+	const dec = document.createElement('textarea');
+	window.addEventListener('datastar-fetch', (e) => {
+		const d = e.detail, el = d?.argsRaw?.elements;
+		if (d?.type !== 'datastar-patch-elements' || typeof el !== 'string' || !el.includes('<sb-rich-editor')) return;
+		const m = / batches="([^"]*)"/.exec(el);
+		if (!m) return;
+		const t = Date.now();
+		dec.innerHTML = m[1];
+		try { for (const b of JSON.parse(dec.value)) if (!(b.ref in window.__frames)) window.__frames[b.ref] = t } catch {}
+	}, true);
 	return true;
 })()`
 
@@ -192,11 +207,15 @@ func coedit(t *testing.T, n int, d time.Duration, rate float64) coeditResult {
 		}
 	}
 	slices.Sort(lat)
+	breakdown(t, pages, typed, letters)
 	r := coeditResult{Editors: n, Typed: total, Settled: settled, Seconds: d.Seconds(), Samples: len(lat)}
 	if len(lat) > 0 {
 		r.P50, r.P95, r.Max = lat[len(lat)/2], lat[len(lat)*95/100], lat[len(lat)-1]
 	}
 	r.WriterCommits, r.WriterP50, r.WriterP95, r.WriterMax = web.CommitTimes.Percentiles()
+	hs := s.hub.Stats()
+	t.Logf("hub: %d ticks, %d renders, %d deferred, %d frames sent, %d dropped, %d overruns; pages behind %d (%d streams), paced %d, released %d, acks %d",
+		hs.Ticks, hs.Renders, hs.RendersDeferred, hs.FramesSent, hs.FramesDropped, hs.Overruns, hs.Behind, hs.BehindStreams, hs.Paces, hs.Releases, hs.Acks)
 	t.Logf("%d editors, %v, %d keystrokes: keystroke to the others p50 %v p95 %v max %v (%d samples); settled %v after the last; writer per commit (%d) p50 %v p95 %v max %v",
 		n, d, total, r.P50, r.P95, r.Max, r.Samples, settled, r.WriterCommits, r.WriterP50, r.WriterP95, r.WriterMax)
 	// The page, loaded again, shows the same document.
@@ -265,4 +284,56 @@ func TestCoEditing(t *testing.T) {
 		secs = v
 	}
 	coedit(t, n, time.Duration(secs)*time.Second, 5)
+}
+
+// breakdown splits each keystroke's way to the other editors (MP-05.3):
+// from the keystroke to its commit going out (the editor sends one commit
+// at a time, so a keystroke waits for the one in flight), from there to
+// the frame that brings it to each other editor's Datastar (the request,
+// the writer, the tick, the render, the stream), and from there to the
+// text in the other editor (the morph, the editor's apply).
+func breakdown(t *testing.T, pages []*browsertest.Page, typed [][]int64, letters string) {
+	n := len(pages)
+	sent := make([][][2]any, n)
+	frames := make([]map[string]int64, n)
+	seen := make([]map[string][]int64, n)
+	for i, p := range pages {
+		p.Eval(t, `window.__sent`, &sent[i])
+		p.Eval(t, `window.__frames`, &frames[i])
+		p.Eval(t, `window.__seen`, &seen[i])
+	}
+	var wait, wire, apply []time.Duration
+	for i := range n {
+		k := 0
+		for c, at := range typed[i] {
+			for k < len(sent[i]) && int64(sent[i][k][0].(float64)) < at {
+				k++
+			}
+			if k == len(sent[i]) {
+				break
+			}
+			out, ref := int64(sent[i][k][0].(float64)), sent[i][k][1].(string)
+			wait = append(wait, time.Duration(out-at)*time.Millisecond)
+			for j := range n {
+				if j == i {
+					continue
+				}
+				f, ok := frames[j][ref]
+				got := seen[j][string(letters[i])]
+				if !ok || c >= len(got) {
+					continue
+				}
+				wire = append(wire, time.Duration(f-out)*time.Millisecond)
+				apply = append(apply, time.Duration(got[c]-f)*time.Millisecond)
+			}
+		}
+	}
+	pct := func(l []time.Duration) string {
+		if len(l) == 0 {
+			return "none"
+		}
+		slices.Sort(l)
+		return fmt.Sprintf("p50 %v p95 %v", l[len(l)/2], l[len(l)*95/100])
+	}
+	t.Logf("breakdown: keystroke to its commit %s; commit to the frame at the others %s; frame to the text %s", pct(wait), pct(wire), pct(apply))
 }
