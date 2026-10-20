@@ -200,7 +200,11 @@ templ anywayButton(f string) {
 templ issueMain(m Issue) {
 	<div id="issue-main" class="tk-issue__main" data-v={ i64(m.Version) } data-key={ m.Key } data-issue={ m.ID }>
 		@ui.Breadcrumbs(crumbs(m))
-		if !m.Deleted.IsZero() {
+		if m.Hidden {
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Icon: "lock", Title: "This issue is hidden"}) {
+				<p>{ hiddenText(m) }</p>
+			}
+		} else if !m.Deleted.IsZero() {
 			@ui.Notice(ui.NoticeProps{Tone: ui.ToneDanger, Icon: "trash", Title: "This issue was deleted"}) {
 				<p>{ m.person(m.DeletedBy).Name } deleted it { ui.Ago(m.Deleted, m.Now) }. Its history stays.</p>
 			}
@@ -476,7 +480,7 @@ templ issueSide(m Issue) {
 			}
 			if len(m.Components) > 0 || len(m.Detail.Components) > 0 {
 				@prop("Components") {
-					@ui.Menu(ui.MenuProps{ID: "issue-components", Label: "Components", Trigger: componentsTrigger(m), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("components")}) {
+					@ui.Menu(ui.MenuProps{ID: "issue-components", Label: "Components: " + orNone(joinComma(m.Detail.Components)), Trigger: componentsTrigger(m), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("components")}) {
 						for i, c := range m.Components {
 							if m.hasComponent(c.Name) {
 								@ui.MenuItem(ui.MenuItemProps{Label: c.Name, Checked: ui.Pressed(true), Autofocus: i == 0, Attrs: choice("components", c.Name, "remove")})
@@ -490,7 +494,7 @@ templ issueSide(m Issue) {
 			}
 			if m.canHaveParent() {
 				@prop("Epic") {
-					@ui.Menu(ui.MenuProps{ID: "issue-epic", Label: "Epic", Trigger: epicTrigger(m), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("parent")}) {
+					@ui.Menu(ui.MenuProps{ID: "issue-epic", Label: "Epic: " + epicName(m), Trigger: epicTrigger(m), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("parent")}) {
 						@ui.MenuItem(ui.MenuItemProps{Label: "No epic", Checked: ui.Pressed(m.Parent == nil), Autofocus: true, Attrs: choice("parent", "", "")})
 						for _, e := range m.Epics {
 							@ui.MenuItem(ui.MenuItemProps{Label: e.Key + " " + e.Summary, Checked: ui.Pressed(m.Parent != nil && m.Parent.ID == e.ID), Attrs: choice("parent", e.ID, "")})
@@ -505,7 +509,7 @@ templ issueSide(m Issue) {
 				}
 			}
 			@prop("Sprint") {
-				@ui.Menu(ui.MenuProps{ID: "issue-sprint", Label: "Sprint", Trigger: sprintTrigger(m), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("sprint")}) {
+				@ui.Menu(ui.MenuProps{ID: "issue-sprint", Label: "Sprint: " + sprintLabel(m), Trigger: sprintTrigger(m), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("sprint")}) {
 					@ui.MenuItem(ui.MenuItemProps{Label: "Backlog", Checked: ui.Pressed(m.Sprint == ""), Autofocus: true, Attrs: choice("sprint", "", "")})
 					for _, s := range m.openSprints() {
 						@ui.MenuItem(ui.MenuItemProps{Label: s.Name, Hint: s.State, Checked: ui.Pressed(m.Sprint == s.ID), Attrs: choice("sprint", s.ID, "")})
@@ -559,7 +563,7 @@ templ personLine(p people.Person) {
 }
 
 templ assigneeMenu(m Issue) {
-	@ui.Menu(ui.MenuProps{ID: "issue-assignee", Label: "Assignee", Trigger: assigneeTrigger(m), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("assignee")}) {
+	@ui.Menu(ui.MenuProps{ID: "issue-assignee", Label: "Assignee: " + assigneeName(m), Trigger: assigneeTrigger(m), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("assignee")}) {
 		<div class="tk-issue__menusearch" data-ignore-morph>
 			<label class="visually-hidden" for="issue-assignee-q">Find a person</label>
 			<input id="issue-assignee-q" class="tk-input tk-input--sm" type="search" placeholder="Find a person" autocomplete="off" data-bind="_is.aq" autofocus/>
@@ -632,8 +636,10 @@ templ textDisplay(s string) {
 // story points, estimates (FR-25, FR-26).
 templ editable(m Issue, f, typ, value string, display templ.Component) {
 	<span hidden id={ "issue-src-" + f }>{ value }</span>
-	<button type="button" class="tk-issue__value" data-act="edit" data-field={ f } data-src={ "issue-src-" + f } aria-label={ "Edit the " + tracker.FieldLabel(f) } { merge(locked, pending(f), showIf(fieldExpr(editHidden, f)))... }>
+	<button type="button" class="tk-issue__value" data-act="edit" data-field={ f } data-src={ "issue-src-" + f } { merge(locked, pending(f), showIf(fieldExpr(editHidden, f)))... }>
+		<span class="visually-hidden">{ tracker.FieldLabel(f) }: </span>
 		@display
+		<span class="visually-hidden">, edit</span>
 	</button>
 	<span class="tk-issue__editor tk-issue__inline" data-ignore-morph data-show={ fieldExpr(editShown, f) } data-editor={ f }>
 		<label class="visually-hidden" for={ "issue-edit-" + f }>{ tracker.FieldLabel(f) }</label>
@@ -947,7 +953,7 @@ templ deleteFooter() {
 templ IssueNotFound(key string) {
 	<div class="stack tk-issue__missing">
 		@ui.EmptyState(ui.EmptyProps{Icon: "search", Title: "No issue " + key, Text: "No issue has this key, or you may not see it. Search for it instead."})
-		<form class="tk-issue__search" role="search" action="/search" method="get">
+		<form class="tk-issue__search" role="search" aria-label="Search for the issue" action="/search" method="get">
 			<label class="visually-hidden" for="missing-q">Search issues and pages</label>
 			@ui.Input(ui.InputProps{ID: "missing-q", Name: "q", Type: "search", Icon: "search", Value: key, Placeholder: "Search issues and pages"})
 			@ui.Button(ui.ButtonProps{Label: "Search", Type: "submit", Variant: ui.Primary})

@@ -182,6 +182,19 @@ const maxText = 120
 
 // excerpt is the start of a document's text.
 func excerpt(doc json.RawMessage) string {
+	var b strings.Builder
+	writeText(&b, doc)
+	s := strings.Join(strings.Fields(b.String()), " ")
+	if utf8.RuneCountInString(s) > maxText {
+		r := []rune(s)[:maxText-1]
+		s = strings.TrimSpace(string(r)) + "…"
+	}
+	return s
+}
+
+// writeText writes a node's text as it stands, spaces beside chips and
+// mentions included; excerpt folds the spaces once, for the whole text.
+func writeText(b *strings.Builder, doc json.RawMessage) {
 	var n struct {
 		Type    string            `json:"type"`
 		Text    string            `json:"text"`
@@ -192,9 +205,8 @@ func excerpt(doc json.RawMessage) string {
 		} `json:"attrs"`
 	}
 	if json.Unmarshal(doc, &n) != nil {
-		return ""
+		return
 	}
-	var b strings.Builder
 	switch n.Type {
 	case "text":
 		b.WriteString(n.Text)
@@ -209,15 +221,9 @@ func excerpt(doc json.RawMessage) string {
 		if b.Len() > 4*maxText {
 			break
 		}
-		b.WriteString(excerpt(c))
+		writeText(b, c)
 		if n.Type != "paragraph" && n.Type != "heading" && n.Type != "code_block" {
 			b.WriteByte(' ') // between blocks
 		}
 	}
-	s := strings.Join(strings.Fields(b.String()), " ")
-	if utf8.RuneCountInString(s) > maxText {
-		r := []rune(s)[:maxText-1]
-		s = strings.TrimSpace(string(r)) + "…"
-	}
-	return s
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -23,6 +24,7 @@ import (
 	"github.com/mbolli/tickit/internal/tracker"
 	"github.com/mbolli/tickit/internal/ui"
 	"github.com/mbolli/tickit/internal/views"
+	"github.com/mbolli/tickit/internal/wiki"
 )
 
 // routesNotify registers the home page (FR-59), notifications (FR-110 to
@@ -213,9 +215,17 @@ func (s *Server) work(ctx context.Context, q sqlite.Querier, me people.Person, r
 		if err != nil {
 			return w, err
 		}
-		if !info.Archived {
-			w.Spaces = append(w.Spaces, views.Space{Key: info.Key, Name: info.Key})
+		if info.Archived {
+			continue
 		}
+		name := info.Key
+		switch sp, err := wiki.SpaceByID(ctx, q, sc.ID); {
+		case err == nil:
+			name = sp.Name
+		case !errors.Is(err, access.ErrNotFound):
+			return w, err
+		}
+		w.Spaces = append(w.Spaces, views.Space{Key: info.Key, Name: name})
 	}
 	return w, nil
 }
@@ -229,7 +239,7 @@ func (s *Server) homeView(ctx context.Context, q sqlite.Querier, actor people.Pe
 	}
 	return live.View{
 		Key:    "home:" + actor.ID,
-		Topics: []string{events.Topic, people.Topic, tracker.ProjectsTopic, tracker.IssuesTopic},
+		Topics: []string{events.Topic, people.Topic, tracker.ProjectsTopic, tracker.IssuesTopic, wiki.SpacesTopic},
 		Every:  time.Minute,
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			q := querier(ctx, tx)

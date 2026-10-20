@@ -68,6 +68,11 @@ templ Board(p BoardPage) {
 			@Presence(PresenceID(BoardHeadKey(p.Project.ID)), nil)
 		</div>
 		@BoardLanes(p.Lanes)
+		<p class="tk-bd__none" data-show={ anyFilter }>
+			No card matches these filters.
+			<button class="tk-btn tk-btn--ghost tk-btn--sm" type="button" data-filter="clear">Clear filters</button>
+		</p>
+		<p class="tk-bd__none" data-show={ "!(" + anyFilter + ")" }>No issues on this board yet. Create one with the + of a column.</p>
 		<div class="tk-bd__ghost tk-board--flat" hidden aria-hidden="true" inert></div>
 		<div class="tk-bd__note" role="status" aria-live="polite">
 			<p class="tk-outcome tk-bd__reason" data-kind="refused" hidden data-attr:hidden="!$_board.note" data-text="$_board.note"></p>

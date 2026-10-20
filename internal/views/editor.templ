@@ -11,7 +11,7 @@ import (
 // Datastar, so that the component decides when to resend.
 const (
 	editorSignals = `{_editor: {status: 'saved', stopped: '', unsaved: 0, problem: ''}, _carets: '[]', _wkTitle: '',` +
-		` _title: {value: '', focus: false, op: '', msg: ''}, _pick: {kind: '', q: '', label: ''}}`
+		` _title: {focus: false, op: '', msg: ''}, _pick: {kind: '', q: '', label: ''}}`
 	editorCommit = `@post('/cmd/pages/' + evt.detail.page + '/commit', {payload: {...evt.detail, tab: $_tab, client: el.getAttribute('client')}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0})` +
 		`.then(() => el.posted(evt.detail.ref, true), () => el.posted(evt.detail.ref, false))`
 	editorPresence = `@post('/cmd/pages/' + evt.detail.page + '/presence', {payload: {...evt.detail, tab: $_tab}, retry: 'never', retryMaxCount: 0}).catch(() => {})`
@@ -21,7 +21,8 @@ const (
 	// (MP-14.1); the component resends it by itself after a rate limit.
 	editorFetch = `evt.detail.el === el && evt.detail.type === 'error' && ['403', '429', '500', '502', '503'].includes(evt.detail.argsRaw.status) && ($_editor.problem = ` +
 		`evt.detail.argsRaw.status === '429' ? 'Too many changes at once. Your edits are kept here and go out in a moment.' : ` +
-		`evt.detail.argsRaw.status === '403' ? 'Your changes are not accepted here. They stay in this tab only.' : 'The server is restarting. Your edits are kept here and go out when it is back.')`
+		`evt.detail.argsRaw.status === '403' ? 'Your changes are not accepted here. They stay in this tab only.' : ` +
+		`document.querySelector('#` + DemoAlertID + `[data-resetting]') ? 'The demo is resetting, and the page comes back as seeded. Copy your edits to keep them.' : 'The server is restarting. Your edits are kept here and go out when it is back.')`
 	// editorOpen registers the tab as an editor of the page, from the
 	// version the page rendered (docs/editor.md).
 	editorOpen = `@post('/cmd/pages/' + el.getAttribute('page') + '/open', {payload: {tab: $_tab, op: ` + newOp + `, base: +el.getAttribute('base'), client: el.getAttribute('client')}, retry: 'error', retryMaxCount: 10})`
@@ -66,6 +67,7 @@ templ EditorPage(p EditorProps) {
 			</div>
 		</div>
 		<div class="wk-titlefield">
+			<h1 class="visually-hidden">Editing { p.Page.Title }</h1>
 			<label class="visually-hidden" for="page-title">Title</label>
 			<input
 				id="page-title"

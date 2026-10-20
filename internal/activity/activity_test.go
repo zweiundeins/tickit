@@ -217,3 +217,12 @@ func TestPageEditsMerge(t *testing.T) {
 	s, r := sunny.ID[:4], rainy.ID[:4]
 	check(t, got, s+" page_edited Page b", s+" page_edited Page a", s+" page_edited Page a", r+" page_edited Page a", s+" page_edited Page a x3")
 }
+
+// FR-69: an entry quotes a comment with the spaces beside its mentions and
+// chips, as the comment reads.
+func TestExcerptKeepsSpaces(t *testing.T) {
+	body := `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Past its date. "},{"type":"mention","attrs":{"personId":"s-tomasz","label":"Tomasz Nowak"}},{"type":"text","text":", after "},{"type":"issue_chip","attrs":{"key":"WEB-44"}},{"type":"text","text":"."}]},{"type":"paragraph","content":[{"type":"text","text":"Next  one"}]}]}`
+	if got, want := excerpt([]byte(body)), "Past its date. @Tomasz Nowak, after WEB-44. Next one"; got != want {
+		t.Errorf("excerpt = %q, want %q", got, want)
+	}
+}

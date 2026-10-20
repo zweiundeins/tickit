@@ -4,6 +4,7 @@
 @layer components {
 	.tk-issue {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-4);
 		min-inline-size: 0;
 	}
@@ -17,6 +18,7 @@
 
 	.tk-issue__main {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 		min-inline-size: 0;
 	}
@@ -61,6 +63,7 @@
 
 	.tk-issue__editor {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 	}
 
@@ -86,6 +89,7 @@
 
 	.tk-issue__note {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-1);
 		grid-column: 1 / -1;
 		min-inline-size: 0;
@@ -106,6 +110,7 @@
 
 	.tk-issue__desc {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 
 		& .prose {
@@ -166,11 +171,13 @@
 
 	.tk-issue__group {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 	}
 
 	.tk-issue__refs {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-1);
 		margin: 0;
 		padding: 0;
@@ -219,10 +226,20 @@
 		}
 	}
 
+	/* The labels take a line of their own, the field to add one the next. */
 	.tk-issue__chips {
 		display: flex;
+		flex: 1 1 100%;
 		flex-wrap: wrap;
 		gap: var(--tk-space-1);
+
+		&:empty {
+			display: none;
+		}
+	}
+
+	.tk-issue__chips + .tk-issue__addrow {
+		flex: 1 1 100%;
 	}
 
 	.tk-issue__label {
@@ -278,6 +295,20 @@
 		}
 	}
 
+	/* A due date in the side column reads at the size of the other values. */
+	.tk-issue__side .tk-due {
+		font-size: inherit;
+
+		&:not([data-overdue]) {
+			color: var(--tk-text-1);
+		}
+	}
+
+	/* A parent in the narrow side column shows its summary, not its status. */
+	.tk-issue__side .issue-chip .tk-lozenge {
+		display: none;
+	}
+
 	.tk-issue__menusearch {
 		padding: var(--tk-space-1) var(--tk-space-1) var(--tk-space-2);
 
@@ -293,6 +324,7 @@
 	/* Tabs: Comments, History, Activity (FR-68). */
 	.tk-issue__tabs {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
 	}
 
@@ -327,6 +359,7 @@
 
 	.tk-issue__panel {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
 
 		&[hidden] {
@@ -354,6 +387,7 @@
 
 	.tk-comment__main {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-1);
 		min-inline-size: 0;
 	}
@@ -379,15 +413,31 @@
 
 	.tk-comment__edit {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 	}
 
 	.tk-issue__commentform {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 		position: relative;
 	}
 
+	/* The create dialog says which column a board's + puts the issue in. */
+	.tk-issue__where {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-2);
+		margin: 0;
+		font-size: var(--tk-text-sm);
+
+		& strong {
+			color: var(--tk-text-1);
+		}
+	}
+
+	/* A menu in the flow, not a popover: shown as soon as it is shown. */
 	.tk-issue__mentions {
 		position: static;
 		display: grid;
@@ -396,6 +446,8 @@
 		inline-size: min(100%, 18rem);
 		margin: 0;
 		inset: auto;
+		opacity: 1;
+		translate: none;
 
 		&[hidden] {
 			display: none;
@@ -448,6 +500,7 @@
 
 	.tk-issue__asof {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
 
 		&[hidden] {
@@ -457,6 +510,7 @@
 
 	.tk-issue__asofbody {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
 	}
 
@@ -487,6 +541,7 @@
 	/* The create dialog's form (FR-10). */
 	.tk-issue__form {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-4);
 	}
 

@@ -201,7 +201,7 @@ func NotFound() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div><p class=\"tk-eyebrow\">404</p><h1 class=\"tk-empty__title\" id=\"error-title\">Not found</h1><p class=\"tk-empty__text\">Nothing is at this address, or you may not see it. Search for it, or go to the home page.</p><form class=\"tk-error__search\" role=\"search\" action=\"/search\" method=\"get\"><label class=\"visually-hidden\" for=\"error-search\">Search issues and pages</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div><p class=\"tk-eyebrow\">404</p><h1 class=\"tk-empty__title\" id=\"error-title\">Not found</h1><p class=\"tk-empty__text\">Nothing is at this address, or you may not see it. Search for it, or go to the home page.</p><form class=\"tk-error__search\" role=\"search\" aria-label=\"Search for what was here\" action=\"/search\" method=\"get\"><label class=\"visually-hidden\" for=\"error-search\">Search issues and pages</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -64,6 +64,7 @@ templ Layout(s Shell) {
 			} else {
 				@createPlaceholder()
 			}
+			@confirmDialog()
 		</body>
 	</html>
 }
@@ -120,7 +121,7 @@ templ firstVisitHint() {
 		Tone:   ui.ToneInfo,
 		Icon:   "users",
 		Class:  "tk-hint",
-		Attrs:  templ.Attributes{"id": "first-visit", "data-attr:hidden": hintHidden},
+		Attrs:  templ.Attributes{"id": "first-visit", "role": "complementary", "aria-label": "Hint", "data-attr:hidden": hintHidden},
 		Action: ui.Button(ui.ButtonProps{Label: "Dismiss", Icon: "close", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": dismissHint, "data-on:datastar-fetch": dismissFailed, "data-attr:aria-busy": dismissBusy}}),
 	}) {
 		<p>Open this page in a private window to see a second person arrive.</p>
@@ -176,4 +177,16 @@ templ createPlaceholder() {
 // with the id PresenceID of their view's key; the stream fills it.
 templ Presence(id string, list []Present) {
 	@ui.PresenceRow(ui.PresenceProps{ID: id, Label: "Here now", People: entries(list), Max: Shown, Shared: true})
+}
+
+// confirmDialog asks before an action that cannot be taken back (Ask).
+templ confirmDialog() {
+	@ui.Dialog(ui.DialogProps{ID: ConfirmID, Title: "Are you sure?", Size: ui.SizeSM, Dismissible: true, Footer: confirmFooter()}) {
+		<p class="tk-confirm__text"></p>
+	}
+}
+
+templ confirmFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: ConfirmID, Attrs: templ.Attributes{"autofocus": true}})
+	@ui.Button(ui.ButtonProps{Label: "Confirm", Variant: ui.Danger, Attrs: templ.Attributes{"data-confirm": "", "data-on:click": confirmed}})
 }

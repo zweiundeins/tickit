@@ -217,6 +217,16 @@
 			&:last-child {
 				border-block-end: 0;
 			}
+
+			/* A row with its action at the end (an account's sessions). */
+			&.split {
+				display: flex;
+				flex-wrap: nowrap;
+
+				& > div {
+					min-inline-size: 0;
+				}
+			}
 		}
 
 		& p {

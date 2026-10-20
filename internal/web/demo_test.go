@@ -290,6 +290,16 @@ func TestModerateLive(t *testing.T) {
 	if n := rowCount(t, e, `SELECT count(*) FROM security_log WHERE kind = 'moderation'`); n != 1 {
 		t.Error("no entry in the security log")
 	}
+	// The moderator still opens the hidden issue, with who hid it and why;
+	// everyone else gets 410.
+	var key string
+	e.DB.R.QueryRow(`SELECT key FROM issues WHERE id = ?`, id).Scan(&key)
+	if code, page := webtest.Get(t, mo, e.URL+"/"+key); code != http.StatusOK || !strings.Contains(page, "This issue is hidden") || !strings.Contains(page, ": spam. Only moderators") {
+		t.Errorf("the moderator's page of the hidden issue: %d", code)
+	}
+	if code, _ := webtest.Get(t, webtest.Client(t), e.URL+"/"+key); code != http.StatusGone {
+		t.Errorf("a guest's page of the hidden issue: %d, want 410", code)
+	}
 	if code, _ := webtest.Post(t, mo, e.URL+"/cmd/moderation/act", `{"tab":"tab1","op":"m2","action":"restore","kind":"issue","id":"`+id+`"}`); code != http.StatusNoContent {
 		t.Fatalf("restore: %d", code)
 	}

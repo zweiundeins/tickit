@@ -64,7 +64,7 @@ templ NotFound() {
 			<p class="tk-eyebrow">404</p>
 			<h1 class="tk-empty__title" id="error-title">Not found</h1>
 			<p class="tk-empty__text">Nothing is at this address, or you may not see it. Search for it, or go to the home page.</p>
-			<form class="tk-error__search" role="search" action="/search" method="get">
+			<form class="tk-error__search" role="search" aria-label="Search for what was here" action="/search" method="get">
 				<label class="visually-hidden" for="error-search">Search issues and pages</label>
 				@ui.Input(ui.InputProps{ID: "error-search", Name: "q", Type: "search", Placeholder: "Search issues and pages", Icon: "search", Autocomplete: "off"})
 				@ui.Button(ui.ButtonProps{Label: "Search", Type: "submit"})

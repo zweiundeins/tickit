@@ -42,9 +42,22 @@
 		caret-color: var(--tk-accent);
 	}
 
+	/* Typing in the document: a bar in the focus colour beside its start
+	 * edge says where the keys go, without a ring around the whole page. */
 	.tk-editor__surface:focus-visible,
 	.pm-mount:focus-within {
+		position: relative;
 		outline: none;
+
+		&::after {
+			content: "";
+			position: absolute;
+			inset-block: var(--tk-space-2);
+			inset-inline-start: calc(-1 * var(--tk-space-2));
+			inline-size: 2px;
+			background: var(--tk-focus);
+			pointer-events: none;
+		}
 	}
 
 	/* An empty document's placeholder (ProseMirror's empty node). */

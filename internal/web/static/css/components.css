@@ -65,6 +65,7 @@
 	.tk-count {
 		--_n: calc(1px * var(--tk-notch));
 		display: inline-grid;
+		flex: none;
 		place-items: center;
 		min-inline-size: 1.25rem;
 		block-size: 1.125rem;
@@ -75,6 +76,7 @@
 		font-family: var(--tk-font-mono);
 		font-size: var(--tk-text-2xs);
 		line-height: 1;
+		white-space: nowrap;
 	}
 
 	.tk-kbd {
@@ -186,7 +188,7 @@
 	}
 
 	/* Tips at the inline end of a bar open towards the start. */
-	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head) > .tk-tip > .tk-tip__bubble,
+	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head, .tk-presence__item, .tk-issue__refs li) > .tk-tip > .tk-tip__bubble,
 	.tk-tip--end > .tk-tip__bubble {
 		inset-inline: auto 0;
 		translate: 0 0.25rem;
@@ -197,7 +199,7 @@
 		}
 	}
 
-	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head) > .tk-tip:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble,
+	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head, .tk-presence__item, .tk-issue__refs li) > .tk-tip:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble,
 	.tk-tip--end:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble {
 		translate: 0 0;
 	}
@@ -1020,6 +1022,7 @@
 	.tk-dialog__body,
 	.tk-panel__body {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-4);
 		align-content: start;
 		padding: var(--tk-space-5);
@@ -1277,9 +1280,13 @@
 	}
 
 	/* ── Tree ──────────────────────────────────────────────────────── */
+	/* One column no wider than the tree's place, so long titles cut
+	 * rather than push the tree out of the sidebar. */
 	.tk-tree,
 	.tk-tree [role="group"] {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		min-inline-size: 0;
 		gap: 1px;
 		margin: 0;
 		padding: 0;
@@ -1380,7 +1387,10 @@
 	}
 
 	/* ── Tables: plain tables, 2rem rows. ──────────────────────────── */
+	/* Positioned, so the visually hidden text in its cells, which is
+	 * absolute, stays inside the region's clip. */
 	.tk-table-wrap {
+		position: relative;
 		overflow-x: auto;
 		border: 1px solid var(--tk-border-subtle);
 		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
@@ -1448,9 +1458,11 @@
 			text-align: end;
 		}
 
-		/* The column that may grow and cut its text. */
+		/* The column that may grow and cut its text, down to 8rem; below
+		 * that the table scrolls in its region. */
 		& .tk-grow {
 			inline-size: 100%;
+			min-inline-size: 8rem;
 			max-inline-size: 0;
 			overflow: hidden;
 			text-overflow: ellipsis;
@@ -1473,9 +1485,20 @@
 
 		& .tk-cell {
 			display: flex;
-			align-items: center;
-			gap: var(--tk-space-1_5);
 		}
+
+		/* Glyph and word sit on the row's middle, as the lozenges do. */
+		& td > :is(.tk-typed, .tk-due) {
+			vertical-align: middle;
+		}
+	}
+
+	/* A face or an icon beside a name, in a cell or anywhere. */
+	.tk-cell {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-1_5);
+		min-inline-size: 0;
 	}
 
 	.tk-table--sticky thead th {
@@ -1835,6 +1858,7 @@
 
 	.tk-notice__body {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		flex: 1 1 12rem;
 		gap: var(--tk-space-1);
 		min-inline-size: 0;
@@ -1998,9 +2022,11 @@
 		overflow: hidden;
 		border: 1px solid var(--tk-border-subtle);
 		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
-		background: var(--tk-border-subtle);
+		background: var(--tk-surface-1);
 	}
 
+	/* The lines between stats are their shadows in the gap, so the empty
+	 * end of a wrapped last row stays the surface, not a grey block. */
 	.tk-stat {
 		--_tone: var(--tk-text-1);
 		display: grid;
@@ -2008,6 +2034,7 @@
 		gap: var(--tk-space-1);
 		padding: var(--tk-space-3) var(--tk-space-4);
 		background: var(--tk-surface-1);
+		box-shadow: 1px 0 0 var(--tk-border-subtle), 0 1px 0 var(--tk-border-subtle);
 
 		& dd {
 			margin: 0;
@@ -2085,6 +2112,7 @@
 	/* ── Feeds: notifications, activity. ───────────────────────────── */
 	.tk-feed {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -2172,15 +2200,20 @@
 		}
 	}
 
-	/* Fields shown as label and value (an issue's side). */
+	/* Fields shown as label and value (an issue's side). A label sits on
+	 * the first line of its value, which may wrap; a value that is a menu
+	 * reads as the plain values do, and starts where they start. */
 	.tk-props {
 		display: grid;
 		grid-template-columns: 7rem minmax(0, 1fr);
 		gap: var(--tk-space-2) var(--tk-space-3);
-		align-items: center;
+		align-items: start;
 		margin: 0;
 
 		& dt {
+			display: flex;
+			align-items: center;
+			min-block-size: var(--tk-control-sm);
 			color: var(--tk-text-muted);
 			font-size: var(--tk-text-xs);
 		}
@@ -2190,9 +2223,25 @@
 			flex-wrap: wrap;
 			align-items: center;
 			gap: var(--tk-space-1_5);
+			min-block-size: var(--tk-control-sm);
 			min-inline-size: 0;
 			margin: 0;
 			font-size: var(--tk-text-md);
+		}
+
+		& dd > .tk-menu-button {
+			max-inline-size: calc(100% + var(--tk-space-2));
+			margin-inline-start: calc(-1 * var(--tk-space-2));
+			font-family: var(--tk-font-ui);
+			font-size: var(--tk-text-md);
+			font-weight: var(--tk-weight-regular);
+			letter-spacing: normal;
+
+			& > span {
+				min-inline-size: 0;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
 		}
 	}
 
@@ -2209,6 +2258,33 @@
 
 		.tk-type__glyph {
 			fill: Canvas;
+		}
+
+		/* Glyphs drawn as masks (ui.Glyphs, ui.FaceStyles) are a fill the
+		 * system would paint Canvas: they keep the text colour instead. */
+		i:is([data-type], [data-prio], [data-cat])::before,
+		.tk-icon-glyph::before,
+		.tk-av[data-face]::before,
+		.tk-board--flat .tk-card > button::before,
+		:is(.tk-board--flat, .tk-blrow) .tk-due::before,
+		.page-link::before {
+			forced-color-adjust: none;
+			background: CanvasText;
+		}
+
+		i[data-type]::after {
+			forced-color-adjust: none;
+			background: Canvas;
+		}
+
+		.prose .task-item > input {
+			forced-color-adjust: none;
+			border: 1px solid CanvasText;
+			background: Canvas;
+
+			&:checked {
+				background: CanvasText;
+			}
 		}
 
 		.tk-lozenge,

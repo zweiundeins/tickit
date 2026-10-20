@@ -167,7 +167,7 @@ const issueSettle = `Object.keys($_is.ops).forEach(f => {
 // same op, which applies once.
 const issueFailed = `((d) => {
 	if (!['error', 'retries-failed'].includes(d.type) || d.argsRaw.status === '403' || !d.el?.closest?.('#issue')) return
-	const msg = d.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : d.argsRaw.status === '503' ? 'The server is restarting. Try again in a moment.' : 'This did not go through.'
+	const msg = d.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : d.argsRaw.status === '503' ? ` + Unavailable + ` : 'This did not go through.'
 	const f = d.el.dataset.field
 	for (const g of f && f in $_is.ops ? [f] : Object.keys($_is.ops)) if ($_is.ops[g] !== '') { $_is.last[g] = $_is.ops[g]; $_is.ops[g] = ''; $_is.fail[g] = msg }
 })(evt.detail)`
@@ -271,7 +271,10 @@ const (
 	createKeys   = `(evt.ctrlKey || evt.metaKey) && evt.key === 'Enter' && (evt.preventDefault(), ` + createSubmit + `)`
 	// CreateWithStatus opens the create dialog for a board column's "+":
 	// on a button with data-status (a status id) and data-project.
-	CreateWithStatus = `$_new.status = el.dataset.status || '', el.dataset.project && ($_new.project = el.dataset.project), document.getElementById('` + CreateID + `').showModal(), setTimeout(() => document.getElementById('create-summary')?.focus())`
+	CreateWithStatus = `$_new.status = el.dataset.status || '', $_new.where = document.querySelector('.tk-lane[data-lane="' + $_new.status + '"]')?.dataset.name || '', el.dataset.project && ($_new.project = el.dataset.project), document.getElementById('` + CreateID + `').showModal(), setTimeout(() => document.getElementById('create-summary')?.focus())`
+	// createClosed forgets a column's status, so the header's Create puts
+	// the next issue at the start again.
+	createClosed = `$_new.status = '', $_new.where = ''`
 )
 
 // createSignals are the create dialog's state, with the project it
@@ -280,7 +283,7 @@ func createSignals(project, status string) string {
 	b, _ := json.Marshal(map[string]any{"_new": map[string]any{
 		"op": "", "msg": "", "field": "", "fail": "", "created": "",
 		"project": project, "type": "task", "summary": "", "description": "", "priority": "medium",
-		"assignee": "", "labels": "", "parent": "", "status": status,
+		"assignee": "", "labels": "", "parent": "", "status": status, "where": "",
 	}})
 	return string(b)
 }

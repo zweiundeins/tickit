@@ -1,5 +1,7 @@
 package ui
 
+import "strings"
+
 // The Datastar expressions the components carry: view behaviour that
 // belongs to the design system (keyboard paths through menus, trees and
 // toolbars, the state of a popover's button), never a feature's. They are
@@ -76,3 +78,9 @@ const toggleSidebar = `((a) => {
 // dismiss hides the closest dismissible element, in this page only. On a
 // dismiss button.
 const dismiss = `el.closest('[data-dismissible]').hidden = true`
+
+// shortcutKey presses the button on its key alone, unless the person
+// types in a field or a dialog is open. key is a constant of the page.
+func shortcutKey(key string) string {
+	return `!evt.ctrlKey && !evt.metaKey && !evt.altKey && evt.key.toLowerCase() === '` + strings.ToLower(key) + `' && !evt.target.closest?.('input, textarea, select, [contenteditable], sb-rich-editor') && !document.querySelector('dialog[open], :popover-open') && (evt.preventDefault(), el.click())`
+}

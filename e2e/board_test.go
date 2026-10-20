@@ -141,11 +141,16 @@ func TestBoardMoveConflict(t *testing.T) {
 		p.Eval(t, `document.querySelector('.tk-bd__reason').hidden ? '' : document.querySelector('.tk-bd__reason').textContent`, &note)
 		notes = append(notes, note)
 	}
+	// A refused card goes back at once and reaches the winner's column with
+	// the next frame: wait for the column the server holds, in both.
+	var status string
+	if err := e.DB.R.QueryRow(`SELECT status FROM issues WHERE key = ?`, key).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
 	var lanes [2]string
-	a.Eval(t, laneOf(key), &lanes[0])
-	c.Eval(t, laneOf(key), &lanes[1])
-	if lanes[0] != lanes[1] {
-		t.Fatalf("the browsers show %s in %v", key, lanes)
+	for i, p := range []*browsertest.Page{a, c} {
+		p.Wait(t, laneOf(key)+` === '`+status+`'`, 3*time.Second)
+		p.Eval(t, laneOf(key), &lanes[i])
 	}
 	refused := 0
 	for _, n := range notes {
