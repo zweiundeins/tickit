@@ -1,6 +1,6 @@
 # Deploying tickit
 
-tickit runs as one static binary and one SQLite file on the shared host, behind its Caddy, at https://tickitdemo.zweiundeins.gmbh. The unit is `tickit`, the site is `tickitdemo`. This page covers the first install, staff accounts, deploys and rollbacks, backups and restores, and the monitoring. lith's guides [Deploying](https://lith.zweiundeins.gmbh/docs/guides/deploying), [Metrics and monitoring](https://lith.zweiundeins.gmbh/docs/guides/monitoring) and [Backups](https://lith.zweiundeins.gmbh/docs/guides/backups) explain the design these files come from.
+tickit runs as one static binary and one SQLite file on the shared host, behind its Caddy, at https://tickit.zweiundeins.gmbh. The unit and the site are both `tickit`. This page covers the first install, staff accounts, deploys and rollbacks, backups and restores, and the monitoring. lith's guides [Deploying](https://lith.zweiundeins.gmbh/docs/guides/deploying), [Metrics and monitoring](https://lith.zweiundeins.gmbh/docs/guides/monitoring) and [Backups](https://lith.zweiundeins.gmbh/docs/guides/backups) explain the design these files come from.
 
 ## Where things live
 
@@ -14,11 +14,11 @@ tickit runs as one static binary and one SQLite file on the shared host, behind 
 | `/etc/systemd/system/tickit.service` | `deploy/tickit.service` | the unit |
 | `/etc/systemd/system/tickit-backup.{service,timer}` | `deploy/` | the daily backup |
 | `/usr/local/bin/tickit-deploy` | `deploy/tickit-deploy` | deploy and rollback |
-| `/etc/caddy/sites/tickitdemo.caddy` | `deploy/tickitdemo.caddy` | the site block |
-| `/var/log/caddy/tickitdemo-access.log` | Caddy | the access log, JSON, mode 0640, kept 30 days |
+| `/etc/caddy/sites/tickit.caddy` | `deploy/tickit.caddy` | the site block |
+| `/var/log/caddy/tickit-access.log` | Caddy | the access log, JSON, mode 0640, kept 30 days |
 | `/etc/prometheus/apps/tickit.yml` | `deploy/observability/tickit.metrics.yml` | the metrics target, `{app="tickit", slot="prod"}` |
-| `/etc/prometheus/targets/tickitdemo.yml` | `deploy/observability/tickitdemo.targets.yml` | the blackbox probes |
-| `/etc/alloy/tickitdemo.alloy` | `deploy/observability/tickitdemo.alloy` | the journal and the access log, to Loki |
+| `/etc/prometheus/targets/tickit.yml` | `deploy/observability/tickit.targets.yml` | the blackbox probes |
+| `/etc/alloy/tickit.alloy` | `deploy/observability/tickit.alloy` | the journal and the access log, to Loki |
 | `/etc/grafana/provisioning/alerting/rules-tickit.yaml` | `deploy/observability/rules-tickit.yaml` | tickit's alert rules |
 
 The process listens on `127.0.0.1:7105` for Caddy and serves `/metrics` on `127.0.0.1:7205` for Prometheus. The unit allows loopback only, in both directions (`IPAddressDeny=any`, `IPAddressAllow=localhost`), and lets the process bind those two ports and no other. tickit sends no mail and connects nowhere.
@@ -56,10 +56,10 @@ systemd reads the env file as root before it starts the process, so mode 0600 ro
 
 ### The Caddy block
 
-DNS: `tickitdemo.zweiundeins.gmbh` has A and AAAA records pointing at the host since the move of 2026-10-12. Caddy asks for the certificate when it loads the block, so on another host the records come first.
+DNS: `tickit.zweiundeins.gmbh` has A and AAAA records pointing at the host since the move of 2026-10-12. Caddy asks for the certificate when it loads the block, so on another host the records come first.
 
 ```sh
-install -m 0644 tickitdemo.caddy /etc/caddy/sites/
+install -m 0644 tickit.caddy /etc/caddy/sites/
 runuser -u caddy -- env HOME=/var/lib/caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 systemctl reload caddy
 ```
@@ -174,9 +174,9 @@ A site admin resets by hand with "Reset now" on `/admin/demo`. A new database st
 ## Metrics, probes, logs and alerts
 
 - **Metrics:** Prometheus's `apps` job scrapes `127.0.0.1:7205` as `{app="tickit", slot="prod"}`. The host's Grafana dashboard "lith apps" shows tickit under the namespace `tickit`. `deploy/observability/tickit.metrics.yml` lists the metrics: lith's writer, live hub, stream budget and event store (`tickit_writer_*`, `tickit_live_*`, `tickit_sse_budget_*`, `tickit_events_*`), tickit's own counters (`tickit_rate_limited_total`, `tickit_refusals_total`, `tickit_logins_total`, `tickit_edit_batches_total`, `tickit_page_editors_max`, `tickit_moderation_actions_total`, `tickit_resets_total{outcome}`, `tickit_reset_seconds`, `tickit_guests_active`, `tickit_tick_seconds`, `tickit_folded_events_total`, `tickit_fold_seconds`), `tickit_build_info{version}`, `go_*` and `process_*`.
-- **Probes:** the blackbox exporter fetches `https://tickitdemo.zweiundeins.gmbh/` with `http_2xx` and `/healthz` with `http_2xx_ok` (a 200 whose body starts with `ok `), labelled `service: tickitdemo`.
+- **Probes:** the blackbox exporter fetches `https://tickit.zweiundeins.gmbh/` with `http_2xx` and `/healthz` with `http_2xx_ok` (a 200 whose body starts with `ok `), labelled `service: tickit`.
 - **Health:** `/healthz` answers `ok <version>` while the process serves; `/readyz` answers 200 while the read pool answers and the writer, the hub and the event runner run, else 503 naming the failing check (NFR-75). Neither goes through the request log.
-- **Logs:** tickit logs slog's text format to the journal, at Info and above. Alloy ships it to Loki as `{job="tickit", level="..."}`, and the access log as `{job="caddy", site="tickitdemo"}` through the host's `caddy_logs` pipeline. Loki and Caddy keep 30 days (NFR-28); the journal is a size-capped buffer.
+- **Logs:** tickit logs slog's text format to the journal, at Info and above. Alloy ships it to Loki as `{job="tickit", level="..."}`, and the access log as `{job="caddy", site="tickit"}` through the host's `caddy_logs` pipeline. Loki and Caddy keep 30 days (NFR-28); the journal is a size-capped buffer.
 - **Alerts:** `rules-tickit.yaml` fires when more than 1% of requests answer a 5xx for 5 minutes (from the access log, with at least 5 errors), when a reset fails (`tickit_resets_total{outcome="failed"}` rises), and when no reset succeeds for 26 hours. The host's rules cover the rest of NFR-78: a failed probe ("External endpoint unreachable"), tick overruns and a parked projector (`rules-lith-apps.yaml`), and a unit that fails or keeps restarting (`rules-services.yaml`).
 
 To check the metrics by hand: `curl -s http://127.0.0.1:7205/metrics | grep ^tickit_`.

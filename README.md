@@ -1,6 +1,6 @@
 # tickit
 
-tickit is an issue tracker in the manner of Jira and a wiki in the manner of Confluence, used by several people at once: open a board, a page or an issue and see the others on it and their changes as they happen. It runs as a public demo of [lith](https://github.com/zweiundeins/lith) at tickitdemo.zweiundeins.gmbh: one Go binary, one SQLite file, pages rendered on the server and kept current over SSE with Datastar.
+tickit is an issue tracker in the manner of Jira and a wiki in the manner of Confluence, used by several people at once: open a board, a page or an issue and see the others on it and their changes as they happen. It runs as a public demo of [lith](https://github.com/zweiundeins/lith) at tickit.zweiundeins.gmbh: one Go binary, one SQLite file, pages rendered on the server and kept current over SSE with Datastar.
 
 Visitors need no account: each browser is a guest with a pseudonym and a face. Accounts are for staff, who moderate and run the demo.
 

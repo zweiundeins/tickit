@@ -281,7 +281,7 @@ No Must or Should requirements.
 | --- | --- | --- | --- | --- | --- |
 | NFR-60 | Build | Must | done | deploy/smoke-test.sh (go tool task smoke) | No Go test cites it; hugo stays in go.mod only as an indirect dependency of the air dev tool, not of the binary. |
 | NFR-61 | systemd unit | Must | done | none | No test cites it; deploy/tickit.service has the user, StateDirectory, 127.0.0.1:7105, loopback-only network, MemoryMax and TimeoutStopSec=30. |
-| NFR-62 | Caddy block | Must | done | none | No test cites it; deploy/tickitdemo.caddy only proxies, without encode, replaces X-Forwarded-For and keeps the log at 0640 for 720 h. |
+| NFR-62 | Caddy block | Must | done | none | No test cites it; deploy/tickit.caddy only proxies, without encode, replaces X-Forwarded-For and keeps the log at 0640 for 720 h. |
 | NFR-63 | Drop-ins for monitoring | Must | done | none | No test cites it; deploy/observability holds the three files and deploy/setup-host.sh installs them with Alloy rollback and no restart. |
 | NFR-64 | Deploy and rollback | Must | done | none | No test cites it; deploy/tickit-deploy waits 30 s for "ok <version>", restores the old binary, and has a rollback mode. |
 | NFR-65 | Migrations | Must | done | cmd/tickit/migrations_test.go: TestPending; cmd/tickit/migrations_test.go: TestMigrationsPendingCommand |  |

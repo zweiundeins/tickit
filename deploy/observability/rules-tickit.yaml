@@ -32,7 +32,7 @@ groups:
                 to: 0
               datasourceUid: loki-ds
               model:
-                expr: sum(rate({job="caddy", site="tickitdemo", status_class="5xx"}[5m])) or (sum(rate({job="caddy", site="tickitdemo"}[5m])) * 0)
+                expr: sum(rate({job="caddy", site="tickit", status_class="5xx"}[5m])) or (sum(rate({job="caddy", site="tickit"}[5m])) * 0)
                 intervalMs: 1000
                 maxDataPoints: 43200
                 refId: A
@@ -43,7 +43,7 @@ groups:
                 to: 0
               datasourceUid: loki-ds
               model:
-                expr: sum(rate({job="caddy", site="tickitdemo"}[5m]))
+                expr: sum(rate({job="caddy", site="tickit"}[5m]))
                 intervalMs: 1000
                 maxDataPoints: 43200
                 refId: B
@@ -90,7 +90,7 @@ groups:
           execErrState: Alerting
           for: 5m
           annotations:
-            summary: 'tickitdemo.zweiundeins.gmbh answers more than 1% of its requests with a 5xx, for 5 minutes'
+            summary: 'tickit.zweiundeins.gmbh answers more than 1% of its requests with a 5xx, for 5 minutes'
           isPaused: false
         - uid: tickit-reset-failed
           title: 'tickit: demo reset failed'

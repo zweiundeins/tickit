@@ -13,8 +13,7 @@
 # forwarding), and sudo allows exactly that command. Rerunning replaces the
 # drop-ins and the key. It never restarts tickit.
 set -euo pipefail
-NAME=tickit     # the unit, the metrics target, the alert rules
-SITE=tickitdemo # the Caddy site: the probes and the access log
+NAME=tickit # the unit, the Caddy site, its drop-ins and alert rules
 HERE=$(cd "$(dirname "$0")" && pwd)
 OBS=$HERE/observability
 # Alloy's HTTP server, for its reload endpoint.
@@ -68,8 +67,8 @@ prometheus_dropins() {
 	fi
 	install -D -m 0644 "$OBS/$NAME.metrics.yml" "/etc/prometheus/apps/$NAME.yml"
 	echo ">> Prometheus scrapes $NAME: /etc/prometheus/apps/$NAME.yml"
-	install -D -m 0644 "$OBS/$SITE.targets.yml" "/etc/prometheus/targets/$SITE.yml"
-	echo ">> the blackbox exporter probes $SITE: /etc/prometheus/targets/$SITE.yml"
+	install -D -m 0644 "$OBS/$NAME.targets.yml" "/etc/prometheus/targets/$NAME.yml"
+	echo ">> the blackbox exporter probes $NAME: /etc/prometheus/targets/$NAME.yml"
 }
 
 # Grafana's alert rules, reloaded as the host's install.sh does: through the
@@ -121,7 +120,7 @@ grafana_rules() {
 # Alloy loads every .alloy file in /etc/alloy as one config, and a file it
 # refuses would stop the logs of all apps at its next start: the old one goes back.
 alloy_dropin() {
-	local src=$OBS/$SITE.alloy dst=/etc/alloy/$SITE.alloy old out
+	local src=$OBS/$NAME.alloy dst=/etc/alloy/$NAME.alloy old out
 	if ! installed alloy; then
 		echo ">> no Alloy here: no logs to Loki"
 		return
@@ -137,7 +136,7 @@ alloy_dropin() {
 		if [[ -f "$old" ]]; then install -m 0644 "$old" "$dst"; else rm -f "$dst"; fi
 		rm -f "$old"
 		curl -sS --max-time 30 "$ALLOY_URL/-/reload" >/dev/null 2>&1 || true
-		echo "!! Alloy refused the new $SITE.alloy and keeps what it had: $out" >&2
+		echo "!! Alloy refused the new $NAME.alloy and keeps what it had: $out" >&2
 		exit 1
 	fi
 	rm -f "$old"

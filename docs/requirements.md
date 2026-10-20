@@ -2,7 +2,7 @@
 
 Draft, 16 October 2026. The open questions of section 11 are decided.
 
-tickit becomes a multiplayer clone of Jira and Confluence, run as a public demo of lith at `tickitdemo.zweiundeins.gmbh`, and is rewritten from scratch on lith. This document states what the rewrite must do, what it should and could do, and what waits. It does not prescribe tickit's present architecture (NATS, command and query buses, five database files); section 2 lists the constraints that come from lith instead.
+tickit becomes a multiplayer clone of Jira and Confluence, run as a public demo of lith at `tickit.zweiundeins.gmbh` (it replaces the old demo at `tickitdemo.zweiundeins.gmbh`), and is rewritten from scratch on lith. This document states what the rewrite must do, what it should and could do, and what waits. It does not prescribe tickit's present architecture (NATS, command and query buses, five database files); section 2 lists the constraints that come from lith instead.
 
 ## About this document
 
@@ -1413,12 +1413,12 @@ Must · Source: `deploy/systemd/tickit.service.d/listen.conf`; `lith:site/conten
 #### NFR-62 Caddy block
 Must · Source: `deploy/tickitdemo.caddy`; analysis §5 · Today: broken. The block compresses responses, the SSE streams included, and serves `/static` and `/uploads` from disk.
 
-1. `/etc/caddy/sites/tickitdemo.caddy` only proxies to the app, without `encode` and without file handlers, replaces `X-Forwarded-For` as the template's block does, and keeps its JSON access log at mode 0640 for 30 days.
+1. `/etc/caddy/sites/tickit.caddy` only proxies to the app, without `encode` and without file handlers, replaces `X-Forwarded-For` as the template's block does, and keeps its JSON access log at mode 0640 for 30 days.
 
 #### NFR-63 Drop-ins for monitoring
 Must · Source: `deploy/setup-host.sh`; `docs/INSTALL.md:247-261`; `lith:site/content/docs/guides/monitoring.md:168-178` · Today: partly works. Probes and the Alloy file exist; the login probe looks for "TickIt" with a module of its own; tickit has no metrics target.
 
-1. `deploy/` holds `tickitdemo.targets.yml` (probes of `/` with `http_2xx` and `/healthz` with `http_2xx_ok`), `tickit.metrics.yml` for `/etc/prometheus/apps/` with the labels `app` and `slot`, and `tickitdemo.alloy` for the journal and the access log.
+1. `deploy/` holds `tickit.targets.yml` (probes of `/` with `http_2xx` and `/healthz` with `http_2xx_ok`), `tickit.metrics.yml` for `/etc/prometheus/apps/` with the labels `app` and `slot`, and `tickit.alloy` for the journal and the access log.
 2. `deploy/setup-host.sh` installs them, reloads Alloy and puts the old file back if Alloy refuses the new one, and never restarts `tickit`.
 
 #### NFR-64 Deploy and rollback
@@ -1653,7 +1653,7 @@ Q14, Q13, Q19 and Q18 block the most Must requirements; Q1 blocks the most requi
 
 ## 12. Acceptance of the rewrite
 
-The rewrite replaces the current demo at `tickitdemo.zweiundeins.gmbh` when all of this is true:
+The rewrite replaces the current demo at `tickitdemo.zweiundeins.gmbh`, served at `tickit.zweiundeins.gmbh`, when all of this is true:
 
 1. Every Must requirement passes its acceptance criteria, and each criterion has an automated test or a written manual check in the repository.
 2. This document reflects the decisions of section 11 (16 October 2026) and any made since.

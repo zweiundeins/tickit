@@ -1,0 +1,7 @@
+# Blackbox probes for tickit, installed as /etc/prometheus/targets/tickit.yml.
+# `module` is one of the host's generic modules (http_2xx_ok: a 200 whose body
+# starts with "ok "); `service` is the access log's site.
+- targets: ['https://tickit.zweiundeins.gmbh/']
+  labels: { service: tickit, module: http_2xx }
+- targets: ['https://tickit.zweiundeins.gmbh/healthz']
+  labels: { service: tickit, module: http_2xx_ok }

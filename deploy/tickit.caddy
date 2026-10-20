@@ -1,11 +1,11 @@
-# Caddy 2: tickit's site block, as /etc/caddy/sites/tickitdemo.caddy (the
+# Caddy 2: tickit's site block, as /etc/caddy/sites/tickit.caddy (the
 # host's Caddyfile imports that folder). It only proxies: tickit serves
 # everything itself, compresses its pages and streams (so no
 # `encode`), and sets its own security headers (NFR-19). Unit `tickit`,
 # loopback :7105; its /metrics listen on :7205 for Prometheus only.
-tickitdemo.zweiundeins.gmbh {
+tickit.zweiundeins.gmbh {
 	log {
-		output file /var/log/caddy/tickitdemo-access.log {
+		output file /var/log/caddy/tickit-access.log {
 			mode 0640
 			roll_size 100mb
 			roll_keep 5

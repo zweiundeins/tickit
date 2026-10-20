@@ -1,6 +1,6 @@
 # Security of the public demo
 
-tickit runs as a public demo at `tickitdemo.zweiundeins.gmbh`: anyone on the internet uses it without an account, as a guest with a Member's rights in every open project and space (requirements 3.1, Q14). This file says whom the demo defends against, which control stops what, which test proves each control, how to run the security suite, and what the review of October 2026 found. Requirement ids are those of `docs/requirements.md`, sections 7 and 8.1 to 8.2.
+tickit runs as a public demo at `tickit.zweiundeins.gmbh`: anyone on the internet uses it without an account, as a guest with a Member's rights in every open project and space (requirements 3.1, Q14). This file says whom the demo defends against, which control stops what, which test proves each control, how to run the security suite, and what the review of October 2026 found. Requirement ids are those of `docs/requirements.md`, sections 7 and 8.1 to 8.2.
 
 ## Threat model
 

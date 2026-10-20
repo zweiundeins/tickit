@@ -1,4 +1,4 @@
-# /etc/systemd/system/tickit.service: tickit on tickitdemo.zweiundeins.gmbh.
+# /etc/systemd/system/tickit.service: tickit on tickit.zweiundeins.gmbh.
 [Unit]
 Description=tickit (issue tracker and wiki demo, Go, Datastar, SQLite)
 Documentation=https://github.com/mbolli/tickit/blob/master/docs/deploy.md

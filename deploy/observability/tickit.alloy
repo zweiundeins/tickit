@@ -1,4 +1,4 @@
-// tickit's logs for the host's Alloy, as /etc/alloy/tickitdemo.alloy. Alloy runs
+// tickit's logs for the host's Alloy, as /etc/alloy/tickit.alloy. Alloy runs
 // on the folder as one config, so every component label here starts with tickit_.
 
 // The journal as {job="tickit", level}: the job comes from relabeling, since the
@@ -34,10 +34,10 @@ loki.process "tickit_journal" {
 	}
 }
 
-// Caddy's access log (tickitdemo.caddy) as {job="caddy", site="tickitdemo"},
+// Caddy's access log (tickit.caddy) as {job="caddy", site="tickit"},
 // through the host's pipeline for access logs.
 local.file_match "tickit_access" {
-	path_targets = [{"__path__" = "/var/log/caddy/tickitdemo-access.log", "job" = "caddy", "site" = "tickitdemo"}]
+	path_targets = [{"__path__" = "/var/log/caddy/tickit-access.log", "job" = "caddy", "site" = "tickit"}]
 }
 
 loki.source.file "tickit_access" {
