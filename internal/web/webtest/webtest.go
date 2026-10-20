@@ -74,7 +74,7 @@ func StartWith(t testing.TB, o Options) *Env {
 	}
 	logs := &syncBuffer{}
 	log := slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	hub := live.New(live.Options{Read: db.R, Workers: 2, Tick: 10 * time.Millisecond, HeartbeatSignal: "_ping", Log: log})
+	hub := live.New(live.Options{Read: db.R, Workers: 2, Tick: 10 * time.Millisecond, MaxStreamsPerClient: web.MaxStreamsPerAddr, HeartbeatSignal: "_ping", Log: log})
 	w, err := writer.New(db, writer.Options{OnCommit: hub.Changed, Log: log})
 	if err != nil {
 		t.Fatal(err)

@@ -325,8 +325,10 @@ func TestClosedKeysStayUnknown(t *testing.T) {
 	}
 }
 
-// NFR-41, DM-04: one address cannot take every stream: it holds 40 at
-// once and opens them at a second each after a burst of 40.
+// NFR-41, DM-04: one address cannot take every stream: the hub holds it to
+// 40 at once (429, which the page's retry 'error' tries again), and it
+// opens them at a second each after a burst of 40. Loopback without a
+// proxy's header has the hub's cap alone.
 func TestStreamsPerAddress(t *testing.T) {
 	e := webtest.Start(t)
 	c := webtest.Client(t)
@@ -349,11 +351,18 @@ func TestStreamsPerAddress(t *testing.T) {
 		_, stop := webtest.Open(t, c, fmt.Sprintf("%s/stream?tab=t%d&v=", e.URL, i), from("203.0.113.7"))
 		closers = append(closers, stop)
 	}
-	if got := code("203.0.113.7", "one-more"); got != http.StatusServiceUnavailable {
+	if got := code("203.0.113.7", "one-more"); got != http.StatusTooManyRequests {
 		t.Errorf("a stream past the address's cap: %d", got)
+	}
+	if got := e.Hub.Stats().Streams; got != web.MaxStreamsPerAddr {
+		t.Errorf("%d streams open, want %d", got, web.MaxStreamsPerAddr)
 	}
 	if got := code("198.51.100.9", "elsewhere"); got != http.StatusOK {
 		t.Errorf("a stream from another address: %d", got)
+	}
+	for i := range web.MaxStreamsPerAddr + 5 { // loopback: no proxy, no cap of its own
+		_, stop := webtest.Open(t, c, fmt.Sprintf("%s/stream?tab=l%d&v=", e.URL, i), nil)
+		closers = append(closers, stop)
 	}
 	for _, stop := range closers {
 		stop()

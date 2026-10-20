@@ -84,7 +84,7 @@ func (s *realServer) Start() {
 	if err != nil {
 		t.Fatal(err)
 	}
-	hub := live.New(live.Options{Read: db.R, MaxStreams: 400, HeartbeatSignal: "_ping", Log: log})
+	hub := live.New(live.Options{Read: db.R, MaxStreams: 400, MaxStreamsPerClient: web.MaxStreamsPerAddr, HeartbeatSignal: "_ping", Log: log})
 	w, err := writer.New(db, writer.Options{OnCommit: hub.Changed, Log: log})
 	if err != nil {
 		t.Fatal(err)

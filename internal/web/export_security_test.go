@@ -11,6 +11,5 @@ func Unlimited(s *Server) {
 	for _, c := range classes {
 		l.classes[c.name] = limiter{byAddr: free(), bySession: free()}
 	}
-	s.limits, s.signIn, s.streams = l, free(), newStreamLimits()
-	s.streams.opens = free()
+	s.limits, s.signIn, s.streams = l, free(), &streamLimits{opens: free()}
 }
