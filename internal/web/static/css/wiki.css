@@ -248,6 +248,7 @@
 	/* ── The tree in the sidebar ───────────────────────────────────── */
 	.wk-tree {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 	}
 

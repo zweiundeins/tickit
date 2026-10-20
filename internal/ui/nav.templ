@@ -214,6 +214,7 @@ templ treeItems(items []TreeItem, level int, focus string) {
 				class="tk-tree__item"
 				role="treeitem"
 				href={ templ.SafeURL(it.Href) }
+				title={ it.Label }
 				aria-level={ strconv.Itoa(level) }
 				if it.ID == focus {
 					tabindex="0"

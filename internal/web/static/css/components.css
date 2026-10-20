@@ -1277,9 +1277,13 @@
 	}
 
 	/* ── Tree ──────────────────────────────────────────────────────── */
+	/* One column no wider than the tree's place, so long titles cut
+	 * rather than push the tree out of the sidebar. */
 	.tk-tree,
 	.tk-tree [role="group"] {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		min-inline-size: 0;
 		gap: 1px;
 		margin: 0;
 		padding: 0;
