@@ -92,12 +92,14 @@ echo ">> $OLD -> $NEW"
 # Does the new binary migrate the database, or refuse it?
 COPY=
 if [[ -f "$DB" ]]; then
-	PENDING=$(in_state "$DIR/$NAME.new" migrations-pending -db "$DB") && [[ "$PENDING" =~ ^[0-9]+$ ]] || {
+	if ! PENDING=$(in_state "$DIR/$NAME.new" migrations-pending -db "$DB") || ! [[ "$PENDING" =~ ^[0-9]+$ ]]; then
 		rm -f "$DIR/$NAME.new"
 		echo "!! $NEW refuses the database (its schema is newer?); nothing changed" >&2
-		[[ $MODE == rollback ]] && echo "!! to go back past a migration, restore a copy from $PRE first (docs/deploy.md)" >&2
+		if [[ $MODE == rollback ]]; then
+			echo "!! to go back past a migration, restore a copy from $PRE first (docs/deploy.md)" >&2
+		fi
 		exit 2
-	}
+	fi
 	if ((PENDING > 0)); then
 		BIN=$DIR/$NAME
 		[[ -x "$BIN" ]] || BIN=$DIR/$NAME.new
