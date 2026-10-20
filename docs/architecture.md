@@ -48,7 +48,7 @@ Every change is `POST /cmd/<area>/<action>` with a Datastar payload `{tab, op, .
 1. checks the rate-limit class of the action per client address, then per person (DM-04, `edge.ClientKey`; the classes are in `internal/web/action.go`),
 2. reads the payload with `sse.ReadSignalsLimit` and validates its shape (400 on malformed input, never 500, NFR-16),
 3. takes the actor from the session, never from the payload (`tabs.By{Actor, Op, At}`, which commands carry and turn into `events.Meta` with `By.Meta()`),
-4. runs `w.Do(ctx, writer.OnceResult(sid+":"+op, tabs.Act{...Cmd: cmd}))` and answers 204, or 403 when the command was refused for want of a right, or 400, 404, 429, 503 for requests that reached no outcome.
+4. runs `w.Do(ctx, writer.OnceResult(sid+":"+path+":"+op, tabs.Act{...Cmd: cmd}))` (the path too, so that another action naming the same op id never gets the first one's answer) and answers 204, or 403 when the command was refused for want of a right, or 400, 404, 429, 503 for requests that reached no outcome.
 
 In an area's handler that is `a, ok := s.decode(w, r, classField, &req)`, then `s.act(w, r, a, cmd)`. `OnceResult` rather than `Once`, so that a retry gets the first answer (a denial's 403, a result) while `tabs.Act` records refusals as outcomes either way.
 

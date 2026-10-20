@@ -173,20 +173,29 @@ func (s *Server) paused(w http.ResponseWriter, r *http.Request, actor people.Per
 	return true
 }
 
-// run runs cmd as action a in tabs.Act, once per op id: a retry gets the
-// first answer and runs nothing. It answers the requests that reached no
-// outcome itself and reports false then.
-func (s *Server) run(w http.ResponseWriter, r *http.Request, a action, cmd writer.Command) (tabs.Result, bool) {
+// result is an action's outcome, and whether it is a retry's, which ran
+// nothing: what follows an action outside the writer follows it once.
+type result struct {
+	tabs.Result
+	replayed bool
+}
+
+// run runs cmd as action a in tabs.Act, once per session, path and op id:
+// a retry gets the first answer and runs nothing. Another action that
+// names the same op id runs: it must not get the first one's answer, as
+// an OK that would start what it may not (a reset). It answers the
+// requests that reached no outcome itself and reports false then.
+func (s *Server) run(w http.ResponseWriter, r *http.Request, a action, cmd writer.Command) (result, bool) {
 	// The demo's guard refuses while it resets, for a blocked guest, and
 	// past the caps (DM-03.4, DM-07.2, DM-04.3).
 	cmd = s.demo.Guard(a.By.Actor, a.Addr, cmd)
-	op := writer.OnceResult(a.Session+":"+a.By.Op, tabs.Act{Session: a.Session, Tab: a.Tab, By: a.By, Cmd: cmd})
+	op := writer.OnceResult(a.Session+":"+r.URL.Path+":"+a.By.Op, tabs.Act{Session: a.Session, Tab: a.Tab, By: a.By, Cmd: cmd})
 	if err := s.w.Do(r.Context(), op); err != nil {
 		s.failAction(w, r, err)
-		return tabs.Result{}, false
+		return result{}, false
 	}
-	res := tabs.ParseResult(op.Result())
-	if !res.OK && !op.Replayed() {
+	res := result{tabs.ParseResult(op.Result()), op.Replayed()}
+	if !res.OK && !res.replayed {
 		s.metrics.refusals.WithLabelValues(r.Pattern).Inc()
 	}
 	return res, true

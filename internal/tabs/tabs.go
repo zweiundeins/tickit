@@ -202,8 +202,9 @@ func (r *FieldRefusal) OnField() string { return r.Field }
 // whatever became of it. Before Cmd, the actor gets a row in people if
 // they are a guest acting for the first time (people.Ensure).
 //
-// Run it as writer.OnceResult(sid+":"+op, act): a retry then replays the
-// first answer and runs nothing. Its result (ParseResult) tells a refusal
+// Run it as writer.OnceResult(sid+":"+path+":"+op, act): a retry then
+// replays the first answer and runs nothing, and another action with the
+// same op id runs on its own. Its result (ParseResult) tells a refusal
 // for want of a right, which the action answers with 403, and carries
 // Cmd's own result when Cmd is a writer.ResultCommand.
 type Act struct {

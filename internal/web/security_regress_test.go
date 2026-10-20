@@ -401,3 +401,29 @@ func TestClosedIssueTypingAndLink(t *testing.T) {
 		t.Errorf("a link from a closed project's issue: %d", code)
 	}
 }
+
+// NFR-01.1, DM-03.1: an op id of one's own earlier action, sent with an
+// action one may not take, gets no replay of the first answer: a guest
+// cannot start the reset with the op id of their rename.
+func TestOpIDReplayAcrossActions(t *testing.T) {
+	e := webtest.Start(t)
+	g := webtest.Client(t)
+	webtest.Get(t, g, e.URL+"/")
+	if code, _ := webtest.Post(t, g, e.URL+"/cmd/people/rename", `{"tab":"tab1","op":"same-op","name":"Mallory"}`); code != http.StatusNoContent {
+		t.Fatalf("rename: %d", code)
+	}
+	if code, _ := webtest.Post(t, g, e.URL+"/cmd/admin/reset", `{"tab":"tab1","op":"same-op"}`); code != http.StatusForbidden {
+		t.Errorf("a guest's reset with the op id of their rename: %d", code)
+	}
+	time.Sleep(100 * time.Millisecond)
+	if n := rowCount(t, e, `SELECT count(*) FROM demo_resets`); n != 0 || e.Server.Demo().Resetting() {
+		t.Errorf("a guest reset the demo (%d resets)", n)
+	}
+	// A retry of the same action still gets its first answer.
+	if code, _ := webtest.Post(t, g, e.URL+"/cmd/people/rename", `{"tab":"tab1","op":"same-op","name":"Other"}`); code != http.StatusNoContent {
+		t.Errorf("a retry: %d", code)
+	}
+	if n := rowCount(t, e, `SELECT count(*) FROM people WHERE display_name = 'Other'`); n != 0 {
+		t.Error("a retry ran again")
+	}
+}

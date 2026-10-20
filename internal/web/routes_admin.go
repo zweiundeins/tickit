@@ -470,7 +470,7 @@ func (s *Server) adminReset(w http.ResponseWriter, r *http.Request) {
 	case res.Denied:
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
-	case res.OK:
+	case res.OK && !res.replayed: // a retry starts no second reset
 		go func() {
 			if err := s.demo.Reset(context.WithoutCancel(r.Context()), a.By.Actor.ID); err != nil && !errors.Is(err, demo.ErrResetting) {
 				s.log.Debug("reset now", "err", err) // Reset logged it at ERROR
