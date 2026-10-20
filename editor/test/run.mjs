@@ -55,6 +55,7 @@ async function open(n, { skip = 0, delay = 25, csp = '', names } = {}) {
 		const name = names?.[i] ?? ['Sunny Otter', 'Brave Lynx', 'Quiet Heron', 'Bold Marten', 'Calm Ibex', 'Swift Wren', 'Keen Vole'][i % 7]
 		await p.goto(`${base}/test/tab.html?page=${page}&tab=t${i}&name=${encodeURIComponent(name)}&hue=${(i * 3) % 16}&skip=${skip}&delay=${delay}${csp ? '&csp=' + csp : ''}`)
 		await p.evaluate(() => harness.ready)
+		await p.waitForFunction(() => harness.lastFrame, { polling: 20 })
 		tabs.push(p)
 	}
 	return { page, tabs, close: () => Promise.all(tabs.map((t) => t.close())) }
@@ -116,7 +117,7 @@ test('smoke: one editor types and its commit is confirmed', async () => {
 
 // Letters the seed document does not hold, two per editor, so that every
 // typed character can be counted in the final text.
-const POOL = 'bcfgjkmquvwxzACDFGHIJKLMNOPQUVXYZ'
+const POOL = 'bcfgjkmquvwxzACDFGHIJKLMNOPQUVXYZ0123456789'
 const alphabetOf = (i) => POOL.slice(2 * i, 2 * i + 2)
 const pct = (xs, p) => {
 	if (!xs.length) return null
@@ -241,6 +242,47 @@ const selectIn = (tab, i, from, to) =>
 		from,
 		to,
 	)
+
+test("toDOM writes docs/editor.md's HTML of a document", async () => {
+	const { tabs, close } = await open(1)
+	const [a] = tabs
+	const html = await a.evaluate(() => {
+		const v = harness.host().view
+		const S = v.state.schema
+		const t = (x, marks = []) => S.text(x, marks.map((m) => (typeof m === 'string' ? S.marks[m].create() : m)))
+		const p = (...c) => S.nodes.paragraph.create(null, c)
+		const doc = S.nodes.doc.create(null, [
+			S.nodes.heading.create({ level: 1 }, t('One')),
+			S.nodes.heading.create({ level: 3 }, t('Three')),
+			S.nodes.blockquote.create(null, p(t('q'))),
+			S.nodes.code_block.create({ language: 'go' }, t('x := 1')),
+			S.nodes.code_block.create(null, t('plain')),
+			S.nodes.horizontal_rule.create(),
+			S.nodes.bullet_list.create(null, S.nodes.list_item.create(null, p(t('b')))),
+			S.nodes.ordered_list.create({ order: 3 }, S.nodes.list_item.create(null, p(t('o')))),
+			S.nodes.ordered_list.create(null, S.nodes.list_item.create(null, p(t('o1')))),
+			S.nodes.task_list.create(null, [S.nodes.task_item.create({ checked: true }, p(t('done'))), S.nodes.task_item.create(null, p(t('todo')))]),
+			S.nodes.table.create(null, S.nodes.table_row.create(null, [S.nodes.table_header.create({ colspan: 2 }, p(t('h'))), S.nodes.table_cell.create(null, p(t('c')))])),
+			S.nodes.image.create({ imageId: 'diagram-1', src: '/img/lib/diagram-1', alt: 'A diagram' }),
+			p(
+				t('a'), S.nodes.hard_break.create(), S.nodes.issue_chip.create({ key: 'WEB-12' }), S.nodes.mention.create({ personId: 'u_1', label: 'Sunny Otter' }), S.nodes.page_link.create({ pageId: 'pg_roadmap' }),
+				t('s', ['strong']), t('e', ['em']), t('k', ['strike']), t('c', ['code']), t('l', [S.marks.link.create({ href: 'https://example.com/x' })]), t('u', [S.marks.link.create({ href: 'javascript:alert(1)' })]),
+			),
+		])
+		v.dispatch(v.state.tr.replaceWith(0, v.state.doc.content.size, doc.content))
+		return harness.host().html()
+	})
+	const want = [
+		'<h2>One</h2>', '<h4>Three</h4>', '<blockquote><p>q</p></blockquote>', '<pre data-language="go"><code>x := 1</code></pre>', '<pre><code>plain</code></pre>', '<hr>',
+		'<ul><li><p>b</p></li></ul>', '<ol start="3"><li><p>o</p></li></ol>', '<ol><li><p>o1</p></li></ol>',
+		'<ul class="task-list"><li class="task-item" data-checked="true"><input type="checkbox" disabled="" checked=""><div><p>done</p></div></li><li class="task-item" data-checked="false"><input type="checkbox" disabled=""><div><p>todo</p></div></li></ul>',
+		'<table><tbody><tr><th colspan="2"><p>h</p></th><td><p>c</p></td></tr></tbody></table>',
+		'<figure class="doc-image"><img src="/img/lib/diagram-1" alt="A diagram" loading="lazy"></figure>',
+		'<p>a<br><a class="issue-chip" data-key="WEB-12" href="/WEB-12">WEB-12</a><a class="mention" data-person="u_1" href="/people/u_1">@Sunny Otter</a><a class="page-link" data-page="pg_roadmap" href="/pages/pg_roadmap">Roadmap</a><strong>s</strong><em>e</em><s>k</s><code>c</code><a href="https://example.com/x" rel="nofollow ugc noopener" title="example.com">l</a><span class="link-unsafe">u</span></p>',
+	].join('')
+	ok(html === want, 'HTML differs:\n got  ' + html + '\n want ' + want)
+	await close()
+})
 
 test('reconnect: unconfirmed steps go out again with the same ref and apply once (MP-05.6, MP-10.3)', async () => {
 	const { tabs, close } = await open(2)

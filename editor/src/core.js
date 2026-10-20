@@ -384,7 +384,11 @@ class Editor {
 		if (this.stopped === state) return
 		this.stopped = state
 		if (this.inflight) clearTimeout(this.inflight.timer)
-		if (state !== 'readonly') this.inflight = null
+		if (state !== 'readonly') {
+			this.inflight = null
+			clearTimeout(this.presenceTimer)
+			this.presenceTimer = 0
+		}
 		this.view.setProps({})
 		const unsaved = collabState(this.view.state).unconfirmed.length
 		this.notice(this.p.refusal && state === 'readonly' ? parseJSON(this.p.refusal, null)?.message ?? this.p.refusal : STOPPED[state] ?? STOPPED.diverged, {
@@ -405,7 +409,7 @@ class Editor {
 
 	// presence sends our selection at the confirmed version, at most every 100 ms.
 	presence() {
-		if (this.presenceTimer || this.stopped === 'reset' || this.stopped === 'gone') return
+		if (this.presenceTimer || (this.stopped && this.stopped !== 'readonly')) return
 		const wait = Math.max(0, PRESENCE_MS - (Date.now() - this.presenceAt))
 		this.presenceTimer = setTimeout(() => {
 			this.presenceTimer = 0
