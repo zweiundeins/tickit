@@ -392,15 +392,15 @@ func TestComments(t *testing.T) {
 	if msg := refusal(t, e.do(AddComment{By: e.by(viewer), Page: p, Parent: r, Body: paras("Deeper")})); msg != "Replies go one level deep: reply to the comment above." {
 		t.Errorf("second level: %q", msg)
 	}
-	if msg := refusal(t, e.do(AddComment{By: e.by(viewer), Page: p, Body: paras("")})); msg != "The comment is not a document." && msg != "Write something first." {
+	if msg := refusal(t, e.do(AddComment{By: e.by(viewer), Page: p, Body: paras("")})); msg != "Write something first." {
 		t.Errorf("empty: %q", msg)
 	}
-	if err := e.do(EditComment{By: e.by(member), Comment: c, Body: paras("Mine now")}); !isDenied(err) {
+	if err := e.do(tracker.EditComment{By: e.by(member), Comment: c, Body: paras("Mine now")}); !isDenied(err) {
 		t.Errorf("edit another's: %v", err)
 	}
-	e.must(EditComment{By: e.by(viewer), Comment: c, Body: paras("Looks great")})
-	e.must(HideComment{By: e.by(admin), Comment: r, Hidden: true})
-	e.must(DeleteComment{By: e.by(viewer), Comment: c})
+	e.must(tracker.EditComment{By: e.by(viewer), Comment: c, Body: paras("Looks great")})
+	e.must(tracker.HideComment{By: e.by(admin), Comment: r, Hidden: true})
+	e.must(tracker.DeleteComment{By: e.by(viewer), Comment: c})
 	var list []Comment
 	e.View(t, func(tx *sql.Tx) (err error) { list, err = Comments(context.Background(), tx, p); return err })
 	if len(list) != 1 || !list[0].Deleted || len(list[0].Replies) != 1 || !list[0].Replies[0].Hidden {

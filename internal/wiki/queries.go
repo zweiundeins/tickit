@@ -9,7 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/sqlite"
+	"github.com/zweiundeins/lith/writer"
 
 	"github.com/mbolli/tickit/internal/demo/seed"
 	"github.com/mbolli/tickit/internal/doc"
@@ -297,8 +299,10 @@ type Comment struct {
 // Comments lists a page's comments in the order they came, each with its
 // replies.
 func Comments(ctx context.Context, q sqlite.Querier, page string) ([]Comment, error) {
-	rows, err := q.QueryContext(ctx, `SELECT id, parent_id, author, coalesce(body, ''), created_at, coalesce(edited_at, 0),
-		deleted_at IS NOT NULL, hidden_at IS NOT NULL FROM page_comments WHERE page_id = ? ORDER BY created_at, id`, page)
+	rows, err := q.QueryContext(ctx, `SELECT c.id, coalesce(t.parent_id, ''), c.author, coalesce(c.body, ''), c.created_at, coalesce(c.edited_at, 0),
+		c.deleted_at IS NOT NULL, c.hidden_at IS NOT NULL
+		FROM comments c LEFT JOIN page_comment_threads t ON t.comment_id = c.id
+		WHERE c.subject = 'page' AND c.subject_id = ? ORDER BY c.created_at, c.id`, page)
 	if err != nil {
 		return nil, err
 	}
@@ -551,4 +555,39 @@ func Slug(title string) string {
 		return out + "-page"
 	}
 	return out
+}
+
+// PageAt is a page as its stream held it at a position, with its space's
+// key and its address then: for reactions that decide as of an event.
+func PageAt(tx *writer.Tx, id string, upto int64) (s PageState, key, href string, err error) {
+	s, _, err = events.StateAt(tx.Context(), Store(), tx, peekPageDecider, PageStream.ID(id), upto)
+	if err != nil {
+		return s, "", "", err
+	}
+	if key, err = spaceKey(tx, s.Space); err != nil {
+		return s, "", "", err
+	}
+	return s, key, PageURL(key, id, s.Title), nil
+}
+
+// VersionBefore is the document of the version before number of a page,
+// from the page's stream as of upto; nil for the first.
+func VersionBefore(tx *writer.Tx, id string, number int, upto int64) (json.RawMessage, error) {
+	var prev json.RawMessage
+	for r, err := range events.LoadUntil(tx.Context(), Store(), tx, PageStream.ID(id), 0, upto) {
+		if err != nil {
+			return nil, err
+		}
+		if v, ok := r.Data.(VersionCut); ok && v.Number < number {
+			prev = v.Doc
+		}
+	}
+	return prev, nil
+}
+
+// PagesMentioningIssue is PagesMentioning for every key an issue ever
+// had (issue_keys): the old keys of a moved issue still name it.
+func PagesMentioningIssue(ctx context.Context, q sqlite.Querier, issue string) ([]PageRef, error) {
+	return pageRefs(ctx, q, refSelect+`WHERE p.state = 'current' AND p.id IN (SELECT c.page_id FROM page_chips c JOIN issue_keys k ON k.key = c.key WHERE k.issue_id = ?)
+		ORDER BY s.name, p.title`, issue)
 }

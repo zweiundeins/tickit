@@ -46,7 +46,7 @@ func (e *env) dump(table string) string {
 	return b.String()
 }
 
-var wikiTables = []string{"spaces", "pages", "page_labels", "page_watchers", "page_versions", "page_doc", "page_chips", "page_links", "page_comments", "search_pages"}
+var wikiTables = []string{"spaces", "pages", "page_labels", "page_watchers", "page_versions", "page_doc", "page_chips", "page_links", "page_comment_threads", "search_pages"}
 
 // FR-155.2: rebuilding every read model of the wiki from the stored
 // events yields the same tables, after a fold too. FR-155.1: every event
@@ -81,10 +81,10 @@ func TestRebuild(t *testing.T) {
 	e.must(SetDocument{By: e.by(ada), Page: c, Doc: paras("Seeded", "Twice"), Message: "From the seed"})
 	cm := e.result(AddComment{By: e.by(sunny), Page: b, Body: paras("First")})["id"]
 	e.result(AddComment{By: e.by(rainy), Page: b, Parent: cm, Body: paras("Reply")})
-	e.must(EditComment{By: e.by(sunny), Comment: cm, Body: paras("First, edited")})
-	e.must(HideComment{By: e.by(moderator), Comment: cm, Hidden: true})
-	e.must(HideComment{By: e.by(moderator), Comment: cm, Hidden: false})
-	e.must(DeleteComment{By: e.by(sunny), Comment: cm})
+	e.must(tracker.EditComment{By: e.by(sunny), Comment: cm, Body: paras("First, edited")})
+	e.must(tracker.HideComment{By: e.by(moderator), Comment: cm, Hidden: true})
+	e.must(tracker.HideComment{By: e.by(moderator), Comment: cm, Hidden: false})
+	e.must(tracker.DeleteComment{By: e.by(sunny), Comment: cm})
 	name := "Engineering"
 	e.must(EditSpace{By: e.by(admin), Space: sp, Name: &name})
 	e.must(ArchiveSpace{By: e.by(admin), Space: ops, Archived: true})
@@ -144,7 +144,7 @@ func TestRebuild(t *testing.T) {
 	}
 	var missing int
 	e.View(t, func(tx *sql.Tx) error {
-		return tx.QueryRow(`SELECT count(*) FROM lith_events WHERE stream IN ('space', 'page', 'pagedoc', 'page_comment')
+		return tx.QueryRow(`SELECT count(*) FROM lith_events WHERE stream IN ('space', 'page', 'pagedoc')
 			AND (actor IS NULL OR actor = '' OR causation IS NULL OR at = 0)`).Scan(&missing)
 	})
 	if missing != 0 {

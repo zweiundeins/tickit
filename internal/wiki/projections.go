@@ -19,7 +19,6 @@ const (
 	pagesVersion    = 1
 	versionsVersion = 1
 	docsVersion     = 1
-	commentsVersion = 1
 )
 
 // Checkpoint is how many commits page_doc's document may lag behind the
@@ -378,52 +377,6 @@ func column(tx *writer.Tx, query string, args ...any) ([]string, error) {
 		out = append(out, s)
 	}
 	return out, rows.Err()
-}
-
-// commentsProjector keeps page_comments.
-var commentsProjector = events.NewProjector(CommentStream, "wiki_comments", commentsVersion,
-	events.Handle(CommentAddedType, func(tx *writer.Tx, r events.Record[string, CommentAdded]) error {
-		e := r.Data
-		mentions, _ := json.Marshal(nonNil(e.Mentions))
-		text := ""
-		if d, err := doc.ParseDoc(e.Body); err == nil {
-			text = strings.ToLower(doc.Text(d))
-		}
-		_, err := tx.Exec(`INSERT INTO page_comments (id, page_id, parent_id, author, body, search, mentions, created_at, version)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, r.ID, e.Page, e.Parent, r.Actor, string(e.Body), text, string(mentions), millis(r.At), r.Version)
-		tx.Touch(PageTopic(e.Page))
-		return err
-	}),
-	events.Handle(CommentEditedType, func(tx *writer.Tx, r events.Record[string, CommentEdited]) error {
-		text := ""
-		var refs doc.Refs
-		if d, err := doc.ParseDoc(r.Data.Body); err == nil {
-			text, refs = strings.ToLower(doc.Text(d)), doc.References(d)
-		}
-		mentions, _ := json.Marshal(nonNil(refs.People))
-		return updateComment(tx, r.ID, `body = ?, search = ?, mentions = ?, edited_at = ?, version = ?`, string(r.Data.Body), text, string(mentions), millis(r.At), r.Version)
-	}),
-	events.Handle(CommentDeletedType, func(tx *writer.Tx, r events.Record[string, CommentDeleted]) error {
-		return updateComment(tx, r.ID, `body = NULL, search = '', mentions = '[]', deleted_at = ?, version = ?`, millis(r.At), r.Version)
-	}),
-	events.Handle(CommentHiddenType, func(tx *writer.Tx, r events.Record[string, CommentHidden]) error {
-		return updateComment(tx, r.ID, `hidden_at = ?, hidden_by = ?, version = ?`, millis(r.At), r.Actor, r.Version)
-	}),
-	events.Handle(CommentUnhiddenType, func(tx *writer.Tx, r events.Record[string, CommentUnhidden]) error {
-		return updateComment(tx, r.ID, `hidden_at = NULL, hidden_by = '', version = ?`, r.Version)
-	}),
-).Tables("page_comments")
-
-func updateComment(tx *writer.Tx, id, columns string, args ...any) error {
-	if _, err := tx.Exec(`UPDATE page_comments SET `+columns+` WHERE id = ?`, append(args, id)...); err != nil {
-		return err
-	}
-	var page string
-	if err := tx.QueryRow(`SELECT page_id FROM page_comments WHERE id = ?`, id).Scan(&page); err != nil {
-		return err
-	}
-	tx.Touch(PageTopic(page))
-	return nil
 }
 
 // chipsProjector writes nothing: it touches the chips of every page that

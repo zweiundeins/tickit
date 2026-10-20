@@ -117,25 +117,4 @@ func TestDocDeciders(t *testing.T) {
 	}
 }
 
-func TestCommentDeciders(t *testing.T) {
-	added := CommentAdded{Page: "p", Body: paras("Hi"), Mentions: []string{"s-ada"}}
-	eventstest.For(addComment).When(added).Then(t, added)
-	eventstest.For(addComment).Given(added).When(added).ThenError(t, errorString("wiki: the comment exists"))
-
-	ed := eventstest.For(editComment).Given(added)
-	ed.When(CommentEdited{Body: paras("Hi")}).Then(t)
-	ed.When(CommentEdited{Body: paras("Hello"), Mentions: []string{"s-ada", "s-bo"}}).Then(t, CommentEdited{Body: paras("Hello"), Mentions: []string{"s-bo"}})
-	ed.Given(CommentDeleted{}).When(CommentEdited{Body: paras("x")}).ThenError(t, &writer.Refusal{Msg: "This comment was deleted."})
-
-	del := eventstest.For(deleteComment).Given(added)
-	del.When(DeleteComment{}).Then(t, CommentDeleted{})
-	del.Given(CommentDeleted{}).When(DeleteComment{}).Then(t)
-
-	hide := eventstest.For(hideComment).Given(added)
-	hide.When(HideComment{Hidden: true, Reason: "spam"}).Then(t, CommentHidden{Reason: "spam"})
-	hide.When(HideComment{Hidden: false}).Then(t)
-	hide.When(HideComment{Hidden: true, Reason: strings.Repeat("r", 201)}).ThenError(t, refuse("reason", "A reason has at most 200 characters."))
-	hide.Given(CommentHidden{}).When(HideComment{Hidden: false}).Then(t, CommentUnhidden{})
-}
-
 var _ = errors.New

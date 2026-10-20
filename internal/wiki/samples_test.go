@@ -13,5 +13,4 @@ func TestSamples(t *testing.T) {
 	eventstest.Samples(t, Store(), SpaceStream, os.DirFS("testdata/space"))
 	eventstest.Samples(t, Store(), PageStream, os.DirFS("testdata/page"))
 	eventstest.Samples(t, Store(), PageDocStream, os.DirFS("testdata/pagedoc"))
-	eventstest.Samples(t, Store(), CommentStream, os.DirFS("testdata/page_comment"))
 }

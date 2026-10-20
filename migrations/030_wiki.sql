@@ -111,24 +111,16 @@ CREATE TABLE page_links (
 
 CREATE INDEX page_links_target ON page_links (target_id, page_id);
 
--- wiki_comments: comments below pages (FR-90), one level of replies.
-CREATE TABLE page_comments (
-    id            TEXT PRIMARY KEY,
-    page_id       TEXT NOT NULL,
-    parent_id     TEXT NOT NULL DEFAULT '',
-    author        TEXT NOT NULL,
-    body          TEXT,           -- null once deleted
-    search        TEXT NOT NULL DEFAULT '',
-    mentions      TEXT NOT NULL DEFAULT '[]',
-    created_at    INTEGER NOT NULL,
-    edited_at     INTEGER,
-    deleted_at    INTEGER,
-    hidden_at     INTEGER,
-    hidden_by     TEXT NOT NULL DEFAULT '',
-    version       INTEGER NOT NULL
-) STRICT;
+-- wiki_threads: which page comment replies to which (FR-90): page
+-- comments live in the tracker's comment stream and comments table, with
+-- subject 'page'; their one level of replies is the wiki's.
+CREATE TABLE page_comment_threads (
+    comment_id TEXT PRIMARY KEY,
+    page_id    TEXT NOT NULL,
+    parent_id  TEXT NOT NULL DEFAULT ''
+) STRICT, WITHOUT ROWID;
 
-CREATE INDEX page_comments_page ON page_comments (page_id, created_at);
+CREATE INDEX page_comment_threads_page ON page_comment_threads (page_id);
 
 -- Written by the commands, never by a projector, so their keys guard
 -- rules (NFR-18).

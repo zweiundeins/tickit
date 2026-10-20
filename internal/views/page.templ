@@ -31,6 +31,12 @@ templ WikiPage(p PageProps) {
 			<p class="wk-problem" role="status" data-text="$_wk.cmod.msg" data-effect={ cmodSettled }></p>
 			@pageCommentForm(p)
 		</section>
+		if p.Activity != nil {
+			<section class="wk-activity" aria-labelledby="space-activity-title">
+				<h2 class="wk-section-title" id="space-activity-title">Recent activity in { p.Space.Name }</h2>
+				@p.Activity
+			</section>
+		}
 		@createPageDialog(p.Space.ID, p.Templates)
 		if p.CanEdit && !p.Page.Home {
 			@moveDialog(p)

@@ -31,6 +31,9 @@ type CommentAdded struct {
 	Project   string          `json:"project,omitempty"`
 	Body      json.RawMessage `json:"body"`
 	Mentions  []string        `json:"mentions,omitempty"`
+	// Parent is the comment this one replies to, on a subject with
+	// replies (a page: one level, FR-90).
+	Parent string `json:"parent,omitempty"`
 }
 
 // CommentEdited holds the new body and the people it mentions for the
@@ -80,6 +83,7 @@ type CommentState struct {
 	Subject   string          `json:"subject"`
 	SubjectID string          `json:"subject_id"`
 	Project   string          `json:"project,omitempty"`
+	Parent    string          `json:"parent,omitempty"`
 	Body      json.RawMessage `json:"body,omitempty"`
 	Mentioned []string        `json:"mentioned,omitempty"` // everyone it ever mentioned
 	Version   int64           `json:"version"`
@@ -91,7 +95,7 @@ func evolveComment(s CommentState, e CommentEvent) CommentState {
 	s.Version++
 	switch e := e.(type) {
 	case CommentAdded:
-		s.Exists, s.Subject, s.SubjectID, s.Project, s.Body, s.Mentioned = true, e.Subject, e.SubjectID, e.Project, e.Body, e.Mentions
+		s.Exists, s.Subject, s.SubjectID, s.Project, s.Parent, s.Body, s.Mentioned = true, e.Subject, e.SubjectID, e.Project, e.Parent, e.Body, e.Mentions
 	case CommentEdited:
 		s.Body = e.Body
 		s.Mentioned = watchersOf(append([]string(nil), s.Mentioned...), e.Mentions...)
@@ -254,7 +258,7 @@ var editCommentDecider = commentDecider(func(c editComment, s CommentState) ([]C
 // mayChange checks that the actor may edit or delete a comment: their
 // own, or anyone's with EditAnyComment.
 func mayChange(tx *writer.Tx, by tabs.By, s CommentState, id string) error {
-	if err := require(tx, by, access.Read, s.Project); err != nil {
+	if err := requireOn(tx, by, access.Read, s); err != nil {
 		return err
 	}
 	author, err := commentAuthor(tx, id)
@@ -262,9 +266,9 @@ func mayChange(tx *writer.Tx, by tabs.By, s CommentState, id string) error {
 		return err
 	}
 	if author == by.Actor.ID {
-		return require(tx, by, access.EditOwnComment, s.Project)
+		return requireOn(tx, by, access.EditOwnComment, s)
 	}
-	return require(tx, by, access.EditAnyComment, s.Project)
+	return requireOn(tx, by, access.EditAnyComment, s)
 }
 
 // commentAuthor is who appended a comment's first event.
@@ -355,7 +359,7 @@ func (c HideComment) Apply(tx *writer.Tx) error {
 	if err != nil {
 		return err
 	}
-	if err := require(tx, c.By, access.HideComment, s.Project); err != nil {
+	if err := requireOn(tx, c.By, access.HideComment, s); err != nil {
 		return err
 	}
 	return events.Execute(Store(), tx, hideCommentDecider, CommentStream.ID(c.Comment), events.Any, c, meta(c.By))

@@ -61,7 +61,9 @@ type PageProps struct {
 	Spaces    []wiki.Space
 	Targets   []MoveTarget
 	Templates []wiki.Template
-	Now       time.Time
+	// Activity is the space's feed, on its home page (FR-69).
+	Activity templ.Component
+	Now      time.Time
 }
 
 // PageHead is what the page's shared view shows above the body.

@@ -273,9 +273,18 @@ func (s *Server) pageView(ctx context.Context, q sqlite.Querier, me people.Perso
 	if err != nil {
 		return Page{}, err
 	}
+	pageViews := []string{"page:" + p.ID, "pagedoc:" + p.ID, "pagepeople:" + p.ID, "tree:" + p.ID}
+	if section == "home" {
+		feed, err := s.ScopeActivity(ctx, q, access.SpaceScope(sp.ID), time.Now())
+		if err != nil {
+			return Page{}, err
+		}
+		props.Activity = views.Activity(feed)
+		pageViews = append(pageViews, "activity-space:"+sp.ID)
+	}
 	return Page{
 		Title: p.Title, Nav: "spaces", Sidebar: sidebar, SidebarLabel: "Space",
-		Views: []string{"page:" + p.ID, "pagedoc:" + p.ID, "pagepeople:" + p.ID, "tree:" + p.ID},
+		Views: pageViews,
 		Body:  views.WikiPage(props),
 	}, nil
 }
@@ -1165,7 +1174,7 @@ func (s *Server) deleteComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	s.act(w, r, a, wiki.DeleteComment{By: a.By, Comment: req.Comment})
+	s.act(w, r, a, tracker.DeleteComment{By: a.By, Comment: req.Comment})
 }
 
 func (s *Server) hideComment(w http.ResponseWriter, r *http.Request) {
@@ -1174,7 +1183,7 @@ func (s *Server) hideComment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	s.act(w, r, a, wiki.HideComment{By: a.By, Comment: req.Comment, Hidden: req.Hidden})
+	s.act(w, r, a, tracker.HideComment{By: a.By, Comment: req.Comment, Hidden: req.Hidden})
 }
 
 // newClient is the id an editing tab's caret shows to others: random,

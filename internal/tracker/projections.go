@@ -435,5 +435,7 @@ func updateComment(tx *writer.Tx, id, columns string, args ...any) error {
 func touchComment(tx *writer.Tx, subject, id string) {
 	if subject == SubjectIssue {
 		tx.Touch(IssueTopic(id), IssuesTopic)
+	} else if s, ok := subjects[subject]; ok {
+		tx.Touch(s.Topics(id)...)
 	}
 }
