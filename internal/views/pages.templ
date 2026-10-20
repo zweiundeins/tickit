@@ -1,0 +1,65 @@
+package views
+
+// Home is the home page, until the home area fills it (FR-59).
+templ Home() {
+	<h1>tickit</h1>
+	<p>An issue tracker and a wiki that several people use at once. Open a board, a page or an issue and see the others on it, and their changes as they happen.</p>
+	<ul>
+		<li><a href="/projects">Projects</a>: boards, backlogs and issues.</li>
+		<li><a href="/spaces">Spaces</a>: pages, edited together.</li>
+	</ul>
+	<p>Open this page in a private window to see a second person arrive.</p>
+}
+
+// Login is the login page of staff (FR-122). Visitors need no account
+// (DM-01), and the page publishes no shared password (DM-01.3).
+templ Login() {
+	<section class="login" data-signals={ loginSignals }>
+		<h1>Log in</h1>
+		<p>Only the staff of zwei und eins gmbh log in, to moderate and to run the demo. Everyone else uses tickit as a guest, without an account.</p>
+		<form data-on:submit__prevent={ login } data-on:datastar-fetch={ loginFailed + "; " + loginDone }>
+			<label for="login-email">Email</label>
+			<input id="login-email" type="email" data-bind="_login.email" autocomplete="username" required/>
+			<label for="login-password">Password</label>
+			<input id="login-password" type="password" data-bind="_login.password" autocomplete="current-password" required/>
+			<button type="submit" data-attr:aria-busy={ loginBusy }>Log in</button>
+			<p class="problem" role="alert" data-text="$_login.problem"></p>
+		</form>
+	</section>
+}
+
+// Privacy says what tickit stores and for how long (DM-10.2, NFR-31).
+// Q25: zwei und eins gmbh checks this wording against the Swiss FADP and
+// the GDPR before the demo goes live.
+templ Privacy() {
+	<article class="privacy">
+		<h1>Privacy</h1>
+		<p>tickit is a public demo run by zwei und eins gmbh. Everything you write here is visible to everyone and deleted at the nightly reset, at 04:00 Swiss time. Please do not enter personal data.</p>
+		<h2>As a guest</h2>
+		<p>You need no account and give no personal data. Your browser gets one cookie, which holds a random session id. From it, tickit makes a pseudonym, a name like "Sunny Otter" and a face, which others see beside what you do and beside the pages you have open. You may change the name.</p>
+		<p>tickit stores what you write (issues, pages, comments), under your pseudonym and with the time, and the state of the pages you have open, which it deletes after 3 days. The nightly reset deletes all of it, your pseudonym included.</p>
+		<h2>Staff accounts</h2>
+		<p>Accounts exist only for the staff of zwei und eins gmbh. An account holds an email address, a username, a full name and a hash of the password. A login lasts 24 hours; tickit keeps it with the browser's name and the times, never the address. Logins, failed logins and changes of roles go into a security log, which keeps them 90 days.</p>
+		<h2>Addresses and logs</h2>
+		<p>Your network address is held in memory only, to limit how fast one address may make changes, and in the web server's access log, which keeps it 30 days. tickit's own logs hold no text of issues, pages or comments.</p>
+		<h2>The one cookie</h2>
+		<p>tickit sets one cookie, <code>__Host-sid</code>, which the demo needs to work: it tells tickit which pseudonym, and which login, a request belongs to. It holds a random id and nothing else, and lasts 400 days. tickit sets no other cookie, so it asks for no consent.</p>
+		<h2>No third parties</h2>
+		<p>Pages load nothing from other sites: no fonts, scripts, images, analytics or embeds.</p>
+		<h2>Contact</h2>
+		<p>zwei und eins gmbh runs tickit. For questions about your data, write to <a href="mailto:hello@zweiundeins.gmbh">hello@zweiundeins.gmbh</a>.</p>
+	</article>
+}
+
+// NotFound is the page of an address that names nothing, or nothing the
+// person may see (NFR-16).
+templ NotFound() {
+	<h1>Not found</h1>
+	<p>Nothing is at this address, or you may not see it. <a href="/">Go to the home page</a></p>
+}
+
+// Gone is the page of something that was deleted.
+templ Gone() {
+	<h1>Deleted</h1>
+	<p>What was at this address has been deleted. <a href="/">Go to the home page</a></p>
+}

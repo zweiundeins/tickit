@@ -1,0 +1,131 @@
+package views
+
+import "github.com/mbolli/tickit/internal/people"
+
+// Layout is the document of every page: the head, the stream, the header
+// with the navigation and the person menu, the demo notice, the page's
+// content (its children) and the footer. Class names are plain, for the
+// design system to style.
+templ Layout(s Shell) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<meta name="color-scheme" content="light dark"/>
+			<meta name="robots" content="noindex, nofollow"/>
+			<title>{ documentTitle(s.Title) }</title>
+			<link rel="icon" href="data:,"/>
+			<link rel="stylesheet" href={ s.CSS }/>
+			@meStyle(s.Me.ID)
+			@importMap(s)
+			<script type="module" src={ s.JS }></script>
+			<script type="module" src={ s.NewestFrame }></script>
+		</head>
+		<body data-newest-frame data-signals={ signals(s) } data-effect={ follow }>
+			<div id={ StreamID } hidden data-init={ startStream } data-effect={ beat } data-on-interval__duration.10s={ watchdog } data-on:datastar-fetch={ streamFailed }></div>
+			<a class="skip-link" href="#main">Skip to the content</a>
+			<header class="site-header">
+				<a class="site-name" href="/">tickit</a>
+				<nav class="site-nav" aria-label="Main">
+					<ul>
+						<li><a href="/projects">Projects</a></li>
+						<li><a href="/spaces">Spaces</a></li>
+						<li><a href="/filters">Filters</a></li>
+						<li><a href="/dashboards">Dashboards</a></li>
+					</ul>
+				</nav>
+				<form class="site-search" role="search" action="/search" method="get">
+					<label class="visually-hidden" for="site-search-q">Search issues and pages</label>
+					<input id="site-search-q" type="search" name="q" placeholder="Search" autocomplete="off"/>
+				</form>
+				<button type="button" id="create-button" class="create-button">Create</button>
+				<button type="button" id="bell" class="bell" aria-expanded="false">
+					<span class="visually-hidden">Notifications</span>
+					<span id="bell-count" class="bell-count"></span>
+				</button>
+				@personMenu(s)
+			</header>
+			@DemoNotice(s.Notice)
+			<p class="connection" role="status" style="display: none" data-show="$_stale">Reconnecting…</p>
+			<main id="main" class="page">
+				{ children... }
+			</main>
+			<footer class="site-footer">
+				<p>tickit is a demo of <a href="https://github.com/zweiundeins/lith">lith</a>, run by zwei und eins gmbh. <a href="/privacy">Privacy</a></p>
+			</footer>
+		</body>
+	</html>
+}
+
+// DemoNotice is the notice of every page (DM-10.1); the demo view patches
+// it as the reset comes nearer.
+templ DemoNotice(text string) {
+	<p id="demo-notice" class="demo-notice" role="note">{ text } <a href="/privacy">How tickit handles your data</a></p>
+}
+
+// personMenu is the face and name of the person, with what they may do.
+templ personMenu(s Shell) {
+	<details class="person-menu">
+		<summary>
+			@Face(s.Me)
+			@PersonName(s.Me)
+		</summary>
+		<div class="person-menu-body">
+			if s.Me.Kind == people.Account {
+				<p>Logged in.</p>
+			} else {
+				<p>You are a guest. Others see this name beside what you do.</p>
+			}
+			<form class="rename" data-on:submit__prevent={ rename } data-on:datastar-fetch={ renameFailed } data-effect={ renameSettled }>
+				<label for="rename-name">Your name</label>
+				<input id="rename-name" data-bind="_rename.name" placeholder={ s.Me.Name } minlength="2" maxlength="30" autocomplete="nickname" data-attr:readonly={ Pending("_rename.op") }/>
+				<button type="submit" data-attr:aria-busy={ Busy("_rename.op") }>Change name</button>
+				<p class="outcome" role="status" data-text="$_rename.msg"></p>
+				<p class="problem" role="alert" data-text="$_problem"></p>
+			</form>
+			<ul class="person-links">
+				if s.Moderates {
+					<li><a href="/moderation">Moderation</a></li>
+				}
+				if s.Administers {
+					<li><a href="/admin">Administration</a></li>
+				}
+				if s.Me.Kind == people.Account {
+					<li><button type="button" class="logout" data-on:click={ logout }>Log out</button></li>
+				} else {
+					<li><a href={ templ.SafeURL(loginURL(s.Path)) }>Log in (staff)</a></li>
+				}
+			</ul>
+		</div>
+	</details>
+}
+
+// PersonName is the person's name in the header; the person view patches it.
+templ PersonName(p people.Person) {
+	<span id="person-name" class="person-name">{ p.Name }</span>
+}
+
+// Face is a person's face: pixels in their hue. It names nobody to a
+// screen reader; the name beside it does.
+templ Face(p people.Person) {
+	<svg class="face" viewBox="0 0 7 7" aria-hidden="true" style={ hueStyle(p.Hue) }><path d={ p.Face }></path></svg>
+}
+
+// Presence is the row of faces of the people who have a view open, in the
+// order they came, the viewer's own first (meStyle) and at most Shown of
+// them, with "+n" for the rest (MP-01, MP-02). Areas put it in their page
+// empty, with the id PresenceID of their view's key; the stream fills it.
+templ Presence(id string, list []Present) {
+	<ul id={ id } class="presence" aria-label="Here now">
+		for _, p := range list {
+			<li data-who={ p.ID } title={ p.Tooltip() } style={ hueStyle(p.Hue) }>
+				@Face(p.Person)
+				<span class="visually-hidden">{ p.Tooltip() }</span>
+			</li>
+		}
+		if len(list) > Shown {
+			<li class="presence-more" title={ more(len(list)) + " more" }>{ more(len(list)) }</li>
+		}
+	</ul>
+}

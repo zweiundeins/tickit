@@ -1,0 +1,64 @@
+package web
+
+import (
+	"context"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/zweiundeins/lith/sqlite"
+)
+
+// namespace prefixes tickit's own metrics, as lith's collector's
+// (cmd/tickit): tickit_*.
+const namespace = "tickit"
+
+// metrics are tickit's own numbers (NFR-76.1), beside lith's collector.
+// Areas count theirs here: the editor its batches and editors, moderation
+// its actions, the demo its resets.
+type metrics struct {
+	limited      *prometheus.CounterVec // requests over a rate limit, by class
+	refusals     *prometheus.CounterVec // refused actions, by route
+	logins       *prometheus.CounterVec // logins, by outcome
+	editBatches  prometheus.Counter     // batches of page edits applied (editor)
+	editors      prometheus.Gauge       // the most editors of one page now (editor)
+	moderations  *prometheus.CounterVec // moderation actions, by action (moderation)
+	resets       prometheus.Counter     // demo resets (demo)
+	resetSeconds prometheus.Histogram   // how long a reset took (demo)
+	guests       prometheus.GaugeFunc   // guests who acted in the last 24 hours
+}
+
+func newMetrics(db *sqlite.DB) *metrics {
+	return &metrics{
+		limited: prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: namespace, Name: "rate_limited_total",
+			Help: "Requests answered 429, by rate-limit class."}, []string{"class"}),
+		refusals: prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: namespace, Name: "refusals_total",
+			Help: "Actions refused, with the reason in the tab, by route."}, []string{"route"}),
+		logins: prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: namespace, Name: "logins_total",
+			Help: "Logins, by outcome."}, []string{"outcome"}),
+		editBatches: prometheus.NewCounter(prometheus.CounterOpts{Namespace: namespace, Name: "edit_batches_total",
+			Help: "Batches of page edits applied."}),
+		editors: prometheus.NewGauge(prometheus.GaugeOpts{Namespace: namespace, Name: "page_editors_max",
+			Help: "The most people editing one page now."}),
+		moderations: prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: namespace, Name: "moderation_actions_total",
+			Help: "Moderation actions, by action."}, []string{"action"}),
+		resets: prometheus.NewCounter(prometheus.CounterOpts{Namespace: namespace, Name: "resets_total",
+			Help: "Resets of the demo."}),
+		resetSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{Namespace: namespace, Name: "reset_seconds",
+			Help: "How long a reset of the demo took.", Buckets: []float64{1, 2, 5, 10, 20, 30, 60}}),
+		guests: prometheus.NewGaugeFunc(prometheus.GaugeOpts{Namespace: namespace, Name: "guests_active",
+			Help: "Guests who acted in the last 24 hours."}, func() float64 {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			var n int
+			db.R.QueryRowContext(ctx, `SELECT count(*) FROM people WHERE kind = 'guest' AND last_seen_at > ?`, time.Now().Add(-24*time.Hour).Unix()).Scan(&n)
+			return float64(n)
+		}),
+	}
+}
+
+// Collectors are tickit's own metrics, for the registry of the metrics
+// listener.
+func (s *Server) Collectors() []prometheus.Collector {
+	m := s.metrics
+	return []prometheus.Collector{m.limited, m.refusals, m.logins, m.editBatches, m.editors, m.moderations, m.resets, m.resetSeconds, m.guests}
+}
