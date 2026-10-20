@@ -10,9 +10,9 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import "github.com/mbolli/tickit/internal/ui"
 
-// Home is the home page, until the home area fills it with the seeded
-// projects and spaces (FR-59): a welcome that says what the demo is.
-func Home() templ.Component {
+// Login is the login page of staff (FR-122). Visitors need no account
+// (DM-01), and the page publishes no shared password (DM-01.3).
+func Login() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -33,130 +33,51 @@ func Home() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"tk-welcome\" aria-labelledby=\"welcome-title\"><div class=\"tk-empty\"><div class=\"tk-empty__art\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"tk-login\" aria-labelledby=\"login-title\" data-signals=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ui.IconSized("users", "xl").Render(ctx, templ_7745c5c3_Buffer)
+		var templ_7745c5c3_Var2 string
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(loginSignals)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/pages.templ`, Line: 8, Col: 84}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</div><h1 class=\"tk-empty__title\" id=\"welcome-title\">Welcome to tickit</h1><p class=\"tk-empty__text\">An issue tracker and a wiki that several people use at once. Open a board, a page or an issue and see the others on it, and their changes as they happen.</p><div class=\"cluster tk-welcome__actions\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = ui.Button(ui.ButtonProps{Label: "Projects", Icon: "folder", Variant: ui.Primary, Href: "/projects"}).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = ui.Button(ui.ButtonProps{Label: "Spaces", Icon: "space", Href: "/spaces"}).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = ui.Button(ui.ButtonProps{Label: "The design system", Icon: "display", Variant: ui.Ghost, Href: "/design"}).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div></div><ul class=\"tk-welcome__points\" role=\"list\"><li>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = ui.Icon("user").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<p><strong>No account needed.</strong> You are a guest with a name and a face of your own, which others see beside what you do. Change the name in the menu at the top right.</p></li><li>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = ui.Icon("users").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p><strong>Live for everyone.</strong> Boards, issues and pages change in every open tab as soon as someone changes them.</p></li><li>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = ui.Icon("clock").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p><strong>Reset every night.</strong> Everything written here is public and goes at 04:00 Swiss time, when the demo starts again from its seed.</p></li></ul></section>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		return nil
-	})
-}
-
-// Login is the login page of staff (FR-122). Visitors need no account
-// (DM-01), and the page publishes no shared password (DM-01.3).
-func Login() templ.Component {
-	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
-			return templ_7745c5c3_CtxErr
-		}
-		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-		if !templ_7745c5c3_IsBuffer {
-			defer func() {
-				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err == nil {
-					templ_7745c5c3_Err = templ_7745c5c3_BufErr
-				}
-			}()
-		}
-		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var2 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var2 == nil {
-			templ_7745c5c3_Var2 = templ.NopComponent
-		}
-		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<section class=\"tk-login\" aria-labelledby=\"login-title\" data-signals=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"><h1 id=\"login-title\">Log in</h1><p class=\"tk-login__lede\">Only the staff of zwei und eins gmbh log in, to moderate and to run the demo. Everyone else uses tickit as a guest, without an account.</p><form class=\"stack\" data-on:submit__prevent=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(loginSignals)
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(login)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/pages.templ`, Line: 41, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/pages.templ`, Line: 11, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\"><h1 id=\"login-title\">Log in</h1><p class=\"tk-login__lede\">Only the staff of zwei und eins gmbh log in, to moderate and to run the demo. Everyone else uses tickit as a guest, without an account.</p><form class=\"stack\" data-on:submit__prevent=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" data-on:datastar-fetch=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(login)
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(loginFailed + "; " + loginDone)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/pages.templ`, Line: 44, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/pages.templ`, Line: 11, Col: 111}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" data-on:datastar-fetch=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(loginFailed + "; " + loginDone)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/pages.templ`, Line: 44, Col: 111}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		email := ui.FieldProps{ID: "login-email", Label: "Email", Required: true}
-		templ_7745c5c3_Var6 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var5 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -174,12 +95,12 @@ func Login() templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = ui.Field(email).Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ui.Field(email).Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		password := ui.FieldProps{ID: "login-password", Label: "Password", Required: true}
-		templ_7745c5c3_Var7 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_Var6 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
 			if !templ_7745c5c3_IsBuffer {
@@ -197,7 +118,7 @@ func Login() templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = ui.Field(password).Render(templ.WithChildren(ctx, templ_7745c5c3_Var7), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ui.Field(password).Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -209,7 +130,7 @@ func Login() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</form></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</form></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -236,12 +157,12 @@ func Privacy() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var8 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var8 == nil {
-			templ_7745c5c3_Var8 = templ.NopComponent
+		templ_7745c5c3_Var7 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var7 == nil {
+			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<article class=\"tk-privacy\" aria-labelledby=\"privacy-title\"><header class=\"tk-pagehead\"><div><p class=\"tk-eyebrow\">The demo and your data</p><h1 id=\"privacy-title\">Privacy</h1></div></header><div class=\"prose\"><p>tickit is a public demo run by zwei und eins gmbh. Everything you write here is visible to everyone and deleted at the nightly reset, at 04:00 Swiss time. Please do not enter personal data.</p><h2>As a guest</h2><p>You need no account and give no personal data. Your browser gets one cookie, which holds a random session id. From it, tickit makes a pseudonym, a name like \"Sunny Otter\" and a face, which others see beside what you do and beside the pages you have open. You may change the name.</p><p>tickit stores what you write (issues, pages, comments), under your pseudonym and with the time, and the state of the pages you have open, which it deletes after 3 days. The nightly reset deletes all of it, your pseudonym included. Your display settings (theme, corners, density, and which notices you closed) stay with the session id until a year after you last changed them.</p><h2>Staff accounts</h2><p>Accounts exist only for the staff of zwei und eins gmbh. An account holds an email address, a username, a full name and a hash of the password. A login lasts 24 hours; tickit keeps it with the browser's name and the times, never the address. Logins, failed logins and changes of roles go into a security log, which keeps them 90 days.</p><h2>Addresses and logs</h2><p>Your network address is held in memory only, to limit how fast one address may make changes, and in the web server's access log, which keeps it 30 days. tickit's own logs hold no text of issues, pages or comments.</p><h2>The one cookie</h2><p>tickit sets one cookie, <code>__Host-sid</code>, which the demo needs to work: it tells tickit which pseudonym, and which login, a request belongs to. It holds a random id and nothing else, and lasts 400 days. tickit sets no other cookie, so it asks for no consent.</p><h2>No third parties</h2><p>Pages load nothing from other sites: no fonts, scripts, images, analytics or embeds.</p><h2>Contact</h2><p>zwei und eins gmbh runs tickit. For questions about your data, write to <a href=\"mailto:hello@zweiundeins.gmbh\">hello@zweiundeins.gmbh</a>.</p></div></article>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<article class=\"tk-privacy\" aria-labelledby=\"privacy-title\"><header class=\"tk-pagehead\"><div><p class=\"tk-eyebrow\">The demo and your data</p><h1 id=\"privacy-title\">Privacy</h1></div></header><div class=\"prose\"><p>tickit is a public demo run by zwei und eins gmbh. Everything you write here is visible to everyone and deleted at the nightly reset, at 04:00 Swiss time. Please do not enter personal data.</p><h2>As a guest</h2><p>You need no account and give no personal data. Your browser gets one cookie, which holds a random session id. From it, tickit makes a pseudonym, a name like \"Sunny Otter\" and a face, which others see beside what you do and beside the pages you have open. You may change the name.</p><p>tickit stores what you write (issues, pages, comments), under your pseudonym and with the time, and the state of the pages you have open, which it deletes after 3 days. The nightly reset deletes all of it, your pseudonym included. Your display settings (theme, corners, density, and which notices you closed) stay with the session id until a year after you last changed them.</p><h2>Staff accounts</h2><p>Accounts exist only for the staff of zwei und eins gmbh. An account holds an email address, a username, a full name and a hash of the password. A login lasts 24 hours; tickit keeps it with the browser's name and the times, never the address. Logins, failed logins and changes of roles go into a security log, which keeps them 90 days.</p><h2>Addresses and logs</h2><p>Your network address is held in memory only, to limit how fast one address may make changes, and in the web server's access log, which keeps it 30 days. tickit's own logs hold no text of issues, pages or comments.</p><h2>The one cookie</h2><p>tickit sets one cookie, <code>__Host-sid</code>, which the demo needs to work: it tells tickit which pseudonym, and which login, a request belongs to. It holds a random id and nothing else, and lasts 400 days. tickit sets no other cookie, so it asks for no consent.</p><h2>No third parties</h2><p>Pages load nothing from other sites: no fonts, scripts, images, analytics or embeds.</p><h2>Contact</h2><p>zwei und eins gmbh runs tickit. For questions about your data, write to <a href=\"mailto:hello@zweiundeins.gmbh\">hello@zweiundeins.gmbh</a>.</p></div></article>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -267,12 +188,12 @@ func NotFound() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var9 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var9 == nil {
-			templ_7745c5c3_Var9 = templ.NopComponent
+		templ_7745c5c3_Var8 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var8 == nil {
+			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<section class=\"tk-error\" aria-labelledby=\"error-title\"><div class=\"tk-empty\"><div class=\"tk-empty__art\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<section class=\"tk-error\" aria-labelledby=\"error-title\"><div class=\"tk-empty\"><div class=\"tk-empty__art\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -280,7 +201,7 @@ func NotFound() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div><p class=\"tk-eyebrow\">404</p><h1 class=\"tk-empty__title\" id=\"error-title\">Not found</h1><p class=\"tk-empty__text\">Nothing is at this address, or you may not see it. Search for it, or go to the home page.</p><form class=\"tk-error__search\" role=\"search\" action=\"/search\" method=\"get\"><label class=\"visually-hidden\" for=\"error-search\">Search issues and pages</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</div><p class=\"tk-eyebrow\">404</p><h1 class=\"tk-empty__title\" id=\"error-title\">Not found</h1><p class=\"tk-empty__text\">Nothing is at this address, or you may not see it. Search for it, or go to the home page.</p><form class=\"tk-error__search\" role=\"search\" action=\"/search\" method=\"get\"><label class=\"visually-hidden\" for=\"error-search\">Search issues and pages</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -292,7 +213,7 @@ func NotFound() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -300,7 +221,7 @@ func NotFound() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</div></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</div></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -325,12 +246,12 @@ func Gone() templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var10 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var10 == nil {
-			templ_7745c5c3_Var10 = templ.NopComponent
+		templ_7745c5c3_Var9 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var9 == nil {
+			templ_7745c5c3_Var9 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<section class=\"tk-error\" aria-labelledby=\"error-title\"><div class=\"tk-empty\"><div class=\"tk-empty__art\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<section class=\"tk-error\" aria-labelledby=\"error-title\"><div class=\"tk-empty\"><div class=\"tk-empty__art\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -338,7 +259,7 @@ func Gone() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div><p class=\"tk-eyebrow\">410</p><h1 class=\"tk-empty__title\" id=\"error-title\">Deleted</h1><p class=\"tk-empty__text\">What was at this address has been deleted.</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div><p class=\"tk-eyebrow\">410</p><h1 class=\"tk-empty__title\" id=\"error-title\">Deleted</h1><p class=\"tk-empty__text\">What was at this address has been deleted.</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -346,7 +267,7 @@ func Gone() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

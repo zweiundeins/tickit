@@ -30,6 +30,8 @@ var Stylesheets = []string{
 	"css/prose.css",
 	"css/editor.css",
 	"css/board.css",
+	"css/notify.css",
+	"css/issue.css",
 	"css/app.css",
 	"css/utilities.css",
 }

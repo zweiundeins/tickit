@@ -16,11 +16,10 @@ import (
 	"github.com/mbolli/tickit/internal/views"
 )
 
-// routesCore registers what every page needs: the home page, the stream
+// routesCore registers what every page needs: the stream
 // and its side panels, login and logout, the name of a person, privacy,
 // robots.txt, the static files, and the page of an unknown address.
 func (s *Server) routesCore() {
-	s.get("GET /{$}", http.HandlerFunc(s.home))
 	s.get("GET /stream", http.HandlerFunc(s.stream), "/stream?tab=probe&v=", "/stream?tab=probe&v=nope:1")
 	s.post("POST /cmd/watch", s.watch)
 	s.post("POST /cmd/unwatch", s.unwatch)
@@ -33,12 +32,6 @@ func (s *Server) routesCore() {
 	s.post("POST /cmd/prefs", s.setPref)
 	s.get("GET /static/", s.static, s.static.URL(Bundle), "/static/nope.css")
 	s.get("GET /", http.HandlerFunc(s.notFound), "/no/such/page")
-}
-
-func (s *Server) home(w http.ResponseWriter, r *http.Request) {
-	s.render(w, r, http.StatusOK, func(context.Context, sqlite.Querier) (Page, error) {
-		return Page{Body: views.Home()}, nil
-	})
 }
 
 func (s *Server) privacy(w http.ResponseWriter, r *http.Request) {
