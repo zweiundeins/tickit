@@ -29,9 +29,9 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/web"
-	"github.com/mbolli/tickit/migrations"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/web"
+	"github.com/zweiundeins/tickit/migrations"
 )
 
 // Options change how Start runs the server.

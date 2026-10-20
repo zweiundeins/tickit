@@ -11,7 +11,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mbolli/tickit/internal/web"
+	"github.com/zweiundeins/tickit/internal/web"
 )
 
 // The secrets of every test: passwords sent and session ids handed out.

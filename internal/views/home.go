@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mbolli/tickit/internal/activity"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/activity"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/ui"
 )
 
 // Work is the home page's part of one person (FR-59): their open issues,

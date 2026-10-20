@@ -12,9 +12,9 @@ import (
 
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tabs"
-	"github.com/mbolli/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tabs"
+	"github.com/zweiundeins/tickit/internal/tracker"
 )
 
 // Project is a project made by Board.

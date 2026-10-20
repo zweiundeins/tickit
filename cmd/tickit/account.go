@@ -14,8 +14,8 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/migrations"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/migrations"
 )
 
 // account makes a staff account on the host, the only way there is to

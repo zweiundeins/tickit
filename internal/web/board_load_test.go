@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/internal/views"
-	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/views"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // NFR-38, MP-11: 100 streams on one board while a card moves a second.

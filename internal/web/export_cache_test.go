@@ -5,7 +5,7 @@ import (
 
 	"github.com/zweiundeins/lith/sqlite"
 
-	"github.com/mbolli/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/tracker"
 )
 
 // HomeProjects is the home page's projects through the server's cache.

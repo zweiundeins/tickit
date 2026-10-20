@@ -11,8 +11,8 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"time"
 
-	"github.com/mbolli/tickit/internal/ui"
-	"github.com/mbolli/tickit/internal/wiki"
+	"github.com/zweiundeins/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/wiki"
 )
 
 // Spaces is the list of every space with a dialog that creates one

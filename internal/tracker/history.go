@@ -10,7 +10,7 @@ import (
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/sqlite"
 
-	"github.com/mbolli/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/people"
 )
 
 // Entry is one change of an issue's history (FR-68.1): who changed which

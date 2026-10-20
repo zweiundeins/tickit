@@ -23,7 +23,7 @@ import (
 	"github.com/zweiundeins/lith/sse"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/people"
 )
 
 const (

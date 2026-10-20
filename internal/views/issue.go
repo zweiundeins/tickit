@@ -2,7 +2,7 @@ package views
 
 import (
 	"context"
-	"github.com/mbolli/tickit/internal/wiki"
+	"github.com/zweiundeins/tickit/internal/wiki"
 	"io"
 	"strconv"
 	"strings"
@@ -10,9 +10,9 @@ import (
 
 	"github.com/a-h/templ"
 
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/ui"
 )
 
 // Issue is everything the issue's live view renders (issue:<id>), read in

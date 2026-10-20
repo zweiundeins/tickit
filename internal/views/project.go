@@ -4,10 +4,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mbolli/tickit/internal/access"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/ui"
 )
 
 // Projects (FR-01 to FR-05): the list of the projects a person can read

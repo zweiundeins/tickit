@@ -5,8 +5,8 @@ import (
 
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/doc"
-	"github.com/mbolli/tickit/internal/wiki"
+	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/wiki"
 )
 
 type writerTx = writer.Tx

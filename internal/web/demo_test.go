@@ -11,11 +11,11 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/mbolli/tickit/internal/demo"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tabs"
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/demo"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tabs"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // seededEnv is a server with the demo's seed.

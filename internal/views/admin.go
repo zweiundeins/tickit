@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mbolli/tickit/internal/demo"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/demo"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/ui"
 )
 
 // The admin's pages (FR-140 to FR-144, FR-156) and the account's own

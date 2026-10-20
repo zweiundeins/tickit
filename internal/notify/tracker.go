@@ -12,7 +12,7 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/tracker"
 )
 
 // The reactions to the tracker's streams. Each handler sends one

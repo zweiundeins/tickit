@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/browsertest"
-	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/browsertest"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // The display menu sets the session's theme, style and density: <html>

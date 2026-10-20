@@ -14,10 +14,10 @@ import (
 
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/demo/seed"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tabs"
-	"github.com/mbolli/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/demo/seed"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tabs"
+	"github.com/zweiundeins/tickit/internal/tracker"
 )
 
 // The seed runner (DM-02) writes internal/demo/seed's content with the

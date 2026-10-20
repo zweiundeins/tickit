@@ -7,9 +7,9 @@ import (
 
 	"github.com/a-h/templ"
 
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/ui"
-	"github.com/mbolli/tickit/internal/wiki"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/wiki"
 )
 
 // The wiki's regions, which the stream patches by id.

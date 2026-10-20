@@ -3,7 +3,7 @@ package tracker
 import (
 	"testing"
 
-	"github.com/mbolli/tickit/internal/demo/words"
+	"github.com/zweiundeins/tickit/internal/demo/words"
 )
 
 // DM-06.4: labels and project names with a word of the list are refused.

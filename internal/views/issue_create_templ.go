@@ -9,9 +9,9 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/ui"
 )
 
 // CreateIssueProps is what the create dialog offers (FR-10).

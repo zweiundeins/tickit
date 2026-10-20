@@ -14,12 +14,12 @@ import (
 
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/access"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/search"
-	"github.com/mbolli/tickit/internal/tabs"
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/search"
+	"github.com/zweiundeins/tickit/internal/tabs"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 var perfWords = strings.Fields(`checkout cart voucher payment login account search filter board sprint release deploy

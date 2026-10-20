@@ -13,12 +13,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/browsertest"
-	"github.com/mbolli/tickit/internal/doc"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tabs"
-	"github.com/mbolli/tickit/internal/web"
-	"github.com/mbolli/tickit/internal/wiki"
+	"github.com/zweiundeins/tickit/internal/browsertest"
+	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tabs"
+	"github.com/zweiundeins/tickit/internal/web"
+	"github.com/zweiundeins/tickit/internal/wiki"
 )
 
 // wikiPage makes a space with a blank page on the server and returns the

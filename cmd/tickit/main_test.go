@@ -9,7 +9,7 @@ import (
 
 	"github.com/zweiundeins/lith/sqlite"
 
-	"github.com/mbolli/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/people"
 )
 
 // NFR-07.3: a staff account's password comes from the environment or

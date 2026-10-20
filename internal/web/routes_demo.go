@@ -8,8 +8,8 @@ import (
 	"github.com/a-h/templ"
 	"github.com/zweiundeins/lith/live"
 
-	"github.com/mbolli/tickit/internal/demo"
-	"github.com/mbolli/tickit/internal/views"
+	"github.com/zweiundeins/tickit/internal/demo"
+	"github.com/zweiundeins/tickit/internal/views"
 )
 
 // routesDemo registers the demo's own: the reset's notices and the

@@ -11,10 +11,10 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/access"
-	"github.com/mbolli/tickit/internal/demo/seed"
-	"github.com/mbolli/tickit/internal/tabs"
-	"github.com/mbolli/tickit/internal/wiki"
+	"github.com/zweiundeins/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/demo/seed"
+	"github.com/zweiundeins/tickit/internal/tabs"
+	"github.com/zweiundeins/tickit/internal/wiki"
 )
 
 // The wiki's part of the demo, in one file as notify's and activity's

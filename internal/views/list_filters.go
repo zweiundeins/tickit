@@ -3,8 +3,8 @@ package views
 import (
 	"strings"
 
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tracker"
 )
 
 // SavedFilters is the Filters page's list (FR-56): every saved filter,

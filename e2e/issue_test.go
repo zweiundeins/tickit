@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/browsertest"
-	"github.com/mbolli/tickit/internal/views"
-	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/browsertest"
+	"github.com/zweiundeins/tickit/internal/views"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // openIssue opens WEB-2's page in a new browser and waits for its stream.

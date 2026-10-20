@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // NFR-16: malformed input answers 400, never 500.

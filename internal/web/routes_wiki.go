@@ -20,13 +20,13 @@ import (
 	"github.com/zweiundeins/lith/sse"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/access"
-	"github.com/mbolli/tickit/internal/doc"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/internal/ui"
-	"github.com/mbolli/tickit/internal/views"
-	"github.com/mbolli/tickit/internal/wiki"
+	"github.com/zweiundeins/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/views"
+	"github.com/zweiundeins/tickit/internal/wiki"
 )
 
 // routesWiki registers spaces, pages, versions, page comments, templates

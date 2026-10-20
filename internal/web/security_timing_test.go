@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/web"
-	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/web"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // NFR-10: a login answers in the same time, within 50 ms, whether or not

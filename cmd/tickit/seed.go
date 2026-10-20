@@ -13,10 +13,10 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/demo"
-	"github.com/mbolli/tickit/internal/demo/seed"
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/migrations"
+	"github.com/zweiundeins/tickit/internal/demo"
+	"github.com/zweiundeins/tickit/internal/demo/seed"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/migrations"
 )
 
 // seedCommand writes the demo's seed (DM-02) into a database for

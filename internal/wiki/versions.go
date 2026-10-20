@@ -10,10 +10,10 @@ import (
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/access"
-	"github.com/mbolli/tickit/internal/doc"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tabs"
+	"github.com/zweiundeins/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tabs"
 )
 
 // When versions are cut (FR-87.1, docs/editor.md): after a minute without

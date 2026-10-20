@@ -8,7 +8,7 @@ package views
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/mbolli/tickit/internal/ui"
+import "github.com/zweiundeins/tickit/internal/ui"
 
 // IssuePanel is the side panel an issue opens in beside a board, a list or
 // a search (FR-13.2). Put it once in the page's body; a link to an issue

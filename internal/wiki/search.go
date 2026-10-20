@@ -6,8 +6,8 @@ import (
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/doc"
-	"github.com/mbolli/tickit/internal/search"
+	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/search"
 )
 
 // pageSearch indexes pages for search (FR-57, docs/architecture.md

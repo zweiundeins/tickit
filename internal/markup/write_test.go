@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mbolli/tickit/internal/demo/seed"
-	"github.com/mbolli/tickit/internal/markup"
+	"github.com/zweiundeins/tickit/internal/demo/seed"
+	"github.com/zweiundeins/tickit/internal/markup"
 )
 
 // Every seeded description, comment and page reads back as the same

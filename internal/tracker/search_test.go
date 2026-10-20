@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/people"
 )
 
 // searchEnv has WEB and APP (open), CLO (closed, Sunny may not read it)

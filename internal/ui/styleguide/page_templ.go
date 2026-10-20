@@ -8,7 +8,7 @@ package styleguide
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/mbolli/tickit/internal/ui"
+import "github.com/zweiundeins/tickit/internal/ui"
 
 // importMap is the page's import map with the request's nonce: the
 // Starbase modules import 'datastar', which it maps to the vendored build.
@@ -339,7 +339,7 @@ func Page(p Props) templ.Component {
 			Sidebar:      sideNav(),
 			SidebarLabel: "Design system",
 			Notice:       ui.DemoNotice(ui.DemoProps{NextReset: "5 h", PrivacyHref: "/privacy"}),
-			Footer:       ui.FooterProps{Version: "design system", Links: []ui.NavItem{{Label: "Privacy", Href: "/privacy"}, {Label: "Source", Href: "https://github.com/mbolli/tickit"}}},
+			Footer:       ui.FooterProps{Version: "design system", Links: []ui.NavItem{{Label: "Privacy", Href: "/privacy"}, {Label: "Source", Href: "https://github.com/zweiundeins/tickit"}}},
 			Class:        "sg",
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var13), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

@@ -9,8 +9,8 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/mbolli/tickit/internal/search"
-	"github.com/mbolli/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/search"
+	"github.com/zweiundeins/tickit/internal/ui"
 )
 
 // SearchBody is the results page (FR-57.2): the text, the kinds with their

@@ -15,7 +15,7 @@ import (
 
 	"github.com/zweiundeins/lith/sqlite"
 
-	"github.com/mbolli/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/people"
 )
 
 // Filter values that stand for something other than an id.

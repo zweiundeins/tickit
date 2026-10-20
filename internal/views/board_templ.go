@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/ui"
 )
 
 // Board is the board's page: the head, the project's tabs, the quick

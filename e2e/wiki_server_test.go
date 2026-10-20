@@ -20,13 +20,13 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/demo"
-	"github.com/mbolli/tickit/internal/demo/seed"
-	"github.com/mbolli/tickit/internal/notify"
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/internal/web"
-	"github.com/mbolli/tickit/internal/wiki"
-	"github.com/mbolli/tickit/migrations"
+	"github.com/zweiundeins/tickit/internal/demo"
+	"github.com/zweiundeins/tickit/internal/demo/seed"
+	"github.com/zweiundeins/tickit/internal/notify"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/web"
+	"github.com/zweiundeins/tickit/internal/wiki"
+	"github.com/zweiundeins/tickit/migrations"
 )
 
 // The one store of every area's parts, as cmd/tickit binds it.

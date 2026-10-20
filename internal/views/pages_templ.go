@@ -8,7 +8,7 @@ package views
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/mbolli/tickit/internal/ui"
+import "github.com/zweiundeins/tickit/internal/ui"
 
 // Login is the login page of staff (FR-122). Visitors need no account
 // (DM-01), and the page publishes no shared password (DM-01.3).

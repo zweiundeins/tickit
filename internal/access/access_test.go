@@ -9,9 +9,9 @@ import (
 
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/access"
-	"github.com/mbolli/tickit/internal/dbtest"
-	"github.com/mbolli/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/dbtest"
+	"github.com/zweiundeins/tickit/internal/people"
 )
 
 var now = time.Unix(1_800_000_000, 0)

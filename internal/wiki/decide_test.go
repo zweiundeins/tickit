@@ -9,7 +9,7 @@ import (
 	"github.com/zweiundeins/lith/events/eventstest"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/tabs"
+	"github.com/zweiundeins/tickit/internal/tabs"
 )
 
 func refuse(field, msg string) error { return tabs.Refuse(field, msg) }

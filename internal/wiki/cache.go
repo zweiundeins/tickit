@@ -5,7 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/mbolli/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/doc"
 )
 
 // lru is a cache bounded by the bytes of its values, the least recently

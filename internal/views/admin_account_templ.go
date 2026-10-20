@@ -8,7 +8,7 @@ package views
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/mbolli/tickit/internal/ui"
+import "github.com/zweiundeins/tickit/internal/ui"
 
 // Account is an account's own page: its password (FR-125) and its login
 // sessions (FR-129). An account whose first password a site admin set

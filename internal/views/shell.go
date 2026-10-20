@@ -15,9 +15,9 @@ import (
 
 	"github.com/a-h/templ"
 
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tabs"
-	"github.com/mbolli/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tabs"
+	"github.com/zweiundeins/tickit/internal/ui"
 )
 
 // Shell is what the document around every page shows. web.Page sets the

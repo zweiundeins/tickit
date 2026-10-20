@@ -17,7 +17,7 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/migrations"
+	"github.com/zweiundeins/tickit/migrations"
 )
 
 // Env is a database and its writer.

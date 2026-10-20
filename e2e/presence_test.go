@@ -11,10 +11,10 @@ import (
 
 	"github.com/a-h/templ"
 
-	"github.com/mbolli/tickit/internal/browsertest"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/views"
-	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/browsertest"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/views"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // MP-02.1: a presence row shows the viewer's own face first and at most 8

@@ -43,13 +43,13 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/notify"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tabs"
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/internal/web"
-	"github.com/mbolli/tickit/internal/wiki"
-	"github.com/mbolli/tickit/migrations"
+	"github.com/zweiundeins/tickit/internal/notify"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tabs"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/web"
+	"github.com/zweiundeins/tickit/internal/wiki"
+	"github.com/zweiundeins/tickit/migrations"
 )
 
 // version is set at build time: -ldflags "-X main.version=v1.2.3".

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/mbolli/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/access"
 )
 
 // DM-07.1: a moderator hides an issue, which leaves the lists as a deleted

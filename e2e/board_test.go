@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/browsertest"
-	"github.com/mbolli/tickit/internal/tracker/trackertest"
-	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/browsertest"
+	"github.com/zweiundeins/tickit/internal/tracker/trackertest"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // boardPage opens the board of WEB in a new browser context, a guest of

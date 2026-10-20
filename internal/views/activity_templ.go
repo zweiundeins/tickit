@@ -9,8 +9,8 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/mbolli/tickit/internal/activity"
-	"github.com/mbolli/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/activity"
+	"github.com/zweiundeins/tickit/internal/ui"
 )
 
 // Activity is a feed of recent changes (FR-69): who did what to which

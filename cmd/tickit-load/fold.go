@@ -14,9 +14,9 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/internal/wiki"
-	"github.com/mbolli/tickit/migrations"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/wiki"
+	"github.com/zweiundeins/tickit/migrations"
 )
 
 // fold times wiki.Fold on a database (a copy: it folds), n commands of

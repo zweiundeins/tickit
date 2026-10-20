@@ -12,7 +12,7 @@ import (
 
 	"github.com/zweiundeins/lith/sqlite"
 
-	"github.com/mbolli/tickit/migrations"
+	"github.com/zweiundeins/tickit/migrations"
 )
 
 // NFR-71: the deploy script asks the new binary whether it migrates the

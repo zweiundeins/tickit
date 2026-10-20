@@ -21,11 +21,11 @@ import (
 	"github.com/zweiundeins/lith/sse"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/access"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/views"
-	"github.com/mbolli/tickit/internal/web"
-	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/views"
+	"github.com/zweiundeins/tickit/internal/web"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // personName is the name the page's header shows.

@@ -11,7 +11,7 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"strconv"
 
-	"github.com/mbolli/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/ui"
 )
 
 // SavedFiltersBody is the Filters page (FR-56.1): every saved filter, with

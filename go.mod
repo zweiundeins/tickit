@@ -1,4 +1,4 @@
-module github.com/mbolli/tickit
+module github.com/zweiundeins/tickit
 
 go 1.27.2
 

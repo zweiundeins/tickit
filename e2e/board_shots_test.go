@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/browsertest"
-	"github.com/mbolli/tickit/internal/tracker/trackertest"
-	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/browsertest"
+	"github.com/zweiundeins/tickit/internal/tracker/trackertest"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // TestBoardShots writes screenshots of the projects page, the board in

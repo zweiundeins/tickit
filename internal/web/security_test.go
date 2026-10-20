@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/internal/web/webtest"
-	"github.com/mbolli/tickit/internal/wiki"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/wiki"
 )
 
 // The security suite (docs/security.md, requirements 12.3): every action

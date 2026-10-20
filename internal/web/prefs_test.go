@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // NFR-31, requirements 4.1 rule 6: POST /cmd/prefs stores a display

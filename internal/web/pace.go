@@ -9,8 +9,8 @@ import (
 	"github.com/zweiundeins/lith/edge"
 	"github.com/zweiundeins/lith/sse"
 
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/views"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/views"
 )
 
 // A page whose newest-frame.js falls behind its stream posts /pace; the

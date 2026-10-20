@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/browsertest"
-	"github.com/mbolli/tickit/internal/wiki"
+	"github.com/zweiundeins/tickit/internal/browsertest"
+	"github.com/zweiundeins/tickit/internal/wiki"
 )
 
 // TestWikiShots writes screenshots of the wiki to WIKI_SHOTS: the space's

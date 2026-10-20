@@ -11,8 +11,8 @@ import (
 
 	"github.com/zweiundeins/lith/sqlite"
 
-	"github.com/mbolli/tickit/internal/access"
-	"github.com/mbolli/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/people"
 )
 
 // The reads take a sqlite.Querier: a GET's transaction, a render's

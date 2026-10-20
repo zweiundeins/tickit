@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/demo"
+	"github.com/zweiundeins/tickit/internal/demo"
 )
 
 // DM-10.1, Q21: the notice counts down to 04:00 Europe/Zurich, in summer

@@ -8,9 +8,9 @@ import (
 
 	"github.com/zweiundeins/lith/events"
 
-	"github.com/mbolli/tickit/internal/notify"
-	"github.com/mbolli/tickit/internal/tracker"
-	"github.com/mbolli/tickit/internal/wiki"
+	"github.com/zweiundeins/tickit/internal/notify"
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/wiki"
 )
 
 // FR-114: a comment on a page notifies its watchers but the commenter;

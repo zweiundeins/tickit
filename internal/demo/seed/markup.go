@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/mbolli/tickit/internal/markup"
+	"github.com/zweiundeins/tickit/internal/markup"
 )
 
 // Resolver answers the references a markup text makes while Parse converts

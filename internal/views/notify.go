@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mbolli/tickit/internal/notify"
-	"github.com/mbolli/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/notify"
+	"github.com/zweiundeins/tickit/internal/people"
 )
 
 // Bell is what the header's bell shows: the person's unread count and

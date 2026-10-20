@@ -7,9 +7,9 @@ import (
 
 	"github.com/a-h/templ"
 
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/search"
-	"github.com/mbolli/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/search"
+	"github.com/zweiundeins/tickit/internal/tracker"
 )
 
 // Search (FR-57): the results page, whose results are a shared view keyed

@@ -8,7 +8,7 @@ import (
 	"github.com/zweiundeins/lith/live"
 	"github.com/zweiundeins/lith/sqlite"
 
-	"github.com/mbolli/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/tracker"
 )
 
 // projectsCache keeps the projects of the home page with their open

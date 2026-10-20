@@ -7,7 +7,7 @@ import (
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/search"
+	"github.com/zweiundeins/tickit/internal/search"
 )
 
 // The search index's projectors of the tracker's streams (FR-57,

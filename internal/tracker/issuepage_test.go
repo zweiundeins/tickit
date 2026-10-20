@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/access"
 )
 
 // FR-16.1: the status menu reads the project's workflow, from the state

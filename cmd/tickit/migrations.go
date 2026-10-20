@@ -12,7 +12,7 @@ import (
 
 	"github.com/zweiundeins/lith/sqlite"
 
-	"github.com/mbolli/tickit/migrations"
+	"github.com/zweiundeins/tickit/migrations"
 )
 
 // migrationsPending prints how many of the binary's migrations the

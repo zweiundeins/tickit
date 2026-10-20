@@ -8,7 +8,7 @@ package views
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/mbolli/tickit/internal/ui"
+import "github.com/zweiundeins/tickit/internal/ui"
 
 // Home is the home page (FR-59): the person's work (HomeWork, live per
 // person), and the activity of everything they may read (live, shared).

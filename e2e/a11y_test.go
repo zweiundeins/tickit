@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/browsertest"
-	"github.com/mbolli/tickit/internal/demo"
-	"github.com/mbolli/tickit/internal/web/webtest"
-	"github.com/mbolli/tickit/internal/wiki"
+	"github.com/zweiundeins/tickit/internal/browsertest"
+	"github.com/zweiundeins/tickit/internal/demo"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/wiki"
 )
 
 // a11yPages are the pages of NFR-45.1, on the seeded demo: what to open,

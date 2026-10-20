@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // NFR-06, requirements 12.3: no GET writes, whoever asks: every probe of

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // TestDesign renders /design in every theme and style: it answers 200,

@@ -12,8 +12,8 @@ import (
 
 	"github.com/zweiundeins/lith/edge"
 
-	"github.com/mbolli/tickit/internal/ui"
-	"github.com/mbolli/tickit/internal/ui/styleguide"
+	"github.com/zweiundeins/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/ui/styleguide"
 )
 
 // Stylesheets are the design system's CSS files in the order of the

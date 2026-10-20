@@ -3,7 +3,7 @@ package web
 import (
 	"net/http"
 
-	"github.com/mbolli/tickit/internal/tabs"
+	"github.com/zweiundeins/tickit/internal/tabs"
 )
 
 // setPref sets one display preference of the session (theme, style,

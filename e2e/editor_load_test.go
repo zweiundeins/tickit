@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mbolli/tickit/internal/web"
+	"github.com/zweiundeins/tickit/internal/web"
 )
 
 // loadEditor is an editor without a browser: it keeps its tab's stream,

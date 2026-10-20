@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mbolli/tickit/internal/activity"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/activity"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/ui"
 )
 
 // ActivityFeed is a feed of recent changes (FR-69) as a page shows it:

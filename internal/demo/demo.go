@@ -13,7 +13,7 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/demo/seed"
+	"github.com/zweiundeins/tickit/internal/demo/seed"
 )
 
 // Config is what a Demo works with.
