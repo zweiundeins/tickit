@@ -149,6 +149,9 @@ func (s *Server) oldIssueURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d, err := s.db.ViewValue(r.Context(), func(tx *sql.Tx) (tracker.Detail, error) {
+		if _, err := readableIssue(r.Context(), tx, people.Actor(r.Context()), id); err != nil {
+			return tracker.Detail{}, err // a key the person may not read stays unknown (NFR-01.2)
+		}
 		return tracker.IssueDetail(r.Context(), tx, id)
 	})
 	switch {
@@ -754,7 +757,7 @@ func (s *Server) createCommand(ctx context.Context, a action, req createRequest)
 	cmd := tracker.CreateIssue{By: a.By, Project: req.Project, Type: t, Summary: req.Summary,
 		Priority: tracker.Priority(req.Priority), Assignee: assignee, Status: req.Status}
 	if parent := strings.TrimSpace(req.Parent); parent != "" {
-		ref, err := s.db.ViewValue(ctx, func(tx *sql.Tx) (*tracker.IssueRef, error) { return tracker.RefByKey(ctx, tx, parent) })
+		ref, err := s.db.ViewValue(ctx, func(tx *sql.Tx) (*tracker.IssueRef, error) { return readableRef(ctx, tx, a.By.Actor, parent) })
 		if err != nil {
 			return nil, err
 		}
@@ -932,7 +935,7 @@ type linkByKey struct {
 
 func (c linkByKey) Apply(tx *writer.Tx) error {
 	key, _, _ := strings.Cut(strings.TrimSpace(c.Key), " ")
-	ref, err := tracker.RefByKey(context.Background(), tx, key)
+	ref, err := readableRef(tx.Context(), tx, c.By.Actor, key)
 	if err != nil {
 		return err
 	}
@@ -950,6 +953,21 @@ func init() {
 		}
 		return ""
 	})
+}
+
+// readableRef is the issue a key names, nil for none or for one the
+// actor may not read: a refusal tells no more than for an unknown key.
+func readableRef(ctx context.Context, q sqlite.Querier, actor people.Person, key string) (*tracker.IssueRef, error) {
+	ref, err := tracker.RefByKey(ctx, q, key)
+	if err != nil || ref == nil {
+		return ref, err
+	}
+	if _, err := readableIssue(ctx, q, actor, ref.ID); errors.Is(err, access.ErrNotFound) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	return ref, nil
 }
 
 // subtask adds a subtask to an issue, with the next number of its

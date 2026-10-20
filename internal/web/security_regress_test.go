@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zweiundeins/lith/writer"
+
 	"github.com/mbolli/tickit/internal/demo"
 	"github.com/mbolli/tickit/internal/people"
 	"github.com/mbolli/tickit/internal/web"
@@ -292,5 +294,33 @@ func TestSubtaskCap(t *testing.T) {
 	}
 	if n := rowCount(t, e, `SELECT count(*) FROM issues`) - before; n != 1 {
 		t.Errorf("%d subtasks past a cap of 1", n)
+	}
+}
+
+// NFR-01.2: an issue in a project the person may not read stays unknown:
+// its old address, a link to its key and a parent by its key answer as
+// for a key that names nothing.
+func TestClosedKeysStayUnknown(t *testing.T) {
+	e := webtest.Start(t)
+	seedProbes(t, e)
+	e.Do(t, writer.Func(func(tx *writer.Tx) error {
+		_, err := tx.Exec(`UPDATE scopes SET open = 0 WHERE id = ?`, probeWeb)
+		return err
+	}))
+	g := webtest.Client(t)
+	webtest.Get(t, g, e.URL+"/")
+	if code := status(t, g, e.URL+"/ticket/"+web.ProbeIssue); code != http.StatusNotFound {
+		t.Errorf("the old address of a closed project's issue: %d", code)
+	}
+	answer := func(key string) string {
+		op := "op-" + strings.ToLower(strings.ReplaceAll(key, "-", ""))
+		code, _ := act(t, e, g, "/cmd/issues/"+probeMoved+"/link", "tab1", map[string]any{"op": op + "l", "value": key, "ref": "relates"})
+		o := outcome(t, e, guest(t, e, g), op+"l")
+		code2, _ := act(t, e, g, "/cmd/issues/create", "tab1", map[string]any{"op": op + "c", "project": probeApp, "type": "task", "summary": "S", "parent": key})
+		o2 := outcome(t, e, guest(t, e, g), op+"c")
+		return fmt.Sprintf("%d %s %s | %d %s %s", code, o.Field, strings.ReplaceAll(o.Msg, key, "KEY"), code2, o2.Field, strings.ReplaceAll(o2.Msg, key, "KEY"))
+	}
+	if closed, unknown := answer("WEB-1"), answer("WEB-999"); closed != unknown {
+		t.Errorf("a closed project's key: %s\nan unknown key: %s", closed, unknown)
 	}
 }
