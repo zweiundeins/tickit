@@ -406,7 +406,7 @@ func Resolve(ctx context.Context, q sqlite.Querier, refs doc.Refs) (doc.StaticRe
 	for _, k := range refs.Issues {
 		var c doc.Chip
 		var deleted bool
-		err := q.QueryRowContext(ctx, `SELECT i.summary, coalesce(s.name, i.status), i.status_category, i.type, i.deleted_at IS NOT NULL
+		err := q.QueryRowContext(ctx, `SELECT i.summary, coalesce(s.name, i.status), i.status_category, i.type, i.deleted_at IS NOT NULL OR i.hidden_at IS NOT NULL
 			FROM issue_keys k JOIN issues i ON i.id = k.issue_id LEFT JOIN statuses s ON s.project_id = i.project_id AND s.id = i.status
 			WHERE k.key = ?`, k).Scan(&c.Summary, &c.Status, &c.Category, &c.Type, &deleted)
 		switch {

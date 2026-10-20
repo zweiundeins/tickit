@@ -1,0 +1,36 @@
+package views
+
+import "github.com/mbolli/tickit/internal/ui"
+
+// DemoAlertID is the id of the reset's warning, which the demo view
+// patches in every page.
+const DemoAlertID = "demo-alert"
+
+// DemoAlert warns every open page of a reset to come (DM-03.2) and says
+// while one is under way (DM-03.4); empty, it shows nothing. Unlike the
+// demo notice, it cannot be dismissed.
+templ DemoAlert(msg string) {
+	<div id={ DemoAlertID } class="tk-demo-alert">
+		if msg != "" {
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Icon: "clock", Live: true}) {
+				<p>{ msg }</p>
+			}
+		}
+	</div>
+}
+
+// Forbidden is the page of an address the person may not use: the
+// moderation and admin pages for everyone without the role (NFR-01).
+templ Forbidden(what string) {
+	<section class="tk-error" aria-labelledby="error-title">
+		<div class="tk-empty">
+			<div class="tk-empty__art">
+				@ui.IconSized("lock", "xl")
+			</div>
+			<p class="tk-eyebrow">403</p>
+			<h1 class="tk-empty__title" id="error-title">Staff only</h1>
+			<p class="tk-empty__text">{ what }</p>
+			@ui.Button(ui.ButtonProps{Label: "Log in (staff)", Icon: "login", Href: "/login"})
+		</div>
+	</section>
+}

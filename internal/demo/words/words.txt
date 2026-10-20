@@ -1,0 +1,47 @@
+# The word list of DM-06.4: names, labels, and project and space names that
+# hold one of these are refused with "Please choose another name."
+#
+# Each entry is ROT13-encoded (tr 'A-Za-z' 'N-ZA-Mn-za-m'), so that the file
+# reads as noise and nobody meets a slur while browsing the repository. The
+# list keeps to slurs and obvious spam terms. An entry matches a whole word
+# of the text, after lower case and common digit swaps (0 for o, 3 for e);
+# an entry that starts with * also matches inside a word and across spaces.
+# Lines that start with # are comments.
+*avttre
+*avttn
+*snttbg
+snt
+sntf
+xvxr
+xvxrf
+puvax
+fcvp
+fcvpf
+jrgonpx
+tbbx
+genaal
+ergneq
+ergneqf
+phag
+phagf
+juber
+fyhg
+encr
+encvfg
+anmv
+anmvf
+*uvgyre
+urvy
+xxx
+cbea
+cbeab
+*cbeauho
+kkk
+*ivnten
+pvnyvf
+pnfvab
+rfpbeg
+rfpbegf
+*baylsnaf
+pnztvey
+pnztveyf

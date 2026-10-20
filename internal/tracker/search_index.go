@@ -76,6 +76,12 @@ var issueSearchProjector = events.NewProjector(IssueStream, search.IssuesProject
 	events.Handle(IssueDeletedType, func(tx *writer.Tx, r events.Record[string, IssueDeleted]) error {
 		return search.Remove(tx, search.Issue, r.ID)
 	}),
+	events.Handle(IssueHiddenType, func(tx *writer.Tx, r events.Record[string, IssueHidden]) error {
+		return search.Hide(tx, search.Issue, r.ID, true)
+	}),
+	events.Handle(IssueUnhiddenType, func(tx *writer.Tx, r events.Record[string, IssueUnhidden]) error {
+		return search.Hide(tx, search.Issue, r.ID, false)
+	}),
 	events.Ignore(TypeChangedType),
 	events.Ignore(StatusChangedType),
 	events.Ignore(MovedType),

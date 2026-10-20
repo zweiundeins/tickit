@@ -201,6 +201,12 @@ type CardProps struct {
 	MenuID string
 	// Attrs go on the card (data-* for the board's drag).
 	Attrs templ.Attributes
+	// ID is the list item's id: a stream's morph then moves the card
+	// itself from lane to lane. SlotAttrs go on the list item.
+	ID        string
+	SlotAttrs templ.Attributes
+	// LinkAttrs go on the summary's link (the issue panel's).
+	LinkAttrs templ.Attributes
 }
 
 // Card is a board card in its list item. The summary links to the issue
@@ -208,7 +214,14 @@ type CardProps struct {
 // button opens the board's menu (Move to, Move up, Move down), the
 // keyboard's way to move it (FR-41.2).
 templ Card(p CardProps) {
-	<li class="tk-slot" data-key={ p.Key }>
+	<li
+		class="tk-slot"
+		data-key={ p.Key }
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		{ p.SlotAttrs... }
+	>
 		<div
 			class="tk-card"
 			if p.Epic != "" {
@@ -242,7 +255,7 @@ templ Card(p CardProps) {
 					</button>
 				}
 			</div>
-			<h3 class="tk-card__title"><a href={ templ.SafeURL(p.Href) }>{ p.Summary }</a></h3>
+			<h3 class="tk-card__title"><a href={ templ.SafeURL(p.Href) } { p.LinkAttrs... }>{ p.Summary }</a></h3>
 			if p.Epic != "" {
 				<p class="tk-card__epic"><span class="visually-hidden">Epic: </span>{ p.Epic }</p>
 			}
@@ -289,6 +302,9 @@ type LaneProps struct {
 	Name     string
 	Category StatusCategory
 	Count    int
+	// Total is the column's count when a filter shows Count of them: the
+	// head says "2 of 5" and the limit counts Total.
+	Total int
 	// WIP is the work-in-progress limit, 0 for none (FR-43.1).
 	WIP int
 	// Target lights the lane a dragged card is over.
@@ -296,8 +312,13 @@ type LaneProps struct {
 	// CreateAttrs wire the lane's "+" (Create issue in this status); nil
 	// leaves the button out.
 	CreateAttrs templ.Attributes
+	// Lean draws the head's marker and "+" from Glyphs, with the button's
+	// name as its title: for a board's frame (NFR-37.1).
+	Lean bool
 	Attrs       templ.Attributes
 }
+
+func (p LaneProps) all() int { return max(p.Count, p.Total) }
 
 func issues(n int) string {
 	if n == 1 {
@@ -313,8 +334,10 @@ templ Lane(p LaneProps) {
 	<section
 		class="tk-lane"
 		data-cat={ p.Category.attr() }
-		aria-labelledby={ p.ID + "-name" }
-		if p.WIP > 0 && p.Count > p.WIP {
+		if !p.Lean {
+			aria-labelledby={ p.ID + "-name" }
+		}
+		if p.WIP > 0 && p.all() > p.WIP {
 			data-over
 		}
 		if p.Target {
@@ -323,12 +346,20 @@ templ Lane(p LaneProps) {
 		{ p.Attrs... }
 	>
 		<header class="tk-lane__head">
-			@raw(catSVG(p.Category))
+			if p.Lean {
+				<i data-cat={ p.Category.attr() }></i>
+			} else {
+				@raw(catSVG(p.Category))
+			}
 			<h2 class="tk-lane__name" id={ p.ID + "-name" }>{ p.Name }</h2>
-			<span class="tk-count" aria-label={ issues(p.Count) }>{ strconv.Itoa(p.Count) }</span>
+			if p.Total > 0 && p.Total != p.Count {
+				<span class="tk-count" aria-label={ strconv.Itoa(p.Count) + " of " + issues(p.Total) }>{ strconv.Itoa(p.Count) } of { strconv.Itoa(p.Total) }</span>
+			} else {
+				<span class="tk-count" aria-label={ issues(p.Count) }>{ strconv.Itoa(p.Count) }</span>
+			}
 			if p.WIP > 0 {
 				<span class="tk-lane__wip">
-					if p.Count > p.WIP {
+					if p.all() > p.WIP {
 						@Icon("warning")
 						Over limit of { strconv.Itoa(p.WIP) }
 					} else {
@@ -336,7 +367,9 @@ templ Lane(p LaneProps) {
 					}
 				</span>
 			}
-			if p.CreateAttrs != nil {
+			if p.CreateAttrs != nil && p.Lean {
+				<button class="tk-btn tk-btn--ghost tk-btn--sm tk-btn--icon tk-lane__add" type="button" title={ "Create issue in " + p.Name } { p.CreateAttrs... }><i class="tk-icon-glyph" data-icon="plus"></i></button>
+			} else if p.CreateAttrs != nil {
 				@Button(ButtonProps{Label: "Create issue in " + p.Name, Icon: "plus", IconOnly: true, Variant: Ghost, Size: SizeSM, Class: "tk-lane__add", Attrs: p.CreateAttrs})
 			}
 		</header>

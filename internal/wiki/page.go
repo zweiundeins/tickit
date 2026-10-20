@@ -407,7 +407,11 @@ func createPage(tx *writer.Tx, by tabs.By, p newPage) error {
 		return err
 	}
 	raw := marshalDoc(d)
-	if err := events.Execute(Store(), tx, createDocDecider, PageDocStream.ID(p.id), events.NoStream, DocCreated{Epoch: newEpoch(), Doc: raw}, m); err != nil {
+	epoch, err := newEpoch(tx)
+	if err != nil {
+		return err
+	}
+	if err := events.Execute(Store(), tx, createDocDecider, PageDocStream.ID(p.id), events.NoStream, DocCreated{Epoch: epoch, Doc: raw}, m); err != nil {
 		return err
 	}
 	msg, _ := text(p.message, 0, MaxMessage)

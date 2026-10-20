@@ -1,0 +1,238 @@
+/* The demo's pages (internal/views: admin, moderation, the account, the
+ * reset's warning). */
+@layer components {
+	/* ── The reset's warning, among the floating notices ─────────────── */
+	.tk-demo-alert {
+		display: contents;
+
+		& > .tk-notice {
+			max-inline-size: 30rem;
+			box-shadow: var(--tk-shadow-overlay);
+			pointer-events: auto;
+		}
+	}
+
+	/* ── Admin and moderation ─────────────────────────────────────────── */
+	.tk-admin {
+		& .tk-pagehead .tk-outcome {
+			min-block-size: 1.25rem;
+		}
+	}
+
+	.tk-admin__body {
+		margin-block-start: var(--tk-space-5);
+	}
+
+	.tk-admin__grid {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 20rem;
+		gap: var(--tk-space-6);
+		align-items: start;
+
+		@container page (width < 56rem) {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	.tk-admin__filter {
+		--gap: var(--tk-space-2);
+		align-items: start;
+
+		& .tk-field {
+			margin: 0;
+		}
+	}
+
+	.tk-admin__note {
+		align-self: center;
+		margin: 0;
+		font-size: var(--tk-text-xs);
+	}
+
+	.tk-admin__table {
+		position: relative; /* holds the visually hidden heads inside the scrolling region */
+
+		& td {
+			vertical-align: middle;
+		}
+
+		& .num {
+			text-align: end;
+			font-variant-numeric: tabular-nums;
+		}
+	}
+
+	.tk-admin__who {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-2);
+		min-inline-size: 0;
+
+		& > span:last-child {
+			display: grid;
+			min-inline-size: 0;
+		}
+	}
+
+	.tk-admin__name {
+		font-weight: var(--tk-weight-medium);
+	}
+
+	.tk-admin__sub {
+		color: var(--tk-text-muted);
+		font-size: var(--tk-text-2xs);
+	}
+
+	.tk-admin__detail {
+		max-inline-size: 28rem;
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-xs);
+		overflow-wrap: anywhere;
+	}
+
+	.tk-admin__actions {
+		inline-size: 1%;
+		text-align: end;
+		white-space: nowrap;
+	}
+
+	/* A status in words with a pixel of its tone: never the colour alone. */
+	.tk-admin__status {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-1_5);
+		font-size: var(--tk-text-xs);
+		font-weight: var(--tk-weight-medium);
+		white-space: nowrap;
+
+		&::before {
+			content: "";
+			inline-size: 0.5rem;
+			block-size: 0.5rem;
+			border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+			background: var(--tk-text-muted);
+		}
+	}
+
+	.tk-admin__status--ok::before {
+		background: var(--tk-ok);
+	}
+
+	.tk-admin__status--warn::before {
+		background: var(--tk-warn);
+	}
+
+	.tk-admin__status--danger::before {
+		background: var(--tk-danger);
+	}
+
+	/* ── Moderation ───────────────────────────────────────────────────── */
+	.tk-moderation__reason {
+		min-inline-size: min(100%, 22rem);
+
+		& .tk-field {
+			flex: 1;
+			margin: 0;
+		}
+	}
+
+	.tk-modlist {
+		display: grid;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.tk-modlist__item {
+		display: grid;
+		gap: var(--tk-space-1_5);
+		padding-block: var(--tk-space-3);
+		border-block-end: 1px solid var(--tk-border-subtle);
+
+		&:first-child {
+			padding-block-start: 0;
+		}
+
+		&:last-child {
+			border-block-end: 0;
+		}
+
+		&[data-hidden] .tk-modlist__text {
+			color: var(--tk-text-muted);
+			text-decoration: line-through;
+			text-decoration-color: var(--tk-border-strong);
+		}
+	}
+
+	.tk-modlist__head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-2);
+	}
+
+	.tk-modlist__kind {
+		color: var(--tk-text-muted);
+		font-size: var(--tk-text-2xs);
+		font-weight: var(--tk-weight-semibold);
+		letter-spacing: var(--tk-tracking-caps);
+		text-transform: uppercase;
+	}
+
+	.tk-modlist__text {
+		margin: 0;
+		font-size: var(--tk-text-sm);
+		overflow-wrap: anywhere;
+	}
+
+	.tk-modlist__foot {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--tk-space-2);
+
+		& .tk-byline {
+			margin: 0;
+		}
+	}
+
+	.tk-modlist__actions {
+		--gap: var(--tk-space-1);
+	}
+
+	.tk-modlog {
+		display: grid;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+
+		& li {
+			display: grid;
+			gap: var(--tk-space-0_5);
+			padding-block: var(--tk-space-2);
+			border-block-end: 1px solid var(--tk-border-subtle);
+			font-size: var(--tk-text-sm);
+
+			&:last-child {
+				border-block-end: 0;
+			}
+		}
+
+		& p {
+			margin: 0;
+			overflow-wrap: anywhere;
+		}
+
+		& .muted,
+		& time {
+			font-size: var(--tk-text-xs);
+		}
+	}
+
+	/* ── An account's own page ────────────────────────────────────────── */
+	.tk-account {
+		display: grid;
+		gap: var(--tk-space-5);
+	}
+}

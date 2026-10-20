@@ -253,6 +253,8 @@ var issuesProjector = events.NewProjector(IssueStream, "tracker_issues", issuesV
 	events.Handle(IssueDeletedType, func(tx *writer.Tx, r events.Record[string, IssueDeleted]) error {
 		return set(tx, r.ID, r.Version, millis(r.At), `deleted_at = ?, deleted_by = ?`, millis(r.At), r.Actor)
 	}),
+	events.Handle(IssueHiddenType, projectHidden),
+	events.Handle(IssueUnhiddenType, projectUnhidden),
 	events.Handle(ProjectChangedType, func(tx *writer.Tx, r events.Record[string, ProjectChanged]) error {
 		e := r.Data
 		tx.Touch(BoardTopic(e.FromProject))

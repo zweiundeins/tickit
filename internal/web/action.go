@@ -14,6 +14,7 @@ import (
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/mbolli/tickit/internal/access"
+	"github.com/mbolli/tickit/internal/demo"
 	"github.com/mbolli/tickit/internal/people"
 	"github.com/mbolli/tickit/internal/tabs"
 )
@@ -51,6 +52,7 @@ type action struct {
 	Session string
 	Tab     string
 	By      tabs.By
+	Addr    string // edge.ClientKey: for a moderator's block (demo.Guard), never stored
 }
 
 // class is a rate-limit class of actions (DM-04.1): a session may take
@@ -139,13 +141,20 @@ func (s *Server) decode(w http.ResponseWriter, r *http.Request, c class, v paylo
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return action{}, false
 	}
-	return action{Session: edge.SessionID(r.Context()), Tab: p.Tab, By: tabs.By{Actor: actor, Op: p.Op, At: time.Now()}}, true
+	if actor.MustChange { // FR-141.1: the first password first
+		http.Error(w, "Change your password first.", http.StatusForbidden)
+		return action{}, false
+	}
+	return action{Session: edge.SessionID(r.Context()), Tab: p.Tab, By: tabs.By{Actor: actor, Op: p.Op, At: time.Now()}, Addr: edge.ClientKey(r)}, true
 }
 
 // run runs cmd as action a in tabs.Act, once per op id: a retry gets the
 // first answer and runs nothing. It answers the requests that reached no
 // outcome itself and reports false then.
 func (s *Server) run(w http.ResponseWriter, r *http.Request, a action, cmd writer.Command) (tabs.Result, bool) {
+	// The demo's guard refuses while it resets, for a blocked guest, and
+	// past the caps (DM-03.4, DM-07.2, DM-04.3).
+	cmd = s.demo.Guard(a.By.Actor, a.Addr, cmd)
 	op := writer.OnceResult(a.Session+":"+a.By.Op, tabs.Act{Session: a.Session, Tab: a.Tab, By: a.By, Cmd: cmd})
 	if err := s.w.Do(r.Context(), op); err != nil {
 		s.failAction(w, r, err)
@@ -211,13 +220,16 @@ func (s *Server) signals(w http.ResponseWriter, v any) {
 
 // failAction answers an action that reached no outcome: 400 for a command
 // that Validate refused, 404 for an id that names nothing the actor may
-// see, 503 while the server stops, 500 for the rest (logged).
+// see, 503 while the server stops or the demo resets, 500 for the rest
+// (logged).
 func (s *Server) failAction(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, writer.ErrInvalid):
 		http.Error(w, strings.TrimPrefix(err.Error(), writer.ErrInvalid.Error()+": "), http.StatusBadRequest)
-	case errors.Is(err, access.ErrNotFound):
+	case errors.Is(err, access.ErrNotFound), errors.Is(err, people.ErrNoAccount):
 		http.Error(w, "not found", http.StatusNotFound)
+	case errors.Is(err, demo.ErrResetting):
+		http.Error(w, demo.MsgResetting+". Try again in a minute.", http.StatusServiceUnavailable)
 	case errors.Is(err, writer.ErrClosed), errors.Is(err, writer.ErrQueueFull), r.Context().Err() != nil:
 		http.Error(w, "The server is restarting. Try again in a moment.", http.StatusServiceUnavailable)
 	default:

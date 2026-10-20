@@ -22,13 +22,13 @@ type metrics struct {
 	editBatches  prometheus.Counter     // batches of page edits applied (editor)
 	editors      prometheus.Gauge       // the most editors of one page now (editor)
 	moderations  *prometheus.CounterVec // moderation actions, by action (moderation)
-	resets       prometheus.Counter     // demo resets (demo)
+	resets       *prometheus.CounterVec // demo resets, by outcome (demo)
 	resetSeconds prometheus.Histogram   // how long a reset took (demo)
 	guests       prometheus.GaugeFunc   // guests who acted in the last 24 hours
 }
 
 func newMetrics(db *sqlite.DB) *metrics {
-	return &metrics{
+	m := &metrics{
 		limited: prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: namespace, Name: "rate_limited_total",
 			Help: "Requests answered 429, by rate-limit class."}, []string{"class"}),
 		refusals: prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: namespace, Name: "refusals_total",
@@ -41,8 +41,8 @@ func newMetrics(db *sqlite.DB) *metrics {
 			Help: "The most people editing one page now."}),
 		moderations: prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: namespace, Name: "moderation_actions_total",
 			Help: "Moderation actions, by action."}, []string{"action"}),
-		resets: prometheus.NewCounter(prometheus.CounterOpts{Namespace: namespace, Name: "resets_total",
-			Help: "Resets of the demo."}),
+		resets: prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: namespace, Name: "resets_total",
+			Help: "Resets of the demo, by outcome: ok or failed."}, []string{"outcome"}),
 		resetSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{Namespace: namespace, Name: "reset_seconds",
 			Help: "How long a reset of the demo took.", Buckets: []float64{1, 2, 5, 10, 20, 30, 60}}),
 		guests: prometheus.NewGaugeFunc(prometheus.GaugeOpts{Namespace: namespace, Name: "guests_active",
@@ -54,6 +54,20 @@ func newMetrics(db *sqlite.DB) *metrics {
 			return float64(n)
 		}),
 	}
+	// The alerts read both outcomes from 0 on (deploy/observability/rules-tickit.yaml).
+	m.resets.WithLabelValues("ok")
+	m.resets.WithLabelValues("failed")
+	return m
+}
+
+// reset counts a reset of the demo and how long it took.
+func (m *metrics) reset(ok bool, took time.Duration) {
+	outcome := "ok"
+	if !ok {
+		outcome = "failed"
+	}
+	m.resets.WithLabelValues(outcome).Inc()
+	m.resetSeconds.Observe(took.Seconds())
 }
 
 // Collectors are tickit's own metrics, for the registry of the metrics

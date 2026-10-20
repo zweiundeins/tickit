@@ -1,0 +1,60 @@
+package ui
+
+import "strconv"
+
+// BoardCard is Card for a board of many cards (NFR-37.1: a hundred cards
+// in 60 KB): the same parts, flat in one list item that is the card, its
+// glyphs drawn by the stylesheet that Glyphs writes once in the page
+// (types, priorities, the "…" and the due date's icon) and its faces by
+// the one FaceStyles writes in the frame. Put it in a Board with Class
+// "tk-board--flat". The first <i> is the grip; the "…" (the card's
+// button) carries no popovertarget: the board opens its CardMenu by
+// script and finds the card by its id. A card's move states come from
+// the page (data-state), not from the server.
+templ BoardCard(p CardProps) {
+	<li
+		class="tk-card"
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		if p.Epic != "" {
+			data-hue={ strconv.Itoa(HueOf(p.Epic)) }
+		}
+		if p.State != CardIdle {
+			data-state={ string(p.State) }
+		}
+		{ p.SlotAttrs... }
+	>
+		<i></i><i data-type={ string(p.Type) } role="img" aria-label={ p.Type.Name() }></i><span class="tk-card__key">{ p.Key }</span>
+		if p.Parent != "" {
+			<span class="tk-card__parent"><span class="visually-hidden">Subtask of </span>{ p.Parent }</span>
+		}
+		if p.MenuID != "" {
+			<button aria-label={ "Move or open " + p.Key }></button><a class="tk-card__title" href={ templ.SafeURL(p.Href) } { p.LinkAttrs... }>{ p.Summary }</a>
+		} else {
+			<a class="tk-card__title" href={ templ.SafeURL(p.Href) } { p.LinkAttrs... }>{ p.Summary }</a>
+		}
+		if p.Epic != "" {
+			<p class="tk-card__epic"><span class="visually-hidden">Epic: </span>{ p.Epic }</p>
+		}
+		<i data-prio={ string(p.Priority) } role="img" aria-label={ p.Priority.Name() + " priority" }></i>
+		if p.Points != "" {
+			@Points(p.Points)
+		}
+		if !p.Due.IsZero() {
+			if p.Overdue {
+				<span class="tk-due" data-overdue><span class="visually-hidden">Overdue, due </span><time datetime={ p.Due.Format("2006-01-02") }>{ Date(p.Due, p.Now) }</time></span>
+			} else {
+				<span class="tk-due"><span class="visually-hidden">Due </span><time datetime={ p.Due.Format("2006-01-02") }>{ Date(p.Due, p.Now) }</time></span>
+			}
+		}
+		for _, l := range p.Labels {
+			@Label(l, "")
+		}
+		if p.Assignee != nil {
+			<i class="tk-av" data-face={ FaceRef(p.Assignee.Seed) } role="img" title={ p.Assignee.Name }></i>
+		} else {
+			<i class="tk-card__nobody" role="img" aria-label="Unassigned"></i>
+		}
+	</li>
+}

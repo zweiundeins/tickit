@@ -138,7 +138,11 @@ func canonical(raw json.RawMessage) json.RawMessage {
 	if json.Compact(&b, raw) != nil {
 		return raw
 	}
-	return b.Bytes()
+	// As the event log stores it: json.Marshal escapes <, > and & in a
+	// RawMessage, so a projection built live equals one rebuilt.
+	var out bytes.Buffer
+	json.HTMLEscape(&out, b.Bytes())
+	return out.Bytes()
 }
 
 // added returns the ids in now that were not in before, in order.

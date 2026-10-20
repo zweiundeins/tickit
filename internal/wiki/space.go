@@ -9,6 +9,7 @@ import (
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/mbolli/tickit/internal/access"
+	"github.com/mbolli/tickit/internal/demo/words"
 	"github.com/mbolli/tickit/internal/people"
 	"github.com/mbolli/tickit/internal/tabs"
 )
@@ -180,9 +181,15 @@ func (c CreateSpace) ApplyResult(tx *writer.Tx) ([]byte, error) {
 	if !ok {
 		return nil, tabs.Refuse("key", "A key has 2 to 10 letters A to Z.")
 	}
+	if words.Blocked(key) {
+		return nil, tabs.Refuse("key", words.Refusal)
+	}
 	name, ok := text(c.Name, 1, MaxSpaceName)
 	if !ok {
 		return nil, tabs.Refuse("name", "A name has 1 to 100 characters.")
+	}
+	if words.Blocked(name) { // DM-06.4
+		return nil, tabs.Refuse("name", words.Refusal)
 	}
 	desc, ok := longText(c.Description, MaxDescription)
 	if !ok {
@@ -228,6 +235,9 @@ var editSpace = spaceDecider(func(c EditSpace, s SpaceState) ([]SpaceEvent, erro
 		name, ok := text(*c.Name, 1, MaxSpaceName)
 		if !ok {
 			return nil, tabs.Refuse("name", "A name has 1 to 100 characters.")
+		}
+		if words.Blocked(name) {
+			return nil, tabs.Refuse("name", words.Refusal)
 		}
 		if name != s.Name {
 			e.Name = &name

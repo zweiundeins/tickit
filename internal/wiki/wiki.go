@@ -51,10 +51,10 @@
 package wiki
 
 import (
-	"crypto/rand"
-	"encoding/hex"
+	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -140,12 +140,18 @@ func ValidID(s string) bool {
 	return err == nil && u.String() == s && u.Version() == 7
 }
 
-// newEpoch is the epoch of a new document stream: random, so that a page
-// seeded again after a reset has another one (MP-13.2).
-func newEpoch() string {
-	b := make([]byte, 8)
-	rand.Read(b)
-	return "e" + hex.EncodeToString(b)
+// newEpoch is the epoch of a new document stream: the demo's epoch,
+// which every reset bumps (demo.Epoch reads the same row; the wiki cannot
+// import demo, which seeds it), so that no edit made before a reset
+// applies after it to the page seeded again with its id (MP-13.2). The
+// seed stays the same at every run (DM-02.4).
+func newEpoch(tx *writer.Tx) (string, error) {
+	var n int64
+	err := tx.QueryRow(`SELECT epoch FROM demo_state WHERE id = 1`).Scan(&n)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return "", err
+	}
+	return "e" + strconv.FormatInt(n, 10), nil
 }
 
 // notFound is the error of a command or query that names something that

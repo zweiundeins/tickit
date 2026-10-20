@@ -234,10 +234,15 @@
 
 	/* The display menu: rows of segmented choices. */
 	.tk-display {
-		display: grid;
 		gap: var(--tk-space-3);
 		padding: var(--tk-space-3);
 		min-inline-size: 16rem;
+
+		/* A closed popover stays out of the layout: display: grid alone
+		 * would widen a narrow page by the menu (NFR-46). */
+		&:popover-open {
+			display: grid;
+		}
 	}
 
 	.tk-display__group {

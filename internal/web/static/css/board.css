@@ -510,6 +510,529 @@
 		animation-timing-function: var(--tk-ease-glide);
 	}
 
+
+
+	/* A board card (ui.BoardCard): one list item, its parts flat in it:
+	 * type, key, parent and "…" on the first row, the summary, the epic,
+	 * then priority, points, due date, labels and the face. The first <i>
+	 * is the grip, the button the "…". Its glyphs are Glyphs' masks. */
+	.tk-board--flat .tk-card,
+	.tk-bd__ghost .tk-card {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-1_5);
+		view-transition-class: tk-card;
+
+		& > i:first-child {
+			position: absolute;
+			inset-block: var(--tk-space-2);
+			inset-inline-start: 4px;
+			inline-size: 4px;
+			background: radial-gradient(circle, var(--tk-text-muted) 0.9px, transparent 1px) 0 0 / 4px 4px;
+			opacity: 0;
+			transition: opacity var(--tk-dur-1) var(--tk-ease-snap);
+
+			@media (pointer: coarse) {
+				z-index: 1;
+				inset-inline-start: 0;
+				inline-size: 14px;
+				background-position: 5px 0;
+				background-origin: content-box;
+				opacity: 0.6;
+				touch-action: none;
+			}
+		}
+
+		&:hover > i:first-child {
+			opacity: 0.6;
+		}
+
+		& > button {
+			position: relative;
+			z-index: 1;
+			display: grid;
+			place-items: center;
+			inline-size: 1.5rem;
+			block-size: 1.25rem;
+			margin-block: -0.125rem;
+			margin-inline-start: auto;
+			padding: 0;
+			border: 0;
+			border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+			background: transparent;
+			color: var(--tk-text-muted);
+			opacity: 0;
+			transition: opacity var(--tk-dur-1) var(--tk-ease-snap), background-color var(--tk-dur-1);
+
+			&:hover {
+				background: var(--tk-surface-2);
+				color: var(--tk-text-1);
+			}
+
+			@media (pointer: coarse) {
+				opacity: 1;
+			}
+		}
+
+		&:is(:hover, :focus-within) > button {
+			opacity: 1;
+		}
+
+		& > .tk-card__title {
+			flex: 1 0 100%;
+			color: inherit;
+			text-decoration: none;
+
+			&::after {
+				content: "";
+				position: absolute;
+				inset: 0;
+			}
+
+			&:focus-visible {
+				outline: none;
+			}
+
+			&:focus-visible::after {
+				outline: 2px solid var(--tk-focus);
+				outline-offset: -4px;
+			}
+		}
+
+		& > .tk-card__epic {
+			flex: 1 0 100%;
+			padding-inline: var(--tk-space-1_5);
+			background: transparent;
+			box-shadow: inset 2px 0 0 var(--tk-hue-edge);
+		}
+
+		& > .tk-label {
+			block-size: 1.125rem;
+			padding-inline: 0.3125rem;
+			font-size: var(--tk-text-2xs);
+		}
+
+		& > :is(i[data-prio], .tk-points, .tk-due, .tk-label) {
+			position: relative;
+			z-index: 1;
+		}
+
+		& > :is(.tk-av, .tk-card__nobody) {
+			position: relative;
+			z-index: 1;
+			margin-inline-start: auto;
+		}
+
+		& > .tk-av {
+			--_s: 1rem;
+			--_n: calc(1px * var(--tk-notch));
+			padding: 0;
+		}
+
+		& > .tk-av[data-face]::before {
+			inset: 0;
+		}
+
+		&:has(> .tk-card__title:focus-visible) {
+			&::before {
+				box-shadow: inset 3px 0 0 var(--_edge), inset 0 0 0 1px var(--tk-accent-edge);
+			}
+		}
+	}
+
+	/* ── The board's page (internal/views/board.templ) ─────────────── */
+	/* Symbols that cards refer to (ui.Sprites, ui.FaceSprites). */
+	.tk-sprites {
+		position: absolute;
+		inline-size: 0;
+		block-size: 0;
+		overflow: hidden;
+	}
+
+	/* Each card glides on its own in the lanes' view transition. */
+	.tk-board--flat .tk-card[id] {
+		view-transition-name: attr(id type(<custom-ident>));
+	}
+
+	.tk-bd {
+		position: relative;
+		display: grid;
+		gap: var(--tk-space-3);
+
+		&.is-dragging {
+			cursor: grabbing;
+			user-select: none;
+		}
+
+		& .tk-tabnav {
+			margin-block-end: var(--tk-space-1);
+		}
+	}
+
+	.tk-bdhead {
+		display: grid;
+		gap: var(--tk-space-3);
+
+		& .tk-pagehead {
+			margin-block-end: 0;
+		}
+	}
+
+	.tk-bdhead__title {
+		display: grid;
+		gap: var(--tk-space-1);
+		min-inline-size: 0;
+
+		& h1 {
+			overflow-wrap: anywhere;
+		}
+	}
+
+	/* The active sprint: its name and goal, then its numbers (FR-46.2). */
+	.tk-sprint {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-3) var(--tk-space-6);
+		padding: var(--tk-space-3) var(--tk-space-4);
+		background: var(--tk-surface-1);
+		box-shadow: inset 0 0 0 1px var(--tk-border-subtle);
+
+		& .tk-stats {
+			flex: 1 1 auto;
+		}
+	}
+
+	.tk-sprint__name {
+		display: grid;
+		gap: var(--tk-space-0_5);
+		min-inline-size: 12rem;
+	}
+
+	.tk-sprint__goal {
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+	}
+
+	.tk-boardbar .tk-presence {
+		margin-inline-start: auto;
+	}
+
+	.tk-bd__filters {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-2);
+	}
+
+	.tk-bd__q {
+		inline-size: 12rem;
+	}
+
+	.tk-bd__faces {
+		display: inline-flex;
+		align-items: center;
+
+		&:empty {
+			display: none;
+		}
+	}
+
+	/* A face that filters: overlapping, raised when chosen. */
+	.tk-bd__face {
+		display: grid;
+		padding: 2px;
+		margin-inline-start: -4px;
+		border: 0;
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		background: var(--tk-bg);
+		cursor: pointer;
+		transition: translate var(--tk-dur-1) var(--tk-ease-snap);
+
+		&:first-child {
+			margin-inline-start: 0;
+		}
+
+		&:hover {
+			translate: 0 -2px;
+		}
+
+		&[aria-pressed="true"] {
+			z-index: 1;
+			box-shadow: 0 0 0 2px var(--tk-accent);
+		}
+	}
+
+	.tk-bd__types {
+		display: inline-flex;
+		gap: var(--tk-space-0_5);
+	}
+
+	.tk-bd__type[aria-pressed="true"],
+	.tk-bd__chip[aria-pressed="true"] {
+		background: var(--tk-accent-subtle);
+		box-shadow: inset 0 0 0 1px var(--tk-accent-edge);
+		color: var(--tk-accent-text);
+	}
+
+	/* The copy of a card under the pointer while it drags. */
+	.tk-bd__ghost {
+		position: fixed;
+		inset: 0 auto auto 0;
+		z-index: var(--tk-z-dropdown);
+		pointer-events: none;
+		rotate: 1.5deg;
+		filter: drop-shadow(0 12px 18px var(--tk-glow));
+
+		& .tk-card,
+		& .tk-blrow {
+			cursor: grabbing;
+		}
+	}
+
+	/* A refusal's reason, beside the card it concerns (FR-41.3). */
+	.tk-card[data-state="refused"] {
+		anchor-name: --tk-refused;
+	}
+
+	.tk-bd__note {
+		display: contents;
+	}
+
+	.tk-bd__reason {
+		max-inline-size: var(--tk-lane-width);
+		padding: var(--tk-space-1_5) var(--tk-space-2);
+		background: var(--tk-surface-overlay);
+		box-shadow: var(--tk-shadow-2), inset 0 0 0 1px var(--tk-danger);
+		font-size: var(--tk-text-xs);
+	}
+
+	@supports (anchor-name: --a) {
+		.tk-bd__reason {
+			position: absolute;
+			position-anchor: --tk-refused;
+			position-area: block-end span-inline-end;
+			position-try-fallbacks: flip-block;
+			z-index: var(--tk-z-raised);
+			margin-block-start: var(--tk-space-1);
+		}
+	}
+
+	.tk-bd__problem[hidden],
+	.tk-bd__reason[hidden] {
+		display: none;
+	}
+
+	.tk-bd__help {
+		font-size: var(--tk-text-xs);
+	}
+
+	.tk-board .tk-drop {
+		list-style: none;
+	}
+
+	/* ── The backlog ───────────────────────────────────────────────── */
+	.tk-bl {
+		position: relative;
+		display: grid;
+		gap: var(--tk-space-4);
+	}
+
+	.tk-bl__bar {
+		position: sticky;
+		inset-block-start: 0;
+		z-index: var(--tk-z-sticky);
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-2);
+		padding: var(--tk-space-2) 0;
+		background: var(--tk-bg);
+	}
+
+	.tk-bl__count {
+		flex: 1 1 12rem;
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+	}
+
+	.tk-bl__msg[hidden] {
+		display: none;
+	}
+
+	.tk-bl__sections {
+		display: grid;
+		gap: var(--tk-space-5);
+	}
+
+	.tk-bl__active {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-2);
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+	}
+
+	.tk-blsec {
+		background: var(--tk-surface-inset);
+		box-shadow: inset 0 0 0 1px var(--tk-border-subtle);
+	}
+
+	.tk-blsec__head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-2) var(--tk-space-3);
+		padding: var(--tk-space-2) var(--tk-space-3);
+		font-size: var(--tk-text-xs);
+	}
+
+	.tk-blsec__name {
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+		font-weight: var(--tk-weight-semibold);
+		letter-spacing: var(--tk-tracking-caps);
+		text-transform: uppercase;
+	}
+
+	.tk-blsec__start {
+		margin-inline-start: auto;
+	}
+
+	.tk-blsec__rows {
+		display: grid;
+		gap: 1px;
+		margin: 0;
+		padding: 0 var(--tk-space-2) var(--tk-space-2);
+		list-style: none;
+	}
+
+	.tk-blsec__empty {
+		padding: var(--tk-space-3);
+		font-size: var(--tk-text-sm);
+		text-align: center;
+	}
+
+	/* An issue in a line: the parts of a card (FR-45.1). */
+	.tk-blrow {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-2);
+		min-block-size: var(--tk-row-height);
+		padding: var(--tk-space-1) var(--tk-space-2) var(--tk-space-1) var(--tk-space-4);
+		background: var(--tk-surface-1);
+		cursor: grab;
+		font-size: var(--tk-text-sm);
+
+		&:hover {
+			background: var(--tk-surface-hover);
+		}
+
+		&:has(.tk-blrow__check:checked) {
+			background: var(--tk-surface-selected);
+		}
+
+		& .tk-card__grip {
+			inset-block: var(--tk-space-1);
+		}
+
+		&:hover > .tk-card__grip {
+			opacity: 0.6;
+		}
+
+		& .tk-lozenge {
+			flex: none;
+		}
+
+		& .tk-card__epic {
+			flex: none;
+			max-inline-size: 10rem;
+		}
+
+		&[data-state="dragged"] {
+			opacity: 0.4;
+			outline: 2px dashed var(--tk-accent-edge);
+			outline-offset: -2px;
+		}
+
+		&[data-state="pending"] {
+			cursor: progress;
+
+			& > :not(.tk-card__grip) {
+				opacity: 0.55;
+			}
+		}
+	}
+
+	.tk-blrow__check {
+		flex: none;
+	}
+
+	.tk-blrow__summary {
+		flex: 1 1 auto;
+		min-inline-size: 0;
+		overflow: hidden;
+		color: var(--tk-text-1);
+		text-decoration: none;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+
+		&:hover {
+			text-decoration: underline;
+		}
+	}
+
+	@container page (width < 40rem) {
+		.tk-blrow .tk-lozenge,
+		.tk-blrow .tk-card__epic {
+			display: none;
+		}
+	}
+
+	/* ── Projects ──────────────────────────────────────────────────── */
+	.tk-projects__row[data-archived] {
+		opacity: 0.6;
+	}
+
+	.tk-projects__row .tk-lozenge {
+		margin-inline-start: var(--tk-space-2);
+	}
+
+	.tk-np__key input,
+	input.tk-np__key {
+		font-family: var(--tk-font-mono);
+		text-transform: uppercase;
+	}
+
+	.tk-settings__part {
+		display: grid;
+		gap: var(--tk-space-3);
+		max-inline-size: var(--tk-prose-max);
+
+		& h2 {
+			font-size: var(--tk-text-xl);
+		}
+	}
+
+	.tk-settings__wip,
+	.tk-settings__components {
+		display: grid;
+		gap: var(--tk-space-2);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.tk-settings__wipname {
+		min-inline-size: 12rem;
+	}
+
+	.tk-settings__wipinput {
+		inline-size: 6rem;
+	}
+
 	@media (forced-colors: active) {
 		.tk-lane[data-target] {
 			outline: 2px solid Highlight;

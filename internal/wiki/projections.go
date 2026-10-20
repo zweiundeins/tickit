@@ -209,11 +209,22 @@ var versionsProjector = events.NewProjector(PageStream, "wiki_versions", version
 		e := r.Data
 		editors, _ := json.Marshal(nonNil(e.Editors))
 		_, err := tx.Exec(`INSERT INTO page_versions (page_id, number, upto, title, doc, editors, message, reason, created_by, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, r.ID, e.Number, e.Upto, e.Title, string(e.Doc), string(editors), e.Message, e.Reason, r.Actor, millis(r.At))
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, r.ID, e.Number, e.Upto, e.Title, canonical(e.Doc), string(editors), e.Message, e.Reason, r.Actor, millis(r.At))
 		tx.Touch(PageTopic(r.ID))
 		return err
 	}),
 ).Tables("page_versions")
+
+// canonical is a document's JSON as internal/doc writes it: the stored
+// event's JSON escapes <, > and &, the event in a live command does not,
+// and a rebuild must write what the live projection wrote.
+func canonical(raw json.RawMessage) string {
+	d, err := doc.ParseDoc(raw)
+	if err != nil {
+		return string(raw)
+	}
+	return string(marshalDoc(d))
+}
 
 func nonNil(s []string) []string {
 	if s == nil {
@@ -234,7 +245,7 @@ var docsProjector = events.NewProjector(PageDocStream, "wiki_docs", docsVersion,
 		if _, err := tx.Exec(`INSERT INTO page_doc (page_id, epoch, version, ref, checkpoint, doc, bytes, blocks, last_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?)
 			ON CONFLICT (page_id) DO UPDATE SET epoch = excluded.epoch, version = excluded.version, ref = '', checkpoint = excluded.checkpoint,
 			doc = excluded.doc, bytes = excluded.bytes, blocks = excluded.blocks, last_at = excluded.last_at`,
-			r.ID, r.Data.Epoch, r.Version, r.Version, string(r.Data.Doc), d.JSONLen(), d.Blocks(), millis(r.At)); err != nil {
+			r.ID, r.Data.Epoch, r.Version, r.Version, string(marshalDoc(d)), d.JSONLen(), d.Blocks(), millis(r.At)); err != nil {
 			return err
 		}
 		docs.put(docKey{r.ID, r.Data.Epoch, r.Version, ""}, d)
@@ -249,7 +260,7 @@ var docsProjector = events.NewProjector(PageDocStream, "wiki_docs", docsVersion,
 		_, err = tx.Exec(`INSERT INTO page_doc (page_id, epoch, version, ref, checkpoint, doc, bytes, blocks, last_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?)
 			ON CONFLICT (page_id) DO UPDATE SET epoch = excluded.epoch, version = excluded.version, ref = '', checkpoint = excluded.checkpoint,
 			doc = excluded.doc, bytes = excluded.bytes, blocks = excluded.blocks, last_at = excluded.last_at`,
-			r.ID, r.Data.Epoch, r.Version, r.Version, string(r.Data.Doc), d.JSONLen(), d.Blocks(), millis(r.At))
+			r.ID, r.Data.Epoch, r.Version, r.Version, string(marshalDoc(d)), d.JSONLen(), d.Blocks(), millis(r.At))
 		if err != nil {
 			return err
 		}
@@ -405,6 +416,8 @@ var chipsProjector = events.NewProjector(tracker.IssueStream, "wiki_chips", 1,
 	events.Ignore(tracker.LinkRemovedType),
 	events.Handle(tracker.IssueDeletedType, chipChanged[tracker.IssueDeleted]),
 	events.Handle(tracker.ProjectChangedType, chipChanged[tracker.ProjectChanged]),
+	events.Handle(tracker.IssueHiddenType, chipChanged[tracker.IssueHidden]),
+	events.Handle(tracker.IssueUnhiddenType, chipChanged[tracker.IssueUnhidden]),
 )
 
 func chipChanged[T any](tx *writer.Tx, r events.Record[string, T]) error {

@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -21,9 +20,9 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
+	"github.com/mbolli/tickit/internal/demo"
 	"github.com/mbolli/tickit/internal/demo/seed"
-	"github.com/mbolli/tickit/internal/people"
-	"github.com/mbolli/tickit/internal/tabs"
+	"github.com/mbolli/tickit/internal/notify"
 	"github.com/mbolli/tickit/internal/tracker"
 	"github.com/mbolli/tickit/internal/web"
 	"github.com/mbolli/tickit/internal/wiki"
@@ -32,7 +31,7 @@ import (
 
 // The one store of every area's parts, as cmd/tickit binds it.
 var bindStores = sync.OnceValue(func() *events.Store {
-	st := events.Must(events.New(append(tracker.Parts(), wiki.Parts()...)...))
+	st := events.Must(events.New(append(append(tracker.Parts(), notify.Parts()...), wiki.Parts()...)...))
 	tracker.Bind(st)
 	wiki.Bind(st)
 	return st
@@ -90,6 +89,7 @@ func (s *realServer) Start() {
 	if err != nil {
 		t.Fatal(err)
 	}
+	notify.Bind(w)
 	runner := events.NewRunner(store, db, w, events.Options{Log: log})
 	site, err := web.New(web.Config{DB: db, W: w, Hub: hub, Store: store, Log: log})
 	if err != nil {
@@ -145,8 +145,9 @@ func (s *realServer) Stop() {
 
 func (s *realServer) do(cmd writer.Command) error { return s.w.Do(context.Background(), cmd) }
 
-// seedAll writes the seed's people, projects, issues and wiki into the
-// server: what the demo's seed does, enough for pages to show chips.
+// seedAll writes the demo's seed into the server, as the binary does on
+// an empty database: people, projects, issues, spaces, pages, versions,
+// comments.
 func (s *realServer) seedAll() {
 	t := s.t
 	t.Helper()
@@ -154,59 +155,15 @@ func (s *realServer) seedAll() {
 	if err != nil {
 		t.Fatal(err)
 	}
-	run := time.Now()
-	if err := s.do(people.SeedPeople{At: run.Add(-31 * 24 * time.Hour)}); err != nil {
-		t.Fatal(err)
-	}
-	n := 0
-	by := func(id string) tabs.By {
-		n++
-		for _, p := range people.Seeded {
-			if p.ID == id {
-				return tabs.By{Actor: p, Op: "s" + strconv.Itoa(n), At: run.Add(-30 * 24 * time.Hour)}
-			}
-		}
-		return tabs.By{Actor: people.Seeded[0], Op: "s" + strconv.Itoa(n), At: run.Add(-30 * 24 * time.Hour)}
-	}
-	projects := map[string]string{}
-	for _, p := range c.Projects {
-		var id string
-		b, err := s.w.DoValue(context.Background(), func(tx *writer.Tx) ([]byte, error) {
-			return tracker.CreateProject{By: by(p.Lead), Key: p.Key, Name: p.Name, Description: p.Description, Open: true}.ApplyResult(tx)
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		id = jsonField(b, "id")
-		projects[p.Key] = id
-	}
-	issues := map[string]string{}
-	for _, is := range c.Issues {
-		cmd := tracker.CreateIssue{By: by(is.Reporter), ID: tracker.NewID(), Project: projects[is.Project], Type: tracker.IssueType(strings.ToLower(is.Type)), Summary: is.Summary, Status: statusID(is.Status), Parent: issues[is.Parent]}
-		issues[is.Key] = cmd.ID
-		if cmd.Type == tracker.Subtask && cmd.Parent == "" {
-			cmd.Type = tracker.Task
-		}
-		if err := s.do(cmd); err != nil {
-			cmd.Parent = ""
-			if cmd.Type == tracker.Subtask {
-				cmd.Type = tracker.Task
-			}
-			cmd.Status = ""
-			if err := s.do(cmd); err != nil {
-				t.Fatalf("%s: %v", is.Key, err)
-			}
-		}
-	}
-	cmds, err := wiki.SeedCommands(c, run)
+	epoch, err := demo.Epoch(context.Background(), s.db.R)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, cmd := range cmds {
-		if err := s.do(cmd); err != nil {
-			t.Fatalf("%T: %v", cmd, err)
-		}
+	n, err := demo.Seed(context.Background(), s.w, c, time.Now(), epoch)
+	if err != nil {
+		t.Fatal(err)
 	}
+	t.Logf("seeded %d issues and %d page steps in %v", n.Issues, n.PageSteps, n.Took)
 }
 
 // statusID is a status's id from its name: "In Review" is "inreview".

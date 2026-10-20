@@ -164,7 +164,7 @@ func TestReset(t *testing.T) {
 		if _, err := events.Forget(Store(), tx, PageDocStream.ID(p)); err != nil {
 			return err
 		}
-		return events.Execute(Store(), tx, createDocDecider, PageDocStream.ID(p), events.NoStream, DocCreated{Epoch: newEpoch(), Doc: []byte(blank)}, meta(e.by(ada)))
+		return events.Execute(Store(), tx, createDocDecider, PageDocStream.ID(p), events.NoStream, DocCreated{Epoch: "e-after-reset", Doc: []byte(blank)}, meta(e.by(ada)))
 	}))
 	ds := e.docState(p)
 	if ds.Epoch == old || ds.Version != 1 {

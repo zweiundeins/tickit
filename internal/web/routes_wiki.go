@@ -94,7 +94,7 @@ func canRead(ctx context.Context, q sqlite.Querier, actor people.Person, space s
 	return nil
 }
 
-func can(ctx context.Context, q sqlite.Querier, actor people.Person, r access.Right, space string) bool {
+func canIn(ctx context.Context, q sqlite.Querier, actor people.Person, r access.Right, space string) bool {
 	ok, _ := access.Can(ctx, q, actor, r, access.SpaceScope(space))
 	return ok
 }
@@ -302,11 +302,11 @@ func (s *Server) pageProps(ctx context.Context, q sqlite.Querier, me people.Pers
 	}
 	props := views.PageProps{
 		Page: p, Space: sp, URL: wiki.PageURL(sp.Key, p.ID, p.Title), Me: me, Head: head, Watching: watching,
-		CanEdit:   can(ctx, q, me, access.EditIssues, sp.ID),
-		CanAdmin:  can(ctx, q, me, access.TrashPage, sp.ID),
+		CanEdit:   canIn(ctx, q, me, access.EditIssues, sp.ID),
+		CanAdmin:  canIn(ctx, q, me, access.TrashPage, sp.ID),
 		Templates: wiki.Templates(), Now: time.Now(),
 	}
-	props.CanTrash = props.CanAdmin || p.CreatedBy == me.ID && can(ctx, q, me, access.TrashOwnPage, sp.ID)
+	props.CanTrash = props.CanAdmin || p.CreatedBy == me.ID && canIn(ctx, q, me, access.TrashOwnPage, sp.ID)
 	if props.CanEdit {
 		if props.Targets, err = moveTargets(ctx, q, me, p.ID); err != nil {
 			return props, err
@@ -427,7 +427,7 @@ func moveTargets(ctx context.Context, q sqlite.Querier, me people.Person, page s
 	}
 	var out []views.MoveTarget
 	for _, sp := range spaces {
-		if sp.Archived || !can(ctx, q, me, access.EditIssues, sp.ID) {
+		if sp.Archived || !canIn(ctx, q, me, access.EditIssues, sp.ID) {
 			continue
 		}
 		out = append(out, views.MoveTarget{Value: "space:" + sp.ID, Label: sp.Name + " (top)"})
@@ -855,7 +855,7 @@ func (s *Server) trashPage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return Page{}, err
 		}
-		props.CanAdmin = can(ctx, q, me, access.TrashPage, sp.ID)
+		props.CanAdmin = canIn(ctx, q, me, access.TrashPage, sp.ID)
 		sidebar, err := s.sidebar(ctx, q, sp, "", "trash")
 		if err != nil {
 			return Page{}, err
@@ -894,7 +894,7 @@ func (s *Server) trashView(ctx context.Context, q sqlite.Querier, actor people.P
 	if err := canRead(ctx, q, actor, sp.ID); err != nil {
 		return live.View{}, err
 	}
-	admin := can(ctx, q, actor, access.TrashPage, sp.ID)
+	admin := canIn(ctx, q, actor, access.TrashPage, sp.ID)
 	key := "trash:" + sp.ID
 	if admin {
 		key += ".admin"
@@ -1042,7 +1042,7 @@ func (s *Server) renamePage(w http.ResponseWriter, r *http.Request) {
 	s.act(w, r, a, wiki.RenamePage{By: a.By, Page: req.Page, Title: req.Title})
 }
 
-type moveRequest struct {
+type movePageRequest struct {
 	Payload
 	Page   string `json:"page"`
 	Target string `json:"target"` // "space:<id>" for its top, or "page:<id>"
@@ -1051,7 +1051,7 @@ type moveRequest struct {
 
 // movePage moves a page under another, or to the top of a space (FR-79).
 func (s *Server) movePage(w http.ResponseWriter, r *http.Request) {
-	var req moveRequest
+	var req movePageRequest
 	a, ok := s.decode(w, r, classField, &req)
 	if !ok {
 		return

@@ -22,6 +22,7 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
+	"github.com/mbolli/tickit/internal/demo"
 	"github.com/mbolli/tickit/internal/people"
 	"github.com/mbolli/tickit/internal/ui"
 )
@@ -42,6 +43,9 @@ type Config struct {
 	Secure bool
 	// SessionTTL is how long a login lasts (FR-124.1), 24 hours when zero.
 	SessionTTL time.Duration
+	// Projectors are the events runner's stats, which the demo's reset
+	// waits on (demo.Config.Projectors); nil without a runner.
+	Projectors func() events.Stats
 }
 
 // Server holds what the handlers share.
@@ -66,6 +70,7 @@ type Server struct {
 	mux    *http.ServeMux
 	probes []string // a URL of every GET route, for the test that GET never writes (NFR-06)
 	views  *ViewRegistry
+	demo   *demo.Demo // the reset, caps and blocks (routes_demo.go)
 }
 
 // New returns the server of cfg's database, writer and hub, with every
@@ -121,9 +126,16 @@ func New(cfg Config) (*Server, error) {
 		mux:      http.NewServeMux(),
 		views:    newViewRegistry(),
 	}
+	if s.demo, err = demo.New(demo.Config{DB: cfg.DB, W: cfg.W, Log: cfg.Log, Changed: cfg.Hub.Changed, MarkAll: cfg.Hub.MarkAll,
+		Projectors: cfg.Projectors, OnReset: s.metrics.reset}); err != nil {
+		return nil, err
+	}
 	s.register()
 	return s, nil
 }
+
+// Demo is the demo's reset, caps and blocks: cmd/tickit runs its schedule.
+func (s *Server) Demo() *demo.Demo { return s.demo }
 
 // register calls every area's registration, each in its own file, so that
 // areas add routes and views without touching another's file.

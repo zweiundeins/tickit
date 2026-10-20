@@ -61,7 +61,7 @@ func (s *Server) editorPage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return Page{}, err
 		}
-		if sp.Key != r.PathValue("key") || p.State != wiki.Current || !can(ctx, q, me, access.EditIssues, sp.ID) {
+		if sp.Key != r.PathValue("key") || p.State != wiki.Current || !canIn(ctx, q, me, access.EditIssues, sp.ID) {
 			return Page{}, errRedirect{wiki.PageURL(sp.Key, p.ID, p.Title)}
 		}
 		props, err := s.pageProps(ctx, q, me, p, sp)
@@ -351,7 +351,7 @@ func editorHost(ctx context.Context, q sqlite.Querier, actor people.Person, page
 	if host.Chips, err = chipsJSON(ctx, q, h.Doc); err != nil {
 		return host, err
 	}
-	if !can(ctx, q, actor, access.EditIssues, p.Space) {
+	if !canIn(ctx, q, actor, access.EditIssues, p.Space) {
 		host.State, host.Readonly = "readonly", true
 	}
 	return host, nil
