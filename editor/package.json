@@ -1,0 +1,32 @@
+{
+  "name": "tickit-editor",
+  "private": true,
+  "type": "module",
+  "description": "sb-rich-editor: tickit's co-editing component (ProseMirror with server-side rebasing), its build and its browser tests.",
+  "license": "MIT",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/unit/*.test.js && node test/run.mjs",
+    "test:unit": "node --test test/unit/*.test.js",
+    "test:browser": "node test/run.mjs"
+  },
+  "dependencies": {
+    "prosemirror-commands": "1.7.2",
+    "prosemirror-dropcursor": "1.8.4",
+    "prosemirror-gapcursor": "1.4.1",
+    "prosemirror-history": "1.5.1",
+    "prosemirror-inputrules": "1.5.1",
+    "prosemirror-keymap": "1.2.3",
+    "prosemirror-model": "1.25.12",
+    "prosemirror-schema-list": "1.5.1",
+    "prosemirror-state": "1.4.4",
+    "prosemirror-tables": "1.8.5",
+    "prosemirror-transform": "1.12.2",
+    "prosemirror-view": "1.42.6"
+  },
+  "devDependencies": {
+    "@stepwisehq/prosemirror-collab-commit": "1.0.5",
+    "esbuild": "0.28.2",
+    "puppeteer-core": "25.12.0"
+  }
+}

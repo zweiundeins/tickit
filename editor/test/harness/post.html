@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en"{{htmlattrs}}>
+<head>
+<meta charset="utf-8">
+<title>What @post returns</title>
+<link rel="icon" href="data:,">
+<script type="importmap" nonce="{{nonce}}">{"imports":{"datastar":"/static/vendor/datastar-rocket.js"}}</script>
+<script type="module" src="/test/post.js"></script>
+<script type="module" src="/static/vendor/datastar-rocket.js"></script>
+</head>
+<body data-signals="{_n: 0}">
+<button id="b204" data-on:click="@post('/cmd/test/status/204', {payload: {x: 1}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0}).then((v) => window.outcomes.push(['204', 'resolved', String(v)]), (e) => window.outcomes.push(['204', 'rejected', String(e?.message ?? e)]))">204</button>
+<button id="b409" data-on:click="@post('/cmd/test/status/409', {payload: {x: 1}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0}).then((v) => window.outcomes.push(['409', 'resolved', String(v)]), (e) => window.outcomes.push(['409', 'rejected', String(e?.message ?? e)]))">409</button>
+<button id="b422" data-on:click="@post('/cmd/test/status/422', {payload: {x: 1}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0}).then((v) => window.outcomes.push(['422', 'resolved', String(v)]), (e) => window.outcomes.push(['422', 'rejected', String(e?.message ?? e)]))">422</button>
+<button id="b429" data-on:click="@post('/cmd/test/status/429', {payload: {x: 1}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0}).then((v) => window.outcomes.push(['429', 'resolved', String(v)]), (e) => window.outcomes.push(['429', 'rejected', String(e?.message ?? e)]))">429</button>
+<button id="b500" data-on:click="@post('/cmd/test/status/500', {payload: {x: 1}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0}).then((v) => window.outcomes.push(['500', 'resolved', String(v)]), (e) => window.outcomes.push(['500', 'rejected', String(e?.message ?? e)]))">500</button>
+<button id="bdrop" data-on:click="@post('/cmd/test/drop', {payload: {x: 1}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0}).then((v) => window.outcomes.push(['drop', 'resolved', String(v)]), (e) => window.outcomes.push(['drop', 'rejected', String(e?.message ?? e)]))">drop</button>
+<button id="bdropretry" data-on:click="@post('/cmd/test/drop', {payload: {x: 1}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 2, retryInterval: 50}).then((v) => window.outcomes.push(['drop, retryMaxCount 2', 'resolved', String(v)]), (e) => window.outcomes.push(['drop, retryMaxCount 2', 'rejected', String(e?.message ?? e)]))">drop default</button>
+<button id="babort" data-on:click="@post('/cmd/test/status/204', {payload: {x: 1}}).then((v) => window.outcomes.push(['auto-cancelled', 'resolved', String(v)]), (e) => window.outcomes.push(['auto-cancelled', 'rejected', String(e?.message ?? e)]))">abort</button>
+</body>
+</html>
