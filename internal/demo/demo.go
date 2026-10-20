@@ -45,7 +45,8 @@ type Config struct {
 type Demo struct {
 	cfg       Config
 	resetting atomic.Bool
-	reset     sync.Mutex // one reset at a time
+	quiet     atomic.Uint64 // odd while resetting; see Quiet
+	reset     sync.Mutex    // one reset at a time
 	addrs     addrBlocks
 }
 
@@ -115,6 +116,28 @@ func (d *Demo) Status(now time.Time) Status {
 
 // Resetting reports whether a reset is under way.
 func (d *Demo) Resetting() bool { return d != nil && d.resetting.Load() }
+
+// Quiet is odd while a reset (or a Hold) is under way and moves on as one
+// starts and as it ends. A view's render that found it even before it read
+// and the same after read no state between a wipe and the seed's end.
+func (d *Demo) Quiet() uint64 {
+	if d == nil {
+		return 0
+	}
+	return d.quiet.Load()
+}
+
+// hold starts or ends the quiet of a reset: actions answer 503, views
+// render nothing (web.Server.quiet), pages say MsgResetting.
+func (d *Demo) hold(on bool) {
+	if on {
+		d.resetting.Store(true)
+		d.quiet.Add(1)
+		return
+	}
+	d.quiet.Add(1)
+	d.resetting.Store(false)
+}
 
 // Epoch is the demo's epoch (MP-13.2), which every reset bumps. The wiki's
 // editor names the epoch it opened in with every batch of edits, and the

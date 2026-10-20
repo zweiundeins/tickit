@@ -132,8 +132,9 @@ func (s *Server) resolve(ctx context.Context, q sqlite.Querier, actor people.Per
 	if v.Key == "" || v.Render == nil {
 		return nil, fmt.Errorf("web: view %s has no key or no render", spec)
 	}
+	v = s.quiet(v)
 	if k.presence {
-		return []live.View{v, s.presenceView(v.Key)}, nil
+		return []live.View{v, s.quiet(s.presenceView(v.Key))}, nil
 	}
 	return []live.View{v}, nil
 }
@@ -223,7 +224,7 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	}
 	// Shared views first, the tab's own last: its outcomes arrive with
 	// the frames they concern, in the same tick.
-	list = append(list, s.personView(actor), s.demoView(), connectedView, tabs.PrefsView(sid, tab), tabs.View(sid, tab))
+	list = append(list, s.quiet(s.personView(actor)), s.demoView(), connectedView, tabs.PrefsView(sid, tab), tabs.View(sid, tab))
 	spec := live.Spec{
 		ID:        streamID(actor, tab),
 		Client:    client,
