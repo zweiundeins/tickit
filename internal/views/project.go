@@ -52,11 +52,11 @@ type SettingsLive struct {
 // SettingsID is the id of the settings' region.
 const SettingsID = "project-settings"
 
-// ProjectPage is a project's page that has no live part of its own yet
-// (Activity).
+// ProjectPage is a project's Activity tab: its feed (FR-69.1).
 type ProjectPage struct {
 	Project tracker.Project
 	Admin   bool
+	Feed    ActivityFeed
 }
 
 var roles = []access.Role{access.Viewer, access.Member, access.Admin}
@@ -95,8 +95,6 @@ func wipValue(n int) string {
 	}
 	return strconv.Itoa(n)
 }
-
-func openIssues(n int) string { return plural(n, "open issue") }
 
 func since(t time.Time) string { return t.Format("2 Jan 2006") }
 

@@ -567,9 +567,9 @@ func tabName(current string) string {
 	return current
 }
 
-// Activity is a project's activity tab: the feed of what happened in it
-// comes with notifications and feeds (FR-01.2).
-func Activity(p ProjectPage) templ.Component {
+// ProjectActivity is a project's activity tab: what happened in it,
+// newest first, live (FR-01.2, FR-69.1).
+func ProjectActivity(p ProjectPage) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -594,7 +594,7 @@ func Activity(p ProjectPage) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ui.EmptyState(ui.EmptyProps{Icon: "history", Title: "Activity comes soon", Text: "What people do in this project will show here, newest first."}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Activity(p.Feed).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

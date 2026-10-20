@@ -131,11 +131,11 @@ func tabName(current string) string {
 	return current
 }
 
-// Activity is a project's activity tab: the feed of what happened in it
-// comes with notifications and feeds (FR-01.2).
-templ Activity(p ProjectPage) {
+// ProjectActivity is a project's activity tab: what happened in it,
+// newest first, live (FR-01.2, FR-69.1).
+templ ProjectActivity(p ProjectPage) {
 	@ProjectHead(p.Project, "activity", p.Admin)
-	@ui.EmptyState(ui.EmptyProps{Icon: "history", Title: "Activity comes soon", Text: "What people do in this project will show here, newest first."})
+	@Activity(p.Feed)
 }
 
 // SettingsPage is a project's settings, for its Admins: name,

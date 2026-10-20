@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -117,21 +118,48 @@ func projectList(ctx context.Context, q sqlite.Querier, ids []string) (views.Pro
 	return views.ProjectList{Projects: list, People: who}, err
 }
 
-// projectsView is the list of projects, keyed by the projects its
-// viewer can read: viewers who read the same ones share it.
+// projectsView is the list of projects. Everyone reads the open ones,
+// which the render reads anew, so a new open project shows for all; the
+// closed ones a person may read are in the view's key, so viewers who
+// read the same ones share it. Moderators and site admins read all.
 func (s *Server) projectsView(ctx context.Context, q sqlite.Querier, actor people.Person, arg string) (live.View, error) {
 	if arg != "" {
 		return live.View{}, fmt.Errorf("%w: projects takes no argument", errBadView)
 	}
-	ids, err := tracker.Readable(ctx, q, actor)
-	if err != nil {
-		return live.View{}, err
+	all := actor.Role == people.Moderator || actor.Role == people.Admin
+	var closed []string
+	if !all {
+		ids, err := tracker.Readable(ctx, q, actor)
+		if err != nil {
+			return live.View{}, err
+		}
+		open, err := tracker.OpenProjects(ctx, q)
+		if err != nil {
+			return live.View{}, err
+		}
+		for _, id := range ids {
+			if !slices.Contains(open, id) {
+				closed = append(closed, id)
+			}
+		}
+	}
+	key := "projects:all"
+	if !all {
+		key = "projects:" + hashOf(strings.Join(closed, ","))
 	}
 	return live.View{
-		Key:    "projects:" + hashOf(strings.Join(ids, ",")),
+		Key:    key,
 		Topics: []string{tracker.ProjectsTopic, tracker.IssuesTopic, people.Topic},
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
-			list, err := projectList(ctx, querier(ctx, tx), ids)
+			q := querier(ctx, tx)
+			ids, err := tracker.OpenProjects(ctx, q)
+			if all {
+				ids, err = tracker.AllProjects(ctx, q)
+			}
+			if err != nil {
+				return nil, err
+			}
+			list, err := projectList(ctx, q, append(ids, closed...))
 			if err != nil {
 				return nil, err
 			}
@@ -331,10 +359,11 @@ func (s *Server) boardPage(w http.ResponseWriter, r *http.Request) {
 			labels = labels[:30]
 		}
 		return Page{
-			Title: p.Name + " board", Nav: "projects", Width: "full",
+			Title: p.Name + " board", Nav: "projects", Width: "full", Project: p.ID,
 			Views: []string{"board:" + views.BoardArg(p.Key, quick), "boardhead:" + p.Key},
 			Body: views.Board(views.BoardPage{Project: p, Filter: quick, Labels: labels, Lanes: lanes, Head: head,
-				CanEdit: can(ctx, q, me, access.EditIssues, p.ID), Admin: can(ctx, q, me, access.Configure, p.ID), CreateStatus: create}),
+				CanEdit: can(ctx, q, me, access.EditIssues, p.ID), Admin: can(ctx, q, me, access.Configure, p.ID), CreateStatus: create,
+				Me: me.ID, Moderates: access.SiteCan(me, access.Moderate)}),
 		}, nil
 	})
 }
@@ -386,6 +415,8 @@ func lanesFrame(ctx context.Context, l views.Lanes) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The spaces between the cards' parts lay nothing out (flex and grid).
+	html = bytes.ReplaceAll(html, []byte("> <"), []byte("><"))
 	return sse.PatchElements(html, sse.Patch{ViewTransition: true, ViewTransitionSelector: "#" + views.BoardLanesID}), nil
 }
 
@@ -563,8 +594,9 @@ func (s *Server) backlogPage(w http.ResponseWriter, r *http.Request) {
 			return Page{}, err
 		}
 		return Page{
-			Title: p.Name + " backlog", Nav: "projects", Views: []string{"backlog:" + p.Key},
-			Body: views.Backlog(views.BacklogPage{Project: p, Data: d, CanEdit: can(ctx, q, me, access.EditIssues, p.ID), Admin: can(ctx, q, me, access.Configure, p.ID)}),
+			Title: p.Name + " backlog", Nav: "projects", Project: p.ID, Views: []string{"backlog:" + p.Key},
+			Body: views.Backlog(views.BacklogPage{Project: p, Data: d, CanEdit: can(ctx, q, me, access.EditIssues, p.ID), Admin: can(ctx, q, me, access.Configure, p.ID),
+				Me: me.ID, Moderates: access.SiteCan(me, access.Moderate)}),
 		}, nil
 	})
 }
@@ -733,7 +765,12 @@ func (s *Server) activityPage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return Page{}, err
 		}
-		return Page{Title: p.Name + " activity", Nav: "projects", Body: views.Activity(views.ProjectPage{Project: p, Admin: can(ctx, q, me, access.Configure, p.ID)})}, nil
+		feed, err := s.ScopeActivity(ctx, q, access.ProjectScope(p.ID), time.Now())
+		if err != nil {
+			return Page{}, err
+		}
+		return Page{Title: p.Name + " activity", Nav: "projects", Project: p.ID, Views: []string{"activity-project:" + p.ID},
+			Body: views.ProjectActivity(views.ProjectPage{Project: p, Admin: can(ctx, q, me, access.Configure, p.ID), Feed: feed})}, nil
 	})
 }
 

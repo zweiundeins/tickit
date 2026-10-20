@@ -30,6 +30,9 @@ type BacklogPage struct {
 	Data    BacklogData
 	CanEdit bool
 	Admin   bool
+	// Me and Moderates are the issue panel's (docs/architecture.md).
+	Me        string
+	Moderates bool
 }
 
 // BacklogRowID is the id of an issue's row.
@@ -60,7 +63,7 @@ templ Backlog(p BacklogPage) {
 		data-on:datastar-fetch={ backlogFailed }
 		data-effect={ backlogSettle }
 	>
-		@ui.Sprites()
+		@ui.Glyphs()
 		<span hidden data-effect={ Settle("_ss.op", "$_ss.msg = o.ok ? '' : o.msg") }></span>
 		<div class="split">
 			<div class="tk-bdhead__title">
@@ -86,6 +89,7 @@ templ Backlog(p BacklogPage) {
 		<p class="visually-hidden" aria-live="assertive" data-text="$_bl.say"></p>
 		@createSprint()
 	</div>
+	@IssuePanel(p.Me, p.Moderates)
 }
 
 // BacklogSprints are the sprints the checked issues move to; the
@@ -102,7 +106,7 @@ templ BacklogSprints(b tracker.BacklogView) {
 // BacklogRegion is the backlog's shared region.
 templ BacklogRegion(d BacklogData) {
 	<div id={ BacklogID } class="tk-bl__sections" data-rev={ d.Rev }>
-		@ui.FaceSprites(backlogFaces(d))
+		@ui.FaceStyles(backlogFaces(d))
 		if d.View.Active != nil {
 			<p class="tk-bl__active">
 				@ui.Icon("sprint")
@@ -158,22 +162,22 @@ templ backlogSection(d BacklogData, id, name, meta string, cards []tracker.Card,
 // line (FR-45.1).
 templ backlogRow(c tracker.Card, who map[string]people.Person, now time.Time) {
 	<li id={ BacklogRowID(c.Key) } class="tk-blrow" data-v={ strconv.FormatInt(c.Version, 10) } data-preserve-attr="data-state aria-busy">
-		<span class="tk-card__grip"></span>
+		<i class="tk-card__grip"></i>
 		<input class="tk-check__box tk-blrow__check" type="checkbox" aria-label={ "Select " + c.Key } data-preserve-attr="checked"/>
-		<svg class="tk-type" data-type={ string(c.Type) } role="img" aria-label={ ui.IssueType(c.Type).Name() }><use href={ "#tk-t-" + string(c.Type) }></use></svg>
+		<i data-type={ string(c.Type) } role="img" aria-label={ ui.IssueType(c.Type).Name() }></i>
 		<span class="tk-card__key">{ c.Key }</span>
-		<a class="tk-blrow__summary" href={ templ.SafeURL("/" + c.Key) }>{ c.Summary }</a>
+		<a class="tk-blrow__summary" href={ templ.SafeURL("/" + c.Key) } { IssueLinkAttrs(c.ID)... }>{ c.Summary }</a>
 		if c.Epic != nil {
 			<span class="tk-card__epic" data-hue={ strconv.Itoa(ui.HueOf(c.Epic.Summary)) }><span class="visually-hidden">Epic: </span>{ c.Epic.Summary }</span>
 		}
 		@ui.StatusLozenge(c.StatusName, category(c.Category))
-		<svg class="tk-prio" data-prio={ string(c.Priority) } role="img" aria-label={ ui.Priority(c.Priority).Name() + " priority" }><use href={ "#tk-p-" + string(c.Priority) }></use></svg>
+		<i data-prio={ string(c.Priority) } role="img" aria-label={ ui.Priority(c.Priority).Name() + " priority" }></i>
 		if c.Points != nil {
 			@ui.Points(strconv.Itoa(*c.Points))
 		}
 		if c.Assignee != "" {
 			{{ a := UIPerson(who[c.Assignee]) }}
-			<span class="tk-av tk-av--xs" data-hue={ strconv.Itoa(a.HueIndex()) } role="img" title={ a.Name }><svg class="tk-face"><use href={ "#" + ui.FaceRef(a.Seed) }></use></svg></span>
+			<i class="tk-av tk-av--xs" data-hue={ strconv.Itoa(a.HueIndex()) } data-face={ ui.FaceRef(a.Seed) } role="img" title={ a.Name }></i>
 		} else {
 			<span class="tk-card__nobody" aria-label="Unassigned" role="img"></span>
 		}

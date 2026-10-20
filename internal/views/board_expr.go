@@ -1,5 +1,7 @@
 package views
 
+import "strings"
+
 // The board's move protocol in the page (MP-04, MP-09), as Datastar
 // expressions on the board's stage, which the stream never morphs. Every
 // handler is on the stage and delegates: nothing repeats on a card.
@@ -17,7 +19,7 @@ package views
 // card back and offers Retry with the same op id.
 
 // boardInit is the stage's controller: helpers on el.bd for the handlers.
-const boardInit = `el.bd = {press: null, origin: null, rev: '', menuFor: null, suppress: false, m: null, aim: null}
+const boardInit = `el.bd = {press: null, origin: null, rev: '', menuFor: null, suppress: false, m: null, aim: null, states: {}}
 const B = el.bd
 B.board = () => document.getElementById('` + BoardLanesID + `')
 B.slot = (key) => key ? document.getElementById('c-' + key) : null
@@ -25,19 +27,32 @@ B.keyOf = (li) => li.id.slice(2)
 B.laneOf = (li) => li.closest('.tk-lane')
 B.list = (lane) => lane.querySelector('.tk-lane__cards')
 B.lane = (status) => el.querySelector('.tk-lane[data-lane="' + status + '"]')
-B.cards = (lane, but) => [...B.list(lane).children].filter((c) => c.classList.contains('tk-slot') && c !== but)
+B.cards = (lane, but) => [...B.list(lane).children].filter((c) => c.classList.contains('tk-card') && c !== but)
 B.say = (t) => { $_board.say = $_board.say === t ? t + ' ' : t }
-B.mark = (li, state) => {
-	const c = li && li.querySelector('.tk-card')
-	if (!c) return
+B.paint = (c, state) => {
+	if ((c.getAttribute('data-state') || '') === state) return
 	state ? c.setAttribute('data-state', state) : c.removeAttribute('data-state')
 	state === 'pending' ? c.setAttribute('aria-busy', 'true') : c.removeAttribute('aria-busy')
 }
+B.mark = (li, state) => {
+	if (!li) return
+	state ? (B.states[li.id] = state) : delete B.states[li.id]
+	B.paint(li, state)
+}
+// A card's move state is the page's: the frames know nothing of it, and
+// a morph that drops it gets it back before the next paint.
+B.keep = new MutationObserver(() => {
+	for (const id in B.states) {
+		const c = document.getElementById(id)
+		c ? B.paint(c, B.states[id]) : delete B.states[id]
+	}
+})
+B.keep.observe(B.board(), {subtree: true, childList: true, attributes: true, attributeFilter: ['data-state']})
 B.put = (list, li, before) => { 'moveBefore' in list ? list.moveBefore(li, before) : list.insertBefore(li, before) }
-B.sibling = (li, dir) => { let s = li[dir]; while (s && !s.classList.contains('tk-slot')) s = s[dir]; return s }
+B.sibling = (li, dir) => { let s = li[dir]; while (s && !s.classList.contains('tk-card')) s = s[dir]; return s }
 B.clearNote = () => {
 	const n = B.slot($_board.ncard)
-	if (n && n.querySelector('.tk-card[data-state="refused"]')) B.mark(n, '')
+	if (n && B.states[n.id] === 'refused') B.mark(n, '')
 	$_board.note = ''
 	$_board.ncard = ''
 }
@@ -80,8 +95,10 @@ B.lift = () => {
 	B.mark(p.li, 'dragged')
 	$_board.drag = B.keyOf(p.li)
 	const g = el.querySelector('.tk-bd__ghost')
-	g.replaceChildren(p.li.querySelector('.tk-card').cloneNode(true))
-	g.firstElementChild.removeAttribute('data-state')
+	const copy = p.li.cloneNode(true)
+	copy.removeAttribute('id')
+	copy.removeAttribute('data-state')
+	g.replaceChildren(copy)
 	g.style.inlineSize = p.w + 'px'
 	g.hidden = false
 	el.setPointerCapture(p.id)
@@ -126,13 +143,13 @@ B.back = (li) => {
 	B.put(o.list, li, o.next && o.next.parentElement === o.list ? o.next : null)
 }
 B.refocus = (li) => {
-	if (li && (document.activeElement === document.body || !document.activeElement)) li.querySelector('.tk-card__menu')?.focus()
+	if (li && (document.activeElement === document.body || !document.activeElement)) li.querySelector(':scope > button')?.focus()
 }
 B.pick = (item) => {
 	const li = B.menuFor
 	document.getElementById('` + CardMenuID + `').hidePopover()
 	if (!li || !li.isConnected) return false
-	if (item.dataset.open !== undefined) { location.assign(li.querySelector('.tk-card__title a').href); return false }
+	if (item.dataset.open !== undefined) { li.querySelector('.tk-card__title').click(); return false }
 	if (item.getAttribute('aria-disabled') === 'true') return false
 	if (item.dataset.lane) return B.move(li, B.lane(item.dataset.lane), null, true)
 	const lane = B.laneOf(li)
@@ -157,6 +174,7 @@ B.retry = () => {
 	$_board.problem = ''
 	return true
 }
+B.uuid = (s) => [...atob(s.replace(/-/g, '+').replace(/_/g, '/'))].map((c) => c.charCodeAt(0).toString(16).padStart(2, '0')).join('').replace(/^(.{8})(.{4})(.{4})(.{4})/, '$1-$2-$3-$4-')
 B.toggle = (list, v) => { const s = list.split(' ').filter(Boolean); return (s.includes(v) ? s.filter((x) => x !== v) : [...s, v]).join(' ') }
 B.b64 = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 B.arg = () => {
@@ -214,9 +232,9 @@ const boardPress = `if (evt.button !== 0 || $_board.op) return
 if (evt.target !== document.documentElement && !el.contains(evt.target)) return
 const x = evt.clientX, y = evt.clientY
 const under = (e) => { const r = e.getBoundingClientRect(); return x >= r.left && x < r.right && y >= r.top && y < r.bottom }
-let li = evt.target.closest?.('#` + BoardLanesID + ` .tk-slot')
-if (!li && (evt.target === document.documentElement || evt.target.contains?.(el.bd.board()))) li = [...el.querySelectorAll('#` + BoardLanesID + ` .tk-slot')].find(under)
-if (!li || !el.dataset.edit || evt.target.closest?.('.tk-card__menu')) return
+let li = evt.target.closest?.('#` + BoardLanesID + ` .tk-card')
+if (!li && (evt.target === document.documentElement || evt.target.contains?.(el.bd.board()))) li = [...el.querySelectorAll('#` + BoardLanesID + ` .tk-card')].find(under)
+if (!li || !el.dataset.edit || evt.target.closest?.('#` + BoardLanesID + ` .tk-card > button')) return
 const r = li.getBoundingClientRect()
 const touch = evt.pointerType === 'touch'
 if (touch && x - r.left > 22) return
@@ -260,17 +278,21 @@ const boardKeys = `evt.key === 'Escape' && el.bd.press?.lifted && (evt.preventDe
 // a drag, remembers which card's "…" opened the card menu (and marks its
 // column there), toggles quick filters (data-filter, data-v), and runs
 // the menu's moves.
-const boardClick = `const B = el.bd
+var boardClick = `const B = el.bd
 if (B.suppress) { evt.preventDefault(); evt.stopPropagation(); return }
+const a = evt.target.closest?.('#` + BoardLanesID + ` .tk-card__title[data-i]')
+if (a && !a.hasAttribute('` + IssueLink + `')) a.setAttribute('` + IssueLink + `', B.uuid(a.dataset.i))
 const b = evt.target.closest('button')
 if (!b || !el.contains(b)) return
-if (b.classList.contains('tk-card__menu')) {
-	B.menuFor = b.closest('.tk-slot')
+if (b.parentElement?.matches('#` + BoardLanesID + ` .tk-card')) {
+	const menu = document.getElementById('` + CardMenuID + `')
+	B.menuFor = b.parentElement
 	const lane = B.laneOf(B.menuFor).dataset.lane
-	document.querySelectorAll('#` + CardMenuID + ` [data-lane]').forEach((i) => i.setAttribute('aria-disabled', i.dataset.lane === lane ? 'true' : 'false'))
+	menu.querySelectorAll('[data-lane]').forEach((i) => i.setAttribute('aria-disabled', i.dataset.lane === lane ? 'true' : 'false'))
+	menu.matches(':popover-open') ? menu.hidePopover() : menu.showPopover({source: b})
 	return
 }
-if (b.dataset.create) { location.assign('/projects/' + el.dataset.project + '/board?create=' + encodeURIComponent(b.dataset.create)); return }
+if (b.classList.contains('tk-lane__add')) { ` + strings.NewReplacer("el.dataset.status", "b.dataset.status", "el.dataset.project", "el.dataset.pid").Replace(CreateWithStatus) + `; return }
 if (b.dataset.filter) {
 	const k = b.dataset.filter
 	const v = b.dataset.v
@@ -344,8 +366,3 @@ var (
 	completeSprint  = Act("_done.op", "/cmd/sprints/complete", "project: el.closest('dialog').dataset.project, sprint: el.closest('dialog').dataset.sprint, move_to: $_done.to")
 	completeSettled = Settle("_done.op", "o.ok ? ($_done.msg = '', el.close()) : ($_done.msg = o.msg)")
 )
-
-// openCreate opens the create dialog in the status of the column whose
-// "+" led here (?create=): the issue panel's dialog reads the status from
-// data-create-status (docs/architecture.md, "The board").
-const openCreate = `document.getElementById('` + CreateID + `')?.showModal?.()`

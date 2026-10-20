@@ -18,6 +18,7 @@ templ Board(p BoardPage) {
 	<div
 		class="tk-bd"
 		data-project={ p.Project.Key }
+		data-pid={ p.Project.ID }
 		data-arg={ BoardArg(p.Project.Key, p.Filter) }
 		if p.CanEdit {
 			data-edit="1"
@@ -36,7 +37,7 @@ templ Board(p BoardPage) {
 		data-on:datastar-fetch={ boardFailed }
 		data-effect={ boardSettle }
 	>
-		@ui.Sprites()
+		@ui.Glyphs()
 		<span hidden data-effect={ boardRefilter }></span>
 		@BoardHeadRegion(p.Head)
 		@ui.TabNav("Project", ProjectTabs(p.Project.Key, "board", p.Admin))
@@ -67,7 +68,7 @@ templ Board(p BoardPage) {
 			@Presence(PresenceID(BoardHeadKey(p.Project.ID)), nil)
 		</div>
 		@BoardLanes(p.Lanes)
-		<div class="tk-bd__ghost" hidden aria-hidden="true" inert></div>
+		<div class="tk-bd__ghost tk-board--flat" hidden aria-hidden="true" inert></div>
 		<div class="tk-bd__note" role="status" aria-live="polite">
 			<p class="tk-outcome tk-bd__reason" data-kind="refused" hidden data-attr:hidden="!$_board.note" data-text="$_board.note"></p>
 		</div>
@@ -83,9 +84,10 @@ templ Board(p BoardPage) {
 		</p>
 		@CompleteSprint(p.Head)
 		if p.CreateStatus != "" {
-			<span hidden data-init={ openCreate } data-create-status={ p.CreateStatus }></span>
+			<span hidden data-init={ CreateWithStatus } data-status={ p.CreateStatus } data-project={ p.Project.ID }></span>
 		}
 	</div>
+	@IssuePanel(p.Me, p.Moderates)
 }
 
 // BoardLanes is the board's shared region: the same bytes for every tab
@@ -93,11 +95,11 @@ templ Board(p BoardPage) {
 // a card moves the element, and the card glides there in the view
 // transition scoped to the region.
 templ BoardLanes(l Lanes) {
-	@ui.Board(ui.BoardProps{Label: "Board of " + l.Board.Project.Name, Attrs: map[string]any{"id": BoardLanesID, "data-rev": l.Rev}}) {
-		@ui.FaceSprites(facesOf(l.Board, l.People))
+	@ui.Board(ui.BoardProps{Label: "Board of " + l.Board.Project.Name, Class: "tk-board--flat", Attrs: map[string]any{"id": BoardLanesID, "data-rev": l.Rev}}) {
+		@ui.FaceStyles(facesOf(l.Board, l.People))
 		for _, col := range l.Board.Columns {
-			@ui.Lane(ui.LaneProps{ID: laneID(col.ID), Name: col.Name, Category: category(col.Category), Count: len(col.Cards), Total: l.Totals[col.ID], WIP: col.WIP,
-				CreateAttrs: map[string]any{"data-create": col.ID}, Attrs: map[string]any{"data-lane": col.ID, "data-name": col.Name}}) {
+			@ui.Lane(ui.LaneProps{ID: laneID(col.ID), Name: col.Name, Category: category(col.Category), Count: len(col.Cards), Total: l.Totals[col.ID], WIP: col.WIP, Lean: true,
+				CreateAttrs: map[string]any{"data-status": col.ID}, Attrs: map[string]any{"data-lane": col.ID, "data-name": col.Name}}) {
 				for _, c := range col.Cards {
 					@ui.BoardCard(cardProps(c, l.People, l.Now, CardMenuID))
 				}

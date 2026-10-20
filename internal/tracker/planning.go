@@ -249,3 +249,31 @@ func ProgressOf(ctx context.Context, q sqlite.Querier, sprint string) (SprintPro
 		Scan(&p.Issues, &p.Open, &p.Points, &p.Done)
 	return p, err
 }
+
+// OpenProjects lists the ids of the projects open to everyone (Q14),
+// archived ones included; AllProjects lists every project's.
+func OpenProjects(ctx context.Context, q sqlite.Querier) ([]string, error) {
+	return ids(ctx, q, `SELECT id FROM scopes WHERE kind = 'project' AND open = 1 ORDER BY id`)
+}
+
+// AllProjects lists the ids of every project.
+func AllProjects(ctx context.Context, q sqlite.Querier) ([]string, error) {
+	return ids(ctx, q, `SELECT id FROM projects ORDER BY id`)
+}
+
+func ids(ctx context.Context, q sqlite.Querier, query string) ([]string, error) {
+	rows, err := q.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}

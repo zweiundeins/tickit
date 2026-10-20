@@ -2,6 +2,7 @@ package views
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"net/url"
 	"slices"
@@ -165,9 +166,11 @@ type BoardPage struct {
 	// CanEdit shows the controls of a Member: "+" per column and the
 	// menu's moves. The server refuses what a Viewer sends anyway.
 	CanEdit bool
-	// CreateStatus opens the create dialog in a status, from ?create=
-	// (until the issue panel's dialog takes it, docs/architecture.md).
+	// CreateStatus opens the create dialog in a status, from ?create=.
 	CreateStatus string
+	// Me and Moderates are the issue panel's (docs/architecture.md).
+	Me        string
+	Moderates bool
 }
 
 // HeadID is the id of a board head's region.
@@ -214,13 +217,24 @@ func CardID(key string) string { return "c-" + key }
 // laneID is the id of a column.
 func laneID(status string) string { return "lane-" + status }
 
+// shortID is an issue's id in 22 characters (base64url of its 16
+// bytes): the board's card carries it, and the page puts the issue
+// panel's data-issue-panel on the card's link when it is clicked
+// (boardClick), 33 bytes a card less (NFR-37.1).
+func shortID(id string) string {
+	raw, err := hex.DecodeString(strings.ReplaceAll(id, "-", ""))
+	if err != nil {
+		return ""
+	}
+	return b64.EncodeToString(raw)
+}
+
 // cardProps is a tracker card as the board draws it.
 func cardProps(c tracker.Card, who map[string]people.Person, now time.Time, menu string) ui.CardProps {
 	p := ui.CardProps{
-		ID: CardID(c.Key), Key: c.Key, Summary: c.Summary, Href: "/" + c.Key,
+		ID: CardID(c.Key), Key: c.Key, Summary: c.Summary, Href: "/" + c.Key, LinkAttrs: map[string]any{"data-i": shortID(c.ID)},
 		Type: ui.IssueType(c.Type), Priority: ui.Priority(c.Priority), Labels: c.Labels, Now: now, MenuID: menu,
 		SlotAttrs: map[string]any{"data-v": strconv.FormatInt(c.Version, 10)},
-		Attrs:     map[string]any{"data-preserve-attr": "data-state aria-busy"},
 	}
 	if c.Assignee != "" {
 		u := UIPerson(who[c.Assignee])
