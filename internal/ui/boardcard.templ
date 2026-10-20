@@ -2,88 +2,59 @@ package ui
 
 import "strconv"
 
-// BoardCard is Card for a board of many cards (NFR-37.1): the same parts
-// and classes, its icons and faces as references to Sprites and
-// FaceSprites, which the page and the frame draw once. Names that Card
-// shows in tooltips are the icons' accessible names here, the assignee's
-// a title. The "…" opens the board's CardMenu; a handler finds its card
-// by the list item's id.
+// BoardCard is Card for a board of many cards (NFR-37.1: a hundred cards
+// in 60 KB): the same parts, flat in one list item that is the card, its
+// glyphs drawn by the stylesheet that Glyphs writes once in the page
+// (types, priorities, the "…" and the due date's icon) and its faces by
+// the one FaceStyles writes in the frame. Put it in a Board with Class
+// "tk-board--flat". The first <i> is the grip; the "…" (the card's
+// button) carries no popovertarget: the board opens its CardMenu by
+// script and finds the card by its id. A card's move states come from
+// the page (data-state), not from the server.
 templ BoardCard(p CardProps) {
 	<li
-		class="tk-slot"
+		class="tk-card"
 		if p.ID != "" {
 			id={ p.ID }
 		}
+		if p.Epic != "" {
+			data-hue={ strconv.Itoa(HueOf(p.Epic)) }
+		}
+		if p.State != CardIdle {
+			data-state={ string(p.State) }
+		}
 		{ p.SlotAttrs... }
 	>
-		<div
-			class="tk-card"
-			if p.Epic != "" {
-				data-hue={ strconv.Itoa(HueOf(p.Epic)) }
+		<i></i><i data-type={ string(p.Type) } role="img" aria-label={ p.Type.Name() }></i><span class="tk-card__key">{ p.Key }</span>
+		if p.Parent != "" {
+			<span class="tk-card__parent"><span class="visually-hidden">Subtask of </span>{ p.Parent }</span>
+		}
+		if p.MenuID != "" {
+			<button aria-label={ "Move or open " + p.Key }></button><a class="tk-card__title" href={ templ.SafeURL(p.Href) } { p.LinkAttrs... }>{ p.Summary }</a>
+		} else {
+			<a class="tk-card__title" href={ templ.SafeURL(p.Href) } { p.LinkAttrs... }>{ p.Summary }</a>
+		}
+		if p.Epic != "" {
+			<p class="tk-card__epic"><span class="visually-hidden">Epic: </span>{ p.Epic }</p>
+		}
+		<i data-prio={ string(p.Priority) } role="img" aria-label={ p.Priority.Name() + " priority" }></i>
+		if p.Points != "" {
+			@Points(p.Points)
+		}
+		if !p.Due.IsZero() {
+			if p.Overdue {
+				<span class="tk-due" data-overdue><span class="visually-hidden">Overdue, due </span><time datetime={ p.Due.Format("2006-01-02") }>{ Date(p.Due, p.Now) }</time></span>
+			} else {
+				<span class="tk-due"><span class="visually-hidden">Due </span><time datetime={ p.Due.Format("2006-01-02") }>{ Date(p.Due, p.Now) }</time></span>
 			}
-			if p.State != CardIdle {
-				data-state={ string(p.State) }
-			}
-			if p.State == CardPending {
-				aria-busy="true"
-			}
-			{ p.Attrs... }
-		>
-			<span class="tk-card__grip"></span>
-			<div class="tk-card__top">
-				<svg class="tk-type" data-type={ string(p.Type) } role="img" aria-label={ p.Type.Name() }><use href={ useRef("tk-t-" + string(p.Type)) }></use></svg>
-				<span class="tk-card__key">{ p.Key }</span>
-				if p.Parent != "" {
-					<span class="tk-card__parent"><span class="visually-hidden">Subtask of </span>{ p.Parent }</span>
-				}
-				if p.MenuID != "" {
-					<button class="tk-card__menu" popovertarget={ p.MenuID } aria-label={ "Move or open " + p.Key }><svg class="tk-icon"><use href="#tk-i-more"></use></svg></button>
-				}
-			</div>
-			<h3 class="tk-card__title"><a href={ templ.SafeURL(p.Href) }>{ p.Summary }</a></h3>
-			if p.Epic != "" {
-				<p class="tk-card__epic"><span class="visually-hidden">Epic: </span>{ p.Epic }</p>
-			}
-			<div class="tk-card__meta">
-				<svg class="tk-prio" data-prio={ string(p.Priority) } role="img" aria-label={ p.Priority.Name() + " priority" }><use href={ useRef("tk-p-" + string(p.Priority)) }></use></svg>
-				if p.Points != "" {
-					@Points(p.Points)
-				}
-				if !p.Due.IsZero() {
-					<span
-						class="tk-due"
-						if p.Overdue {
-							data-overdue
-						}
-					>
-						if p.Overdue {
-							<svg class="tk-icon"><use href="#tk-i-warning"></use></svg>
-							<span class="visually-hidden">Overdue, due </span>
-						} else {
-							<svg class="tk-icon"><use href="#tk-i-calendar"></use></svg>
-							<span class="visually-hidden">Due </span>
-						}
-						<time datetime={ p.Due.Format("2006-01-02") }>{ Date(p.Due, p.Now) }</time>
-					</span>
-				}
-				if len(p.Labels) > 0 {
-					<span class="tk-card__labels">
-						for _, l := range p.Labels {
-							@Label(l, "")
-						}
-					</span>
-				}
-				<span class="tk-card__who">
-					if p.Assignee != nil {
-						<span class="tk-av tk-av--xs" data-hue={ strconv.Itoa(p.Assignee.HueIndex()) } role="img" title={ p.Assignee.Name }><svg class="tk-face"><use href={ useRef(FaceRef(p.Assignee.Seed)) }></use></svg></span>
-					} else {
-						<span class="tk-card__nobody" aria-label="Unassigned" role="img"></span>
-					}
-				</span>
-			</div>
-		</div>
-		if p.Note != "" {
-			@Outcome(OutcomeProps{Kind: OutcomeRefused, Text: p.Note, Class: "tk-slot__note"})
+		}
+		for _, l := range p.Labels {
+			@Label(l, "")
+		}
+		if p.Assignee != nil {
+			<i class="tk-av" data-face={ FaceRef(p.Assignee.Seed) } role="img" title={ p.Assignee.Name }></i>
+		} else {
+			<i class="tk-card__nobody" role="img" aria-label="Unassigned"></i>
 		}
 	</li>
 }

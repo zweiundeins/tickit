@@ -205,6 +205,8 @@ type CardProps struct {
 	// itself from lane to lane. SlotAttrs go on the list item.
 	ID        string
 	SlotAttrs templ.Attributes
+	// LinkAttrs go on the summary's link (the issue panel's).
+	LinkAttrs templ.Attributes
 }
 
 // Card is a board card in its list item. The summary links to the issue
@@ -253,7 +255,7 @@ templ Card(p CardProps) {
 					</button>
 				}
 			</div>
-			<h3 class="tk-card__title"><a href={ templ.SafeURL(p.Href) }>{ p.Summary }</a></h3>
+			<h3 class="tk-card__title"><a href={ templ.SafeURL(p.Href) } { p.LinkAttrs... }>{ p.Summary }</a></h3>
 			if p.Epic != "" {
 				<p class="tk-card__epic"><span class="visually-hidden">Epic: </span>{ p.Epic }</p>
 			}
@@ -310,6 +312,9 @@ type LaneProps struct {
 	// CreateAttrs wire the lane's "+" (Create issue in this status); nil
 	// leaves the button out.
 	CreateAttrs templ.Attributes
+	// Lean draws the head's marker and "+" from Glyphs, with the button's
+	// name as its title: for a board's frame (NFR-37.1).
+	Lean bool
 	Attrs       templ.Attributes
 }
 
@@ -329,7 +334,9 @@ templ Lane(p LaneProps) {
 	<section
 		class="tk-lane"
 		data-cat={ p.Category.attr() }
-		aria-labelledby={ p.ID + "-name" }
+		if !p.Lean {
+			aria-labelledby={ p.ID + "-name" }
+		}
 		if p.WIP > 0 && p.all() > p.WIP {
 			data-over
 		}
@@ -339,7 +346,11 @@ templ Lane(p LaneProps) {
 		{ p.Attrs... }
 	>
 		<header class="tk-lane__head">
-			@raw(catSVG(p.Category))
+			if p.Lean {
+				<i data-cat={ p.Category.attr() }></i>
+			} else {
+				@raw(catSVG(p.Category))
+			}
 			<h2 class="tk-lane__name" id={ p.ID + "-name" }>{ p.Name }</h2>
 			if p.Total > 0 && p.Total != p.Count {
 				<span class="tk-count" aria-label={ strconv.Itoa(p.Count) + " of " + issues(p.Total) }>{ strconv.Itoa(p.Count) } of { strconv.Itoa(p.Total) }</span>
@@ -356,7 +367,9 @@ templ Lane(p LaneProps) {
 					}
 				</span>
 			}
-			if p.CreateAttrs != nil {
+			if p.CreateAttrs != nil && p.Lean {
+				<button class="tk-btn tk-btn--ghost tk-btn--sm tk-btn--icon tk-lane__add" type="button" title={ "Create issue in " + p.Name } { p.CreateAttrs... }><i class="tk-icon-glyph" data-icon="plus"></i></button>
+			} else if p.CreateAttrs != nil {
 				@Button(ButtonProps{Label: "Create issue in " + p.Name, Icon: "plus", IconOnly: true, Variant: Ghost, Size: SizeSM, Class: "tk-lane__add", Attrs: p.CreateAttrs})
 			}
 		</header>

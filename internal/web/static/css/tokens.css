@@ -276,7 +276,7 @@
 	 * a hue set --h, by one of the attributes below; the tokens are declared
 	 * where --h is, so each element derives its own.
 	 */
-	:where([data-hue], [data-type], [data-prio], [data-cat]) {
+	:where([data-hue], [data-type], [data-prio], [data-cat], [data-face]) {
 		--tk-hue-text: light-dark(oklch(45% 0.13 var(--h)), oklch(82% 0.11 var(--h)));
 		--tk-hue-fill: light-dark(oklch(52% 0.14 var(--h)), oklch(76% 0.12 var(--h)));
 		--tk-hue-on: light-dark(var(--tk-paper), var(--tk-slate-13));
@@ -285,7 +285,8 @@
 		--tk-hue-tile: light-dark(oklch(94% 0.035 var(--h)), oklch(28% 0.04 var(--h)));
 	}
 
-	/* Sixteen hues for faces, carets and epics: data-hue="0" to "15". */
+	/* Sixteen hues for faces, carets and epics: data-hue="0" to "15".
+	 * A board's faces (data-face) get theirs from ui.FaceStyles. */
 	[data-hue="0"] { --h: 0; }
 	[data-hue="1"] { --h: 22.5; }
 	[data-hue="2"] { --h: 45; }
