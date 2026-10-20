@@ -348,3 +348,33 @@ func hiddenText(m Issue) string {
 	}
 	return s + ". Only moderators see it; the moderation page restores it."
 }
+
+// The names of the side column's menus say the field and its value, so
+// that what a menu button shows is part of its name (WCAG 2.5.3).
+func orNone(s string) string {
+	if s == "" {
+		return "None"
+	}
+	return s
+}
+
+func assigneeName(m Issue) string {
+	if m.Assignee == "" {
+		return "Unassigned"
+	}
+	return m.person(m.Assignee).Name
+}
+
+func epicName(m Issue) string {
+	if m.Parent == nil {
+		return "None"
+	}
+	return m.Parent.Key + " " + m.Parent.Summary
+}
+
+func sprintLabel(m Issue) string {
+	if m.Sprint == "" {
+		return "Backlog"
+	}
+	return m.sprintName(m.Sprint)
+}
