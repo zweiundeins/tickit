@@ -141,27 +141,61 @@ func (s *Server) decode(w http.ResponseWriter, r *http.Request, c class, v paylo
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return action{}, false
 	}
-	if actor.MustChange { // FR-141.1: the first password first
-		http.Error(w, "Change your password first.", http.StatusForbidden)
+	if mustChange(w, actor) {
 		return action{}, false
 	}
 	return action{Session: edge.SessionID(r.Context()), Tab: p.Tab, By: tabs.By{Actor: actor, Op: p.Op, At: time.Now()}, Addr: edge.ClientKey(r)}, true
 }
 
-// run runs cmd as action a in tabs.Act, once per op id: a retry gets the
-// first answer and runs nothing. It answers the requests that reached no
-// outcome itself and reports false then.
-func (s *Server) run(w http.ResponseWriter, r *http.Request, a action, cmd writer.Command) (tabs.Result, bool) {
+// mustChange answers 403 for an account that must change its first
+// password before anything else (FR-141.1), and then reports true.
+func mustChange(w http.ResponseWriter, actor people.Person) bool {
+	if actor.MustChange {
+		http.Error(w, "Change your password first.", http.StatusForbidden)
+	}
+	return actor.MustChange
+}
+
+// paused answers a change sent without waiting, outside tabs.Act, during
+// a reset (503) or from a blocked guest (403), and then reports true
+// (DM-03.4, DM-07.2).
+func (s *Server) paused(w http.ResponseWriter, r *http.Request, actor people.Person) bool {
+	err := s.demo.Check(r.Context(), s.db.R, actor, edge.ClientKey(r))
+	var denial *access.Denial
+	switch {
+	case err == nil:
+		return false
+	case errors.As(err, &denial):
+		http.Error(w, denial.Msg, http.StatusForbidden)
+	default:
+		s.failAction(w, r, err)
+	}
+	return true
+}
+
+// result is an action's outcome, and whether it is a retry's, which ran
+// nothing: what follows an action outside the writer follows it once.
+type result struct {
+	tabs.Result
+	replayed bool
+}
+
+// run runs cmd as action a in tabs.Act, once per session, path and op id:
+// a retry gets the first answer and runs nothing. Another action that
+// names the same op id runs: it must not get the first one's answer, as
+// an OK that would start what it may not (a reset). It answers the
+// requests that reached no outcome itself and reports false then.
+func (s *Server) run(w http.ResponseWriter, r *http.Request, a action, cmd writer.Command) (result, bool) {
 	// The demo's guard refuses while it resets, for a blocked guest, and
 	// past the caps (DM-03.4, DM-07.2, DM-04.3).
 	cmd = s.demo.Guard(a.By.Actor, a.Addr, cmd)
-	op := writer.OnceResult(a.Session+":"+a.By.Op, tabs.Act{Session: a.Session, Tab: a.Tab, By: a.By, Cmd: cmd})
+	op := writer.OnceResult(a.Session+":"+r.URL.Path+":"+a.By.Op, tabs.Act{Session: a.Session, Tab: a.Tab, By: a.By, Cmd: cmd})
 	if err := s.w.Do(r.Context(), op); err != nil {
 		s.failAction(w, r, err)
-		return tabs.Result{}, false
+		return result{}, false
 	}
-	res := tabs.ParseResult(op.Result())
-	if !res.OK && !op.Replayed() {
+	res := result{tabs.ParseResult(op.Result()), op.Replayed()}
+	if !res.OK && !res.replayed {
 		s.metrics.refusals.WithLabelValues(r.Pattern).Inc()
 	}
 	return res, true

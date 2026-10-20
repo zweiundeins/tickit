@@ -84,8 +84,8 @@ func (s *Server) editorPage(w http.ResponseWriter, r *http.Request) {
 		host := views.EditorHost{
 			Page: p.ID, Epoch: h.Epoch, Client: newClient(), State: "ok", Base: h.Version, Head: h.Version,
 			Batches: "[]", Chips: chips, Images: imagesJSON(),
-			// The script must not hold "</script": < goes out as <.
-			Doc: strings.ReplaceAll(string(raw), "<", `<`),
+			// The script must not hold "</script": < goes out as \u003c.
+			Doc: strings.ReplaceAll(string(raw), "<", `\u003c`),
 		}
 		sidebar, err := s.sidebar(ctx, q, sp, p.ID, "")
 		if err != nil {
@@ -226,6 +226,9 @@ func (s *Server) decodeEditor(w http.ResponseWriter, r *http.Request, c class) (
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return req, actor, false
 	}
+	if mustChange(w, actor) {
+		return req, actor, false
+	}
 	return req, actor, true
 }
 
@@ -281,8 +284,8 @@ func (s *Server) commit(w http.ResponseWriter, r *http.Request) {
 // presence is an editing tab's selection, sent without waiting: the next
 // one replaces it (MP-06.2).
 func (s *Server) presence(w http.ResponseWriter, r *http.Request) {
-	req, _, ok := s.decodeEditor(w, r, classCaret)
-	if !ok {
+	req, actor, ok := s.decodeEditor(w, r, classCaret)
+	if !ok || s.paused(w, r, actor) {
 		return
 	}
 	err := s.w.Send(wiki.Presence{
@@ -308,9 +311,10 @@ func (s *Server) editorView(ctx context.Context, q sqlite.Querier, actor people.
 	if _, _, err := readable(ctx, q, actor, page); err != nil {
 		return live.View{}, err
 	}
-	key := wiki.EditorView(page, tab)
 	return live.View{
-		Key:    key,
+		// The person too: another who names the tab id gets a view of
+		// their own, never the tab's (NFR-02.3).
+		Key:    wiki.EditorView(page, tab) + "." + actor.ID,
 		Topics: []string{wiki.DocTopic(page), wiki.ChipsTopic(page), wiki.PageTopic(page), wiki.EditorTopic(tab), people.Topic},
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			host, err := editorHost(ctx, querier(ctx, tx), actor, page, tab)

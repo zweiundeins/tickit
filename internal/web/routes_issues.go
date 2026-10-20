@@ -277,6 +277,9 @@ func (s *Server) listChange(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
+	if mustChange(w, actor) {
+		return
+	}
 	v, err := url.ParseQuery(req.Query)
 	if err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)

@@ -6,9 +6,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/a-h/templ"
@@ -51,6 +54,9 @@ type ViewRegistry struct{ kinds map[string]viewKind }
 // Views is the registry of view kinds: for areas, and for tests that
 // register a kind before they open a stream.
 func (s *Server) Views() *ViewRegistry { return s.views }
+
+// Kinds are the registered kinds of views, sorted.
+func (vr *ViewRegistry) Kinds() []string { return slices.Sorted(maps.Keys(vr.kinds)) }
 
 func newViewRegistry() *ViewRegistry { return &ViewRegistry{kinds: map[string]viewKind{}} }
 
@@ -179,6 +185,14 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
+	release, ok := s.streams.open(w, r)
+	if !ok {
+		return
+	}
+	defer release()
+	if len(specs) > 0 && mustChange(w, actor) { // FR-141.1: the account's page alone, which has no views
+		return
+	}
 	var list []live.View
 	err = s.db.View(ctx, func(tx *sql.Tx) error {
 		for _, spec := range specs {
@@ -193,6 +207,9 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		for _, watched := range st.Watched { // a side panel open before a reconnect
+			if actor.MustChange {
+				break
+			}
 			vs, err := s.resolve(ctx, tx, actor, watched.View)
 			if err != nil {
 				s.log.Debug("a watched view is gone", "view", watched.View, "err", err)
@@ -210,8 +227,89 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	// the frames they concern, in the same tick.
 	list = append(list, s.personView(actor), s.demoView(), connectedView, tabs.PrefsView(sid, tab), tabs.View(sid, tab))
 	spec := live.Spec{ID: streamID(actor, tab), Views: unique(list), Reconnect: views.StreamID, Slow: edge.SlowLink(r)}
+	if actor.Kind == people.Account { // NFR-04.2: a logout ends the login's streams too
+		ctx, stop := context.WithCancel(ctx)
+		defer stop()
+		go s.endWithLogin(ctx, stop, sid, actor)
+		r = r.WithContext(ctx)
+	}
 	if err := s.hub.Serve(w, r, spec); err != nil {
 		s.log.Debug("stream ended", "err", err)
+	}
+}
+
+// Streams per client address (NFR-41): the hub's cap of all streams is
+// not for one client to take. An address may open MaxStreamsPerAddr at
+// once, which leaves room for a room of people behind one NAT, and open
+// them at StreamOpens a second after a burst of as many. A client on the
+// host itself (a probe, a load test: loopback without a proxy's header)
+// has the hub's cap alone.
+const (
+	MaxStreamsPerAddr = 40
+	StreamOpens       = 1
+)
+
+type streamLimits struct {
+	opens *edge.Limiter
+	mu    sync.Mutex
+	count map[string]int
+}
+
+func newStreamLimits() *streamLimits {
+	return &streamLimits{opens: edge.NewLimiter(StreamOpens, MaxStreamsPerAddr), count: map[string]int{}}
+}
+
+// open counts a stream of the request's address, or answers 503 (the page
+// tries again later, as for the hub's cap) or 429 and reports false.
+func (l *streamLimits) open(w http.ResponseWriter, r *http.Request) (release func(), ok bool) {
+	if edge.ClientIP(r).IsLoopback() {
+		return func() {}, true
+	}
+	addr := edge.ClientKey(r)
+	l.mu.Lock()
+	if l.count[addr] >= MaxStreamsPerAddr {
+		l.mu.Unlock()
+		http.Error(w, "Too many open pages from this address.", http.StatusServiceUnavailable)
+		return nil, false
+	}
+	if !l.opens.Allow(addr, 1, time.Now()) {
+		l.mu.Unlock()
+		http.Error(w, tooMany, http.StatusTooManyRequests)
+		return nil, false
+	}
+	l.count[addr]++
+	l.mu.Unlock()
+	return func() {
+		l.mu.Lock()
+		defer l.mu.Unlock()
+		if l.count[addr]--; l.count[addr] <= 0 {
+			delete(l.count, addr)
+		}
+	}, true
+}
+
+// LoginCheck is how often an account's stream checks that its login
+// session still stands.
+const LoginCheck = 2 * time.Second
+
+// endWithLogin ends an account's stream, by stop, once its session no
+// longer resolves to the account as it was: after a logout, a password
+// change, an ended or expired session, a deactivation or a new site role.
+// The page reconnects, as whoever the session is now.
+func (s *Server) endWithLogin(ctx context.Context, stop context.CancelFunc, sid string, actor people.Person) {
+	t := time.NewTicker(LoginCheck)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+		p, err := people.Resolve(ctx, s.db.R, sid, time.Now())
+		if err == nil && (p.ID != actor.ID || p.Role != actor.Role || p.MustChange != actor.MustChange) {
+			stop()
+			return
+		}
 	}
 }
 
@@ -311,6 +409,9 @@ func (s *Server) decodeWatch(w http.ResponseWriter, r *http.Request) (watchReque
 	}
 	if err := sse.ReadSignalsLimit(w, r, &req, classView.body); err != nil || !validID(req.Tab) || people.Actor(r.Context()).IsZero() {
 		http.Error(w, "bad request", http.StatusBadRequest)
+		return req, false
+	}
+	if mustChange(w, people.Actor(r.Context())) {
 		return req, false
 	}
 	specs, err := parseViews(req.View)

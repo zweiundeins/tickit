@@ -300,7 +300,7 @@ func TestAccess(t *testing.T) {
 		want outcome
 	}{{viewer, denied}, {member, denied}, {admin, ok}, {moderator, ok}, {siteAdmin, ok}, {sunny, hidden}} {
 		check("hide a comment", c.p, c.want, func(by tabs.By) writer.Command { return HideComment{By: by, Comment: cc, Hidden: true} })
-		e.must(HideComment{By: e.by(admin), Comment: cc, Hidden: false})
+		e.must(HideComment{By: e.by(siteAdmin), Comment: cc, Hidden: false}) // a moderator's hide, only staff undo (DM-07.1)
 	}
 	for _, c := range []struct {
 		p    people.Person

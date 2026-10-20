@@ -111,7 +111,7 @@ func (g guarded) ApplyResult(tx *writer.Tx) ([]byte, error) {
 		blocked := g.addrBlocked
 		if !blocked {
 			var err error
-			if blocked, err = isBlocked(tx, g.actor.ID, time.Now()); err != nil {
+			if blocked, err = isBlocked(tx.Context(), tx, g.actor.ID, time.Now()); err != nil {
 				return nil, err
 			}
 		}
@@ -164,10 +164,36 @@ func Created(ctx context.Context, q sqlite.Querier) (map[string]int, error) {
 	return out, rows.Err()
 }
 
+// Check is the guard for a change sent without waiting, outside the
+// writer (typing, carets): ErrResetting while the demo resets, a denial
+// for a blocked guest, else nil.
+func (d *Demo) Check(ctx context.Context, q sqlite.Querier, actor people.Person, addr string) error {
+	switch {
+	case d == nil:
+		return nil
+	case d.Resetting():
+		return ErrResetting
+	case actor.Kind != people.Guest:
+		return nil
+	}
+	now := d.cfg.Now()
+	blocked := d.addrs.isBlocked(addr, now)
+	if !blocked {
+		var err error
+		if blocked, err = isBlocked(ctx, q, actor.ID, now); err != nil {
+			return err
+		}
+	}
+	if blocked {
+		return &access.Denial{Refusal: writer.Refusal{Msg: MsgBlocked}}
+	}
+	return nil
+}
+
 // isBlocked reports whether a guest's changes are paused at now.
-func isBlocked(tx *writer.Tx, person string, now time.Time) (bool, error) {
+func isBlocked(ctx context.Context, q sqlite.Querier, person string, now time.Time) (bool, error) {
 	var until int64
-	err := tx.QueryRow(`SELECT until FROM blocks WHERE person_id = ?`, person).Scan(&until)
+	err := q.QueryRowContext(ctx, `SELECT until FROM blocks WHERE person_id = ?`, person).Scan(&until)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return false, nil

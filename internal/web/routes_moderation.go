@@ -112,7 +112,7 @@ func (s *Server) moderate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, ok := s.run(w, r, a, demo.Moderate{By: a.By, Action: req.Action, Kind: req.Kind, ID: req.ID, Reason: req.Reason})
-	s.moderated(w, res, ok, req.Action)
+	s.moderated(w, res.Result, ok, req.Action)
 }
 
 // block pauses a guest's changes for 24 hours, or lifts the block
@@ -133,7 +133,7 @@ func (s *Server) block(on bool) http.HandlerFunc {
 			cmd, action = s.demo.Block(a.By, req.Person, req.Reason), demo.ActBlock
 		}
 		res, ok := s.run(w, r, a, cmd)
-		s.moderated(w, res, ok, action)
+		s.moderated(w, res.Result, ok, action)
 	}
 }
 

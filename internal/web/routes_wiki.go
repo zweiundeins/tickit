@@ -109,6 +109,16 @@ func readable(ctx context.Context, q sqlite.Querier, actor people.Person, id str
 	if err != nil {
 		return p, sp, err
 	}
+	if p.State == wiki.Trashed && !access.SiteCan(actor, access.Moderate) {
+		// A page a moderator hid shows to staff alone (DM-07.1).
+		staff, err := people.Staff(ctx, q, p.TrashedBy)
+		if err != nil {
+			return p, sp, err
+		}
+		if staff {
+			return p, sp, access.ErrNotFound
+		}
+	}
 	return p, sp, canRead(ctx, q, actor, sp.ID)
 }
 

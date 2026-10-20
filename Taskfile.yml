@@ -69,6 +69,18 @@ tasks:
     cmds:
       - bash deploy/smoke-test.sh ./{{.BIN}}
 
+  security:
+    desc: The security suite (docs/security.md); FUZZTIME=3m for the recorded fuzz run
+    deps: [build]
+    vars:
+      FUZZTIME: '{{.FUZZTIME | default "30s"}}'
+    cmds:
+      - go test -count=1 ./...
+      - for: [FuzzCoreActions, FuzzIssueActions, FuzzBoardActions, FuzzWikiActions, FuzzEditorActions, FuzzNotifyActions, FuzzStaffActions]
+        cmd: go test -run '^$' -fuzz '^{{.ITEM}}$' -fuzztime {{.FUZZTIME}} ./internal/web/
+      - bash deploy/security-smoke.sh ./{{.BIN}}
+      - go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+
   vuln:
     desc: Known vulnerabilities in the code the binary calls (govulncheck)
     cmds:

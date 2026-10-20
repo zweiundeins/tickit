@@ -423,7 +423,7 @@ func (c *Commit) apply(tx *writer.Tx) (string, error) {
 		return "", errStale // MP-13.2: never across a reset
 	}
 	if c.Base > ds.Version {
-		return "", errors.New("wiki: a commit on a version that does not exist")
+		return "", errStale // a version the page never had: the editor starts again
 	}
 	if c.bad != nil {
 		return c.bad.Error(), nil

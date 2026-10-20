@@ -327,6 +327,25 @@ func (c DeleteComment) Apply(tx *writer.Tx) error {
 	return events.Execute(Store(), tx, deleteCommentDecider, CommentStream.ID(c.Comment), events.Any, c, meta(c.By))
 }
 
+// keepStaffHide refuses to show a comment again that a moderator or a
+// site admin hid: a project's Admin shows only what they hid (DM-07.1).
+func keepStaffHide(tx *writer.Tx, comment string) error {
+	var by string
+	for r, err := range events.Load(tx.Context(), Store(), tx, CommentStream.ID(comment), 0) {
+		if err != nil {
+			return err
+		}
+		if _, ok := r.Data.(CommentHidden); ok {
+			by = r.Actor
+		}
+	}
+	staff, err := people.Staff(tx.Context(), tx, by)
+	if err != nil || !staff {
+		return err
+	}
+	return &access.Denial{Refusal: writer.Refusal{Msg: "A moderator hid this comment: only a moderator shows it again."}}
+}
+
 // HideComment hides a comment, or shows it again: a project's Admin, a
 // moderator or a site admin (FR-66.2).
 type HideComment struct {
@@ -361,6 +380,11 @@ func (c HideComment) Apply(tx *writer.Tx) error {
 	}
 	if err := requireOn(tx, c.By, access.HideComment, s); err != nil {
 		return err
+	}
+	if s.Hidden && !c.Hidden && !access.SiteCan(c.By.Actor, access.Moderate) {
+		if err := keepStaffHide(tx, c.Comment); err != nil {
+			return err
+		}
 	}
 	return events.Execute(Store(), tx, hideCommentDecider, CommentStream.ID(c.Comment), events.Any, c, meta(c.By))
 }
