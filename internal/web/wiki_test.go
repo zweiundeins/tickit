@@ -25,11 +25,17 @@ import (
 
 // One store of the tracker's and the wiki's parts, bound as cmd/tickit
 // binds them, so the wiki's projector of issue events runs (FR-100.2).
-var wikiStore = sync.OnceValue(func() *events.Store {
-	st := events.Must(events.New(append(tracker.Parts(), wiki.Parts()...)...))
+// It binds again on every call: another test may have bound the tracker
+// to a store of its own since.
+func wikiStore() *events.Store {
+	st := wikiParts()
 	tracker.Bind(st)
 	wiki.Bind(st)
 	return st
+}
+
+var wikiParts = sync.OnceValue(func() *events.Store {
+	return events.Must(events.New(append(tracker.Parts(), wiki.Parts()...)...))
 })
 
 func startWiki(t *testing.T) *webtest.Env {

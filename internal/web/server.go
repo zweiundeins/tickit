@@ -224,10 +224,10 @@ func (s *Server) Handler() http.Handler {
 	h = noIndex(h)
 	h = edge.Compress(h)
 	h = edge.Recover(s.log, h)
-	h = edge.LogRequests(s.log, h)
+	h = edge.LogRequests(requestLog(s.log), h)
 
 	static := noIndex(edge.SecurityHeaders{CSP: edge.DefaultCSP(), HSTS: s.secure}.Handler(s.static))
-	static = edge.LogRequests(s.log, edge.Recover(s.log, static))
+	static = edge.LogRequests(requestLog(s.log), edge.Recover(s.log, static))
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", static) // precompressed by edge.Static
 	mux.Handle("/", h)
