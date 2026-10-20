@@ -81,7 +81,7 @@ func Failed(op string) string {
 }
 
 // problem is what the page says of a request that reached no outcome.
-const problem = `evt.detail.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : evt.detail.argsRaw.status === '503' ? ` + Unavailable + ` : 'This did not go through. Try again in a moment.'`
+const problem = `evt.detail.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : evt.detail.argsRaw.status === '503' ? ` + Unavailable + ` : evt.detail.argsRaw.status === '409' ? 'This tab is not connected. Reload the page.' : 'This did not go through. Try again in a moment.'`
 
 // Unavailable is what a page says of a 503: the demo's reset while the
 // demo alert says one runs, else a restart.

@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"net/http/cookiejar"
 	"regexp"
 	"strings"
 	"sync"
@@ -23,6 +24,7 @@ import (
 	"github.com/mbolli/tickit/internal/access"
 	"github.com/mbolli/tickit/internal/people"
 	"github.com/mbolli/tickit/internal/views"
+	"github.com/mbolli/tickit/internal/web"
 	"github.com/mbolli/tickit/internal/web/webtest"
 )
 
@@ -304,4 +306,68 @@ func TestWatch(t *testing.T) {
 			t.Errorf("watch %q: %d, want %d", view, code, want)
 		}
 	}
+}
+
+// bare is a browser's cookie jar without webtest's streams: its actions
+// come from tabs with no stream open unless the test opens one.
+func bare(t *testing.T) *http.Client {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &http.Client{Jar: jar}
+}
+
+// NFR-41, NFR-02.3: an action from a tab without an open stream answers
+// 409 and writes nothing, its tab's row included: its outcome would reach
+// no page, and every made-up tab id would be a row. Another person's
+// stream with the same tab id does not count.
+func TestActionNeedsAStream(t *testing.T) {
+	e := webtest.Start(t)
+	ada, bob := bare(t), bare(t)
+	webtest.Get(t, ada, e.URL+"/")
+	webtest.Get(t, bob, e.URL+"/")
+	before := e.Fingerprint(t)
+	for _, act := range []struct{ path, body string }{
+		{"/cmd/people/rename", `{"tab":"made-up","op":"op1","name":"Ada"}`},
+		{"/cmd/prefs", `{"tab":"made-up","op":"op2","key":"theme","value":"dark"}`},
+		{"/cmd/watch", `{"tab":"made-up","view":"demo:"}`},
+		{"/cmd/list/view", `{"tab":"made-up","view":"","query":"sort=updated"}`},
+	} {
+		if code, body := webtest.Post(t, ada, e.URL+act.path, act.body); code != http.StatusConflict || strings.TrimSpace(body) != web.NotConnected {
+			t.Errorf("%s from a tab without a stream: %d %q", act.path, code, body)
+		}
+	}
+	if e.Fingerprint(t) != before {
+		t.Error("actions from a tab without a stream wrote")
+	}
+	events := webtest.Listen(t, bob, e.URL+"/stream?tab=tab1&v=", nil)
+	webtest.Next(t, events, `"_outcomes"`)
+	if code, _ := webtest.Post(t, ada, e.URL+"/cmd/people/rename", `{"tab":"tab1","op":"op3","name":"Ada"}`); code != http.StatusConflict {
+		t.Errorf("an action from another person's tab id: %d", code)
+	}
+	if code, _ := webtest.Post(t, bob, e.URL+"/cmd/people/rename", `{"tab":"tab1","op":"op3","name":"Bob"}`); code != http.StatusNoContent {
+		t.Errorf("an action from the person's own tab: %d", code)
+	}
+	webtest.Next(t, events, `"op3":{"ok":true`)
+}
+
+// A page posts some actions as it loads (the editor's open, a notification
+// seen), while its stream is still opening: the action waits for the
+// stream (web.Config.StreamWait) and goes through once it opens.
+func TestActionWaitsForItsStream(t *testing.T) {
+	e := webtest.StartWith(t, webtest.Options{StreamWait: 2 * time.Second})
+	c := bare(t)
+	webtest.Get(t, c, e.URL+"/")
+	code := make(chan int, 1)
+	go func() {
+		n, _ := webtest.Post(t, c, e.URL+"/cmd/people/rename", `{"tab":"tab1","op":"op1","name":"Ada"}`)
+		code <- n
+	}()
+	time.Sleep(200 * time.Millisecond)
+	events := webtest.Listen(t, c, e.URL+"/stream?tab=tab1&v=", nil)
+	if n := <-code; n != http.StatusNoContent {
+		t.Fatalf("an action whose stream opened 200 ms after it: %d", n)
+	}
+	webtest.Next(t, events, `"op1":{"ok":true`)
 }

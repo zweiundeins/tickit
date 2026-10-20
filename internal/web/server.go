@@ -47,7 +47,14 @@ type Config struct {
 	// Projectors are the events runner's stats, which the demo's reset
 	// waits on (demo.Config.Projectors); nil without a runner.
 	Projectors func() events.Stats
+	// StreamWait is how long an action waits for its tab's stream to open
+	// before it answers 409 (DefaultStreamWait when zero, negative: no
+	// wait): a page posts some actions as it loads, while its stream opens.
+	StreamWait time.Duration
 }
+
+// DefaultStreamWait is Config.StreamWait when it is zero.
+const DefaultStreamWait = 2 * time.Second
 
 // Server holds what the handlers share.
 type Server struct {
@@ -62,6 +69,7 @@ type Server struct {
 	sessions edge.Sessions
 	secure   bool
 	ttl      time.Duration
+	wait     time.Duration // Config.StreamWait
 
 	limits  *limits         // the rate limits of actions (DM-04)
 	signIn  *edge.Limiter   // logins and logouts per address (NFR-09.1)
@@ -88,6 +96,9 @@ func New(cfg Config) (*Server, error) {
 	}
 	if cfg.SessionTTL <= 0 {
 		cfg.SessionTTL = people.DefaultSessionTTL
+	}
+	if cfg.StreamWait == 0 {
+		cfg.StreamWait = DefaultStreamWait
 	}
 	files, err := fs.Sub(staticFiles, "static")
 	if err != nil {
@@ -123,6 +134,7 @@ func New(cfg Config) (*Server, error) {
 		sessions: edge.Sessions{Secure: cfg.Secure},
 		secure:   cfg.Secure,
 		ttl:      cfg.SessionTTL,
+		wait:     max(0, cfg.StreamWait),
 		limits:   newLimits(),
 		signIn:   edge.NewLimiter(0.5, 10), // 30 a minute, 10 at once
 		streams:  newStreamLimits(),

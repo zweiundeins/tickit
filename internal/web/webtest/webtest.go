@@ -41,6 +41,9 @@ type Options struct {
 	Secure     bool          // as over HTTPS: a __Host- cookie and HSTS
 	// Configure changes the server before it serves (a test's limits).
 	Configure func(*web.Server)
+	// StreamWait is web.Config.StreamWait; none by default, since a
+	// Client opens a tab's stream when an action finds none.
+	StreamWait time.Duration
 }
 
 // Env is a running server.
@@ -79,7 +82,10 @@ func StartWith(t testing.TB, o Options) *Env {
 	if err != nil {
 		t.Fatal(err)
 	}
-	site, err := web.New(web.Config{DB: db, W: w, Hub: hub, Store: o.Store, Log: log, SessionTTL: o.SessionTTL, Secure: o.Secure})
+	if o.StreamWait == 0 {
+		o.StreamWait = -1
+	}
+	site, err := web.New(web.Config{DB: db, W: w, Hub: hub, Store: o.Store, Log: log, SessionTTL: o.SessionTTL, Secure: o.Secure, StreamWait: o.StreamWait})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,14 +217,20 @@ func dump(tx *sql.Tx, table string) ([]string, error) {
 	return lines, rows.Err()
 }
 
-// Client is a browser's cookie jar, which follows no redirect.
+// Client is a browser's cookie jar, which follows no redirect. Like a
+// page, it has a stream open for the tab it acts from: before an action
+// from a tab without one of its streams, it opens the tab's stream until
+// the test ends, and so it does when an action answers web.NotConnected
+// (a login changed who the session is), then sending the action again.
 func Client(t testing.TB) *http.Client {
 	t.Helper()
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &http.Client{Jar: jar, Transport: recorder{}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	return &http.Client{Jar: jar, Transport: &recorder{ctx: ctx, open: map[string]int{}}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 }
 
 // Get requests url and returns the status and the body.

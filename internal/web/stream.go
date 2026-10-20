@@ -339,6 +339,9 @@ func (s *Server) watch(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	actor, sid := people.Actor(ctx), edge.SessionID(ctx)
+	if !s.connected(w, r, actor, req.Tab) {
+		return
+	}
 	vs, err := s.db.ViewValue(ctx, func(tx *sql.Tx) ([]live.View, error) { return s.resolve(ctx, tx, actor, req.View) })
 	if err != nil {
 		s.failView(w, r, err)
