@@ -49,3 +49,19 @@ func TestEditorScriptHoldsNoMarkup(t *testing.T) {
 		t.Errorf("the script's document: %v %.300s", err, m[1])
 	}
 }
+
+// NFR-16: a commit on a version beyond the head is malformed, not a 500.
+func TestCommitBeyondHead(t *testing.T) {
+	e := startWiki(t)
+	c := webtest.Client(t)
+	webtest.Get(t, c, e.URL+"/")
+	space, home := wikiSpace(t, e, c, "ENG")
+	page := wikiPage(t, e, c, space, home, "Notes")
+	h := head(t, e, page)
+	act(t, e, c, "/cmd/pages/"+page+"/open", "tab1", map[string]any{"base": h.Version, "client": "0123456789ab"})
+	code, body := webtest.Post(t, c, e.URL+"/cmd/pages/"+page+"/commit",
+		fmt.Sprintf(`{"tab":"tab1","epoch":%q,"base":%d,"ref":"r1","client":"0123456789ab","steps":[]}`, h.Epoch, h.Version+1000))
+	if code >= 500 || code < 400 {
+		t.Errorf("a commit beyond the head: %d %s", code, body)
+	}
+}
