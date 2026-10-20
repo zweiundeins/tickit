@@ -16,7 +16,7 @@ How several people edit one page at once (MP-05, MP-06, MP-13, MP-14, FR-82 to F
 
 ## HTML of a document
 
-The Go renderer (reader view, comments, descriptions, versions) and the browser's `toDOM` produce the same elements, so one stylesheet (`static/css/prose.css`) styles both. The container is `<div class="prose">`.
+The Go renderer (reader view, comments, descriptions, versions) and the browser's `toDOM` produce the same elements, so one stylesheet (`static/css/prose.css`) styles both. The container is `<div class="prose">`. `doc.RenderHTML` renders the blocks; the caller writes the container. Every text and attribute is escaped.
 
 | Node or mark | HTML |
 | --- | --- |
@@ -28,16 +28,18 @@ The Go renderer (reader view, comments, descriptions, versions) and the browser'
 | bullet_list, ordered_list | `<ul>`, `<ol start="3">` (`start` omitted when 1) |
 | list_item | `<li>` |
 | task_list | `<ul class="task-list">` |
-| task_item | `<li class="task-item" data-checked="true">` holding `<input type="checkbox" disabled checked>` (the editor's node view makes it clickable) then the content in `<div>` |
+| task_item | `<li class="task-item" data-checked="true">` (or `"false"`) holding `<input type="checkbox" disabled checked>` (`checked` only when checked; the editor's node view makes it clickable) then the content in `<div>` |
 | table, table_row | `<table><tbody>` with `<tr>` |
 | table_cell, table_header | `<td>`, `<th>`, with `colspan` and `rowspan` when not 1 |
 | image | `<figure class="doc-image"><img src="/img/lib/<imageId>" alt="…" loading="lazy"></figure>` |
 | hard_break | `<br>` |
-| issue_chip | `<a class="issue-chip" data-key="WEB-12" href="/WEB-12">` with the chip's parts (type icon, key, summary, status) rendered by the server at render time; deleted and unknown keys carry `data-state="deleted"` or `"unknown"` |
-| mention | `<a class="mention" data-person="<person id>" href="/people/<person id>">@Sunny Otter</a>` |
+| issue_chip | `<a class="issue-chip" data-key="WEB-12" href="/WEB-12" data-type="bug" data-category="progress">` holding `<span class="issue-chip-type" aria-hidden="true"></span><span class="issue-chip-key">WEB-12</span> <span class="issue-chip-summary">Fix the login</span> <span class="issue-chip-status">In Review</span>`, rendered from the issue as it is at render time; a deleted or unknown key carries `data-state="deleted"` or `"unknown"` instead of the type and category and holds the key and `<span class="issue-chip-status">deleted issue</span>` (or `unknown issue`) |
+| mention | `<a class="mention" data-person="<person id>" href="/people/<person id>">@Sunny Otter</a>`; the name is the person's name now, else the node's `label`, else "someone" |
 | page_link | `<a class="page-link" data-page="<page id>" href="/pages/<page id>">Title</a>`; a removed page renders `<span class="page-link" data-state="gone">a removed page</span>` |
 | strong, em, strike, code | `<strong>`, `<em>`, `<s>`, `<code>` |
 | link | `<a href="…" rel="nofollow ugc noopener" title="<host>">`; an unsafe href renders as `<span class="link-unsafe">` |
+
+A link mark around an atom renders no `<a>` around it (a chip is a link of its own). The comparison of two versions (FR-88) renders the newer one with added text in `<ins class="diff-ins">` and removed text in `<del class="diff-del">`; a block added or removed as a whole also carries `data-diff="ins"` or `data-diff="del"` on its element.
 
 ## Wire format
 
