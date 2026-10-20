@@ -1455,9 +1455,11 @@
 			text-align: end;
 		}
 
-		/* The column that may grow and cut its text. */
+		/* The column that may grow and cut its text, down to 8rem; below
+		 * that the table scrolls in its region. */
 		& .tk-grow {
 			inline-size: 100%;
+			min-inline-size: 8rem;
 			max-inline-size: 0;
 			overflow: hidden;
 			text-overflow: ellipsis;

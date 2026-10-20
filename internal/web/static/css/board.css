@@ -658,6 +658,7 @@
 	.tk-bd {
 		position: relative;
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
 
 		&.is-dragging {
@@ -836,6 +837,7 @@
 	.tk-bl {
 		position: relative;
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-4);
 	}
 
@@ -863,6 +865,7 @@
 
 	.tk-bl__sections {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-5);
 	}
 
@@ -902,6 +905,7 @@
 
 	.tk-blsec__rows {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 1px;
 		margin: 0;
 		padding: 0 var(--tk-space-2) var(--tk-space-2);
@@ -942,8 +946,10 @@
 			opacity: 0.6;
 		}
 
-		& .tk-lozenge {
+		& .tk-lozenge,
+		& .tk-card__key {
 			flex: none;
+			white-space: nowrap;
 		}
 
 		& .tk-card__epic {

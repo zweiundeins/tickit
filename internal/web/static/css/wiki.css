@@ -135,6 +135,7 @@
 	/* Linked issues and pages that link here (FR-80.1, FR-103.2). */
 	.wk-refs {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
 
 		&:empty {
@@ -144,6 +145,7 @@
 
 	.wk-refs__group {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 		padding-block-start: var(--tk-space-3);
 		border-block-start: 1px solid var(--tk-border-subtle);
@@ -157,6 +159,11 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
+
+		& > li {
+			min-inline-size: 0;
+			max-inline-size: 100%;
+		}
 	}
 
 	.wk-linked {
