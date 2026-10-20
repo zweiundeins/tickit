@@ -412,6 +412,7 @@
 		position: relative;
 	}
 
+	/* A menu in the flow, not a popover: shown as soon as it is shown. */
 	.tk-issue__mentions {
 		position: static;
 		display: grid;
@@ -420,6 +421,8 @@
 		inline-size: min(100%, 18rem);
 		margin: 0;
 		inset: auto;
+		opacity: 1;
+		translate: none;
 
 		&[hidden] {
 			display: none;
