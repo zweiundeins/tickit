@@ -13,6 +13,7 @@ tickit is a multiplayer issue tracker and wiki on lith v0.3.0: one Go binary, on
 | `internal/tracker` | projects, workflows, issues, comments, links, labels, components, watchers, board ranks, sprints, saved filters | event-sourced, projections |
 | `internal/wiki` | spaces, pages, page versions, page comments, templates, trash, references between pages and issues | event-sourced, projections |
 | `internal/doc` | the rich-text document: schema, ProseMirror steps applied in Go, HTML rendering, plain text, references, diffs | none (pure Go) |
+| `internal/markup` | the text markup of the seed and of what people type into descriptions and comments: `Parse` (strict), `ParseMode` (`Text`, `Comment`: what the markup does not define stays text), `Write` (a document back to markup, for editing it) | none (pure Go) |
 | `internal/search` | the FTS5 index over issues and pages (a projection), queries | projection |
 | `internal/notify` | notifications, the catch-up projectors that create them | relational |
 | `internal/activity` | feeds read from `lith_events` | none |
@@ -59,7 +60,7 @@ Login and logout are actions too (`POST /cmd/login`, `POST /cmd/logout`), outsid
 
 ## Streams, views and topics
 
-- Each document opens one stream, `GET /stream?tab=<tab>&v=<view>,<view>`, from `data-init` on `#stream`. Each `v` names a view factory registered by an area (`issue:<id>`, `board:<projectID>`, `list:<hash>`, `page:<id>`, `tree:<spaceID>`) with `s.views.Register(kind, f)`, where `f(ctx, q, actor, arg) (live.View, error)` checks that the actor may read it (`access.ErrNotFound` answers 404, a denial 403, an unknown kind 400). Every stream also gets the person's view (`person:<id>`: name, bell, unread count), the demo view (`demo`: the reset notice), a `connected` view that hides "Reconnecting", the session's prefs view (`prefs:<tab>`, the signal `_prefs`), and the tab view last. The page's views reach `openStream` as the signal `_views`, never inside an expression.
+- Each document opens one stream, `GET /stream?tab=<tab>&v=<view>,<view>`, from `data-init` on `#stream`. Each `v` names a view factory registered by an area (`issue:<id>`, `board:<projectID>`, `list:<query>`, `filters:`, `search:<query>`, `page:<id>`, `tree:<spaceID>`) with `s.views.Register(kind, f)`, where `f(ctx, q, actor, arg) (live.View, error)` checks that the actor may read it (`access.ErrNotFound` answers 404, a denial 403, an unknown kind 400). Every stream also gets the person's view (`person:<id>`: name, bell, unread count), the demo view (`demo`: the reset notice), a `connected` view that hides "Reconnecting", the session's prefs view (`prefs:<tab>`, the signal `_prefs`), and the tab view last. The page's views reach `openStream` as the signal `_views`, never inside an expression.
 - The stream's `Spec.ID` is `<personID>.<tab>`, so `hub.Watchers(key)` yields who watches a view without a read (MP-01, MP-02). A kind registered with `s.views.RegisterWithPresence` makes every stream that watches one of its views watch `presence:<key>` too: a shared view with `Presence: true` that lists one face per person in the order they came, with the tab count in the tooltip. The page puts `views.Presence(views.PresenceID(key), nil)` where the row goes (a shared `ui.PresenceRow`); the document's own style puts the viewer's face first, outlined, and shows at most 8.
 - A side panel or a tab switch adds a view to the open stream with `POST /cmd/watch` (`hub.Watch`), and records it in the tab row so that a reconnect restores it; `POST /cmd/unwatch` takes it off.
 - A view's key holds everything its render depends on. Shared views render nothing about the viewer; per-viewer parts go in `tab:<id>`, `person:<id>` or signals.
@@ -87,6 +88,35 @@ Display preferences (theme `system`, `dark` or `light`; style `pixel` or `smooth
 
 A person's face is `ui.FaceOf(id)`, and their hue an index of 0 to 15 (`people.Person.Hue`, `data-hue`; the stylesheet turns it into degrees, times 22.5). `views.UIPerson` is the one place that makes a `ui.Person` of a `people.Person`; seeded people keep their own hue.
 
+## The issue page
+
+`GET /{key}` (`/WEB-12`, any case) is the issue's page; another spelling or an old key answers 301 to the key now, an unknown key 404 with a search box, a deleted issue's key 410 with who deleted it and when, and `/ticket/<id>` and `/dashboard/<id>` 301 to the key (FR-12). The page is a static frame (`views.IssuePage`, `issueFrame`) holding the regions of three views:
+
+| View spec | Key | Topics | Renders |
+| --- | --- | --- | --- |
+| `issue:<id>` (with presence) | `issue:<id>` | `issue:<id>`, `people`, `project:<project>`; again every 30 s for relative times | `#issue-main`, `#issue-desc`, `#issue-related`, `#issue-side`, `#issue-comments`, `#issue-history`, `#issue-activity`, `#issue-mentions`, and the signal `$_is.max` (the version) |
+| `issue-typing:<id>` | `issue-typing:<id>` | `issue-typing:<id>`, `people`; every second | `#issue-typing-summary`, `#issue-typing-description`, `#issue-typing-comment` (MP-07) |
+| `issue-at:<id>.<v>` | `issue:<id>:at:<v>` | `people` | `#issue-asof`: the issue at version v (FR-70); tabs at one version share it |
+
+The regions are siblings, never nested, since a patch skips an element inside a `data-ignore-morph` one. Fields people type in are in the frame (the comment box) or marked `data-ignore-morph` with their value in a `_is` signal (the editors in place), so no frame resets them. Elements the morph would reset keep their state with `data-preserve-attr` (`hidden`, `aria-busy`, `disabled`).
+
+The page's state is the signal `_is`: the issue's id and key, the viewer's id, and per field the pending op (`ops`), the refusal (`msg`), a conflict's data (`conflict`), a request with no outcome (`fail`) and the value sent (`want`). Every change is `POST /cmd/issues/{id}/{field}` with `{tab, op, seen, value, ref}` through `tabs.Act`; `seen` is the version the control showed (a menu keeps the version it opened at). The fields: `summary`, `description` (markup, `markup.Text`), `type`, `status`, `priority`, `assignee` (`me` for the actor), `parent`, `due`, `points`, `estimate`, `remaining` ("2h 30m"), `sprint`, `labels` and `components` (`ref` add or remove), `watch` (toggles), `link` (`value` a key, `ref` the link type), `unlink`, `subtask`, `comment` (markup, `markup.Comment`), `cedit`, `cdelete`, `chide` (`ref` the comment's id), `delete`. `POST /cmd/issues/{id}/typing {tab, op, field, stop}` is a caret-class action sent without waiting: it writes `issue_typing` (migration 011) and touches `issue-typing:<id>`; an indicator goes 5 s after the last keystroke, and a save or a comment ends it at once. Controls in the regions carry `data-act`, `data-field`, `data-value` and `data-ref`, and the frame's one delegated handler runs them, so frames carry attributes rather than expressions.
+
+What the shared views cannot know about the viewer comes from the document: `viewerStyle` shows the viewer's own comments' Edit and Delete, the watch button's state and hides the viewer's own typing indicator; `$_is.ro` makes a Viewer's page read-only (comments stay open) and `$_is.mod` shows Hide to a project's Admin or a moderator. A comment's draft stays in the tab across a reconnect and a reload (`sessionStorage`, which is per tab).
+
+## Issue panel
+
+From a board, a list or a search, an issue opens in `ui.SidePanel` beside the page (FR-13.2). To wire it:
+
+1. Put `@views.IssuePanel(me.ID, moderates)` once in the page's body (`moderates`: `access.SiteCan(me, access.Moderate)`).
+2. Give every link to an issue the issue's id in `data-issue-panel`: `<a href="/WEB-12" { views.IssueLinkAttrs(issue.ID)... }>`. Keep the `href`: a click with Ctrl, Cmd, Shift or Alt, a middle click, or a page without the panel follows the link to the issue's page.
+
+A plain click opens the panel, puts the issue's URL in the address bar (`history.pushState`) and adds `issue:<id>` and `issue-typing:<id>` to the tab's stream with `POST /cmd/watch`; the stream fills the panel's regions with the same view the issue page shows. Escape, the close button, a click beside the panel or the browser's Back close it: the views come off the stream (`POST /cmd/unwatch`) and the page's own URL comes back. The page never left, so its filter, its page and its scroll position stay. The page needs no view of its own for the panel and no route.
+
+## Create dialog
+
+`views.CreateIssueDialog` is the header's create dialog (FR-10), with the id `views.CreateID`, so the header's Create opens it (`command="show-modal" commandfor="create"`). `s.render` puts it on every page whose `Page.Create` is nil: it lists the projects the person may create issues in and preselects `Page.Project` (a project's id: set it on a board, a backlog or a project's list), else the first. A board column's "+" opens it with that column's status: give the button `data-on:click={ views.CreateWithStatus }`, `data-status="<status id>"` and `data-project="<project id>"`. `POST /cmd/issues/create {tab, op, project, type, summary, description, priority, assignee, labels, parent, status, stay}` answers `$_goto` to the new issue, or, on a page with the issue panel (`stay`), opens the new issue in the panel. A refusal stays next to its field (`$_new.field`, `$_new.msg`) with what the person typed.
+
 ## Event sourcing
 
 - Streams: `project`, `issue`, `space`, `page`, `comment` (issue and page comments). Kind and type names are permanent once the demo runs.
@@ -107,6 +137,61 @@ A person's face is `ui.FaceOf(id)`, and their hue an index of 0 to 15 (`people.P
 - Projections: `tracker_projects` keeps `projects`, `statuses` (workflow order, WIP limits), `components`, `sprints`; `tracker_issues` keeps `issues`, `issue_labels`, `labels`, `issue_links`, `issue_watchers`; `tracker_comments` keeps `comments`. A project's open issue count is counted from `issues` when read, and an issue's status order is joined from `statuses`: a table belongs to one projector, which sees one stream kind, and a workflow reordered later (FR-36) then changes no issue row.
 - Search matches text with `instr` on a lower-case column that Go fills (keys, summary, description text; comments have their own), so `%` and `_` match themselves and case folds beyond ASCII. Every filter runs in one statement whose lists are JSON parameters (`json_each`); each sort has its own ORDER BY.
 
+## Notifications
+
+`internal/notify` keeps `notifications` (migration 050): one row per recipient with its kind (`assigned`, `mentioned`, `commented`, `status_changed`, `page_commented`), the subject's kind, id, label (issue key or page title, as it was) and href, the actor, a text (the sentence around a mention, a comment's start), what merged changes add (`detail`), the source position, and read and dismissed times.
+
+- **Reactions.** Two catch-up projectors, `notify_issues` and `notify_comments` (`notify.Parts()`, with `SkipHistory`, so a new projector, a restart or a deploy notifies nobody of the past, FR-116), send one command per event with `writer.Once(notify.OnceKey(position))`. The command reads the issue as the log held it at the event's position (key, watchers), so a retry decides the same; `UNIQUE (recipient, source, kind)` and the merge's `last_source` keep a replay from adding anything once the op ids are pruned. Assignment of someone else (FR-111), a mention a text adds (FR-112, from the events' `mentions` and `mentions_added`), a comment or a status change to a watched issue's watchers but the actor (FR-113), merged into the recipient's unread notification of the same subject and actor from the last minute (FR-113.2). Only guests and accounts are told. `cmd/tickit` calls `notify.Bind(w)`; tests bind their writer.
+- **Wiki.** One file, `internal/notify/wiki.go`: its `init` appends the page stream's projector to `extra` (page mentions) and sets `commentables[tracker.SubjectPage]` to `{Kind: PageCommented, At: pageAt}`, where `pageAt(tx, id, upto)` names the page and lists its watchers as of the position (FR-114).
+- **Actions** (FR-115), each through `tabs.Act`, 403 for someone else's notification, 404 for an unknown one: `POST /cmd/notify/read {id}`, `/read-all`, `/dismiss {id}`, `/dismiss-all`, `/open {id}` (marks it read and answers `$_goto` with its subject), `/seen {subject}` (marks the person's notifications of a subject read: a page that opens the subject renders `views.NotifySeen(subjectID)` when `notify.HasUnread` says so, since GET never writes). Every change touches `people.PersonTopic(recipient)`.
+- **Retention** (FR-117): `notify.Sweep`, in the hourly sweep, deletes dismissed rows, read rows older than 30 days, and each person's beyond the newest 500.
+- **The bell.** `web.Server.bell` reads `views.Bell` (`notify.Panel`: unread count, newest 30, how many more; the actors) for every document (`views.Shell.Bell`), and the person view (`person:<id>`) renders it again on every change, for every tab of the person (FR-110.3, MP-01.2). The header (`ui.Header`) renders `ui.BellCount(n)` (`#tk-bell-count`, hidden at 0) in the bell button, which is described by `ui.UnreadStatus(n)` (`#tk-unread`, `role="status"`: the polite live region of NFR-48.2), and `views.NotificationPanel(bell)` (`#tk-notify-panel`) inside the popover `#tk-notifications`. The person view patches those three by id, with the person's name, and the signal `$_unread` (`views.UnreadSignal`), from which the panel's `data-effect` keeps the window title's count, "tickit (3)" (FR-110.2). The panel's own signal is `$_notify.op`.
+
+## Activity and the home page
+
+`internal/activity` reads feeds from `lith_events` and stores nothing (FR-69): `events.SinceUntil` in windows going back from the head (512 positions, doubling, at most 20,000 events), events of the types a source names decoded with the domain's streams, kept when the person may read their subject's scope, consecutive edits of one page by one person within 10 minutes as one entry (FR-69.3). `activity.Home(readable)`, `activity.Project(id)`, `activity.Space(id)`, 50 a page; `activity.Mine` is what a person changed lately. Sources are registered per stream kind (`tracker.go`); the wiki adds its page stream and `commentSubjects["page"]` in one file, `internal/activity/wiki.go`.
+
+- Views: `activity-home:<pages>` (key `activity:home:<hash of the readable scopes>:<pages>`, shared by everyone who reads the same scopes), `activity-project:<id>`, `activity-space:<id>`; topics `lith:events` (`events.Topic`) and `people`, rendered again every minute for relative times. A project's or a space's page renders `views.Activity(feed)` from `s.ScopeActivity(ctx, q, scope, now)` and names its view in `Page.Views`.
+- The home page `/` (FR-59, `routes_notify.go`): the person's work in the view `home:` (key `home:<person>`: counts, open issues assigned to them, "recently edited by you" from the log, the projects and spaces they may read) and the home feed, 50 more with `?activity=n`. Recently viewed needs a write per view and is not there yet.
+
+## The issue list and saved filters
+
+- `GET /issues` is the list (FR-50 to FR-55). Its filter, sort and page are the URL's parameters as `tracker.Filter.Values` and `tracker.Sort.Values` name them, "me" kept. The filter form is a plain GET form in the document (it works without script); the list itself, `#issue-list`, is the shared view `list:<query>`: the query string in base64url, or `.<hash>` of a query that `list_queries` holds when it is longer than a view's name allows. Its key is `list:` and `tracker.Query.Key()` (the projects the person reads, the filter with "me" resolved, the sort, the page), so tabs that see the same list share one render whoever they are (MP-11). It listens to `issues`, `projects` and `people`, so a change that moves an issue into or out of the filter shows in the next frame (MP-03).
+- The page's script reads the form (`views/list.go`, no person's value in an expression), puts the query in the address (`pushState` for a filter, a sort or a page, `replaceState` while typing; `popstate` restores the form) and posts `POST /cmd/list/view {tab, view, query}`, at most every 300 ms while typing. The handler stores the query in the tab's row (area `list`), and after the commit, in commit order, moves the open stream from the old list's view to the new one with `hub.Unwatch` and `hub.Watch`; it answers the new view's name as `$_views`, which a reconnect opens. The stream stays open, so only the new list's frame arrives. `GET /issues` without a query redirects (303) to the list the session showed last, so a tab keeps its filter when the person opens an issue and comes back (FR-55.2).
+- A click on a row or its summary opens the issue in the side panel (FR-50.3, "Issue panel"): the list's body holds `views.IssuePanel` and each summary link `views.IssueLinkAttrs`; so do the results of `/search`. `GET /issues.csv?<query>` exports the whole result (FR-152). `/search` with a list's filter and no text (`/search?assignee=me`) redirects to `/issues` with it.
+- Saved filters (FR-56): `/filters` lists every one, the person's starred first, as the person's own view `filters:` (key `filters:<person>`, topic `filters`). `POST /cmd/filters/save {name, query}`, `/rename {filter, name}`, `/delete {filter}` and `/star {filter, star}` run the tracker's commands; only the owner (or a site admin) renames and deletes. The list's "Filters" menu links each to `/issues?<query>`.
+
+## Search
+
+`internal/search` is the search across issues and pages (FR-57), an FTS5 index that is a projection of the event streams (NFR-44).
+
+- Each kind of document has two tables (`search.Tables(kind)`, `migrations/060_search.sql`): its rows (`search_issues`, `search_pages`, `search_comments`: id, scope, key and old keys, the folded title, href, place, labels and people as JSON, hidden, updated) and their text in an FTS5 table beside them (`<table>_fts`: key, title, body; `unicode61` without diacritics, prefix indexes of 2 and 3). The row's `n` is the text's rowid.
+- Only one projector writes a kind's tables, through `search.Put(tx, kind, doc)`, `search.Patch(tx, kind, id, func(*search.Doc))`, `search.Hide(tx, kind, id, hidden)` and `search.Remove(tx, kind, id)` in its inline handlers. A handler builds the document from its event and from the document as indexed (`Patch`), never from another projection, which may be rebuilding at the time. Each write touches `search.Topic` (`search`).
+- The tracker's parts hold two of them: `search_issues` on the issue stream (created, summary, description, assignee, labels, moves to another project with the old key kept, deletes) and `search_comments` on the comment stream, which indexes comments on issues and on pages (scope: the subject's id, key: its kind; a hidden comment stays indexed but out of results).
+- The wiki's hook: the wiki adds a projector of its page stream to `wiki.Parts()` named `search.PagesProjector` at `search.PagesVersion` that writes `search.Tables(search.Page)`:
+
+```go
+var pageSearch = events.NewProjector(PageStream, search.PagesProjector, search.PagesVersion,
+	events.Handle(PageCreatedType, func(tx *writer.Tx, r events.Record[string, PageCreated]) error {
+		return search.Put(tx, search.Page, search.Doc{ID: r.ID, Scope: r.Data.Space, Title: r.Data.Title, Body: text,
+			Labels: labels, People: []string{r.Actor}, Place: spaceKey, Href: pageURL, Updated: r.At})
+	}),
+	events.Handle(PageRenamedType, func(tx *writer.Tx, r events.Record[string, PageRenamed]) error {
+		return search.Patch(tx, search.Page, r.ID, func(d *search.Doc) { d.Title, d.Updated = r.Data.To, r.At })
+	}),
+	events.Handle(PageDeletedType, func(tx *writer.Tx, r events.Record[string, PageDeleted]) error {
+		return search.Remove(tx, search.Page, r.ID)
+	}),
+	// every other type of the stream: events.Ignore
+).Tables(search.Tables(search.Page)...)
+```
+
+  `Scope` is the space's id (the scopes row that access reads), `Place` what results show beside the title (the space's key), `Href` the page's address, `Body` the plain text (`tracker.DocText` reads a document's), `People` who a person filter finds it by (author, editors). A page moved to another space patches Scope, Place and Href. Page comments need nothing more: they are comments.
+- `search.Search(ctx, q, search.Query{Text, Kinds, Projects, Spaces, InProjects, InSpaces, Labels, People, Offset, Limit})` matches every word, the last as a prefix while someone types, and ranks in tiers: the exact issue key (old keys too) or the exact page title, then key and title matches, then body matches, then comment matches (leading to their subject), each tier by bm25 (key and title weigh more), then the newest. `Projects` and `Spaces` are what the person may read. A hit has its snippet as parts with the matched words marked (`search.Part`), which the page renders escaped in `<mark>`.
+- `GET /search?q=&kind=&project=&space=&label=&person=&page=` is the results page (FR-57.2) with the kinds' counts; its results are the shared view `search:<params in base64url>`, keyed by the scopes the person reads and the params, listening to `search`, `issues`, `people` and the swap topics of the index's rebuilds (`search.ProjectionTopics`).
+- The header's search box (FR-57.1): `views.SearchBoxAttrs()` on the input and `views.SearchSuggestSlot()` after it in the form (`ui.HeaderProps.SearchAttrs`, `SearchSuggest`). While someone types two characters or more, at most every 300 ms, the box asks `GET /search/suggest?q=`, a read that answers a patch of `#search-suggest` (a popover in the top layer, anchored under the box) with the first 5 issues and 5 pages and a link to every result; Down goes into it, Escape closes it, Enter submits the form to `/search`. A polite live region says how many suggestions there are.
+- Rebuilds: a new version of one of the projectors makes lith's runner rebuild its tables into copies, FTS5 table included, and swap them in. Tested in `internal/search` (`TestRebuild`): the results of a fixed set of queries are the same before and after, the copies and the retired tables are gone, and searches that run while it rebuilds in batches of 10 answer from the old index, never empty (NFR-44). lith's copy takes the table's `CREATE VIRTUAL TABLE` statement and FTS5 renames its shadow tables with the table, so no projector of its own is needed.
+
 ## The edge
 
 `web.Server.Handler` puts the edge around the routes, inside out: the actor (`people.Middleware`), `edge.Sessions` (`__Host-sid` with `-secure`), `edge.CSRF` with `Datastar: ["POST /cmd/"]` and no exemptions, `edge.SecurityHeaders` with `DefaultCSP` and HSTS with `-secure`, `X-Robots-Tag: noindex, nofollow`, `edge.Compress`, `edge.Recover`, `edge.LogRequests`. `cmd/tickit` mounts `/healthz` and `/readyz` beside it and serves metrics on a loopback listener of their own (`-metrics`, 127.0.0.1:7205). Pages register with `s.get(pattern, handler, probes...)` and actions with `s.post`, which refuses anything outside `POST /cmd/`.
@@ -118,7 +203,7 @@ A person's face is `ui.FaceOf(id)`, and their hue an index of 0 to 15 (`people.P
 | Numbers | Area |
 | --- | --- |
 | 001 to 009 | people, access, tabs, security log |
-| 010 to 029 | tracker |
+| 010 to 029 | tracker (011: who types on an issue) |
 | 030 to 049 | wiki |
 | 050 to 059 | notify, activity |
 | 060 to 069 | search |

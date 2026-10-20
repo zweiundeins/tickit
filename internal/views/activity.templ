@@ -1,0 +1,65 @@
+package views
+
+import (
+	"github.com/mbolli/tickit/internal/activity"
+	"github.com/mbolli/tickit/internal/ui"
+)
+
+// Activity is a feed of recent changes (FR-69): who did what to which
+// issue or page, and when, newest first, with a link to more. Its live
+// view patches it by its id.
+templ Activity(f ActivityFeed) {
+	<div id={ f.ID } class="tk-activity">
+		if len(f.Entries) == 0 {
+			@ui.EmptyState(ui.EmptyProps{Icon: "history", Title: "Nothing yet", Text: "Issues created, moved and commented on, and pages written, show here as they happen.", Class: "tk-empty--sm"})
+		} else {
+			@ui.Feed(f.label()) {
+				for _, e := range f.Entries {
+					@activityItem(f, e)
+				}
+			}
+		}
+		if f.More != "" {
+			<p class="tk-activity__more"><a href={ templ.SafeURL(f.More) }>Show older activity</a></p>
+		}
+	</div>
+}
+
+templ activityItem(f ActivityFeed, e activity.Entry) {
+	{{ who := f.person(e.Actor) }}
+	@ui.FeedItem(ui.FeedItemProps{Person: UIPerson(who), At: e.At, Now: f.Now, Href: e.Subject.Href}) {
+		<b>{ who.Name }</b> { " " }
+		switch e.Action {
+			case activity.IssueCreated:
+				created { " " }
+				@activityIssue(e)
+			case activity.IssueMoved:
+				moved { " " }
+				@activityIssue(e)
+				{ " to " }
+				@ui.StatusLozenge(e.Status, uiCategory(e.Category))
+			case activity.IssueCommented:
+				commented on { " " }
+				@activityIssue(e)
+			case activity.PageCreated:
+				created { " " }
+				@ui.PageLink(e.Subject.ID, e.Subject.Label, e.Subject.Href, false)
+			case activity.PageEdited:
+				edited { " " }
+				@ui.PageLink(e.Subject.ID, e.Subject.Label, e.Subject.Href, false)
+				if e.Edits > 1 {
+					{ " " + editsText(e.Edits) }
+				}
+			case activity.PageCommented:
+				commented on { " " }
+				@ui.PageLink(e.Subject.ID, e.Subject.Label, e.Subject.Href, false)
+		}
+		if e.Text != "" {
+			<q class="tk-activity__quote">{ e.Text }</q>
+		}
+	}
+}
+
+templ activityIssue(e activity.Entry) {
+	@ui.IssueChip(ui.IssueChipProps{Key: e.Subject.Label, Summary: e.Subject.Summary, Type: ui.IssueType(e.Subject.Type), Href: e.Subject.Href})
+}

@@ -3,7 +3,6 @@ package views
 import (
 	"context"
 	"io"
-	"strconv"
 	"time"
 
 	"github.com/a-h/templ"
@@ -188,9 +187,7 @@ func ownStyle(me people.Person, moderates, edits bool) templ.Component {
 	})
 }
 
-func itoa(n int) string { return strconv.Itoa(n) }
 
-func i64(n int64) string { return strconv.FormatInt(n, 10) }
 
 // The wiki's Datastar expressions: constants, or built from constants;
 // ids reach them through data attributes, never inside an expression

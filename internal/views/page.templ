@@ -29,7 +29,7 @@ templ WikiPage(p PageProps) {
 			<h2 class="wk-section-title" id="comments-title">Comments</h2>
 			@CommentsRegion(p.Comments, p.Now)
 			<p class="wk-problem" role="status" data-text="$_wk.cmod.msg" data-effect={ cmodSettled }></p>
-			@commentForm(p)
+			@pageCommentForm(p)
 		</section>
 		@createPageDialog(p.Space.ID, p.Templates)
 		if p.CanEdit && !p.Page.Home {
@@ -214,7 +214,7 @@ templ commentBody(c CommentItem, now time.Time, top bool) {
 
 // commentForm writes a comment, or a reply to the comment chosen with
 // Reply; it sits outside the regions the stream morphs.
-templ commentForm(p PageProps) {
+templ pageCommentForm(p PageProps) {
 	<form class="wk-comment-form" data-page={ p.Page.ID } data-on:submit__prevent={ addComment } data-effect={ commentSettled } data-on:datastar-fetch={ commentFailed }>
 		<p class="wk-replying" style="display: none" data-show="$_wk.comment.to !== ''">
 			Replying to <b data-text="$_wk.comment.toName"></b>

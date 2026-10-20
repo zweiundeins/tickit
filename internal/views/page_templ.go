@@ -146,7 +146,7 @@ func WikiPage(p PageProps) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = commentForm(p).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = pageCommentForm(p).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1095,7 +1095,7 @@ func commentBody(c CommentItem, now time.Time, top bool) templ.Component {
 
 // commentForm writes a comment, or a reply to the comment chosen with
 // Reply; it sits outside the regions the stream morphs.
-func commentForm(p PageProps) templ.Component {
+func pageCommentForm(p PageProps) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

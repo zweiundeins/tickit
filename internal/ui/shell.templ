@@ -139,6 +139,10 @@ type HeaderProps struct {
 	Admin []NavItem
 	// Search is the search box's query and its action, /search.
 	Query, SearchAction string
+	// SearchAttrs go on the search box and SearchSuggest after it, inside
+	// the form: the typeahead (FR-57.1, views.SearchBoxAttrs).
+	SearchAttrs   templ.Attributes
+	SearchSuggest templ.Component
 	// CreateFor is the create dialog's id; CreateAttrs wire it otherwise.
 	CreateFor   string
 	CreateAttrs templ.Attributes
@@ -205,10 +209,14 @@ templ Header(p HeaderProps, sidebar bool) {
 				}
 				aria-keyshortcuts="Control+K Meta+K"
 				data-on:keydown__window={ searchShortcut }
+				{ p.SearchAttrs... }
 			/>
 			<span class="tk-search__hint" aria-hidden="true">
 				@Kbd("Ctrl", "K")
 			</span>
+			if p.SearchSuggest != nil {
+				@p.SearchSuggest
+			}
 		</form>
 		<div class="tk-header__end">
 			if p.CreateFor != "" {
@@ -221,14 +229,13 @@ templ Header(p HeaderProps, sidebar bool) {
 				type="button"
 				popovertarget="tk-notifications"
 				aria-expanded="false"
-				aria-label={ "Notifications, " + unreadText(p.Unread) }
+				aria-label="Notifications"
+				aria-describedby="tk-unread"
 			>
 				@Icon("bell")
-				if p.Unread > 0 {
-					<span class="tk-bell__count" aria-hidden="true">{ unreadCount(p.Unread) }</span>
-				}
+				@BellCount(p.Unread)
 			</button>
-			<span class="visually-hidden" id="tk-unread" role="status">{ unreadText(p.Unread) }</span>
+			@UnreadStatus(p.Unread)
 			<div id="tk-notifications" class="tk-menu tk-menu--end tk-notifications" popover data-on:toggle={ syncExpanded }>
 				if p.Notifications != nil {
 					@p.Notifications
@@ -249,6 +256,24 @@ templ Header(p HeaderProps, sidebar bool) {
 			}
 		</div>
 	</header>
+}
+
+// BellCount is the bell's badge, hidden at 0, and UnreadStatus the count
+// in words in a polite live region (NFR-48.2): the person's view patches
+// both by their ids as notifications come and go (FR-110.3).
+templ BellCount(n int) {
+	<span
+		id="tk-bell-count"
+		class="tk-bell__count"
+		aria-hidden="true"
+		if n == 0 {
+			hidden
+		}
+	>{ unreadCount(n) }</span>
+}
+
+templ UnreadStatus(n int) {
+	<span class="visually-hidden" id="tk-unread" role="status">{ unreadText(n) }</span>
 }
 
 func unreadCount(n int) string {

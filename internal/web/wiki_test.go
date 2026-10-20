@@ -205,7 +205,7 @@ func TestWikiRefusals(t *testing.T) {
 
 func timeNow() time.Time { return time.Now() }
 
-func byOf(p people.Person, op string) tabs.By { return tabs.By{Actor: p, Op: op, At: time.Now()} }
+func wikiBy(p people.Person, op string) tabs.By { return tabs.By{Actor: p, Op: op, At: time.Now()} }
 
 // The commit's answers (docs/editor.md, "Wire format"): 204, 409, 422,
 // 403 and 429.
@@ -323,13 +323,13 @@ func TestChipsLive(t *testing.T) {
 	e.Do(t, people.SeedPeople{At: time.Now()})
 	var issue string
 	e.Do(t, writer.Func(func(tx *writer.Tx) error {
-		b, err := tracker.CreateProject{By: byOf(ada, "p1"), Key: "WEB", Name: "Web", Open: true}.ApplyResult(tx)
+		b, err := tracker.CreateProject{By: wikiBy(ada, "p1"), Key: "WEB", Name: "Web", Open: true}.ApplyResult(tx)
 		if err != nil {
 			return err
 		}
 		var m map[string]string
 		json.Unmarshal(b, &m)
-		b, err = tracker.CreateIssue{By: byOf(ada, "i1"), Project: m["id"], Type: tracker.Bug, Summary: "Fix the login"}.ApplyResult(tx)
+		b, err = tracker.CreateIssue{By: wikiBy(ada, "i1"), Project: m["id"], Type: tracker.Bug, Summary: "Fix the login"}.ApplyResult(tx)
 		json.Unmarshal(b, &m)
 		issue = m["id"]
 		return err
@@ -339,6 +339,6 @@ func TestChipsLive(t *testing.T) {
 	webtest.Post(t, c, e.URL+"/cmd/pages/"+page+"/commit", fmt.Sprintf(`{"tab":"tab1","epoch":%q,"base":%d,"ref":"c1","client":"0123456789ab","steps":[{"stepType":"replace","from":1,"to":1,"slice":{"content":[{"type":"issue_chip","attrs":{"key":"WEB-1"}}]}}]}`, h.Epoch, h.Version))
 	read := webtest.Listen(t, c, e.URL+"/stream?tab=rtab&v=pagedoc:"+page, nil)
 	webtest.Next(t, read, `data-cat="todo">To Do</span>`)
-	e.Do(t, tracker.SetStatus{By: byOf(ada, "s1"), Issue: issue, Seen: 1 << 40, Status: tracker.StatusInReview})
+	e.Do(t, tracker.SetStatus{By: wikiBy(ada, "s1"), Issue: issue, Seen: 1 << 40, Status: tracker.StatusInReview})
 	webtest.Next(t, read, `data-cat="progress">In Review</span>`)
 }

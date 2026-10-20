@@ -1,0 +1,242 @@
+package views
+
+import (
+	"strconv"
+
+	"github.com/mbolli/tickit/internal/people"
+	"github.com/mbolli/tickit/internal/tracker"
+	"github.com/mbolli/tickit/internal/ui"
+)
+
+// IssueListBody is the list's page (FR-50 to FR-56): its head with the
+// saved filters, the filter form and the list.
+templ IssueListBody(p ListPage) {
+	<div class="list-page" data-signals={ listSignals }>
+		<div class="tk-pagehead">
+			<h1>Issues</h1>
+			<div class="cluster">
+				@savedMenu(p.Saved)
+				@ui.Button(ui.ButtonProps{Label: "Save filter", Icon: "star", Command: "show-modal", CommandFor: "save-filter"})
+				@ui.Button(ui.ButtonProps{Label: "Export CSV", Icon: "table", Variant: ui.Ghost, Href: csvHref(p.Query)})
+			</div>
+		</div>
+		<p class="list-saved" role="status" data-text="$_save.done"></p>
+		@listForm(p)
+		if p.Unwatched {
+			<div hidden data-init={ listInit }></div>
+		}
+		<div class="list-live" data-on:click={ listClick } data-on:datastar-fetch={ listFailed }>
+			@IssueListRegion(p.List)
+		</div>
+		@saveDialog()
+		@IssuePanel(p.Me, p.Moderates)
+	</div>
+}
+
+func csvHref(query string) string {
+	if query == "" {
+		return "/issues.csv"
+	}
+	return "/issues.csv?" + query
+}
+
+// savedMenu lists the saved filters, starred ones first (FR-56.1).
+templ savedMenu(saved []tracker.SavedFilter) {
+	@ui.Menu(ui.MenuProps{ID: "list-saved", Label: "Filters", Icon: "filter", Caret: true, Variant: ui.Secondary}) {
+		if len(saved) == 0 {
+			@ui.MenuLabel("No saved filters yet")
+		}
+		for i, f := range saved {
+			if i < 15 {
+				@ui.MenuItem(ui.MenuItemProps{Label: f.Name, Icon: starIcon(f.Starred), Href: savedHref(f), Autofocus: i == 0})
+			}
+		}
+		@ui.MenuSeparator()
+		@ui.MenuItem(ui.MenuItemProps{Label: "All filters", Href: "/filters", Autofocus: len(saved) == 0})
+	}
+}
+
+func starIcon(starred bool) string {
+	if starred {
+		return "star"
+	}
+	return ""
+}
+
+// listForm is the filter form: the text, a menu of values per filter, the
+// date ranges and the sort. It works as a plain GET form too.
+templ listForm(p ListPage) {
+	<form
+		id={ ListFormID }
+		class="list-filters"
+		role="search"
+		aria-label="Filter issues"
+		action="/issues"
+		method="get"
+		data-on:submit__prevent={ listSubmit }
+		data-on:input__throttle.300ms.trailing={ listInput }
+		data-on:popstate__window={ listPop }
+		data-on:datastar-fetch={ listFailed }
+	>
+		<label class="visually-hidden" for="list-q">Text in key, summary, description or comments</label>
+		@ui.Input(ui.InputProps{ID: "list-q", Name: "q", Type: "search", Icon: "search", Placeholder: "Search issues", Value: p.Filter.Text, Autocomplete: "off", MaxLength: tracker.MaxFilterText, Class: "list-filters__q"})
+		for _, g := range p.groups() {
+			@filterMenu(g)
+		}
+		@rangeMenu("list-f-due", "Due", "due", p.Filter.DueFrom, p.Filter.DueTo)
+		@rangeMenu("list-f-created", "Created", "created", p.Filter.CreatedFrom, p.Filter.CreatedTo)
+		<input type="hidden" name="sort" value={ sortBy(p.Sort) }/>
+		<input type="hidden" name="dir" value={ sortDir(p.Sort) }/>
+		<input type="hidden" name="page" value={ pageValue(p.Page) }/>
+		@ui.Button(ui.ButtonProps{Label: "Clear", Icon: "close", Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": listClear}})
+		<noscript>
+			@ui.Button(ui.ButtonProps{Label: "Apply", Type: "submit", Size: ui.SizeSM})
+		</noscript>
+	</form>
+}
+
+func sortBy(s tracker.Sort) string { return s.Values().Get("sort") }
+
+func sortDir(s tracker.Sort) string { return s.Values().Get("dir") }
+
+func pageValue(n int) string {
+	if n <= 1 {
+		return ""
+	}
+	return strconv.Itoa(n)
+}
+
+// filterMenu is a filter's button and its popover of checkboxes: values
+// within one filter combine with OR (FR-51.1).
+templ filterMenu(g filterGroup) {
+	@ui.Button(ui.ButtonProps{Label: g.Label, IconEnd: "chevron-down", Size: ui.SizeSM, PopoverTarget: g.ID, Class: "list-filters__button"}) {
+		<span class="tk-count" data-count={ g.Name } hidden?={ g.count() == 0 }>{ countText(g.count()) }</span>
+	}
+	<div id={ g.ID } class="tk-menu list-filters__menu" popover data-on:toggle={ listToggle }>
+		<fieldset class="list-filters__set">
+			<legend class="tk-eyebrow">{ g.Label }</legend>
+			if len(g.Options) == 0 {
+				<p class="muted">None yet</p>
+			}
+			for _, o := range g.Options {
+				@ui.Checkbox(ui.CheckboxProps{Name: g.Name, Value: o.Value, Label: o.Label, Checked: o.Checked, Attrs: templ.Attributes{"data-in": g.Name}})
+			}
+		</fieldset>
+	</div>
+}
+
+// rangeMenu is a date range, both ends included.
+templ rangeMenu(id, label, name, from, to string) {
+	@ui.Button(ui.ButtonProps{Label: label, IconEnd: "chevron-down", Size: ui.SizeSM, PopoverTarget: id, Class: "list-filters__button"}) {
+		<span class="tk-count" data-count={ name } hidden?={ rangeCount(from, to) == 0 }>{ countText(rangeCount(from, to)) }</span>
+	}
+	<div id={ id } class="tk-menu list-filters__menu" popover data-on:toggle={ listToggle }>
+		<fieldset class="list-filters__set list-filters__range">
+			<legend class="tk-eyebrow">{ label }</legend>
+			@ui.Field(ui.FieldProps{ID: id + "-from", Label: "From"}) {
+				@ui.Input(ui.InputProps{ID: id + "-from", Name: name + "_from", Type: "date", Value: from, Size: ui.SizeSM, Attrs: templ.Attributes{"data-in": name}})
+			}
+			@ui.Field(ui.FieldProps{ID: id + "-to", Label: "To"}) {
+				@ui.Input(ui.InputProps{ID: id + "-to", Name: name + "_to", Type: "date", Value: to, Size: ui.SizeSM, Attrs: templ.Attributes{"data-in": name}})
+			}
+		</fieldset>
+	</div>
+}
+
+// IssueListRegion is the list's shared view: the count, the table with
+// its sort headers and the pages (FR-50, FR-53, FR-54).
+templ IssueListRegion(l IssueList) {
+	<div id={ IssueListID } class="list-region">
+		if l.Results.Total == 0 {
+			if l.Filtered {
+				@ui.EmptyState(ui.EmptyProps{Icon: "search", Title: "No issues match", Text: "Change the filters, or clear them to see every issue."})
+			} else {
+				@ui.EmptyState(ui.EmptyProps{Icon: "board", Title: "No issues yet", Text: "Issues of the projects you can see show here."})
+			}
+		} else {
+			<p class="list-count">{ issueCount(l.Results.Total) }</p>
+			@ui.Table(ui.TableProps{Caption: "Issues", HideCaption: true, Sticky: true, Class: "list-table"}) {
+				<thead>
+					<tr>
+						for _, c := range listColumns {
+							@ui.SortHeader(ui.SortProps{Label: c.Label, Dir: l.dir(c.By), Align: c.Align, Attrs: templ.Attributes{"data-sort": c.By}})
+						}
+					</tr>
+				</thead>
+				<tbody>
+					for _, i := range l.Results.Issues {
+						@listRow(l, i)
+					}
+				</tbody>
+			}
+			@ui.Pagination(ui.PaginationProps{Page: l.Results.Page, Pages: l.Results.Pages, Total: l.Results.Total, Noun: "issues", Href: l.PageHref})
+		}
+	</div>
+}
+
+// listRow is an issue's row. A click on it opens the issue in the side
+// panel (FR-50.3, FR-13.2), as a click on its summary does.
+templ listRow(l IssueList, i tracker.Issue) {
+	<tr data-href={ "/" + i.Key }>
+		<td>
+			@ui.TypeIcon(ui.IssueType(i.Type))
+		</td>
+		<td class="tk-key">{ i.Key }</td>
+		<td class="tk-grow"><a href={ templ.SafeURL("/" + i.Key) } { IssueLinkAttrs(i.ID)... }>{ i.Summary }</a></td>
+		<td>
+			@ui.PriorityLabel(ui.Priority(i.Priority))
+		</td>
+		<td>
+			@ui.StatusLozenge(i.StatusName, Category(i.Category))
+		</td>
+		<td>
+			if i.Assignee != "" {
+				@personCell(l.People[i.Assignee])
+			} else {
+				<span class="muted">Unassigned</span>
+			}
+		</td>
+		<td>
+			@personCell(l.People[i.Reporter])
+		</td>
+		<td class="list-project">{ i.ProjectName }</td>
+		<td class="tk-num">
+			@ui.RelativeTime(i.Created.UTC(), l.Now)
+		</td>
+		<td class="tk-num">
+			@ui.RelativeTime(i.Updated.UTC(), l.Now)
+		</td>
+		<td class="tk-num">
+			if i.Due != "" {
+				@ui.Due(due(i), l.Now, i.Overdue(l.Now))
+			} else {
+				<span class="visually-hidden">No due date</span>
+			}
+		</td>
+	</tr>
+}
+
+// personCell is a face beside a name.
+templ personCell(p people.Person) {
+	<span class="tk-cell">
+		@ui.Avatar(ui.AvatarProps{Person: UIPerson(p), Size: ui.SizeXS, Decorative: true})
+		{ p.Name }
+	</span>
+}
+
+// saveDialog saves the list's filter and sort under a name (FR-56.1).
+templ saveDialog() {
+	@ui.Dialog(ui.DialogProps{ID: "save-filter", Title: "Save filter", Description: "Everyone sees saved filters in the demo.", Size: ui.SizeSM, Footer: saveFooter()}) {
+		<form id="save-filter-form" data-on:submit__prevent={ saveFilter } data-on:datastar-fetch={ saveFilterFailed } data-effect={ saveFilterSettled }>
+			@ui.Field(ui.FieldProps{ID: "save-filter-name", Label: "Name", Required: true, ErrorAttrs: templ.Attributes{"data-text": "$_save.msg"}}) {
+				@ui.Input(ui.InputProps{ID: "save-filter-name", MaxLength: tracker.MaxFilterName, Required: true, DescribedBy: "save-filter-name-error",
+					Attrs: templ.Attributes{"data-bind": "_save.name", "data-attr:readonly": Pending("_save.op"), "autofocus": true}})
+			}
+		</form>
+	}
+}
+
+templ saveFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: "save-filter"})
+	@ui.Button(ui.ButtonProps{Label: "Save", Variant: ui.Primary, Type: "submit", Attrs: templ.Attributes{"form": "save-filter-form", "data-attr:aria-busy": Busy("_save.op")}})
+}

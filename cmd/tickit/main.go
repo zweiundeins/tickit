@@ -42,6 +42,7 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
+	"github.com/mbolli/tickit/internal/notify"
 	"github.com/mbolli/tickit/internal/people"
 	"github.com/mbolli/tickit/internal/tabs"
 	"github.com/mbolli/tickit/internal/tracker"
@@ -86,6 +87,7 @@ func main() {
 func parts() []events.Part {
 	var p []events.Part
 	p = append(p, tracker.Parts()...)
+	p = append(p, notify.Parts()...)
 	p = append(p, wiki.Parts()...)
 	return p
 }
@@ -137,6 +139,7 @@ func serve(args []string) error {
 	if err != nil {
 		return errors.Join(err, db.Close())
 	}
+	notify.Bind(w) // the reactions' commands
 	runner := events.NewRunner(store, db, w, events.Options{Log: log})
 	var ln, metricsLn net.Listener
 	site, err := web.New(web.Config{DB: db, W: w, Hub: hub, Store: store, Log: log, Dev: *dev, Secure: *secure, SessionTTL: *sessionTTL})
@@ -289,8 +292,8 @@ func metricsServer(w *writer.Writer, hub *live.Hub, runner *events.Runner, store
 }
 
 // sweep keeps the tables that grow bounded, every hour: the rows of tabs
-// gone for 3 days, expired login sessions, the old security log and old
-// op ids.
+// gone for 3 days, expired login sessions, the old security log, old
+// notifications (FR-117) and old op ids.
 func sweep(ctx context.Context, w *writer.Writer, log *slog.Logger) {
 	t := time.NewTicker(time.Hour)
 	defer t.Stop()
@@ -301,7 +304,7 @@ func sweep(ctx context.Context, w *writer.Writer, log *slog.Logger) {
 		case <-t.C:
 		}
 		now := time.Now()
-		for _, cmd := range []writer.Command{tabs.Sweep{At: now}, people.Sweep{At: now}, writer.PruneOnce(24 * time.Hour)} {
+		for _, cmd := range []writer.Command{tabs.Sweep{At: now}, people.Sweep{At: now}, notify.Sweep{At: now}, writer.PruneOnce(24 * time.Hour)} {
 			if err := w.Do(ctx, cmd); err != nil && ctx.Err() == nil {
 				log.Warn("sweep", "err", err)
 			}
