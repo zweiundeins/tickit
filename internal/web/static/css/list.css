@@ -3,6 +3,15 @@
  * their snippets, and the typeahead under the header's search box. */
 @layer components {
 	/* ── The issue list ────────────────────────────────────────────── */
+	/* The pages never grow wider than main: their table and filter row
+	 * scroll inside it. */
+	.list-page,
+	.filters-page,
+	.search-page {
+		min-inline-size: 0;
+		max-inline-size: 100%;
+	}
+
 	.list-filters {
 		display: flex;
 		flex-wrap: wrap;
@@ -64,7 +73,32 @@
 
 	.list-region {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
+	}
+
+	/* On a phone the filters are one row that scrolls sideways. */
+	@media (max-width: 40rem) {
+		.list-filters {
+			flex-wrap: nowrap;
+			overflow-x: auto;
+			padding-block-end: var(--tk-space-1);
+
+			& > .tk-input-wrap {
+				flex: 0 0 12rem;
+			}
+
+			& > * {
+				flex: none;
+			}
+		}
+	}
+
+	/* Visually hidden text in a cell is absolute: the scrolling region is
+	 * its containing block, or it escapes the region's clip. */
+	.list-region .tk-table-wrap,
+	.filters-page .tk-table-wrap {
+		position: relative;
 	}
 
 	.list-table tbody tr[data-href] {
@@ -111,6 +145,11 @@
 		display: grid;
 		align-content: start;
 		gap: var(--tk-space-4);
+
+		/* On a phone the results come first, the filters after them. */
+		@media (max-width: 60rem) {
+			order: 2;
+		}
 	}
 
 	.search-form {
@@ -128,7 +167,13 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--tk-space-1);
-		margin-block-end: var(--tk-space-4);
+		margin: 0 0 var(--tk-space-4);
+		padding: 0;
+		list-style: none;
+
+		& .tk-count {
+			margin-inline-start: var(--tk-space-1);
+		}
 	}
 
 	.search-hits {
@@ -199,20 +244,33 @@
 	}
 
 	/* ── The header's typeahead ────────────────────────────────────── */
+	/* The panel is a popover, in the top layer above the header and the
+	 * notices, anchored under the search box. */
+	.tk-search {
+		anchor-name: --tk-search;
+	}
+
 	.search-suggest {
-		position: absolute;
-		inset-block-start: calc(100% + var(--tk-space-1));
-		inset-inline: 0;
-		z-index: var(--tk-z-dropdown);
-		min-inline-size: min(28rem, 90vw);
+		position: fixed;
+		position-anchor: --tk-search;
+		inset: auto;
+		inset-block-start: calc(anchor(bottom) + var(--tk-space-1));
+		inset-inline-start: anchor(left);
+		margin: 0;
+		inline-size: max(anchor-size(width), min(28rem, calc(100vw - 2 * var(--tk-space-4))));
+		max-block-size: min(32rem, 80vh);
+		overflow-y: auto;
+		position-try-fallbacks: flip-inline;
 		padding: var(--tk-space-1);
 		border: 1px solid var(--tk-border);
 		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
 		background: var(--tk-surface-overlay);
 		box-shadow: var(--tk-shadow-overlay);
+		color: var(--tk-text-1);
 
-		&:empty {
-			display: none;
+		@media (max-width: 40rem) {
+			inset-inline: var(--tk-space-2);
+			inline-size: auto;
 		}
 	}
 

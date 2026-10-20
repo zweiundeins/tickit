@@ -64,7 +64,7 @@ templ SavedFiltersRegion(d SavedFilters) {
 						<tr>
 							<td>
 								@ui.Button(ui.ButtonProps{Label: starLabel(f), Icon: "star", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Pressed: pressed(f.Starred), Class: "filters-star",
-									Attrs: templ.Attributes{"data-act": "star", "data-id": f.ID, "data-name": f.Name}})
+									Attrs: templ.Attributes{"data-act": "star", "data-id": f.ID, "data-name": f.Name, "data-attr:aria-busy": starBusy}})
 							</td>
 							<td class="tk-grow"><a href={ templ.SafeURL(savedHref(f)) }>{ f.Name }</a></td>
 							<td class="filters-what">{ d.describe(f) }</td>

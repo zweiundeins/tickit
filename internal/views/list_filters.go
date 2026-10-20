@@ -105,10 +105,12 @@ var (
 	filtersSignals = `{_filters: {op: '', id: '', name: '', star: false, msg: ''}}`
 	filtersClick   = `((b) => { if (!b) return false; $_filters.id = b.dataset.id; $_filters.name = b.dataset.name || ''; $_filters.msg = ''; $_filters.star = b.getAttribute('aria-pressed') !== 'true'; if (b.dataset.act !== 'star') { document.getElementById(b.dataset.act + '-filter').showModal(); return false } return true })(evt.target.closest('button[data-act]')) && ` +
 		Act("_filters.op", "/cmd/filters/star", "filter: $_filters.id, star: $_filters.star")
-	renameFilter    = `$_filters.name.trim() && ` + Act("_filters.op", "/cmd/filters/rename", "filter: $_filters.id, name: $_filters.name")
-	deleteFilter    = Act("_filters.op", "/cmd/filters/delete", "filter: $_filters.id")
-	filtersSettled  = Settle("_filters.op", "o.ok ? document.querySelectorAll('#rename-filter[open], #delete-filter[open]').forEach(d => d.close()) : ($_filters.msg = o.msg)")
-	filtersFailed   = Failed("_filters.op")
-	filtersBusy     = Busy("_filters.op")
+	renameFilter   = `$_filters.name.trim() && ` + Act("_filters.op", "/cmd/filters/rename", "filter: $_filters.id, name: $_filters.name")
+	deleteFilter   = Act("_filters.op", "/cmd/filters/delete", "filter: $_filters.id")
+	filtersSettled = Settle("_filters.op", "o.ok ? document.querySelectorAll('#rename-filter[open], #delete-filter[open]').forEach(d => d.close()) : ($_filters.msg = o.msg)")
+	filtersFailed  = Failed("_filters.op")
+	filtersBusy    = Busy("_filters.op")
+	// starBusy marks the star that was pressed pending (MP-09.1).
+	starBusy        = `$_filters.op !== '' && $_filters.id === el.dataset.id ? 'true' : false`
 	filtersReadonly = Pending("_filters.op")
 )

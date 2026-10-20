@@ -321,7 +321,7 @@ func SavedFiltersRegion(d SavedFilters) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					templ_7745c5c3_Err = ui.Button(ui.ButtonProps{Label: starLabel(f), Icon: "star", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Pressed: pressed(f.Starred), Class: "filters-star",
-						Attrs: templ.Attributes{"data-act": "star", "data-id": f.ID, "data-name": f.Name}}).Render(ctx, templ_7745c5c3_Buffer)
+						Attrs: templ.Attributes{"data-act": "star", "data-id": f.ID, "data-name": f.Name, "data-attr:aria-busy": starBusy}}).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

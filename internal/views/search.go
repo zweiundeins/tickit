@@ -123,15 +123,18 @@ func (s Suggestions) allHref() string { return "/search?" + url.Values{"q": {s.Q
 const (
 	// suggest asks for the first hits while the person types, at most
 	// every 300 ms; under two characters it empties the panel.
-	suggest = `el.value.trim().length < 2 ? (document.getElementById('` + SearchSuggestID + `').innerHTML = '') : @get('/search/suggest?q=' + encodeURIComponent(el.value.trim()), {requestCancellation: 'auto'})`
+	suggest = `el.value.trim().length < 2 ? document.getElementById('` + SearchSuggestID + `').hidePopover() : @get('/search/suggest?q=' + encodeURIComponent(el.value.trim()), {requestCancellation: 'auto'})`
 	// suggestKeys: Down moves into the suggestions, Escape empties them.
-	suggestKeys = `evt.key === 'ArrowDown' ? (evt.preventDefault(), document.querySelector('#` + SearchSuggestID + ` a')?.focus()) : evt.key === 'Escape' && (document.getElementById('` + SearchSuggestID + `').innerHTML = '')`
+	suggestKeys = `evt.key === 'ArrowDown' && document.getElementById('` + SearchSuggestID + `').matches(':popover-open') && (evt.preventDefault(), document.querySelector('#` + SearchSuggestID + ` a')?.focus())`
+	// suggestShown opens the panel, in the top layer, once an answer
+	// brought suggestions.
+	suggestShown = `evt.detail.type === 'finished' && ((s) => s.querySelector('a') && el.value.trim().length >= 2 ? s.matches(':popover-open') || s.showPopover() : s.hidePopover())(document.getElementById('` + SearchSuggestID + `'))`
 	// suggestNav moves through the suggestions with Up and Down, Escape
 	// goes back to the box. On the panel.
 	suggestNav = `['ArrowDown', 'ArrowUp', 'Escape'].includes(evt.key) && ((items) => {
 	evt.preventDefault()
 	const box = document.getElementById('tk-search')
-	if (evt.key === 'Escape') { el.innerHTML = ''; box.focus(); return }
+	if (evt.key === 'Escape') { el.hidePopover(); box.focus(); return }
 	const i = items.indexOf(document.activeElement)
 	const next = evt.key === 'ArrowDown' ? items[i + 1] : i > 0 ? items[i - 1] : box
 	next?.focus()
@@ -144,6 +147,7 @@ func SearchBoxAttrs() templ.Attributes {
 	return templ.Attributes{
 		"data-on:input__throttle.300ms.trailing": suggest,
 		"data-on:keydown":                        suggestKeys,
+		"data-on:datastar-fetch":                 suggestShown,
 		"aria-controls":                          SearchSuggestID,
 		"aria-describedby":                       SearchSuggestID + "-count",
 	}

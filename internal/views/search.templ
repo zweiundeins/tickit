@@ -33,6 +33,7 @@ templ SearchBody(p SearchPage) {
 			}
 			@ui.Button(ui.ButtonProps{Label: "Search", Type: "submit", Variant: ui.Primary})
 		</form>
+		@searchKinds(p)
 		<div class="search-layout">
 			<aside class="search-facets" aria-label="Filters">
 				@searchFacets(p)
@@ -48,14 +49,6 @@ templ SearchBody(p SearchPage) {
 // space, label and person; a chosen one links to its removal.
 templ searchFacets(p SearchPage) {
 	{{ prm := p.Results.Params }}
-	{{ counts := p.Results.Results.Counts }}
-	<nav class="tk-tabnav" aria-label="Kinds">
-		<ul class="search-kinds">
-			@facetLink("All", "", prm.Kind == "", prm.Href(func(x *SearchParams) { x.Kind, x.Page = "", 1 }))
-			@facetLink("Issues", countText(counts[search.Issue]), prm.Kind == "issue", prm.Href(func(x *SearchParams) { x.Kind, x.Page = "issue", 1 }))
-			@facetLink("Pages", countText(counts[search.Page]), prm.Kind == "page", prm.Href(func(x *SearchParams) { x.Kind, x.Page = "page", 1 }))
-		</ul>
-	</nav>
 	if len(p.Projects) > 0 && prm.Kind != "page" {
 		@facetGroup("Project") {
 			for _, pr := range p.Projects {
@@ -211,14 +204,14 @@ templ snippet(h search.Hit) {
 // SearchSuggestSlot is the typeahead's empty panel, for the header's
 // search form (FR-57.1).
 templ SearchSuggestSlot() {
-	<div id={ SearchSuggestID } class="search-suggest" data-on:keydown={ suggestNav }></div>
+	<div id={ SearchSuggestID } class="search-suggest" popover="auto" data-on:keydown={ suggestNav }></div>
 	<p id={ SearchSuggestID + "-count" } class="visually-hidden" aria-live="polite"></p>
 }
 
 // SearchSuggest is the typeahead's panel: the first issues and pages,
 // and the way to every result.
 templ SearchSuggest(s Suggestions) {
-	<div id={ SearchSuggestID } class="search-suggest" data-on:keydown={ suggestNav }>
+	<div id={ SearchSuggestID } class="search-suggest" popover="auto" data-on:keydown={ suggestNav }>
 		if len(s.Issues) > 0 {
 			<p class="tk-eyebrow search-suggest__label" id="search-suggest-issues">Issues</p>
 			<ul class="search-suggest__group" aria-labelledby="search-suggest-issues">
@@ -295,4 +288,17 @@ func facetHref(p SearchParams, name, value string) string {
 			x.People = list
 		}
 	})
+}
+
+// searchKinds are the kinds with their counts (FR-57.2).
+templ searchKinds(p SearchPage) {
+	{{ prm := p.Results.Params }}
+	{{ counts := p.Results.Results.Counts }}
+	<nav aria-label="Kinds">
+		<ul class="search-kinds">
+			@facetLink("All", "", prm.Kind == "", prm.Href(func(x *SearchParams) { x.Kind, x.Page = "", 1 }))
+			@facetLink("Issues", countText(counts[search.Issue]), prm.Kind == "issue", prm.Href(func(x *SearchParams) { x.Kind, x.Page = "issue", 1 }))
+			@facetLink("Pages", countText(counts[search.Page]), prm.Kind == "page", prm.Href(func(x *SearchParams) { x.Kind, x.Page = "page", 1 }))
+		</ul>
+	</nav>
 }
