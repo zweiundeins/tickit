@@ -8,6 +8,7 @@ import (
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/writer"
 
+	"github.com/zweiundeins/tickit/internal/collab"
 	"github.com/zweiundeins/tickit/internal/doc"
 	"github.com/zweiundeins/tickit/internal/tracker"
 )
@@ -23,7 +24,7 @@ const (
 
 // Checkpoint is how many commits page_doc's document may lag behind the
 // head: a reader that misses the cache applies at most that many.
-const Checkpoint = 50
+const Checkpoint = collab.Checkpoint
 
 // spacesProjector keeps spaces.
 var spacesProjector = events.NewProjector(SpaceStream, "wiki_spaces", spacesVersion,
@@ -218,13 +219,7 @@ var versionsProjector = events.NewProjector(PageStream, "wiki_versions", version
 // canonical is a document's JSON as internal/doc writes it: the stored
 // event's JSON escapes <, > and &, the event in a live command does not,
 // and a rebuild must write what the live projection wrote.
-func canonical(raw json.RawMessage) string {
-	d, err := doc.ParseDoc(raw)
-	if err != nil {
-		return string(raw)
-	}
-	return string(marshalDoc(d))
-}
+func canonical(raw json.RawMessage) string { return collab.Canonical(raw) }
 
 func nonNil(s []string) []string {
 	if s == nil {
@@ -233,79 +228,10 @@ func nonNil(s []string) []string {
 	return s
 }
 
-// docsProjector keeps page_doc, page_chips and page_links: the head of
-// each document, with its document as of a checkpoint, and what it
-// refers to.
-var docsProjector = events.NewProjector(PageDocStream, "wiki_docs", docsVersion,
-	events.Handle(DocCreatedType, func(tx *writer.Tx, r events.Record[string, DocCreated]) error {
-		d, err := doc.ParseDoc(r.Data.Doc)
-		if err != nil {
-			return err
-		}
-		if _, err := tx.Exec(`INSERT INTO page_doc (page_id, epoch, version, ref, checkpoint, doc, bytes, blocks, last_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?)
-			ON CONFLICT (page_id) DO UPDATE SET epoch = excluded.epoch, version = excluded.version, ref = '', checkpoint = excluded.checkpoint,
-			doc = excluded.doc, bytes = excluded.bytes, blocks = excluded.blocks, last_at = excluded.last_at`,
-			r.ID, r.Data.Epoch, r.Version, r.Version, string(marshalDoc(d)), d.JSONLen(), d.Blocks(), millis(r.At)); err != nil {
-			return err
-		}
-		docs.put(docKey{r.ID, r.Data.Epoch, r.Version, ""}, d)
-		tx.Touch(DocTopic(r.ID))
-		return refsChanged(tx, r.ID, d)
-	}),
-	events.Handle(DocSnapshotType, func(tx *writer.Tx, r events.Record[string, DocSnapshot]) error {
-		d, err := doc.ParseDoc(r.Data.Doc)
-		if err != nil {
-			return err
-		}
-		_, err = tx.Exec(`INSERT INTO page_doc (page_id, epoch, version, ref, checkpoint, doc, bytes, blocks, last_at) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?)
-			ON CONFLICT (page_id) DO UPDATE SET epoch = excluded.epoch, version = excluded.version, ref = '', checkpoint = excluded.checkpoint,
-			doc = excluded.doc, bytes = excluded.bytes, blocks = excluded.blocks, last_at = excluded.last_at`,
-			r.ID, r.Data.Epoch, r.Version, r.Version, string(marshalDoc(d)), d.JSONLen(), d.Blocks(), millis(r.At))
-		if err != nil {
-			return err
-		}
-		docs.put(docKey{r.ID, r.Data.Epoch, r.Version, ""}, d)
-		return refsChanged(tx, r.ID, d)
-	}),
-	events.Handle(DocCommittedType, func(tx *writer.Tx, r events.Record[string, DocCommitted]) error {
-		var epoch, ref string
-		var version, checkpoint int64
-		if err := tx.QueryRow(`SELECT epoch, version, ref, checkpoint FROM page_doc WHERE page_id = ?`, r.ID).Scan(&epoch, &version, &ref, &checkpoint); err != nil {
-			return err
-		}
-		d, ok := docs.get(docKey{r.ID, epoch, r.Version, r.Data.Ref})
-		if !ok {
-			// A rebuild, or a cache that let it go: the document before,
-			// and this commit's steps.
-			before, err := headDoc(tx.Context(), tx, r.ID, epoch, version, ref, false)
-			if err != nil {
-				return err
-			}
-			steps, err := doc.ParseSteps(r.Data.Steps)
-			if err != nil {
-				return err
-			}
-			if d, err = doc.Apply(before, steps); err != nil {
-				return err
-			}
-			docs.put(docKey{r.ID, epoch, r.Version, r.Data.Ref}, d)
-		}
-		if r.Version-checkpoint >= Checkpoint {
-			if _, err := tx.Exec(`UPDATE page_doc SET checkpoint = ?, doc = ? WHERE page_id = ?`, r.Version, string(marshalDoc(d)), r.ID); err != nil {
-				return err
-			}
-		}
-		if _, err := tx.Exec(`UPDATE page_doc SET version = ?, ref = ?, bytes = ?, blocks = ?, last_at = ? WHERE page_id = ?`,
-			r.Version, r.Data.Ref, d.JSONLen(), d.Blocks(), millis(r.At), r.ID); err != nil {
-			return err
-		}
-		tx.Touch(DocTopic(r.ID))
-		if len(r.Data.Steps) <= 2 { // [] : nothing changed
-			return nil
-		}
-		return refsChanged(tx, r.ID, d)
-	}),
-).Tables("page_doc", "page_chips", "page_links")
+// docsProjector keeps page_doc (collab's head table), page_chips and
+// page_links: the head of each document, with its document as of a
+// checkpoint, and what it refers to.
+var docsProjector = pageDocs.Projector("wiki_docs", docsVersion, refsChanged, "page_chips", "page_links")
 
 // refsChanged brings page_chips and page_links to what d refers to, and
 // touches what shows them: the page's chips, the issues whose lists of

@@ -47,7 +47,7 @@ func cutVersion(tx *writer.Tx, m events.Meta, page string, s PageState, message,
 		}
 		return false, nil
 	}
-	head, err := headDoc(ctx, tx, page, ds.Epoch, ds.Version, ds.Ref, false)
+	head, err := pageDocs.StateDoc(ctx, tx, page, ds)
 	if err != nil {
 		return false, err
 	}
@@ -111,46 +111,14 @@ func (c CutVersion) Apply(tx *writer.Tx) error {
 }
 
 // commitWhole replaces a page's document with d in one commit made on the
-// head: the one step of doc.RestoreStep, so that open editors keep their
-// places outside what changed. The client is "" (no tab); ref names it.
+// head (collab.CommitWhole): open editors keep their places outside what
+// changed. The client is "" (no tab); ref names it.
 func commitWhole(tx *writer.Tx, by tabs.By, page string, d doc.Doc, ref string) error {
-	ctx := tx.Context()
-	ds, err := docState(tx, page)
-	if err != nil {
-		return err
+	if by.At.IsZero() {
+		by.At = at(by)
 	}
-	head, err := headDoc(ctx, tx, page, ds.Epoch, ds.Version, ds.Ref, false)
-	if err != nil {
-		return err
-	}
-	step := doc.RestoreStep(head, d)
-	if step == nil {
-		return nil
-	}
-	next, err := step.Apply(head)
-	if err != nil {
-		return err
-	}
-	if err := rules.Check(head, next); err != nil {
-		var re *doc.RuleError
-		if errors.As(err, &re) {
-			return tabs.Refuse("body", re.Msg)
-		}
-		return err
-	}
-	raw, err := doc.MarshalSteps([]doc.Step{step})
-	if err != nil {
-		return err
-	}
-	v := ds.Version + 1
-	docs.put(docKey{page, ds.Epoch, v, ref}, next)
-	e := DocCommitted{Ref: ref, Base: ds.Version, Steps: raw}
-	if err := events.Execute(Store(), tx, commitDecider, PageDocStream.ID(page), events.Exactly(ds.Version), e, meta(by)); err != nil {
-		return err
-	}
-	epoch, rec := ds.Epoch, commitRec{Ref: ref, Base: ds.Version, Steps: []doc.Step{step}, Raw: raw}
-	tx.AfterCommit(func() { commits.put(commitKey{page, epoch, v}, rec) })
-	return nil
+	_, err := pageDocs.CommitWhole(tx, by, page, d, ref, "body", nil)
+	return err
 }
 
 // RestoreVersion makes an old version the page's document again (FR-89):

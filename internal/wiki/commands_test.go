@@ -13,6 +13,7 @@ import (
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/zweiundeins/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/collab"
 	"github.com/zweiundeins/tickit/internal/search"
 	"github.com/zweiundeins/tickit/internal/tracker"
 )
@@ -369,8 +370,7 @@ func TestFold(t *testing.T) {
 	if n := e.row(`SELECT count(*) FROM lith_events WHERE stream = 'pagedoc' AND stream_id = ? AND type = 'pagedoc.committed'`, p); n != "5" {
 		t.Errorf("%s commits left", n)
 	}
-	docs.reset()
-	commits.reset()
+	collab.ResetCaches()
 	if got := e.head(p); got != before {
 		t.Errorf("head after the fold %s, want %s", got, before)
 	}

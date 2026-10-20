@@ -1,4 +1,4 @@
-package wiki
+package collab
 
 import (
 	"container/list"
@@ -66,20 +66,21 @@ func (c *lru[K, V]) put(k K, v V) {
 	}
 }
 
-// docKey names one immutable document: a page's at a version of an epoch,
-// with the ref of the commit that made it. A commit that a failed batch
-// took back made a document under its own ref, which no committed version
-// names, so the cache never hands it out (docs/editor.md).
+// docKey names one immutable document: a subject's of a kind at a
+// version of an epoch, with the ref of the commit that made it. A commit
+// that a failed batch took back made a document under its own ref, which
+// no committed version names, so the cache never hands it out
+// (docs/editor.md).
 type docKey struct {
-	page, epoch string
-	version     int64
-	ref         string
+	kind, id, epoch string
+	version         int64
+	ref             string
 }
 
-// commitKey names a committed commit of a page's document.
+// commitKey names a committed commit of a subject's document.
 type commitKey struct {
-	page, epoch string
-	version     int64
+	kind, id, epoch string
+	version         int64
 }
 
 // commitRec is a commit as the writer applied it: its steps parsed, for
@@ -93,7 +94,7 @@ type commitRec struct {
 }
 
 // Cache sizes: the shared documents of the writer, the views and the jobs
-// (docs/editor.md), and the commits since a recent base.
+// (docs/editor.md), and the commits since a recent base, of every Kind.
 const (
 	DocCacheBytes    = 96 << 20
 	CommitCacheBytes = 16 << 20
@@ -106,6 +107,13 @@ var (
 
 // CacheStats are the document cache's hits and misses since start.
 func CacheStats() (hits, misses int64) { return docs.hits.Load(), docs.misses.Load() }
+
+// ResetCaches empties the document and commit caches, as a process that
+// starts again has them: for tests of reads that miss them.
+func ResetCaches() {
+	docs.reset()
+	commits.reset()
+}
 
 // reset empties the cache.
 func (c *lru[K, V]) reset() {

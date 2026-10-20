@@ -349,7 +349,7 @@ func (s *Server) editorView(ctx context.Context, q sqlite.Querier, actor people.
 func editorHost(ctx context.Context, q sqlite.Querier, actor people.Person, page, tab string) (views.EditorHost, error) {
 	host := views.EditorHost{Page: page, Batches: "[]", Chips: "{}", Images: imagesJSON(), State: "ok"}
 	row, err := wiki.Editor(ctx, q, tab, actor.ID)
-	if err != nil || row.Page != page {
+	if err != nil || row.ID != page {
 		host.State = "reset" // the tab's row is gone: a reset, or a sweep
 		return host, nil
 	}

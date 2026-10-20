@@ -10,6 +10,7 @@ import (
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/writer"
 
+	"github.com/zweiundeins/tickit/internal/collab"
 	"github.com/zweiundeins/tickit/internal/tracker"
 )
 
@@ -103,8 +104,7 @@ func TestRebuild(t *testing.T) {
 	for _, p := range []string{a, b, c, home} {
 		heads[p] = e.head(p)
 	}
-	docs.reset()
-	commits.reset()
+	collab.ResetCaches()
 	e.must(writer.Func(func(tx *writer.Tx) error {
 		if _, err := tx.Exec(`UPDATE lith_projections SET version = version + 100 WHERE name LIKE 'wiki_%' OR name = 'search_pages'`); err != nil {
 			return err
@@ -135,8 +135,7 @@ func TestRebuild(t *testing.T) {
 			t.Errorf("%s rebuilt differs:\n%s\nwas\n%s", tb, got, before[tb])
 		}
 	}
-	docs.reset()
-	commits.reset()
+	collab.ResetCaches()
 	for p, want := range heads {
 		if got := e.head(p); got != want {
 			t.Errorf("head of %s rebuilt %s, was %s", p, got, want)

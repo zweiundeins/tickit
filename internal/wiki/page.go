@@ -407,12 +407,8 @@ func createPage(tx *writer.Tx, by tabs.By, p newPage) error {
 	if err := events.Execute(Store(), tx, createPageDecider, PageStream.ID(p.id), events.NoStream, e, m); err != nil {
 		return err
 	}
-	raw := marshalDoc(d)
-	epoch, err := newEpoch(tx)
+	raw, err := pageDocs.Create(tx, p.id, d, m)
 	if err != nil {
-		return err
-	}
-	if err := events.Execute(Store(), tx, createDocDecider, PageDocStream.ID(p.id), events.NoStream, DocCreated{Epoch: epoch, Doc: raw}, m); err != nil {
 		return err
 	}
 	msg, _ := text(p.message, 0, MaxMessage)
