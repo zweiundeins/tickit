@@ -5,6 +5,7 @@
 [![CGO_ENABLED=0](https://img.shields.io/badge/CGO__ENABLED-0-00ADD8?logo=go&logoColor=white)](#develop)
 [![lith](https://img.shields.io/badge/runtime-lith-c2410c)](https://github.com/zweiundeins/lith)
 [![Datastar 1.0](https://img.shields.io/badge/Datastar-1.0-6c4fbb)](https://data-star.dev)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Live demo](https://img.shields.io/badge/demo-tickit.zweiundeins.gmbh-0e7490)](https://tickit.zweiundeins.gmbh)
 
 **An issue tracker and a wiki that several people use at once.** Open a board, a page or an issue and see the others on it, their moves on the board, their keystrokes in the page and their changes to the issue as they happen. tickit is the public demo of [lith](https://github.com/zweiundeins/lith), built by [zwei und eins gmbh](https://zweiundeins.gmbh).
@@ -107,7 +108,7 @@ Built on [lith](https://github.com/zweiundeins/lith), with components from [Star
 
 ## Licences
 
-Third-party code and assets keep their licences: Datastar and Rocket (MIT, `internal/web/static/vendor`), Starbase's components (MIT, `internal/web/static/vendor/starbase`), ProseMirror and prosemirror-collab-commit (MIT, `internal/web/static/editor/LICENSES.txt`), Pixelify Sans and JetBrains Mono (SIL OFL, `internal/web/static/fonts`).
+Code: [MIT](LICENSE), © zwei und eins gmbh and tickit contributors. Third-party code and assets keep their licences: Datastar and Rocket (MIT, `internal/web/static/vendor`), Starbase's components (MIT, `internal/web/static/vendor/starbase`), ProseMirror and prosemirror-collab-commit (MIT, `internal/web/static/editor/LICENSES.txt`), Pixelify Sans and JetBrains Mono (SIL OFL, `internal/web/static/fonts`).
 
 ## Maintainer
 
