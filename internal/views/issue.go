@@ -335,6 +335,46 @@ func joinComma(list []string) string { return strings.Join(list, ", ") }
 // The hints under the text fields: what the markup reads.
 const (
 	descHint    = "**bold**, _italic_, `code`, [a link](https://…), - lists, [[WEB-12]] for an issue, @ and a person's id to mention them. Ctrl Enter or a click outside saves, Escape cancels."
-	markupHint  = "**bold**, _italic_, `code`, [a link](https://…), - lists, [[WEB-12]] for an issue, @ and a person's id to mention them."
+	markupHint  = "**bold**, _italic_, `code`, [a link](https://…), - lists, [[WEB-12]] for an issue."
 	commentHint = "**bold**, _italic_, `code`, links, - lists, @ to mention someone, [[WEB-12]] for an issue. Ctrl Enter sends."
 )
+
+// hiddenText says who hid an issue, when and why, to the moderators who
+// still see it.
+func hiddenText(m Issue) string {
+	s := m.person(m.DeletedBy).Name + " hid it " + ui.Ago(m.Deleted, m.Now)
+	if m.HiddenReason != "" {
+		s += ": " + m.HiddenReason
+	}
+	return s + ". Only moderators see it; the moderation page restores it."
+}
+
+// The names of the side column's menus say the field and its value, so
+// that what a menu button shows is part of its name (WCAG 2.5.3).
+func orNone(s string) string {
+	if s == "" {
+		return "None"
+	}
+	return s
+}
+
+func assigneeName(m Issue) string {
+	if m.Assignee == "" {
+		return "Unassigned"
+	}
+	return m.person(m.Assignee).Name
+}
+
+func epicName(m Issue) string {
+	if m.Parent == nil {
+		return "None"
+	}
+	return m.Parent.Key + " " + m.Parent.Summary
+}
+
+func sprintLabel(m Issue) string {
+	if m.Sprint == "" {
+		return "Backlog"
+	}
+	return m.sprintName(m.Sprint)
+}

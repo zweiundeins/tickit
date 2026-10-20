@@ -19,8 +19,9 @@
 		gap: var(--tk-space-2);
 		margin-block-end: var(--tk-space-4);
 
+		/* The text field gives way first, so Clear stays on the line. */
 		& > .tk-input-wrap {
-			flex: 1 1 16rem;
+			flex: 1 1 10rem;
 			max-inline-size: 22rem;
 		}
 	}
@@ -92,13 +93,6 @@
 				flex: none;
 			}
 		}
-	}
-
-	/* Visually hidden text in a cell is absolute: the scrolling region is
-	 * its containing block, or it escapes the region's clip. */
-	.list-region .tk-table-wrap,
-	.filters-page .tk-table-wrap {
-		position: relative;
 	}
 
 	.list-table tbody tr[data-href] {
@@ -178,6 +172,7 @@
 
 	.search-hits {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-1);
 		margin: 0;
 		padding: 0;
@@ -217,6 +212,11 @@
 		font-family: var(--tk-font-mono);
 		font-size: var(--tk-text-xs);
 		font-weight: var(--tk-weight-regular);
+	}
+
+	/* A space's name is data: the UI face. */
+	.search-hit__place {
+		font-family: var(--tk-font-ui);
 	}
 
 	.search-hit__snippet {
@@ -300,11 +300,17 @@
 			background: var(--tk-surface-hover);
 		}
 
-		& .search-hit__key {
+		& .search-hit__key,
+		& .search-hit__place {
 			flex: none;
 		}
 
-		& span:last-child {
+		& .search-hit__place {
+			margin-inline-start: auto;
+		}
+
+		& .search-suggest__title {
+			min-inline-size: 0;
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;

@@ -239,7 +239,7 @@ func HomeWork(w Work) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</section><section class=\"tk-box\" aria-labelledby=\"home-recent\"><header><h2 class=\"tk-eyebrow\" id=\"home-recent\">Recently edited by you</h2></header>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</section><section class=\"tk-box tk-home__wide\" aria-labelledby=\"home-recent\"><header><h2 class=\"tk-eyebrow\" id=\"home-recent\">Recently edited by you</h2></header>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

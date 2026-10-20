@@ -349,7 +349,7 @@ if (status === '403') return
 const li = el.bd.slot($_board.pcard)
 el.bd.mark(li, '')
 el.bd.back(li)
-$_board.problem = status === '429' ? 'Too many changes at once. Wait a moment.' : status === '503' ? 'The server is restarting. Try again in a moment.' : 'This did not go through.'
+$_board.problem = status === '429' ? 'Too many changes at once. Wait a moment.' : status === '503' ? ` + Unavailable + ` : 'This did not go through.'
 $_board.retry = $_board.op
 $_board.op = ''
 $_board.pcard = ''`

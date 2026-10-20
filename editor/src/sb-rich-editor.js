@@ -46,7 +46,7 @@ const btn = (value, label, content, { keys, toggle = true } = {}) =>
 const txt = (value, label) => `<button type="button" value="${value}" class="text" tabindex="-1">${label}</button>`
 
 const MARKUP = `<div class="toolbar" part="toolbar" role="toolbar" aria-label="Formatting">
-<span class="group">${btn('h1', 'Heading 1', 'H1')}${btn('h2', 'Heading 2', 'H2')}${btn('h3', 'Heading 3', 'H3')}</span>
+<span class="group">${btn('h1', 'Heading H1', 'H1')}${btn('h2', 'Heading H2', 'H2')}${btn('h3', 'Heading H3', 'H3')}</span>
 <span class="group">${btn('strong', 'Bold', '<b>B</b>', { keys: 'Mod+B' })}${btn('em', 'Italic', '<i>I</i>', { keys: 'Mod+I' })}${btn('strike', 'Strikethrough', '<s>S</s>', { keys: 'Mod+Shift+S' })}${btn('code', 'Inline code', '<code>&lt;/&gt;</code>', { keys: 'Mod+E' })}${btn('link', 'Link', icon(I.link), { keys: 'Mod+K', toggle: false })}</span>
 <span class="group">${btn('bullet', 'Bulleted list', icon(I.bullet))}${btn('ordered', 'Numbered list', icon(I.ordered))}${btn('task', 'Task list', icon(I.task))}</span>
 <span class="group">${btn('quote', 'Quote', icon(I.quote))}${btn('codeblock', 'Code block', icon(I.codeblock))}${btn('rule', 'Horizontal rule', icon(I.rule), { toggle: false })}${btn('table', 'Table', icon(I.table), { toggle: false })}${btn('image', 'Image', icon(I.image), { toggle: false })}</span>

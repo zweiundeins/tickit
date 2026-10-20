@@ -24,8 +24,7 @@ type Work struct {
 	Spaces   []Space
 }
 
-// Space is a space the home page links to. Until the wiki brings its
-// names, Name is the key.
+// Space is a space the home page links to.
 type Space struct {
 	Key, Name string
 }

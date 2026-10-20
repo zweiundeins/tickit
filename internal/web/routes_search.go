@@ -76,6 +76,7 @@ type scopes struct {
 	projects []tracker.Project
 	ids      []string          // the projects' ids
 	spaces   map[string]string // space key to id
+	names    map[string]string // space key to name
 }
 
 func readableScopes(ctx context.Context, q sqlite.Querier, actor people.Person) (scopes, error) {
@@ -87,18 +88,20 @@ func readableScopes(ctx context.Context, q sqlite.Querier, actor people.Person) 
 	if sc.projects, err = tracker.Projects(ctx, q, sc.ids); err != nil {
 		return sc, err
 	}
-	rows, err := q.QueryContext(ctx, `SELECT id, key FROM scopes WHERE kind = 'space' ORDER BY key`)
+	rows, err := q.QueryContext(ctx, `SELECT c.id, c.key, coalesce(s.name, c.key) FROM scopes c LEFT JOIN spaces s ON s.id = c.id WHERE c.kind = 'space' ORDER BY c.key`)
 	if err != nil {
 		return sc, err
 	}
 	all := map[string]string{}
+	sc.names = map[string]string{}
 	for rows.Next() {
-		var id, key string
-		if err := rows.Scan(&id, &key); err != nil {
+		var id, key, name string
+		if err := rows.Scan(&id, &key, &name); err != nil {
 			rows.Close()
 			return sc, err
 		}
 		all[key] = id
+		sc.names[key] = name
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
@@ -182,7 +185,7 @@ func searchData(ctx context.Context, q sqlite.Querier, sc scopes, p views.Search
 	if err != nil {
 		return views.SearchResults{}, err
 	}
-	return views.SearchResults{Params: p, Results: res, Issues: issues, Now: time.Now()}, nil
+	return views.SearchResults{Params: p, Results: res, Issues: issues, Spaces: sc.names, Now: time.Now()}, nil
 }
 
 // searchView is the results' shared view: it renders again when the index
@@ -286,6 +289,7 @@ func (s *Server) searchSuggest(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		sg.Spaces = sc.names
 		q := sc.query(views.SearchParams{Q: text})
 		q.Limit, q.Offset = search.Suggest, 0
 		for _, k := range search.Kinds {

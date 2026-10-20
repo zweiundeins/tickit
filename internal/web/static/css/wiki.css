@@ -21,6 +21,7 @@
 
 	.wk-head {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 		flex: 1 1 20rem;
 		min-inline-size: 0;
@@ -41,15 +42,22 @@
 		border-block-end: 1px solid var(--tk-border-subtle);
 	}
 
+	/* The face stays beside the words, which wrap next to it. */
 	.wk-byline {
 		display: flex;
-		flex-wrap: wrap;
 		align-items: center;
 		gap: var(--tk-space-2);
 		color: var(--tk-text-2);
 		font-size: var(--tk-text-sm);
 
+		& > .tk-av {
+			flex: none;
+			align-self: start;
+		}
+
 		& > span {
+			flex: 1 1 auto;
+			min-inline-size: 0;
 			display: inline-flex;
 			flex-wrap: wrap;
 			align-items: baseline;
@@ -135,6 +143,7 @@
 	/* Linked issues and pages that link here (FR-80.1, FR-103.2). */
 	.wk-refs {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
 
 		&:empty {
@@ -144,6 +153,7 @@
 
 	.wk-refs__group {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 		padding-block-start: var(--tk-space-3);
 		border-block-start: 1px solid var(--tk-border-subtle);
@@ -157,6 +167,11 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
+
+		& > li {
+			min-inline-size: 0;
+			max-inline-size: 100%;
+		}
 	}
 
 	.wk-linked {
@@ -172,6 +187,7 @@
 	/* ── Comments (FR-90) ──────────────────────────────────────────── */
 	.wk-comments {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
 		padding-block-start: var(--tk-space-4);
 		border-block-start: 1px solid var(--tk-border-subtle);
@@ -180,6 +196,7 @@
 	.wk-thread,
 	.wk-replies {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-4);
 		margin: 0;
 		padding: 0;
@@ -195,6 +212,7 @@
 
 	.wk-comment {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-1);
 	}
 
@@ -229,6 +247,7 @@
 
 	.wk-comment-form {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 		justify-items: start;
 
@@ -248,6 +267,7 @@
 	/* ── The tree in the sidebar ───────────────────────────────────── */
 	.wk-tree {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 	}
 
@@ -323,10 +343,10 @@
 		display: grid;
 		gap: var(--tk-space-3);
 		justify-items: start;
-		overflow-x: auto;
+		min-inline-size: 0;
 
-		& table {
-			inline-size: 100%;
+		& .tk-table-wrap {
+			justify-self: stretch;
 		}
 	}
 
@@ -340,6 +360,7 @@
 
 		& li {
 			display: inline-flex;
+			flex: none;
 			align-items: center;
 			gap: var(--tk-space-1);
 		}
@@ -406,9 +427,11 @@
 			border-block-end-color: var(--tk-border);
 		}
 
+		/* Focus: the line under the title, 2px in the focus colour. */
 		&:focus-visible {
 			outline: none;
-			border-block-end-color: var(--tk-accent);
+			border-block-end-color: var(--tk-focus);
+			box-shadow: 0 1px 0 var(--tk-focus);
 		}
 	}
 

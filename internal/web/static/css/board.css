@@ -34,6 +34,7 @@
 		position: relative;
 		isolation: isolate;
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		grid-template-rows: auto 1fr;
 		min-block-size: 16rem;
 		scroll-snap-align: start;
@@ -658,6 +659,7 @@
 	.tk-bd {
 		position: relative;
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
 
 		&.is-dragging {
@@ -824,6 +826,21 @@
 		display: none;
 	}
 
+	/* Said under the lanes while they hold no card: a filter that matches
+	 * nothing, or a board without issues. */
+	.tk-bd__none {
+		display: none;
+		align-items: center;
+		gap: var(--tk-space-2);
+		margin: 0;
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+	}
+
+	#board-lanes:not(:has(.tk-card)) ~ .tk-bd__none {
+		display: flex;
+	}
+
 	.tk-bd__help {
 		font-size: var(--tk-text-xs);
 	}
@@ -836,6 +853,7 @@
 	.tk-bl {
 		position: relative;
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-4);
 	}
 
@@ -863,6 +881,7 @@
 
 	.tk-bl__sections {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-5);
 	}
 
@@ -902,6 +921,7 @@
 
 	.tk-blsec__rows {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 1px;
 		margin: 0;
 		padding: 0 var(--tk-space-2) var(--tk-space-2);
@@ -942,8 +962,10 @@
 			opacity: 0.6;
 		}
 
-		& .tk-lozenge {
+		& .tk-lozenge,
+		& .tk-card__key {
 			flex: none;
+			white-space: nowrap;
 		}
 
 		& .tk-card__epic {

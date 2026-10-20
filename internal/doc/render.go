@@ -183,9 +183,9 @@ func (w htmlWriter) wrap(n *Node, extra string, body func()) {
 		w.s("</ul>")
 	case "task_item":
 		if n.AttrBool("checked") {
-			w.s(`<li class="task-item" data-checked="true"` + extra + `><input type="checkbox" disabled checked><div>`)
+			w.s(`<li class="task-item" data-checked="true"` + extra + `><input type="checkbox" aria-label="Done" disabled checked><div>`)
 		} else {
-			w.s(`<li class="task-item" data-checked="false"` + extra + `><input type="checkbox" disabled><div>`)
+			w.s(`<li class="task-item" data-checked="false"` + extra + `><input type="checkbox" aria-label="Done" disabled><div>`)
 		}
 		body()
 		w.s("</div></li>")

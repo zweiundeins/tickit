@@ -30,7 +30,7 @@ The Go renderer (reader view, comments, descriptions, versions) and the browser'
 | bullet_list, ordered_list | `<ul>`, `<ol start="3">` (`start` omitted when 1) |
 | list_item | `<li>` |
 | task_list | `<ul class="task-list">` |
-| task_item | `<li class="task-item" data-checked="true">` (or `"false"`) holding `<input type="checkbox" disabled checked>` (`checked` only when checked; the editor's node view makes it clickable) then the content in `<div>` |
+| task_item | `<li class="task-item" data-checked="true">` (or `"false"`) holding `<input type="checkbox" aria-label="Done" disabled checked>` (`checked` only when checked; the editor's node view makes it clickable) then the content in `<div>` |
 | table, table_row | `<table><tbody>` with `<tr>` |
 | table_cell, table_header | `<td>`, `<th>`, with `colspan` and `rowspan` when not 1 |
 | image | `<figure class="doc-image"><img src="/img/lib/<imageId>" alt="…" loading="lazy"></figure>` |

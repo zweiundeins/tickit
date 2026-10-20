@@ -76,7 +76,11 @@ func Failed(op string) string {
 }
 
 // problem is what the page says of a request that reached no outcome.
-const problem = `evt.detail.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : evt.detail.argsRaw.status === '503' ? 'The server is restarting. Try again in a moment.' : 'This did not go through. Try again in a moment.'`
+const problem = `evt.detail.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : evt.detail.argsRaw.status === '503' ? ` + Unavailable + ` : 'This did not go through. Try again in a moment.'`
+
+// Unavailable is what a page says of a 503: the demo's reset while the
+// demo alert says one runs, else a restart.
+const Unavailable = `(document.querySelector('#` + DemoAlertID + `[data-resetting]') ? 'The demo is resetting. Try again in a minute.' : 'The server is restarting. Try again in a moment.')`
 
 // The rename form of the person menu (FR-121).
 var (
@@ -130,3 +134,20 @@ var (
 	reconnectHidden = `!$_stale`
 	problemHidden   = `!$_problem`
 )
+
+// ConfirmID is the document's dialog that asks before an action that
+// cannot be taken back (Ask).
+const ConfirmID = "tk-confirm"
+
+// Ask runs act once the person confirms question in the document's
+// confirm dialog, whose button says label. The dialog clicks the asking
+// element again, marked, and the focus goes back to it when the dialog
+// closes. question and label are constants, never a person's text.
+func Ask(question, label, act string) string {
+	return `el.dataset.asked ? (delete el.dataset.asked, ` + act + `) : ((d) => { d.querySelector('.tk-confirm__text').textContent = ` + jsString(question) +
+		`; d.querySelector('[data-confirm] .tk-btn__label').textContent = ` + jsString(label) + `; d.asker = el; d.showModal() })(document.getElementById('` + ConfirmID + `'))`
+}
+
+// confirmed is the confirm dialog's button: it closes the dialog and
+// clicks the element that asked, marked as confirmed.
+const confirmed = `((b) => { el.closest('dialog').close(); if (b?.isConnected) { b.dataset.asked = '1'; b.click() } })(el.closest('dialog').asker)`

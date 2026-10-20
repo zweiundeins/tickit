@@ -23,9 +23,9 @@ templ doc(p Props, carets bool) {
 		}
 	</p>
 	<ul class="task-list">
-		<li class="task-item" data-checked="true"><input type="checkbox" disabled checked/><div><p>Run the browser tests in Chromium, Firefox and WebKit</p></div></li>
-		<li class="task-item" data-checked="true"><input type="checkbox" disabled checked/><div><p>Check the contrast test in both themes</p></div></li>
-		<li class="task-item" data-checked="false"><input type="checkbox" disabled/><div><p>Read the <a href="https://lith.zweiundeins.gmbh/docs" rel="nofollow ugc noopener" title="lith.zweiundeins.gmbh">deploy guide</a> once more</p></div></li>
+		<li class="task-item" data-checked="true"><input type="checkbox" aria-label="Done" disabled checked/><div><p>Run the browser tests in Chromium, Firefox and WebKit</p></div></li>
+		<li class="task-item" data-checked="true"><input type="checkbox" aria-label="Done" disabled checked/><div><p>Check the contrast test in both themes</p></div></li>
+		<li class="task-item" data-checked="false"><input type="checkbox" aria-label="Done" disabled/><div><p>Read the <a href="https://lith.zweiundeins.gmbh/docs" rel="nofollow ugc noopener" title="lith.zweiundeins.gmbh">deploy guide</a> once more</p></div></li>
 	</ul>
 	<h3>What changed</h3>
 	<ol>
@@ -294,7 +294,7 @@ templ issueBody(p Props, at string) {
 				</dd>
 				<dt>Priority</dt>
 				<dd class="sg-conflict-field">
-					@ui.Select(ui.SelectProps{ID: at + "prio-sel", Size: ui.SizeSM, Invalid: true, DescribedBy: at + "prio-conflict", Options: []ui.Option{{Value: "low", Label: "Low"}, {Value: "medium", Label: "Medium"}, {Value: "high", Label: "High"}, {Value: "critical", Label: "Critical", Selected: true}}})
+					@ui.Select(ui.SelectProps{ID: at + "prio-sel", Size: ui.SizeSM, Invalid: true, DescribedBy: at + "prio-conflict", Attrs: templ.Attributes{"aria-label": "Priority"}, Options: []ui.Option{{Value: "low", Label: "Low"}, {Value: "medium", Label: "Medium"}, {Value: "high", Label: "High"}, {Value: "critical", Label: "Critical", Selected: true}}})
 				</dd>
 				<dd class="sg-conflict" id={ at + "prio-conflict" }>
 					@ui.Notice(ui.NoticeProps{Tone: ui.ToneDanger, Live: true, Action: ui.Button(ui.ButtonProps{Label: "Use Critical anyway", Size: ui.SizeSM})}) {

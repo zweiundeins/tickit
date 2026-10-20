@@ -39,7 +39,8 @@ type ButtonProps struct {
 	Command, CommandFor string
 	// PopoverTarget opens a popover (a menu) by id.
 	PopoverTarget string
-	// Shortcut shows a key hint after the label: "C".
+	// Shortcut is a key that presses the button where no field has the
+	// focus and no dialog is open, shown after the label: "C".
 	Shortcut string
 	Class    string
 	Attrs    templ.Attributes
@@ -95,6 +96,10 @@ templ button(p ButtonProps) {
 			if p.Pending {
 				aria-busy="true"
 			}
+			if p.Shortcut != "" {
+				aria-keyshortcuts={ p.Shortcut }
+				data-on:keydown__window={ shortcutKey(p.Shortcut) }
+			}
 			{ p.Attrs... }
 		>
 			@buttonBody(p) {
@@ -116,6 +121,10 @@ templ button(p ButtonProps) {
 			}
 			if p.Pressed != "" {
 				aria-pressed={ p.Pressed }
+			}
+			if p.Shortcut != "" {
+				aria-keyshortcuts={ p.Shortcut }
+				data-on:keydown__window={ shortcutKey(p.Shortcut) }
 			}
 			if p.Command != "" {
 				command={ p.Command }

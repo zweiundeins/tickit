@@ -109,7 +109,7 @@ templ TrashRegion(p TrashProps) {
 		if len(p.Pages) == 0 {
 			@ui.EmptyState(ui.EmptyProps{Icon: "trash", Title: "The trash is empty", Text: "Pages moved to the trash show here."})
 		} else {
-			<table class="tk-table">
+			@ui.Table(ui.TableProps{Caption: "Pages in the trash", HideCaption: true}) {
 				<thead>
 					<tr><th scope="col">Page</th><th scope="col">Trashed by</th><th scope="col">When</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
 				</thead>
@@ -132,7 +132,7 @@ templ TrashRegion(p TrashProps) {
 						</tr>
 					}
 				</tbody>
-			</table>
+			}
 		}
 	</div>
 }
@@ -160,15 +160,15 @@ templ History(p VersionsProps) {
 // HistoryRegion is the shared list of versions, the newest first.
 templ HistoryRegion(p VersionsProps) {
 	<form id={ HistoryID } class="wk-versions" data-signals={ compareSignals(p.Versions) } data-base={ "/spaces/" + p.Space.Key + "/pages/" + p.Page.ID + "/compare" } data-on:submit__prevent={ compareVersions }>
-		<table class="tk-table">
+		@ui.Table(ui.TableProps{Caption: "Versions", HideCaption: true}) {
 			<thead>
 				<tr>
 					<th scope="col">Version</th>
 					<th scope="col">Editors</th>
 					<th scope="col">When</th>
 					<th scope="col">Message</th>
-					<th scope="col"><span class="visually-hidden">Compare from</span>From</th>
-					<th scope="col"><span class="visually-hidden">Compare to</span>To</th>
+					<th scope="col">From</th>
+					<th scope="col">To</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -199,9 +199,9 @@ templ HistoryRegion(p VersionsProps) {
 					</tr>
 				}
 			</tbody>
-		</table>
+		}
 		if len(p.Versions) > 1 {
-			@ui.Button(ui.ButtonProps{Label: "Compare", Icon: "filter", Type: "submit", Size: ui.SizeSM})
+			@ui.Button(ui.ButtonProps{Label: "Compare", Type: "submit", Size: ui.SizeSM})
 		}
 	</form>
 }
@@ -274,7 +274,7 @@ templ OldVersion(p VersionProps) {
 				Saved
 				@ui.RelativeTime(p.Version.At, p.Now)
 				if p.Version.Message != "" {
-					<span class="wk-sep" aria-hidden="true">·</span> { p.Version.Message }
+					<span><span class="wk-sep" aria-hidden="true">·</span> { p.Version.Message }</span>
 				}
 			</p>
 		}
