@@ -21,7 +21,8 @@ const (
 	// (MP-14.1); the component resends it by itself after a rate limit.
 	editorFetch = `evt.detail.el === el && evt.detail.type === 'error' && ['403', '429', '500', '502', '503'].includes(evt.detail.argsRaw.status) && ($_editor.problem = ` +
 		`evt.detail.argsRaw.status === '429' ? 'Too many changes at once. Your edits are kept here and go out in a moment.' : ` +
-		`evt.detail.argsRaw.status === '403' ? 'Your changes are not accepted here. They stay in this tab only.' : 'The server is restarting. Your edits are kept here and go out when it is back.')`
+		`evt.detail.argsRaw.status === '403' ? 'Your changes are not accepted here. They stay in this tab only.' : ` +
+		`document.querySelector('#` + DemoAlertID + `[data-resetting]') ? 'The demo is resetting, and the page comes back as seeded. Copy your edits to keep them.' : 'The server is restarting. Your edits are kept here and go out when it is back.')`
 	// editorOpen registers the tab as an editor of the page, from the
 	// version the page rendered (docs/editor.md).
 	editorOpen = `@post('/cmd/pages/' + el.getAttribute('page') + '/open', {payload: {tab: $_tab, op: ` + newOp + `, base: +el.getAttribute('base'), client: el.getAttribute('client')}, retry: 'error', retryMaxCount: 10})`

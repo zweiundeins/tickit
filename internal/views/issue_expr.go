@@ -167,7 +167,7 @@ const issueSettle = `Object.keys($_is.ops).forEach(f => {
 // same op, which applies once.
 const issueFailed = `((d) => {
 	if (!['error', 'retries-failed'].includes(d.type) || d.argsRaw.status === '403' || !d.el?.closest?.('#issue')) return
-	const msg = d.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : d.argsRaw.status === '503' ? 'The server is restarting. Try again in a moment.' : 'This did not go through.'
+	const msg = d.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : d.argsRaw.status === '503' ? ` + Unavailable + ` : 'This did not go through.'
 	const f = d.el.dataset.field
 	for (const g of f && f in $_is.ops ? [f] : Object.keys($_is.ops)) if ($_is.ops[g] !== '') { $_is.last[g] = $_is.ops[g]; $_is.ops[g] = ''; $_is.fail[g] = msg }
 })(evt.detail)`

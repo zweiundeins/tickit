@@ -76,7 +76,11 @@ func Failed(op string) string {
 }
 
 // problem is what the page says of a request that reached no outcome.
-const problem = `evt.detail.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : evt.detail.argsRaw.status === '503' ? 'The server is restarting. Try again in a moment.' : 'This did not go through. Try again in a moment.'`
+const problem = `evt.detail.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : evt.detail.argsRaw.status === '503' ? ` + Unavailable + ` : 'This did not go through. Try again in a moment.'`
+
+// Unavailable is what a page says of a 503: the demo's reset while the
+// demo alert says one runs, else a restart.
+const Unavailable = `(document.querySelector('#` + DemoAlertID + `[data-resetting]') ? 'The demo is resetting. Try again in a minute.' : 'The server is restarting. Try again in a moment.')`
 
 // The rename form of the person menu (FR-121).
 var (

@@ -1,6 +1,11 @@
 package views
 
-import "github.com/mbolli/tickit/internal/ui"
+import (
+	"strings"
+
+	"github.com/mbolli/tickit/internal/demo"
+	"github.com/mbolli/tickit/internal/ui"
+)
 
 // DemoAlertID is the id of the reset's warning, which the demo view
 // patches in every page.
@@ -8,9 +13,16 @@ const DemoAlertID = "demo-alert"
 
 // DemoAlert warns every open page of a reset to come (DM-03.2) and says
 // while one is under way (DM-03.4); empty, it shows nothing. Unlike the
-// demo notice, it cannot be dismissed.
+// demo notice, it cannot be dismissed. While a reset runs it carries
+// data-resetting, which Unavailable reads.
 templ DemoAlert(msg string) {
-	<div id={ DemoAlertID } class="tk-demo-alert">
+	<div
+		id={ DemoAlertID }
+		class="tk-demo-alert"
+		if strings.HasPrefix(msg, demo.MsgResetting) {
+			data-resetting
+		}
+	>
 		if msg != "" {
 			@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Icon: "clock", Live: true}) {
 				<p>{ msg }</p>
