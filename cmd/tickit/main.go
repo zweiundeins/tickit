@@ -4,6 +4,7 @@
 //	tickit [serve] [flags]       run the server (the default)
 //	tickit backup [flags]        copy the database while the server runs, and keep the newest copies
 //	tickit account create [flags] make a staff account; the password comes from TICKIT_PASSWORD or stdin
+//	tickit seed [flags]          write the demo's seed into a new database (-force empties one first)
 //	tickit migrations-pending [flags] print how many migrations the database has not had yet
 //	tickit --version             print the version
 //
@@ -70,10 +71,12 @@ func main() {
 		err = backup(args)
 	case "account":
 		err = account(args)
+	case "seed":
+		err = seedCommand(args)
 	case "migrations-pending":
 		err = migrationsPending(args, os.Stdout)
 	default:
-		err = fmt.Errorf("unknown command %q: serve, backup, account or migrations-pending", cmd)
+		err = fmt.Errorf("unknown command %q: serve, backup, account, seed or migrations-pending", cmd)
 	}
 	if err != nil {
 		slog.Error(cmd, "err", err)
@@ -100,7 +103,7 @@ func serve(args []string) error {
 	streams := f.Int("streams", 200, "how many streams may be open at once; more get 503")
 	sessionTTL := f.Duration("session-ttl", people.DefaultSessionTTL, "how long a login lasts")
 	secure := f.Bool("secure", false, "served over HTTPS: a __Host- cookie and HSTS")
-	dev := f.Bool("dev", false, "development: serve the static files as written, not minified")
+	dev := f.Bool("dev", false, "development: serve the static files as written, not minified, and seed an empty database")
 	debugLog := f.Bool("debug", false, "log at debug level")
 	if err := parse(f, args); err != nil {
 		return err
@@ -140,7 +143,7 @@ func serve(args []string) error {
 	notify.Bind(w) // the reactions' commands
 	runner := events.NewRunner(store, db, w, events.Options{Log: log})
 	var ln, metricsLn net.Listener
-	site, err := web.New(web.Config{DB: db, W: w, Hub: hub, Store: store, Log: log, Dev: *dev, Secure: *secure, SessionTTL: *sessionTTL})
+	site, err := web.New(web.Config{DB: db, W: w, Hub: hub, Store: store, Log: log, Dev: *dev, Secure: *secure, SessionTTL: *sessionTTL, Projectors: runner.Stats})
 	if err == nil {
 		ln, err = listen(*addr)
 	}
@@ -208,8 +211,14 @@ func serve(args []string) error {
 			stop()
 		}
 	}()
+	if *dev {
+		if err := seedIfEmpty(ctx, db, w, site.Demo(), log); err != nil {
+			log.Error("seed", "err", err)
+		}
+	}
 	var jobs sync.WaitGroup
 	jobs.Go(func() { sweep(ctx, w, log) })
+	jobs.Go(func() { site.Demo().Run(ctx) }) // the nightly reset (DM-03)
 
 	var metricsSrv *http.Server
 	if metricsLn != nil {

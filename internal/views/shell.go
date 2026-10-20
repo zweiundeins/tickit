@@ -56,6 +56,7 @@ type Shell struct {
 	// (FR-137.2).
 	Moderates, Administers bool
 	NextReset              string // when the demo resets: "5 h" (DM-10.1)
+	DemoAlert              string // the reset's warning, or that it is under way (DM-03.2, DM-03.4)
 	Prefs                  tabs.Prefs
 	Bell                   Bell   // the bell's count and panel (notify, web.Server.bell)
 	Path                   string // the page's path and query, for the way back after a login
