@@ -26,7 +26,7 @@ templ Avatar(p AvatarProps) {
 	{{ f := FaceOf(p.Seed) }}
 	<span
 		class={ classes("tk-av", "tk-av--"+string(sizeOr(p.Size, SizeSM)), p.Class) }
-		data-hue={ strconv.Itoa(f.Hue) }
+		data-hue={ strconv.Itoa(p.Person.HueIndex()) }
 		if p.Deactivated {
 			data-state="deactivated"
 		}
@@ -89,12 +89,20 @@ func (e PresenceEntry) describe() string {
 
 // PresenceProps is the row of people who have a view open.
 type PresenceProps struct {
+	// ID is the row's id, for a stream that patches it.
+	ID string
 	// Label names the row: "People on this board".
 	Label  string
 	People []PresenceEntry
 	// Max faces before "+n": 8 (MP-02.1).
-	Max   int
-	Class string
+	Max int
+	// Shared is a row that every viewer gets alike, from a shared view:
+	// no entry is You, every face renders with its seed in data-who, and
+	// those after the first Max carry data-overflow, which the stylesheet
+	// hides. The document marks, orders and reveals the viewer's own
+	// (internal/views). Max is 8 then.
+	Shared bool
+	Class  string
 }
 
 // presence orders the viewer first and splits the faces shown from the
@@ -117,6 +125,9 @@ func presence(p PresenceProps) (shown, rest []PresenceEntry) {
 	}
 	if len(all) <= limit {
 		return all, nil
+	}
+	if p.Shared {
+		return all, all[limit:]
 	}
 	return all[:limit], all[limit:]
 }
@@ -143,10 +154,23 @@ func peopleCount(n int) string {
 // count and state on hover and focus.
 templ PresenceRow(p PresenceProps) {
 	{{ shown, rest := presence(p) }}
-	<ul class={ classes("tk-presence", p.Class) } role="list" aria-label={ p.Label + ": " + peopleCount(len(p.People)) }>
-		for _, e := range shown {
+	<ul
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class={ classes("tk-presence", p.Class) }
+		role="list"
+		aria-label={ p.Label + ": " + peopleCount(len(p.People)) }
+	>
+		for i, e := range shown {
 			<li
 				class="tk-presence__item"
+				if p.Shared {
+					data-who={ e.Seed }
+				}
+				if p.Shared && i >= len(shown)-len(rest) {
+					data-overflow
+				}
 				if e.Editing {
 					data-editing
 				}
@@ -163,7 +187,7 @@ templ PresenceRow(p PresenceProps) {
 			</li>
 		}
 		if len(rest) > 0 {
-			<li class="tk-presence__item">
+			<li class="tk-presence__item tk-presence__rest">
 				<span class="tk-tip" role="img" tabindex="0" aria-label={ strconv.Itoa(len(rest)) + " more: " + names(rest) }>
 					<span class="tk-presence__more" aria-hidden="true">+{ strconv.Itoa(len(rest)) }</span>
 					<span class="tk-tip__bubble" aria-hidden="true">{ names(rest) }</span>

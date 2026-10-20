@@ -226,12 +226,30 @@ type DemoProps struct {
 	// DismissAttrs replace the default dismiss (this page only), for a
 	// feature that keeps the choice.
 	DismissAttrs templ.Attributes
+	// ID is the notice's id, for a stream that patches it.
+	ID string
+	// Hidden renders it dismissed. A patch keeps whether it is hidden
+	// (data-preserve-attr), so a shared view may redraw it for everyone.
+	Hidden bool
+	Attrs  templ.Attributes
 }
 
 // DemoNotice tells every visitor that the demo is public and reset each
 // night (DM-10.1), with a link to the privacy page.
 templ DemoNotice(p DemoProps) {
-	<aside class="tk-demo" aria-label="About this demo" data-dismissible>
+	<aside
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class="tk-demo"
+		aria-label="About this demo"
+		data-dismissible
+		data-preserve-attr="hidden"
+		if p.Hidden {
+			hidden
+		}
+		{ p.Attrs... }
+	>
 		<span class="tk-demo__badge">Demo</span>
 		<p class="tk-demo__text">
 			Public demo. Everything you write is visible to everyone and deleted at the nightly reset (next in { p.NextReset }). Do not enter personal data.

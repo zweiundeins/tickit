@@ -16,16 +16,36 @@ import (
 	"github.com/mbolli/tickit/internal/access"
 	"github.com/mbolli/tickit/internal/demo"
 	"github.com/mbolli/tickit/internal/people"
+	"github.com/mbolli/tickit/internal/tabs"
 	"github.com/mbolli/tickit/internal/views"
 )
 
 // Page is what a page handler makes of the request: the title, the views
-// its stream watches ("issue:<id>", registered in the view registry) and
-// the content inside the document.
+// its stream watches ("issue:<id>", registered in the view registry), the
+// content inside the document, and how the document frames it.
 type Page struct {
 	Title string
 	Views []string
 	Body  templ.Component
+	// Nav is the header link the page belongs to: "projects", "spaces",
+	// "filters", "dashboards" (ui.MainNav), "moderation", "admin".
+	Nav string
+	// Sidebar is the project's or space's ui.SideNav; SidebarLabel names
+	// it ("Project" by default).
+	Sidebar      templ.Component
+	SidebarLabel string
+	// Width of main: "" (80rem), "prose" (46rem) or "full" (boards).
+	Width string
+	// Query fills the header's search box (the search page).
+	Query string
+	// Components are the Starbase components the page uses ("select",
+	// "tabs"), loaded with the modules they render (StarbaseScripts).
+	Components []string
+	// Scripts are further modules by their static name
+	// ("editor/sb-rich-editor.min.js").
+	Scripts []string
+	// Create replaces the header's create dialog (views.CreateID).
+	Create templ.Component
 }
 
 // errGone is what a page handler returns for something deleted: the page
@@ -50,7 +70,11 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, buil
 		case err != nil:
 			return err
 		}
-		return views.Layout(s.shell(r, p)).Render(templ.WithChildren(ctx, p.Body), &buf)
+		shell, err := s.shell(r, tx, p)
+		if err != nil {
+			return err
+		}
+		return views.Layout(shell).Render(templ.WithChildren(ctx, p.Body), &buf)
 	})
 	if err != nil {
 		s.fail(w, r, err)
@@ -64,28 +88,66 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, buil
 	w.Write(buf.Bytes())
 }
 
-// shell is the document around a page, for the request's person.
-func (s *Server) shell(r *http.Request, p Page) views.Shell {
+// shell is the document around a page, for the request's person, read in
+// q (the session's preferences).
+func (s *Server) shell(r *http.Request, q sqlite.Querier, p Page) (views.Shell, error) {
 	ctx := r.Context()
 	me := people.Actor(ctx)
 	path := r.URL.Path
 	if r.URL.RawQuery != "" {
 		path += "?" + r.URL.RawQuery
 	}
-	return views.Shell{
-		Title:       p.Title,
-		Tab:         newID(),
-		Nonce:       edge.Nonce(ctx),
-		CSS:         s.static.URL("style.css"),
-		JS:          s.static.URL("vendor/datastar-rocket.js"),
-		NewestFrame: s.static.URL("lith/" + live.NewestFrame),
-		Views:       p.Views,
-		Me:          me,
-		Moderates:   access.SiteCan(me, access.Moderate),
-		Administers: access.SiteCan(me, access.Administer),
-		Notice:      demo.Notice(time.Now()),
-		Path:        path,
+	prefs := tabs.Prefs{}.Normal()
+	if sid := edge.SessionID(ctx); sid != "" {
+		var err error
+		if prefs, err = tabs.GetPrefs(ctx, q, sid); err != nil {
+			return views.Shell{}, err
+		}
 	}
+	scripts, err := s.scripts(p)
+	if err != nil {
+		return views.Shell{}, err
+	}
+	return views.Shell{
+		Title:        p.Title,
+		Nav:          p.Nav,
+		Sidebar:      p.Sidebar,
+		SidebarLabel: p.SidebarLabel,
+		Width:        p.Width,
+		Query:        p.Query,
+		Views:        p.Views,
+		Create:       p.Create,
+		Tab:          newID(),
+		Nonce:        edge.Nonce(ctx),
+		CSS:          s.static.URL(Bundle),
+		JS:           s.static.URL("vendor/datastar-rocket.js"),
+		NewestFrame:  s.static.URL("lith/" + live.NewestFrame),
+		Mark:         s.static.URL(Mark),
+		Fonts:        s.fonts,
+		Scripts:      scripts,
+		Me:           me,
+		Moderates:    access.SiteCan(me, access.Moderate),
+		Administers:  access.SiteCan(me, access.Administer),
+		NextReset:    demo.Remaining(time.Now()),
+		Prefs:        prefs,
+		Path:         path,
+	}, nil
+}
+
+// scripts are the URLs of the modules page p loads after Datastar.
+func (s *Server) scripts(p Page) ([]string, error) {
+	var names []string
+	if len(p.Components) > 0 {
+		var err error
+		if names, err = StarbaseScripts(s.files, p.Components...); err != nil {
+			return nil, err
+		}
+	}
+	urls := make([]string, 0, len(names)+len(p.Scripts))
+	for _, n := range append(names, p.Scripts...) {
+		urls = append(urls, s.static.URL(n))
+	}
+	return urls, nil
 }
 
 // notFound answers with the page of an address that names nothing.

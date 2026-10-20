@@ -22,7 +22,7 @@ import (
 func TestPresenceRow(t *testing.T) {
 	e := webtest.Start(t)
 	_, home := webtest.Get(t, webtest.Client(t), e.URL+"/")
-	css := regexp.MustCompile(`href="(/static/style\.[0-9a-f]+\.css)"`).FindStringSubmatch(home)
+	css := regexp.MustCompile(`href="(/static/css/tickit\.[0-9a-f]+\.css)"`).FindStringSubmatch(home)
 	if css == nil {
 		t.Fatal("no stylesheet")
 	}
@@ -52,7 +52,7 @@ func TestPresenceRow(t *testing.T) {
 		p.Eval(t, `(() => {
 			const shown = [...document.querySelectorAll('#row > li[data-who]')].filter(li => getComputedStyle(li).display !== 'none')
 			shown.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left)
-			return {shown: shown.map(li => li.dataset.who), more: document.querySelector('#row .presence-more').textContent}
+			return {shown: shown.map(li => li.dataset.who), more: document.querySelector('#row .tk-presence__more').textContent}
 		})()`, &got)
 		if len(got.Shown) != views.Shown || got.Shown[0] != list[me].ID || got.More != "+4" {
 			t.Errorf("me the %dth: %d faces, first %s (want %s), %q", me+1, len(got.Shown), got.Shown[0], list[me].ID, got.More)

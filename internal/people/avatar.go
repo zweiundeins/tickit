@@ -35,13 +35,16 @@ type avatar struct {
 
 // avatarOf draws the avatar of an id. The first 32 bits of the id's
 // SHA-256 pick the face (15 bits: three columns of five, the third
-// mirrored onto the first two), the hue (4 bits) and the name (10 bits).
+// mirrored onto the first two), the hue (4 bits, an index of 0 to 15) and
+// the name (10 bits). Face and hue are ui.FaceOf's, bit for bit, so a
+// person looks the same wherever a page draws them (a test in
+// internal/views holds the two together).
 func avatarOf(id string) avatar {
 	sum := sha256.Sum256([]byte(id))
 	n := uint32(sum[0])<<24 | uint32(sum[1])<<16 | uint32(sum[2])<<8 | uint32(sum[3])
 	return avatar{
 		Name: adjectives[n>>27&31] + " " + animals[n>>22&31],
-		Hue:  int(n>>15&15) * 360 / 16,
+		Hue:  int(n >> 15 & 15),
 		Face: face(n & 0x7fff),
 	}
 }

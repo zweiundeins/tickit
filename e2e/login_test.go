@@ -25,17 +25,17 @@ func TestLogin(t *testing.T) {
 				input.value = v
 				input.dispatchEvent(new Event('input', {bubbles: true}))
 			}
-			document.querySelector('.login button[type=submit]').click()
+			document.querySelector('.tk-login button[type=submit]').click()
 			return true
 		})()`, nil)
 	}
 	login("wrong horse battery")
-	p.Wait(t, `document.querySelector('.login .problem').textContent === 'Email or password is wrong.'`, 5*time.Second)
+	p.Wait(t, `document.getElementById('login-problem').textContent === 'Email or password is wrong.' && document.getElementById('login-problem').dataset.kind === 'refused'`, 5*time.Second)
 	login("correct horse battery")
-	p.Wait(t, `location.pathname === '/privacy' && document.querySelector('.person-menu .logout') !== null`, 5*time.Second)
-	p.Wait(t, `document.getElementById('person-name').textContent === 'mod'`, 5*time.Second)
-	p.Eval(t, `(document.querySelector('.person-menu').open = true, document.querySelector('.person-menu .logout').click(), true)`, nil)
-	p.Wait(t, `location.pathname === '/' && document.querySelector('.person-menu .logout') === null && document.body.textContent.includes('You are a guest')`, 5*time.Second)
+	p.Wait(t, `location.pathname === '/privacy' && document.getElementById('logout') !== null`, 5*time.Second)
+	p.Wait(t, `document.getElementById('tk-me-label').textContent === 'mod'`, 5*time.Second)
+	p.Eval(t, `(document.getElementById('tk-me').showPopover(), document.getElementById('logout').click(), true)`, nil)
+	p.Wait(t, `location.pathname === '/' && document.getElementById('logout') === null && document.body.textContent.includes('You are a guest')`, 5*time.Second)
 	if errs := p.Errors(); len(errs) > 0 {
 		t.Errorf("the page reported: %q", errs)
 	}

@@ -68,6 +68,9 @@ func Count(n int) *int { return &n }
 type Person struct {
 	Seed string
 	Name string
+	// Hue, when set, is the person's own hue, 0 to 15, in place of the
+	// seed's: a seeded person's, or one a person chose.
+	Hue *int
 	// Photo, when set, is an uploaded picture's URL, drawn in the face's
 	// tile.
 	Photo string
@@ -75,6 +78,14 @@ type Person struct {
 	Away bool
 	// Deactivated: an account that can no longer log in.
 	Deactivated bool
+}
+
+// HueIndex is the person's hue: their own, or the one their seed draws.
+func (p Person) HueIndex() int {
+	if p.Hue != nil {
+		return *p.Hue & 15
+	}
+	return FaceOf(p.Seed).Hue
 }
 
 // classes joins class names, skipping empty ones.
