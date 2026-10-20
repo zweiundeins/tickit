@@ -28,6 +28,14 @@ tasks:
     cmds:
       - go test -race ./...
 
+  e2e:
+    desc: The browser tests in Chromium (CHROME, LITH_CHROME_NO_SANDBOX=1 where it has no sandbox)
+    deps: [generate]
+    env:
+      CHROME: '{{.CHROME | default "/usr/bin/chromium"}}'
+    cmds:
+      - go test -count=1 ./e2e/
+
   build:
     desc: Build the static binary, everything embedded
     deps: [generate]

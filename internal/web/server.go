@@ -1,53 +1,87 @@
-// Package web serves the guestbook: its page, the tab's stream and the
-// action. cmd/tickit puts the edge around Routes.
+// Package web serves tickit: its pages, the one stream of every tab, and
+// the actions under POST /cmd/. Each area registers its routes and views
+// in a file of its own (routes_<area>.go), with the helpers of action.go
+// (actions), render.go (pages) and stream.go (views and presence).
+// Handler puts the edge around them.
 package web
 
 import (
-	"bytes"
-	"crypto/rand"
-	"database/sql"
 	"embed"
-	"encoding/base64"
 	"errors"
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/zweiundeins/lith/edge"
+	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/live"
 	"github.com/zweiundeins/lith/minify"
 	"github.com/zweiundeins/lith/sqlite"
-	"github.com/zweiundeins/lith/sse"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/mbolli/tickit/internal/guestbook"
-	"github.com/mbolli/tickit/internal/views"
+	"github.com/mbolli/tickit/internal/people"
 )
 
 //go:embed static
 var staticFiles embed.FS
 
-// Server holds what the handlers share.
-type Server struct {
-	db     *sqlite.DB
-	w      *writer.Writer
-	hub    *live.Hub
-	log    *slog.Logger
-	static *edge.Static
-	limit  *edge.Limiter
+// Config is what the server serves and how.
+type Config struct {
+	DB    *sqlite.DB
+	W     *writer.Writer
+	Hub   *live.Hub
+	Store *events.Store // the event store of every domain's parts
+	Log   *slog.Logger
+	// Dev serves the static files as written, not minified.
+	Dev bool
+	// Secure is for HTTPS: a __Host- cookie and HSTS.
+	Secure bool
+	// SessionTTL is how long a login lasts (FR-124.1), 24 hours when zero.
+	SessionTTL time.Duration
 }
 
-// New returns the server of the database that w writes and hub renders.
-// It serves its scripts and stylesheets minified, or as written with dev,
-// for the browser's devtools.
-func New(db *sqlite.DB, w *writer.Writer, hub *live.Hub, log *slog.Logger, dev bool) (*Server, error) {
+// Server holds what the handlers share.
+type Server struct {
+	db       *sqlite.DB
+	w        *writer.Writer
+	hub      *live.Hub
+	store    *events.Store
+	log      *slog.Logger
+	static   *edge.Static
+	sessions edge.Sessions
+	secure   bool
+	ttl      time.Duration
+
+	limits  *limits         // the rate limits of actions (DM-04)
+	signIn  *edge.Limiter   // logins and logouts per address (NFR-09.1)
+	lockout *people.Lockout // failed logins per email and address (NFR-09.2)
+	metrics *metrics
+
+	mux    *http.ServeMux
+	probes []string // a URL of every GET route, for the test that GET never writes (NFR-06)
+	views  *ViewRegistry
+}
+
+// New returns the server of cfg's database, writer and hub, with every
+// area's routes and views registered.
+func New(cfg Config) (*Server, error) {
+	if cfg.DB == nil || cfg.W == nil || cfg.Hub == nil {
+		return nil, errors.New("web: a server needs a database, a writer and a hub")
+	}
+	if cfg.Log == nil {
+		cfg.Log = slog.Default()
+	}
+	if cfg.SessionTTL <= 0 {
+		cfg.SessionTTL = people.DefaultSessionTTL
+	}
 	files, err := fs.Sub(staticFiles, "static")
 	if err != nil {
 		return nil, err
 	}
 	var opts []edge.StaticOption
-	if !dev {
+	if !cfg.Dev {
 		opts = append(opts, edge.Minify(minify.Bytes))
 	}
 	static, err := edge.NewStatic(files, "/static/", opts...)
@@ -60,123 +94,96 @@ func New(db *sqlite.DB, w *writer.Writer, hub *live.Hub, log *slog.Logger, dev b
 		return nil, err
 	}
 	static.Add("lith/"+live.NewestFrame, js)
-	return &Server{
-		db: db, w: w, hub: hub, log: log, static: static,
-		limit: edge.NewLimiter(0.5, 5), // per client address: five signatures at once, then one every two seconds
-	}, nil
+	s := &Server{
+		db: cfg.DB, w: cfg.W, hub: cfg.Hub, store: cfg.Store, log: cfg.Log, static: static,
+		sessions: edge.Sessions{Secure: cfg.Secure},
+		secure:   cfg.Secure,
+		ttl:      cfg.SessionTTL,
+		limits:   newLimits(),
+		signIn:   edge.NewLimiter(0.5, 10), // 30 a minute, 10 at once
+		lockout:  people.NewLockout(),
+		metrics:  newMetrics(cfg.DB),
+		mux:      http.NewServeMux(),
+		views:    newViewRegistry(),
+	}
+	s.register()
+	return s, nil
 }
 
-// Routes returns the handlers, without the edge.
-func (s *Server) Routes() *http.ServeMux {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", s.page)
-	mux.HandleFunc("GET /stream", s.stream)
-	mux.HandleFunc("POST /cmd/sign", s.sign)
-	mux.Handle("GET /static/", s.static)
-	return mux
+// register calls every area's registration, each in its own file, so that
+// areas add routes and views without touching another's file.
+func (s *Server) register() {
+	s.routesCore()
+	s.routesTracker()
+	s.routesBoard()
+	s.routesIssues()
+	s.routesSearch()
+	s.routesWiki()
+	s.routesEditor()
+	s.routesNotify()
+	s.routesAdmin()
+	s.routesModeration()
+	s.routesDemo()
+	s.routesDesign()
 }
 
-// page renders the document in one read transaction, and writes nothing:
-// the tab is new, and its row appears with its first signature.
-func (s *Server) page(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	var buf bytes.Buffer
-	err := s.db.View(ctx, func(tx *sql.Tx) error {
-		list, total, err := guestbook.Latest(ctx, tx, guestbook.Shown)
-		if err != nil {
-			return err
+// get registers a GET route. probes are URLs that reach it, for the test
+// that GET never writes (NFR-06); a pattern without wildcards is its own.
+func (s *Server) get(pattern string, h http.Handler, probes ...string) {
+	path, ok := strings.CutPrefix(pattern, "GET ")
+	if !ok {
+		panic("web: " + pattern + " is no GET pattern")
+	}
+	if len(probes) == 0 {
+		if strings.Contains(strings.ReplaceAll(path, "{$}", ""), "{") {
+			panic("web: " + pattern + " needs a probe URL")
 		}
-		return views.Guestbook(views.Page{
-			Tab:         newID(),
-			Nonce:       edge.Nonce(ctx),
-			CSS:         s.static.URL("style.css"),
-			JS:          s.static.URL("vendor/datastar-rocket.js"),
-			NewestFrame: s.static.URL("lith/" + live.NewestFrame),
-			Entries:     list,
-			Total:       total,
-		}).Render(ctx, &buf)
+		probes = []string{strings.ReplaceAll(path, "{$}", "")}
+	}
+	s.mux.Handle(pattern, h)
+	s.probes = append(s.probes, probes...)
+}
+
+// post registers an action. Every change is a POST under /cmd/, where the
+// edge's CSRF check wants Datastar's header (NFR-02, NFR-03).
+func (s *Server) post(pattern string, h http.HandlerFunc) {
+	if !strings.HasPrefix(pattern, "POST /cmd/") {
+		panic("web: " + pattern + " is no action: POST /cmd/...")
+	}
+	s.mux.HandleFunc(pattern, h)
+}
+
+// Routes returns the handlers without the edge.
+func (s *Server) Routes() http.Handler { return s.mux }
+
+// Probes are a URL of every GET route, for the test that GET never writes.
+func (s *Server) Probes() []string { return s.probes }
+
+// Handler returns the routes behind the edge: the session, the actor,
+// the CSRF check, the security headers, compression, recovery and the log
+// of requests. /healthz and /readyz stay outside it (cmd/tickit).
+func (s *Server) Handler() http.Handler {
+	actor := people.Middleware(s.db, s.log)(s.mux)
+	h := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/static/") {
+			s.mux.ServeHTTP(w, r) // no actor needed: nothing to read
+			return
+		}
+		actor.ServeHTTP(w, r)
+	}))
+	h = s.sessions.Handler(h) // inside CSRF: a refused request gets no cookie
+	h = edge.CSRF{Datastar: []string{"POST /cmd/"}}.Handler(h)
+	h = edge.SecurityHeaders{CSP: edge.DefaultCSP(), HSTS: s.secure}.Handler(h)
+	h = noIndex(h)
+	h = edge.Compress(h)
+	h = edge.Recover(s.log, h)
+	return edge.LogRequests(s.log, h)
+}
+
+// noIndex keeps search engines out of what visitors write (DM-09.1).
+func noIndex(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Robots-Tag", "noindex, nofollow")
+		next.ServeHTTP(w, r)
 	})
-	if err != nil {
-		s.fail(w, r, err)
-		return
-	}
-	h := w.Header()
-	h.Set("Content-Type", "text/html; charset=utf-8")
-	h.Set("Cache-Control", "no-store")    // the tab id is this document's alone
-	h.Set("Accept-CH", edge.NetworkHints) // Chromium's hints for edge.SlowLink
-	w.Write(buf.Bytes())
-}
-
-// stream sends the tab its views: the shared entries, then its own state.
-// A tab on a slow link gets each view's frames about four times a second.
-func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
-	tab := r.URL.Query().Get("tab")
-	if !validID(tab) {
-		http.Error(w, "bad tab id", http.StatusBadRequest)
-		return
-	}
-	sid := edge.SessionID(r.Context())
-	spec := live.Spec{ID: tab, Views: []live.View{entriesView(), tabView(sid, tab)}, Reconnect: "stream", Slow: edge.SlowLink(r)}
-	if err := s.hub.Serve(w, r, spec); err != nil {
-		s.log.Debug("stream ended", "tab", tab, "err", err)
-	}
-}
-
-type signRequest struct {
-	Tab     string `json:"tab"`
-	Op      string `json:"op"`
-	Name    string `json:"name"`
-	Message string `json:"message"`
-}
-
-// sign answers 204 once the signature is committed. Its outcome, an entry
-// or a refusal, reaches the page on the tab's stream.
-func (s *Server) sign(w http.ResponseWriter, r *http.Request) {
-	if !s.limit.Allow(edge.ClientKey(r), 1, time.Now()) {
-		http.Error(w, "too many signatures, wait a moment", http.StatusTooManyRequests)
-		return
-	}
-	var req signRequest
-	if err := sse.ReadSignalsLimit(w, r, &req, 8<<10); err != nil || !validID(req.Tab) || !validID(req.Op) {
-		http.Error(w, "bad request", http.StatusBadRequest)
-		return
-	}
-	sid := edge.SessionID(r.Context())
-	cmd := guestbook.Sign{Session: sid, Tab: req.Tab, Op: req.Op, Name: req.Name, Message: req.Message, At: time.Now()}
-	err := s.w.Do(r.Context(), writer.Once(sid+":"+req.Op, cmd))
-	switch {
-	case err == nil:
-		w.WriteHeader(http.StatusNoContent)
-	case errors.Is(err, writer.ErrInvalid):
-		http.Error(w, err.Error(), http.StatusBadRequest)
-	case errors.Is(err, writer.ErrClosed):
-		http.Error(w, "the server is restarting", http.StatusServiceUnavailable)
-	default:
-		s.fail(w, r, err)
-	}
-}
-
-func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
-	s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
-	http.Error(w, "something went wrong", http.StatusInternalServerError)
-}
-
-// newID returns a tab id: 128 random bits in base64url.
-func newID() string {
-	b := make([]byte, 16)
-	rand.Read(b)
-	return base64.RawURLEncoding.EncodeToString(b)
-}
-
-// validID accepts tab ids and the op ids pages make.
-func validID(s string) bool {
-	if len(s) == 0 || len(s) > 64 {
-		return false
-	}
-	for _, c := range []byte(s) {
-		if !('a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || '0' <= c && c <= '9' || c == '-' || c == '_') {
-			return false
-		}
-	}
-	return true
 }

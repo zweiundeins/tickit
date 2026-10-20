@@ -1,119 +1,73 @@
+/* A plain stylesheet until the design system (internal/ui, static/css/)
+   replaces it: the shell readable, faces drawn, the presence row capped. */
 :root {
-	--fg: #1d2330;
-	--muted: #5c6577;
-	--bg: #f7f7f4;
-	--card: #ffffff;
-	--line: #d9dbe0;
-	--accent: #2f5bd3;
-	--refused: #b42318;
 	color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-	:root {
-		--fg: #e7e9ee;
-		--muted: #9aa3b5;
-		--bg: #14171d;
-		--card: #1c2028;
-		--line: #2e3440;
-		--accent: #7d9df5;
-		--refused: #f0877d;
-	}
-}
-
-* {
-	box-sizing: border-box;
 }
 
 body {
 	margin: 0;
 	font: 1rem/1.5 system-ui, sans-serif;
-	color: var(--fg);
-	background: var(--bg);
 }
 
-main {
-	max-width: 40rem;
-	margin: 0 auto;
-	padding: 2rem 1rem 4rem;
+.site-header,
+.demo-notice,
+.connection,
+.page,
+.site-footer {
+	padding: 0.5rem 1rem;
 }
 
-form {
-	display: grid;
-	gap: 0.75rem;
-	padding: 1rem;
-	background: var(--card);
-	border: 1px solid var(--line);
-	border-radius: 0.5rem;
-}
-
-label {
-	display: grid;
-	gap: 0.25rem;
-	color: var(--muted);
-}
-
-input,
-textarea,
-button {
-	font: inherit;
-	color: var(--fg);
-	background: var(--bg);
-	border: 1px solid var(--line);
-	border-radius: 0.375rem;
-	padding: 0.5rem 0.625rem;
-}
-
-textarea {
-	resize: vertical;
-}
-
-input[readonly],
-textarea[readonly] {
-	color: var(--muted);
-}
-
-button {
-	justify-self: start;
-	padding-inline: 1.25rem;
-	color: #fff;
-	background: var(--accent);
-	border-color: var(--accent);
-	cursor: pointer;
-}
-
-button[aria-busy="true"] {
-	opacity: 0.6;
-	cursor: progress;
-}
-
-#outcome,
-.problem {
+.site-header,
+.site-nav ul {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem 1rem;
 	margin: 0;
-}
-
-.refused,
-.problem {
-	color: var(--refused);
-}
-
-#entries ul {
+	padding-inline-start: 0;
 	list-style: none;
-	padding: 0;
 }
 
-#entries li {
-	padding: 0.75rem 0;
-	border-bottom: 1px solid var(--line);
+.page {
+	max-width: 60rem;
 }
 
-#entries li p {
+.visually-hidden,
+.skip-link:not(:focus) {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+.face {
+	width: 1.5rem;
+	height: 1.5rem;
+	vertical-align: middle;
+	color: light-dark(oklch(52% 0.14 var(--h)), oklch(80% 0.12 var(--h)));
+	fill: currentColor;
+	shape-rendering: crispEdges;
+}
+
+/* The viewer's own face first; at most 8 faces (views.Presence). */
+.presence {
+	display: flex;
+	gap: 0.25rem;
 	margin: 0;
-	overflow-wrap: anywhere;
-	white-space: pre-line;
+	padding: 0;
+	list-style: none;
 }
 
-#entries .by {
-	color: var(--muted);
-	font-size: 0.875rem;
+.presence > li:nth-child(n + 9):not(.presence-more) {
+	display: none;
+}
+
+.presence > li {
+	outline: calc(2px * var(--me, 0)) solid currentColor;
+}
+
+.problem {
+	color: light-dark(#b42318, #f0877d);
 }
