@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 #
-# Host setup (see README.md). Run as root on the server, from a copy of this
-# folder:
+# Host setup (see docs/deploy.md). Run as root on the server, from a copy of
+# this folder:
 #
 #   bash setup-host.sh [tickit-deploy-key.pub]
 #
-# The drop-ins in observability/ go into the folders the host's Prometheus and
-# Alloy load, each only where that service is installed. With the public half
-# of the CI deploy key (a .pub file), it also installs /usr/local/bin/tickit-deploy
-# and creates the `tickit-deploy` user. That user's only key is forced to
-# `sudo -n /usr/local/bin/tickit-deploy -` (no shell, no forwarding), and sudo
-# allows exactly that command. Rerunning replaces the drop-ins and the key.
+# The drop-ins in observability/ go into the folders the host's Prometheus,
+# Alloy and Grafana load, each only where that service is installed. With the
+# public half of the CI deploy key (a .pub file), it also installs
+# /usr/local/bin/tickit-deploy and creates the `tickit-deploy` user. That user's
+# only key is forced to `sudo -n /usr/local/bin/tickit-deploy -` (no shell, no
+# forwarding), and sudo allows exactly that command. Rerunning replaces the
+# drop-ins and the key. It never restarts tickit.
 set -euo pipefail
-NAME=tickit
+NAME=tickit     # the unit, the metrics target, the alert rules
+SITE=tickitdemo # the Caddy site: the probes and the access log
 HERE=$(cd "$(dirname "$0")" && pwd)
 OBS=$HERE/observability
 # Alloy's HTTP server, for its reload endpoint.
@@ -42,31 +44,84 @@ deploy_user() {
 	echo ">> ready: CI can deploy as $deploy@$(hostname)"
 }
 
+# The old tickit's drop-in kept it on loopback. The new unit does that itself,
+# so the drop-in goes once that unit is installed; the running process keeps
+# its settings until its next restart, which is the next deploy.
+old_dropin() {
+	local conf=/etc/systemd/system/$NAME.service.d/listen.conf
+	[[ -f "$conf" ]] || return 0
+	if grep -q '^SocketBindDeny=any' "/etc/systemd/system/$NAME.service" 2>/dev/null; then
+		rm -f "$conf"
+		rmdir --ignore-fail-on-non-empty "$(dirname "$conf")"
+		systemctl daemon-reload
+		echo ">> removed the old $conf"
+	else
+		echo ">> kept $conf: install the new $NAME.service first"
+	fi
+}
+
 # Prometheus watches both folders (file_sd), so it needs no reload.
 prometheus_dropins() {
 	if ! installed prometheus; then
 		echo ">> no Prometheus here: no scrape target, no probes"
 		return
 	fi
-	if [[ -f "$OBS/$NAME.metrics.yml" ]]; then
-		install -D -m 0644 "$OBS/$NAME.metrics.yml" "/etc/prometheus/apps/$NAME.yml"
-		echo ">> Prometheus scrapes $NAME: /etc/prometheus/apps/$NAME.yml"
+	install -D -m 0644 "$OBS/$NAME.metrics.yml" "/etc/prometheus/apps/$NAME.yml"
+	echo ">> Prometheus scrapes $NAME: /etc/prometheus/apps/$NAME.yml"
+	install -D -m 0644 "$OBS/$SITE.targets.yml" "/etc/prometheus/targets/$SITE.yml"
+	echo ">> the blackbox exporter probes $SITE: /etc/prometheus/targets/$SITE.yml"
+}
+
+# Grafana's alert rules, reloaded as the host's install.sh does: through the
+# admin API with the password from /etc/grafana/grafana.env, never on the
+# command line. A rule uid that another file uses keeps Grafana from
+# starting, and a file the reload refuses goes back to the old one.
+grafana_reload() {
+	local env=/etc/grafana/grafana.env user pass
+	user=$(sed -n 's/^GF_SECURITY_ADMIN_USER=//p' "$env" 2>/dev/null | tr -d '"')
+	pass=$(sed -n 's/^GF_SECURITY_ADMIN_PASSWORD=//p' "$env" 2>/dev/null | tr -d '"')
+	[[ -n $pass ]] && systemctl is-active --quiet grafana-server || return 100
+	printf 'user = "%s:%s"\n' "${user:-admin}" "$pass" |
+		curl -fsS -K - -X POST -o /dev/null http://127.0.0.1:3000/api/admin/provisioning/alerting/reload
+}
+
+grafana_rules() {
+	local src=$OBS/rules-$NAME.yaml dir=/etc/grafana/provisioning/alerting
+	local dst=$dir/rules-$NAME.yaml uid other old rc=0
+	if ! installed grafana-server; then
+		echo ">> no Grafana here: no alert rules"
+		return
 	fi
-	if [[ -f "$OBS/$NAME.targets.yml" ]]; then
-		if grep -q 'example\.com' "$OBS/$NAME.targets.yml"; then
-			echo "!! $NAME.targets.yml still probes example.com: put in the real domain" >&2
-			exit 2
-		fi
-		install -D -m 0644 "$OBS/$NAME.targets.yml" "/etc/prometheus/targets/$NAME.yml"
-		echo ">> the blackbox exporter probes $NAME: /etc/prometheus/targets/$NAME.yml"
+	if cmp -s "$src" "$dst"; then
+		echo ">> Grafana has $NAME's alert rules: $dst"
+		return
 	fi
+	while read -r uid; do
+		other=$(grep -lE "^ *- uid: *$uid\$" "$dir"/*.yaml 2>/dev/null | grep -vxF "$dst" || true)
+		[[ -z $other ]] || { echo "!! the rule uid $uid is in $other too" >&2; exit 1; }
+	done < <(sed -n 's/^ *- uid: *//p' "$src")
+	old=$(mktemp)
+	cp "$dst" "$old" 2>/dev/null || rm -f "$old"
+	install -D -m 0640 -g grafana "$src" "$dst"
+	grafana_reload || rc=$?
+	if ((rc == 0)); then
+		echo ">> Grafana alerts on $NAME: $dst"
+	elif ((rc == 100)); then
+		echo ">> $NAME's alert rules: $dst; restart grafana-server to load them (no admin password, or not running)"
+	else
+		if [[ -f "$old" ]]; then install -m 0640 -g grafana "$old" "$dst"; else rm -f "$dst"; fi
+		rm -f "$old"
+		grafana_reload >/dev/null 2>&1 || true
+		echo "!! Grafana refused the new rules-$NAME.yaml and keeps what it had" >&2
+		exit 1
+	fi
+	rm -f "$old"
 }
 
 # Alloy loads every .alloy file in /etc/alloy as one config, and a file it
 # refuses would stop the logs of all apps at its next start: the old one goes back.
 alloy_dropin() {
-	local src=$OBS/$NAME.alloy dst=/etc/alloy/$NAME.alloy old out
-	[[ -f "$src" ]] || return 0
+	local src=$OBS/$SITE.alloy dst=/etc/alloy/$SITE.alloy old out
 	if ! installed alloy; then
 		echo ">> no Alloy here: no logs to Loki"
 		return
@@ -82,14 +137,17 @@ alloy_dropin() {
 		if [[ -f "$old" ]]; then install -m 0644 "$old" "$dst"; else rm -f "$dst"; fi
 		rm -f "$old"
 		curl -sS --max-time 30 "$ALLOY_URL/-/reload" >/dev/null 2>&1 || true
-		echo "!! Alloy refused the new $NAME.alloy and keeps what it had: $out" >&2
+		echo "!! Alloy refused the new $SITE.alloy and keeps what it had: $out" >&2
 		exit 1
 	fi
 	rm -f "$old"
 }
 
+[[ $EUID -eq 0 ]] || { echo "!! run as root" >&2; exit 2; }
 if [[ -n "${1:-}" ]]; then
 	deploy_user "$1"
 fi
+old_dropin
 prometheus_dropins
+grafana_rules
 alloy_dropin
