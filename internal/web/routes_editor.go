@@ -2,10 +2,10 @@ package web
 
 import (
 	"bytes"
-	"errors"
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"slices"
