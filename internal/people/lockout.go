@@ -17,8 +17,9 @@ type Lockout struct {
 	Window time.Duration
 	Wait   time.Duration
 
-	mu   sync.Mutex
-	keys map[string]*lockState
+	mu    sync.Mutex
+	keys  map[string]*lockState
+	swept time.Time // the last forget
 }
 
 type lockState struct {
@@ -33,9 +34,24 @@ func NewLockout() *Lockout {
 }
 
 // LockoutKey is the key of an email tried from a client address
-// (edge.ClientKey).
+// (edge.ClientKey). No email has more than 254 bytes.
 func LockoutKey(email, addr string) string {
-	return strings.ToLower(strings.TrimSpace(email)) + "\x00" + addr
+	email = strings.ToLower(strings.TrimSpace(email))
+	if len(email) > 254 {
+		email = email[:254]
+	}
+	return email + "\x00" + addr
+}
+
+// MaxLockoutKeys bounds the keys a Lockout keeps: past it, the keys that
+// are not locked go first.
+const MaxLockoutKeys = 50_000
+
+// Len is how many keys l keeps.
+func (l *Lockout) Len() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return len(l.keys)
 }
 
 // Locked reports whether key must wait.
@@ -54,8 +70,16 @@ func (l *Lockout) Fail(key string, now time.Time) {
 	if l.keys == nil {
 		l.keys = map[string]*lockState{}
 	}
-	if len(l.keys) >= 10000 {
+	if len(l.keys) >= MaxLockoutKeys/5 && now.Sub(l.swept) > time.Minute {
 		l.forget(now)
+		l.swept = now
+	}
+	if len(l.keys) >= MaxLockoutKeys { // a flood: forget the failures, keep the locks
+		for k, s := range l.keys {
+			if !now.Before(s.until) {
+				delete(l.keys, k)
+			}
+		}
 	}
 	s := l.keys[key]
 	if s == nil {

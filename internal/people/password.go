@@ -40,6 +40,19 @@ const (
 	argonSalt    = 16
 )
 
+// MaxHashing is how many argon2id hashes run at once: each holds 19 MiB,
+// and many sign-ins from many addresses must not take the memory of the
+// process (NFR-41). The others wait their turn.
+const MaxHashing = 4
+
+var hashing = make(chan struct{}, MaxHashing)
+
+func idKey(password, salt []byte, time, memory uint32, threads uint8, n uint32) []byte {
+	hashing <- struct{}{}
+	defer func() { <-hashing }()
+	return argon2.IDKey(password, salt, time, memory, threads, n)
+}
+
 // HashPassword returns password's argon2id hash as a PHC string:
 // $argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>.
 func HashPassword(password string) (string, error) {
@@ -47,7 +60,7 @@ func HashPassword(password string) (string, error) {
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
-	key := argon2.IDKey([]byte(password), salt, argonTime, argonMemory, argonThreads, argonKey)
+	key := idKey([]byte(password), salt, argonTime, argonMemory, argonThreads, argonKey)
 	b64 := base64.RawStdEncoding
 	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s", argon2.Version, argonMemory, argonTime, argonThreads,
 		b64.EncodeToString(salt), b64.EncodeToString(key)), nil
@@ -78,7 +91,7 @@ func CheckPassword(encoded, password string) bool {
 	if err != nil || len(want) == 0 {
 		return false
 	}
-	got := argon2.IDKey([]byte(password), salt, time, memory, threads, uint32(len(want)))
+	got := idKey([]byte(password), salt, time, memory, threads, uint32(len(want)))
 	return subtle.ConstantTimeCompare(got, want) == 1
 }
 
