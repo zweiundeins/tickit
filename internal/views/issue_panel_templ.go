@@ -14,8 +14,9 @@ import "github.com/zweiundeins/tickit/internal/ui"
 // a search (FR-13.2). Put it once in the page's body; a link to an issue
 // opens it when it carries IssueLinkAttrs(id): <a href="/WEB-12"
 // data-issue-panel="<id>">. me is the viewer's person id, moderates
-// whether they may hide comments. docs/architecture.md, "Issue panel".
-func IssuePanel(me string, moderates bool) templ.Component {
+// whether they may hide comments, deletes where they may delete issues.
+// docs/architecture.md, "Issue panel".
+func IssuePanel(me string, moderates bool, deletes Deletes) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -43,7 +44,7 @@ func IssuePanel(me string, moderates bool) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(issueSignals("", "", me, false, moderates))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/issue_panel.templ`, Line: 11, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/issue_panel.templ`, Line: 12, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -56,7 +57,7 @@ func IssuePanel(me string, moderates bool) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(panelOpen)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/issue_panel.templ`, Line: 11, Col: 121}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/issue_panel.templ`, Line: 12, Col: 121}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -69,7 +70,7 @@ func IssuePanel(me string, moderates bool) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(panelPop)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/issue_panel.templ`, Line: 11, Col: 159}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/issue_panel.templ`, Line: 12, Col: 159}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -91,7 +92,7 @@ func IssuePanel(me string, moderates bool) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = issueFrame(IssueFrameProps{Panel: true, Me: me, Moderates: moderates}).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = issueFrame(IssueFrameProps{Panel: true, Me: me, Moderates: moderates, Deletes: deletes}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -166,7 +167,7 @@ func panelActions() templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(panelPage)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/issue_panel.templ`, Line: 23, Col: 83}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/issue_panel.templ`, Line: 24, Col: 83}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
@@ -58,5 +59,33 @@ func TestLabelsAndOverdue(t *testing.T) {
 	}
 	if got := e.list(c, "label=a%26b"); !slices.Equal(got, []string{"WEB-4"}) {
 		t.Errorf("label a&b: %v", got)
+	}
+}
+
+// QA (FR-28.1, FR-137.2): a guest is not offered "Delete issue", which
+// only a project's Admin, a moderator or a site admin may use; the
+// document decides it, and the issue's shared region is the same for all.
+func TestDeleteOfferedToThoseWhoMay(t *testing.T) {
+	e := newList(t)
+	guest := webtest.Client(t)
+	hide := `.tk-issue .tk-issue__main [data-del]{display:none}`
+	_, page := webtest.Get(t, guest, e.URL+"/WEB-1")
+	if !strings.Contains(page, hide) {
+		t.Errorf("a guest's issue page offers Delete issue")
+	}
+	if !strings.Contains(page, `data-pid="`+e.web+`"`) || !strings.Contains(page, `data-del`) {
+		t.Errorf("the issue's region has no project or no delete item")
+	}
+	_, list := webtest.Get(t, guest, e.URL+"/issues?project=WEB")
+	if !strings.Contains(list, hide) {
+		t.Errorf("a guest's list offers Delete issue in the panel")
+	}
+	e.Account(t, "mod@example.com", "a long password 1", people.Moderator)
+	mod := webtest.Client(t)
+	e.Login(t, mod, "mod@example.com", "a long password 1")
+	for _, path := range []string{"/WEB-1", "/issues?project=WEB", "/projects/WEB/board"} {
+		if _, p := webtest.Get(t, mod, e.URL+path); strings.Contains(p, `[data-del]{display:none}`) {
+			t.Errorf("%s: a moderator is not offered Delete issue", path)
+		}
 	}
 }

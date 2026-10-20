@@ -24,7 +24,10 @@ type IssueFrameProps struct {
 	// ReadOnly is a Viewer's page: controls disabled, comments allowed.
 	ReadOnly  bool
 	Moderates bool // may hide comments (FR-66.2)
-	Panel     bool
+	// Deletes is where the viewer may delete issues: elsewhere the
+	// document hides "Delete issue" (FR-28.1).
+	Deletes Deletes
+	Panel   bool
 }
 
 // IssuePage is the issue's page.
@@ -46,7 +49,7 @@ templ issueFrame(p IssueFrameProps) {
 		data-on:focusout={ issueFocusOut }
 		data-on:input__throttle.2s={ issueTyping }
 	>
-		@viewerStyle(p.Me)
+		@viewerStyle(p.Me, p.Deletes)
 		<div class="tk-issue__head">
 			@region(p, "issue-main", "div")
 			<div class="tk-issue__presence" id="issue-presence-slot">
@@ -198,7 +201,7 @@ templ anywayButton(f string) {
 }
 
 templ issueMain(m Issue) {
-	<div id="issue-main" class="tk-issue__main" data-v={ i64(m.Version) } data-key={ m.Key } data-issue={ m.ID }>
+	<div id="issue-main" class="tk-issue__main" data-v={ i64(m.Version) } data-key={ m.Key } data-issue={ m.ID } data-pid={ m.ProjectID }>
 		@ui.Breadcrumbs(crumbs(m))
 		if m.Hidden {
 			@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Icon: "lock", Title: "This issue is hidden"}) {
@@ -251,8 +254,8 @@ templ issueMain(m Issue) {
 					@ui.MenuItem(ui.MenuItemProps{Label: "Add subtask", Icon: "plus", Autofocus: true, Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-subtask')?.focus()"}})
 				}
 				@ui.MenuItem(ui.MenuItemProps{Label: "Link issue", Icon: "link", Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-link-key')?.focus()"}})
-				@ui.MenuSeparator()
-				@ui.MenuItem(ui.MenuItemProps{Label: "Delete issue", Icon: "trash", Danger: true, Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-delete').showModal()"}})
+				<hr class="tk-menu__sep" data-del/>
+				@ui.MenuItem(ui.MenuItemProps{Label: "Delete issue", Icon: "trash", Danger: true, Attrs: templ.Attributes{"data-del": true, "data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-delete').showModal()"}})
 			}
 		</div>
 		@issueNote("status")

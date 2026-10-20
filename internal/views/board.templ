@@ -92,7 +92,7 @@ templ Board(p BoardPage) {
 			<span hidden data-init={ CreateWithStatus } data-status={ p.CreateStatus } data-project={ p.Project.ID }></span>
 		}
 	</div>
-	@IssuePanel(p.Me, p.Moderates)
+	@IssuePanel(p.Me, p.Moderates, p.Deletes)
 }
 
 // BoardLanes is the board's shared region: the same bytes for every tab

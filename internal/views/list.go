@@ -144,6 +144,7 @@ type ListPage struct {
 	// Me and Moderates are for the issue panel (views.IssuePanel).
 	Me        string
 	Moderates bool
+	Deletes   Deletes
 }
 
 // filterOption is a value a filter offers.

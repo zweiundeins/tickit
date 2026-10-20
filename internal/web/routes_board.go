@@ -363,7 +363,7 @@ func (s *Server) boardPage(w http.ResponseWriter, r *http.Request) {
 			Views: []string{"board:" + views.BoardArg(p.Key, quick), "boardhead:" + p.Key},
 			Body: views.Board(views.BoardPage{Project: p, Filter: quick, Labels: labels, Lanes: lanes, Head: head,
 				CanEdit: can(ctx, q, me, access.EditIssues, p.ID), Admin: can(ctx, q, me, access.Configure, p.ID), CreateStatus: create,
-				Me: me.ID, Moderates: access.SiteCan(me, access.Moderate)}),
+				Me: me.ID, Moderates: access.SiteCan(me, access.Moderate), Deletes: deletes(ctx, q, me, []string{p.ID})}),
 		}, nil
 	})
 }
@@ -596,7 +596,7 @@ func (s *Server) backlogPage(w http.ResponseWriter, r *http.Request) {
 		return Page{
 			Title: p.Name + " backlog", Nav: "projects", Project: p.ID, Views: []string{"backlog:" + p.Key},
 			Body: views.Backlog(views.BacklogPage{Project: p, Data: d, CanEdit: can(ctx, q, me, access.EditIssues, p.ID), Admin: can(ctx, q, me, access.Configure, p.ID),
-				Me: me.ID, Moderates: access.SiteCan(me, access.Moderate)}),
+				Me: me.ID, Moderates: access.SiteCan(me, access.Moderate), Deletes: deletes(ctx, q, me, []string{p.ID})}),
 		}, nil
 	})
 }

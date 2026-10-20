@@ -171,6 +171,7 @@ type BoardPage struct {
 	// Me and Moderates are the issue panel's (docs/architecture.md).
 	Me        string
 	Moderates bool
+	Deletes   Deletes
 }
 
 // HeadID is the id of a board head's region.

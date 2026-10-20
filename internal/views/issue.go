@@ -242,17 +242,39 @@ func entryText(e tracker.Entry) string {
 	return "changed the " + label + " from " + e.Old + " to " + e.New
 }
 
+// Deletes is where a viewer may delete issues (FR-28.1): in every
+// project, or in those listed. The document decides it, so that the
+// issue's shared regions stay the same for everyone.
+type Deletes struct {
+	All      bool
+	Projects []string
+}
+
 // viewerStyle shows the viewer's own parts of the shared regions: the
 // edit and delete buttons of their comments, the watch button's state,
-// and hides their own typing indicator. The views know nothing of who
+// and hides their own typing indicator and the actions they may not use
+// ("Delete issue" outside the projects of del). The views know nothing of who
 // looks at them; the document does (MP-02.1).
-func viewerStyle(me string) templ.Component {
+func viewerStyle(me string, del Deletes) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if !people.ValidID(me) {
 			return nil
 		}
 		var b strings.Builder
 		b.WriteString(`<style>`)
+		if !del.All {
+			var not []string
+			for _, id := range del.Projects {
+				if tracker.ValidID(id) {
+					not = append(not, `[data-pid="`+id+`"]`)
+				}
+			}
+			sel := `.tk-issue__main`
+			if len(not) > 0 {
+				sel += `:not(` + strings.Join(not, ",") + `)`
+			}
+			b.WriteString(`.tk-issue ` + sel + ` [data-del]{display:none}`)
+		}
 		b.WriteString(`.tk-issue .tk-comment[data-author="` + me + `"] .tk-comment__own{display:inline-flex}`)
 		b.WriteString(`.tk-issue .tk-typing [data-who="` + me + `"]{display:none}`)
 		b.WriteString(`.tk-issue:has([data-watcher="` + me + `"]) .tk-watch__off{display:none}`)

@@ -6,11 +6,12 @@ import "github.com/zweiundeins/tickit/internal/ui"
 // a search (FR-13.2). Put it once in the page's body; a link to an issue
 // opens it when it carries IssueLinkAttrs(id): <a href="/WEB-12"
 // data-issue-panel="<id>">. me is the viewer's person id, moderates
-// whether they may hide comments. docs/architecture.md, "Issue panel".
-templ IssuePanel(me string, moderates bool) {
+// whether they may hide comments, deletes where they may delete issues.
+// docs/architecture.md, "Issue panel".
+templ IssuePanel(me string, moderates bool, deletes Deletes) {
 	<div class="tk-issue-host" data-signals={ issueSignals("", "", me, false, moderates) } data-on:click__window={ panelOpen } data-on:popstate__window={ panelPop }>
 		@ui.SidePanel(ui.PanelProps{ID: "issue-panel", Title: "Issue", Lead: panelLead(), Actions: panelActions(), Class: "tk-issue-panel", Attrs: templ.Attributes{"data-on:close": panelClose}}) {
-			@issueFrame(IssueFrameProps{Panel: true, Me: me, Moderates: moderates})
+			@issueFrame(IssueFrameProps{Panel: true, Me: me, Moderates: moderates, Deletes: deletes})
 		}
 	</div>
 }

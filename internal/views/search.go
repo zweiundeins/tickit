@@ -101,6 +101,7 @@ type SearchPage struct {
 	// Me and Moderates are for the issue panel (views.IssuePanel).
 	Me        string
 	Moderates bool
+	Deletes   Deletes
 }
 
 // Suggestions are the typeahead's first issues and pages for a text.

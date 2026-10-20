@@ -127,6 +127,7 @@ func (s *Server) issuePage(w http.ResponseWriter, r *http.Request) {
 			Body: views.IssuePage(views.IssueFrameProps{
 				Issue: &m, ID: m.ID, Key: m.Key, Me: actor.ID,
 				ReadOnly: !edit || m.Project.Archived || !m.Deleted.IsZero(), Moderates: hide,
+				Deletes: deletes(ctx, q, actor, []string{m.ProjectID}),
 			}),
 		}, nil
 	})
@@ -162,6 +163,28 @@ func (s *Server) oldIssueURL(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Redirect(w, r, "/"+d.Key, http.StatusMovedPermanently)
 	}
+}
+
+// deletes is where actor may delete issues among projects, nil for those
+// they may read (views.Deletes): the document shows "Delete issue" there
+// only (FR-28.1).
+func deletes(ctx context.Context, q sqlite.Querier, actor people.Person, projects []string) views.Deletes {
+	if access.SiteCan(actor, access.Moderate) {
+		return views.Deletes{All: true}
+	}
+	if projects == nil {
+		var err error
+		if projects, err = tracker.Readable(ctx, q, actor); err != nil {
+			return views.Deletes{}
+		}
+	}
+	var d views.Deletes
+	for _, id := range projects {
+		if can(ctx, q, actor, access.DeleteIssue, id) {
+			d.Projects = append(d.Projects, id)
+		}
+	}
+	return d
 }
 
 // readableIssue checks that actor may read the issue id, which exists,
