@@ -59,7 +59,7 @@ Login and logout are actions too (`POST /cmd/login`, `POST /cmd/logout`), outsid
 
 ## Streams, views and topics
 
-- Each document opens one stream, `GET /stream?tab=<tab>&v=<view>,<view>`, from `data-init` on `#stream`. Each `v` names a view factory registered by an area (`issue:<id>`, `board:<projectID>`, `list:<hash>`, `page:<id>`, `tree:<spaceID>`) with `s.views.Register(kind, f)`, where `f(ctx, q, actor, arg) (live.View, error)` checks that the actor may read it (`access.ErrNotFound` answers 404, a denial 403, an unknown kind 400). Every stream also gets the person's view (`person:<id>`: name, bell, unread count), the demo view (`demo`: the reset notice), a `connected` view that hides "Reconnecting", the session's prefs view (`prefs:<tab>`, the signal `_prefs`), and the tab view last. The page's views reach `openStream` as the signal `_views`, never inside an expression.
+- Each document opens one stream, `GET /stream?tab=<tab>&v=<view>,<view>`, from `data-init` on `#stream`. Each `v` names a view factory registered by an area (`issue:<id>`, `board:<projectID>`, `list:<query>`, `filters:`, `search:<query>`, `page:<id>`, `tree:<spaceID>`) with `s.views.Register(kind, f)`, where `f(ctx, q, actor, arg) (live.View, error)` checks that the actor may read it (`access.ErrNotFound` answers 404, a denial 403, an unknown kind 400). Every stream also gets the person's view (`person:<id>`: name, bell, unread count), the demo view (`demo`: the reset notice), a `connected` view that hides "Reconnecting", the session's prefs view (`prefs:<tab>`, the signal `_prefs`), and the tab view last. The page's views reach `openStream` as the signal `_views`, never inside an expression.
 - The stream's `Spec.ID` is `<personID>.<tab>`, so `hub.Watchers(key)` yields who watches a view without a read (MP-01, MP-02). A kind registered with `s.views.RegisterWithPresence` makes every stream that watches one of its views watch `presence:<key>` too: a shared view with `Presence: true` that lists one face per person in the order they came, with the tab count in the tooltip. The page puts `views.Presence(views.PresenceID(key), nil)` where the row goes (a shared `ui.PresenceRow`); the document's own style puts the viewer's face first, outlined, and shows at most 8.
 - A side panel or a tab switch adds a view to the open stream with `POST /cmd/watch` (`hub.Watch`), and records it in the tab row so that a reconnect restores it; `POST /cmd/unwatch` takes it off.
 - A view's key holds everything its render depends on. Shared views render nothing about the viewer; per-viewer parts go in `tab:<id>`, `person:<id>` or signals.
@@ -123,6 +123,44 @@ A person's face is `ui.FaceOf(id)`, and their hue an index of 0 to 15 (`people.P
 
 - Views: `activity-home:<pages>` (key `activity:home:<hash of the readable scopes>:<pages>`, shared by everyone who reads the same scopes), `activity-project:<id>`, `activity-space:<id>`; topics `lith:events` (`events.Topic`) and `people`, rendered again every minute for relative times. A project's or a space's page renders `views.Activity(feed)` from `s.ScopeActivity(ctx, q, scope, now)` and names its view in `Page.Views`.
 - The home page `/` (FR-59, `routes_notify.go`): the person's work in the view `home:` (key `home:<person>`: counts, open issues assigned to them, "recently edited by you" from the log, the projects and spaces they may read) and the home feed, 50 more with `?activity=n`. Recently viewed needs a write per view and is not there yet.
+
+## The issue list and saved filters
+
+- `GET /issues` is the list (FR-50 to FR-55). Its filter, sort and page are the URL's parameters as `tracker.Filter.Values` and `tracker.Sort.Values` name them, "me" kept. The filter form is a plain GET form in the document (it works without script); the list itself, `#issue-list`, is the shared view `list:<query>`: the query string in base64url, or `.<hash>` of a query that `list_queries` holds when it is longer than a view's name allows. Its key is `list:` and `tracker.Query.Key()` (the projects the person reads, the filter with "me" resolved, the sort, the page), so tabs that see the same list share one render whoever they are (MP-11). It listens to `issues`, `projects` and `people`, so a change that moves an issue into or out of the filter shows in the next frame (MP-03).
+- The page's script reads the form (`views/list.go`, no person's value in an expression), puts the query in the address (`pushState` for a filter, a sort or a page, `replaceState` while typing; `popstate` restores the form) and posts `POST /cmd/list/view {tab, view, query}`, at most every 300 ms while typing. The handler stores the query in the tab's row (area `list`), and after the commit, in commit order, moves the open stream from the old list's view to the new one with `hub.Unwatch` and `hub.Watch`; it answers the new view's name as `$_views`, which a reconnect opens. The stream stays open, so only the new list's frame arrives. `GET /issues` without a query redirects (303) to the list the session showed last, so a tab keeps its filter when the person opens an issue and comes back (FR-55.2).
+- A row's click goes to `/<KEY>` until the issue's side panel documents its API here (FR-50.3; a TODO in `views/list.templ`). `GET /issues.csv?<query>` exports the whole result (FR-152).
+- Saved filters (FR-56): `/filters` lists every one, the person's starred first, as the person's own view `filters:` (key `filters:<person>`, topic `filters`). `POST /cmd/filters/save {name, query}`, `/rename {filter, name}`, `/delete {filter}` and `/star {filter, star}` run the tracker's commands; only the owner (or a site admin) renames and deletes. The list's "Filters" menu links each to `/issues?<query>`.
+
+## Search
+
+`internal/search` is the search across issues and pages (FR-57), an FTS5 index that is a projection of the event streams (NFR-44).
+
+- Each kind of document has two tables (`search.Tables(kind)`, `migrations/060_search.sql`): its rows (`search_issues`, `search_pages`, `search_comments`: id, scope, key and old keys, the folded title, href, place, labels and people as JSON, hidden, updated) and their text in an FTS5 table beside them (`<table>_fts`: key, title, body; `unicode61` without diacritics, prefix indexes of 2 and 3). The row's `n` is the text's rowid.
+- Only one projector writes a kind's tables, through `search.Put(tx, kind, doc)`, `search.Patch(tx, kind, id, func(*search.Doc))`, `search.Hide(tx, kind, id, hidden)` and `search.Remove(tx, kind, id)` in its inline handlers. A handler builds the document from its event and from the document as indexed (`Patch`), never from another projection, which may be rebuilding at the time. Each write touches `search.Topic` (`search`).
+- The tracker's parts hold two of them: `search_issues` on the issue stream (created, summary, description, assignee, labels, moves to another project with the old key kept, deletes) and `search_comments` on the comment stream, which indexes comments on issues and on pages (scope: the subject's id, key: its kind; a hidden comment stays indexed but out of results).
+- The wiki's hook: the wiki adds a projector of its page stream to `wiki.Parts()` named `search.PagesProjector` at `search.PagesVersion` that writes `search.Tables(search.Page)`:
+
+```go
+var pageSearch = events.NewProjector(PageStream, search.PagesProjector, search.PagesVersion,
+	events.Handle(PageCreatedType, func(tx *writer.Tx, r events.Record[string, PageCreated]) error {
+		return search.Put(tx, search.Page, search.Doc{ID: r.ID, Scope: r.Data.Space, Title: r.Data.Title, Body: text,
+			Labels: labels, People: []string{r.Actor}, Place: spaceKey, Href: pageURL, Updated: r.At})
+	}),
+	events.Handle(PageRenamedType, func(tx *writer.Tx, r events.Record[string, PageRenamed]) error {
+		return search.Patch(tx, search.Page, r.ID, func(d *search.Doc) { d.Title, d.Updated = r.Data.To, r.At })
+	}),
+	events.Handle(PageDeletedType, func(tx *writer.Tx, r events.Record[string, PageDeleted]) error {
+		return search.Remove(tx, search.Page, r.ID)
+	}),
+	// every other type of the stream: events.Ignore
+).Tables(search.Tables(search.Page)...)
+```
+
+  `Scope` is the space's id (the scopes row that access reads), `Place` what results show beside the title (the space's key), `Href` the page's address, `Body` the plain text (`tracker.DocText` reads a document's), `People` who a person filter finds it by (author, editors). A page moved to another space patches Scope, Place and Href. Page comments need nothing more: they are comments.
+- `search.Search(ctx, q, search.Query{Text, Kinds, Projects, Spaces, InProjects, InSpaces, Labels, People, Offset, Limit})` matches every word, the last as a prefix while someone types, and ranks in tiers: the exact issue key (old keys too) or the exact page title, then key and title matches, then body matches, then comment matches (leading to their subject), each tier by bm25 (key and title weigh more), then the newest. `Projects` and `Spaces` are what the person may read. A hit has its snippet as parts with the matched words marked (`search.Part`), which the page renders escaped in `<mark>`.
+- `GET /search?q=&kind=&project=&space=&label=&person=&page=` is the results page (FR-57.2) with the kinds' counts; its results are the shared view `search:<params in base64url>`, keyed by the scopes the person reads and the params, listening to `search`, `issues`, `people` and the swap topics of the index's rebuilds (`search.ProjectionTopics`).
+- The header's search box (FR-57.1): `views.SearchBoxAttrs()` on the input and `views.SearchSuggestSlot()` after it in the form (`ui.HeaderProps.SearchAttrs`, `SearchSuggest`). While someone types two characters or more, at most every 300 ms, the box asks `GET /search/suggest?q=`, a read that answers a patch of `#search-suggest` (a popover in the top layer, anchored under the box) with the first 5 issues and 5 pages and a link to every result; Down goes into it, Escape closes it, Enter submits the form to `/search`. A polite live region says how many suggestions there are.
+- Rebuilds: a new version of one of the projectors makes lith's runner rebuild its tables into copies, FTS5 table included, and swap them in. Tested in `internal/search` (`TestRebuild`): the results of a fixed set of queries are the same before and after, the copies and the retired tables are gone, and searches that run while it rebuilds in batches of 10 answer from the old index, never empty (NFR-44). lith's copy takes the table's `CREATE VIRTUAL TABLE` statement and FTS5 renames its shadow tables with the table, so no projector of its own is needed.
 
 ## The edge
 

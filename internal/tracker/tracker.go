@@ -32,8 +32,10 @@
 // command's) and read the projections: ProjectByKey, ProjectByID,
 // Projects, Readable, Statuses, Components, Sprints, IssueByKey,
 // IssueDetail, Watchers, EpicChildren, Epics, Board, Backlog, Search,
-// Comments, Labels, Assignable, SavedFilters; History, Activity and
-// StateAt read an issue's own stream.
+// Comments, Labels, Assignable, SavedFilters, IssuesByID, SearchAll and
+// ListOptions (the list's filter values); History, Activity and StateAt
+// read an issue's own stream. The search index's projectors of issues and
+// comments are among Parts (search_index.go).
 package tracker
 
 import (
