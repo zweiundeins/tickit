@@ -365,7 +365,11 @@ func TestRebuild(t *testing.T) {
 	go func() { done <- r.Run(rctx) }()
 	defer func() { cancel(); <-done }()
 	rebuilt := false
-	for deadline := time.Now().Add(20 * time.Second); time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
+	wait := 20 * time.Second
+	if raceDetector {
+		wait = 2 * time.Minute
+	}
+	for deadline := time.Now().Add(wait); time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
 		ps, live, versions := r.Stats().Projectors, true, true
 		for _, p := range ps {
 			live = live && p.Status == "live"

@@ -25,9 +25,9 @@ import (
 // It reports the renders of the board's view per key, the frames and
 // bytes each stream got, the time from a move's request to the frame on
 // the slowest stream, and the process's CPU time. TICKIT_LOAD_SECONDS
-// sets how long (10 by default). Skipped with -short.
+// sets how long (10 by default). Skipped with -short and under -race.
 func TestBoardLoad(t *testing.T) {
-	if testing.Short() {
+	if testing.Short() || raceDetector {
 		t.Skip("a load test")
 	}
 	seconds := 10

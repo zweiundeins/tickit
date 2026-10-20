@@ -41,7 +41,7 @@ func sentence(r *rand.Rand, n int) string {
 // in through the tracker's commands, 500 to a transaction; the pages
 // through the index's hook, as the wiki's projector would.
 func TestSearchSpeed(t *testing.T) {
-	if testing.Short() {
+	if testing.Short() || raceDetector {
 		t.Skip("10,000 issues")
 	}
 	e := newList(t)
