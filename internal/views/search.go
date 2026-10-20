@@ -97,6 +97,9 @@ type SearchPage struct {
 	Labels   []string
 	People   []string // ids
 	Names    map[string]people.Person
+	// Me and Moderates are for the issue panel (views.IssuePanel).
+	Me        string
+	Moderates bool
 }
 
 // Suggestions are the typeahead's first issues and pages for a text.

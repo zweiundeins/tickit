@@ -29,6 +29,7 @@ templ IssueListBody(p ListPage) {
 			@IssueListRegion(p.List)
 		</div>
 		@saveDialog()
+		@IssuePanel(p.Me, p.Moderates)
 	</div>
 }
 
@@ -173,16 +174,15 @@ templ IssueListRegion(l IssueList) {
 	</div>
 }
 
-// listRow is an issue's row. A click on it opens the issue.
-// TODO(rw/issue): open the issue's side panel (FR-50.3, FR-13.2) once its
-// API is in docs/architecture.md; until then the row goes to /<KEY>.
+// listRow is an issue's row. A click on it opens the issue in the side
+// panel (FR-50.3, FR-13.2), as a click on its summary does.
 templ listRow(l IssueList, i tracker.Issue) {
 	<tr data-href={ "/" + i.Key }>
 		<td>
 			@ui.TypeIcon(ui.IssueType(i.Type))
 		</td>
 		<td class="tk-key">{ i.Key }</td>
-		<td class="tk-grow"><a href={ templ.SafeURL("/" + i.Key) }>{ i.Summary }</a></td>
+		<td class="tk-grow"><a href={ templ.SafeURL("/" + i.Key) } { IssueLinkAttrs(i.ID)... }>{ i.Summary }</a></td>
 		<td>
 			@ui.PriorityLabel(ui.Priority(i.Priority))
 		</td>

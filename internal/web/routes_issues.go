@@ -22,6 +22,7 @@ import (
 	"github.com/zweiundeins/lith/sse"
 	"github.com/zweiundeins/lith/writer"
 
+	"github.com/mbolli/tickit/internal/access"
 	"github.com/mbolli/tickit/internal/people"
 	"github.com/mbolli/tickit/internal/tabs"
 	"github.com/mbolli/tickit/internal/tracker"
@@ -243,7 +244,7 @@ func (s *Server) issueList(w http.ResponseWriter, r *http.Request) {
 			return Page{}, err
 		}
 		p := views.ListPage{List: l, Filter: query.Filter, Sort: query.Sort, Page: query.Page, Options: opts, People: found, Saved: saved,
-			Query: tracker.Query{Filter: query.Filter, Sort: query.Sort}.Values().Encode()}
+			Query: tracker.Query{Filter: query.Filter, Sort: query.Sort}.Values().Encode(), Me: actor.ID, Moderates: access.SiteCan(actor, access.Moderate)}
 		spec, stored := listSpec(listQueryOf(v))
 		if stored {
 			if _, err := listArgQuery(ctx, q, "."+storedHash(spec)); err != nil {

@@ -228,7 +228,12 @@ func (s *Server) searchViewOf(ctx context.Context, q sqlite.Querier, actor peopl
 
 // searchPage is /search?q= (FR-57.2).
 func (s *Server) searchPage(w http.ResponseWriter, r *http.Request) {
-	p := parseSearch(r.URL.Query())
+	v := r.URL.Query()
+	if v.Get("q") == "" && !tracker.ParseFilter(v).IsZero() {
+		http.Redirect(w, r, "/issues?"+r.URL.RawQuery, http.StatusSeeOther) // a list's filter: the issue list shows it
+		return
+	}
+	p := parseSearch(v)
 	actor := people.Actor(r.Context())
 	s.render(w, r, http.StatusOK, func(ctx context.Context, q sqlite.Querier) (Page, error) {
 		sc, err := readableScopes(ctx, q, actor)
@@ -247,7 +252,8 @@ func (s *Server) searchPage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return Page{}, err
 		}
-		page := views.SearchPage{Results: res, Projects: sc.projects, Labels: opts.Labels, People: opts.People, Names: names}
+		page := views.SearchPage{Results: res, Projects: sc.projects, Labels: opts.Labels, People: opts.People, Names: names,
+			Me: actor.ID, Moderates: access.SiteCan(actor, access.Moderate)}
 		for key := range sc.spaces {
 			page.Spaces = append(page.Spaces, key)
 		}

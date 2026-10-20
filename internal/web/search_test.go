@@ -46,7 +46,7 @@ func newSearchEnv(t *testing.T) *listEnv {
 	return e
 }
 
-var hitTitle = regexp.MustCompile(`<p class="search-hit__title">(?:<span class="search-hit__key">([A-Z]+-[0-9]+)</span> )?<a href="[^"]*">([^<]*)</a>`)
+var hitTitle = regexp.MustCompile(`<p class="search-hit__title">(?:<span class="search-hit__key">([A-Z]+-[0-9]+)</span> )?<a href="[^"]*"[^>]*>([^<]*)</a>`)
 
 // hits are a results page's hits as keys or titles.
 func hits(page string) []string {
@@ -95,6 +95,19 @@ func TestSearchPage(t *testing.T) {
 	}
 	if !strings.Contains(page, `value="cart"`) || !strings.Contains(page, `id="tk-search"`) {
 		t.Errorf("the header's search box lacks the text")
+	}
+	if !strings.Contains(page, `data-issue-panel="`+e.ids["WEB-2"]+`"`) || !strings.Contains(page, `id="issue-panel"`) {
+		t.Errorf("the results have no issue panel")
+	}
+	// The home page's link to the person's work: a list's filter without
+	// text is the issue list.
+	resp, err := c.Get(e.URL + "/search?assignee=me&category=todo&sort=updated&dir=desc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusSeeOther || resp.Header.Get("Location") != "/issues?assignee=me&category=todo&sort=updated&dir=desc" {
+		t.Errorf("a filter on /search: %d %s", resp.StatusCode, resp.Header.Get("Location"))
 	}
 	_, page = webtest.Get(t, c, e.URL+"/search?q=screen")
 	if !strings.Contains(page, "In a comment: ") {

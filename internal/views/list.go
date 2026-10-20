@@ -124,6 +124,9 @@ type ListPage struct {
 	// Unwatched: the stream has no view of this list yet (a query too long
 	// for a view's name that no action stored): the page posts it once.
 	Unwatched bool
+	// Me and Moderates are for the issue panel (views.IssuePanel).
+	Me        string
+	Moderates bool
 }
 
 // filterOption is a value a filter offers.
@@ -303,7 +306,7 @@ var (
 		document.getElementById('` + IssueListID + `').scrollIntoView({block: 'nearest'})
 		return true
 	}
-	if (row && !t.closest('a, button, input, label')) location.assign(row.dataset.href)
+	if (row && !t.closest('a, button, input, label')) row.querySelector('a[href]')?.click()
 	return false
 })(evt.target, document.getElementById('` + ListFormID + `')) && ` + listSend(`true`)
 	listFailed = `evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && ($_problem = 'The list did not update. Try again in a moment.')`

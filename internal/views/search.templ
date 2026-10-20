@@ -42,6 +42,7 @@ templ SearchBody(p SearchPage) {
 				@SearchResultsRegion(p.Results)
 			</div>
 		</div>
+		@IssuePanel(p.Me, p.Moderates)
 	</div>
 }
 
@@ -157,7 +158,7 @@ templ searchHit(r SearchResults, h search.Hit) {
 			}
 			<p class="search-hit__title">
 				<span class="search-hit__key">{ h.Key }</span>
-				<a href={ templ.SafeURL(h.Href) }>{ h.Title }</a>
+				<a href={ templ.SafeURL(h.Href) } { IssueLinkAttrs(h.ID)... }>{ h.Title }</a>
 			</p>
 			@snippet(h)
 			if ok {
@@ -217,7 +218,7 @@ templ SearchSuggest(s Suggestions) {
 			<ul class="search-suggest__group" aria-labelledby="search-suggest-issues">
 				for _, h := range s.Issues {
 					<li>
-						<a class="search-suggest__item" href={ templ.SafeURL(h.Href) }>
+						<a class="search-suggest__item" href={ templ.SafeURL(h.Href) } { IssueLinkAttrs(h.ID)... }>
 							<span class="search-hit__key">{ h.Key }</span>
 							<span>{ h.Title }</span>
 						</a>

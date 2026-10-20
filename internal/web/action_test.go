@@ -260,6 +260,7 @@ func TestSignInLimits(t *testing.T) {
 // a guest, a guest who acted, an account.
 func TestGetNeverWrites(t *testing.T) {
 	e := webtest.Start(t)
+	seedProbes(t, e) // the issues the issue routes' probes name
 	e.Account(t, "ada@example.com", "correct horse battery", people.Admin)
 	acted, staff := webtest.Client(t), webtest.Client(t)
 	webtest.Post(t, acted, e.URL+"/cmd/people/rename", `{"tab":"tab1","op":"op1","name":"Bob"}`)

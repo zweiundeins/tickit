@@ -230,3 +230,23 @@ func TestListShots(t *testing.T) {
 		}
 	}
 }
+
+// FR-50.3: a click on a row opens the issue in the side panel; closing it
+// brings the list's address back, the list as it was.
+func TestListPanel(t *testing.T) {
+	e := seeded(t)
+	b := browsertest.Start(t)
+	p := b.NewPage(t, 1440, 900)
+	p.Navigate(t, e.URL+"/issues?q=checkout")
+	waitStreams(t, e, 1)
+	p.Wait(t, rowKeys+`.length > 3`, 5*time.Second)
+	var key string
+	p.Eval(t, `(() => { const row = document.querySelectorAll('#issue-list tbody tr')[2]; row.querySelector('td:nth-child(5)').click(); return row.querySelector('td.tk-key').textContent })()`, &key)
+	p.Wait(t, `document.getElementById('issue-panel').open && location.pathname === '/`+key+`'`, 5*time.Second)
+	p.Wait(t, `document.querySelector('#issue-panel .mono')?.textContent === '`+key+`'`, 5*time.Second)
+	p.Press(t, "Escape")
+	p.Wait(t, `!document.getElementById('issue-panel').open && location.search === '?q=checkout' && `+rowKeys+`.length > 3`, 5*time.Second)
+	if errs := p.Errors(); len(errs) > 0 {
+		t.Errorf("the page reported: %q", errs)
+	}
+}

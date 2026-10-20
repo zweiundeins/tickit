@@ -44,8 +44,12 @@ type Page struct {
 	// Scripts are further modules by their static name
 	// ("editor/sb-rich-editor.min.js").
 	Scripts []string
-	// Create replaces the header's create dialog (views.CreateID).
+	// Create replaces the header's create dialog (views.CreateID); nil
+	// gives the issue create dialog (FR-10.1), with Project preselected.
 	Create templ.Component
+	// Project is the id of the project the page belongs to, if any: the
+	// create dialog preselects it.
+	Project string
 }
 
 // errGone is what a page handler returns for something deleted: the page
@@ -69,6 +73,11 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, buil
 			status, p, err = http.StatusGone, Page{Title: "Deleted", Body: views.Gone()}, nil
 		case err != nil:
 			return err
+		}
+		if p.Create == nil {
+			if p.Create, err = s.createDialog(ctx, tx, people.Actor(ctx), p.Project); err != nil {
+				return err
+			}
 		}
 		shell, err := s.shell(r, tx, p)
 		if err != nil {

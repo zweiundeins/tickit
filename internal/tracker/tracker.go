@@ -32,10 +32,12 @@
 // command's) and read the projections: ProjectByKey, ProjectByID,
 // Projects, Readable, Statuses, Components, Sprints, IssueByKey,
 // IssueDetail, Watchers, EpicChildren, Epics, Board, Backlog, Search,
-// Comments, Labels, Assignable, SavedFilters, IssuesByID, SearchAll and
-// ListOptions (the list's filter values); History, Activity and StateAt
-// read an issue's own stream. The search index's projectors of issues and
-// comments are among Parts (search_index.go).
+// Comments, Labels, Assignable, SavedFilters, RefByKey, Typing,
+// IssuesByID, SearchAll and ListOptions (the list's filter values);
+// History, Activity and StateAt read an issue's own stream,
+// ProjectWorkflow a project's. SetTyping records who types in an issue's
+// field (MP-07): no event, a row of issue_typing. The search index's
+// projectors of issues and comments are among Parts (search_index.go).
 package tracker
 
 import (

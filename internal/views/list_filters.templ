@@ -18,7 +18,7 @@ templ SavedFiltersBody(d SavedFilters) {
 		<div data-on:click={ filtersClick }>
 			@SavedFiltersRegion(d)
 		</div>
-		@ui.Dialog(ui.DialogProps{ID: "rename-filter", Title: "Rename filter", Size: ui.SizeSM, Footer: renameFooter()}) {
+		@ui.Dialog(ui.DialogProps{ID: "rename-filter", Title: "Rename filter", Size: ui.SizeSM, Footer: renameFilterFooter()}) {
 			<form id="rename-filter-form" data-on:submit__prevent={ renameFilter }>
 				@ui.Field(ui.FieldProps{ID: "rename-filter-name", Label: "Name", Required: true, ErrorAttrs: templ.Attributes{"data-text": "$_filters.msg"}}) {
 					@ui.Input(ui.InputProps{ID: "rename-filter-name", Required: true, MaxLength: 60, DescribedBy: "rename-filter-name-error",
@@ -26,18 +26,18 @@ templ SavedFiltersBody(d SavedFilters) {
 				}
 			</form>
 		}
-		@ui.Dialog(ui.DialogProps{ID: "delete-filter", Title: "Delete filter", Description: "Lists that use it keep working; the filter goes from Filters.", Size: ui.SizeSM, Footer: deleteFooter()}) {
+		@ui.Dialog(ui.DialogProps{ID: "delete-filter", Title: "Delete filter", Description: "Lists that use it keep working; the filter goes from Filters.", Size: ui.SizeSM, Footer: deleteFilterFooter()}) {
 			<p>Delete <strong data-text="$_filters.name"></strong>?</p>
 		}
 	</div>
 }
 
-templ renameFooter() {
+templ renameFilterFooter() {
 	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: "rename-filter"})
 	@ui.Button(ui.ButtonProps{Label: "Rename", Variant: ui.Primary, Type: "submit", Attrs: templ.Attributes{"form": "rename-filter-form", "data-attr:aria-busy": filtersBusy}})
 }
 
-templ deleteFooter() {
+templ deleteFilterFooter() {
 	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: "delete-filter"})
 	@ui.Button(ui.ButtonProps{Label: "Delete", Variant: ui.Danger, Attrs: templ.Attributes{"data-on:click": deleteFilter, "data-attr:aria-busy": filtersBusy}})
 }

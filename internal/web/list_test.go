@@ -146,6 +146,10 @@ func TestListFilters(t *testing.T) {
 			t.Errorf("the list lacks %q", want)
 		}
 	}
+	// FR-50.3: a row's link opens the issue's side panel.
+	if !strings.Contains(page, `data-issue-panel="`+e.ids["WEB-1"]+`"`) || !strings.Contains(page, `id="issue-panel"`) {
+		t.Errorf("the list has no issue panel")
+	}
 	if strings.Contains(page, e.bo.ID+"<") || strings.Contains(page, ">"+e.bo.ID) {
 		t.Errorf("the list shows a person id")
 	}
