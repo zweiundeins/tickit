@@ -1,16 +1,23 @@
 package web_test
 
 import (
+	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/zweiundeins/lith/live"
+	"github.com/zweiundeins/lith/sqlite"
+	"github.com/zweiundeins/lith/sse"
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/zweiundeins/tickit/internal/access"
@@ -416,5 +423,60 @@ func TestBlockedCommitSaysWhy(t *testing.T) {
 	}
 	if got := head(t, e, page); got.Version != h.Version {
 		t.Errorf("the commit applied: version %d", got.Version)
+	}
+}
+
+// MP-11.2: a view exists while a tab watches it and goes with the last
+// one; MP-11.3: a view whose render fails keeps its last frame, logs the
+// error, and holds up no other view.
+func TestViewLifetime(t *testing.T) {
+	e := webtest.Start(t)
+	things(e)
+	var fail atomic.Bool
+	var n atomic.Int64
+	e.Server.Views().Register("brittle", func(ctx context.Context, q sqlite.Querier, actor people.Person, arg string) (live.View, error) {
+		return live.View{Key: "brittle:" + arg, Topics: []string{"thing"}, Render: func(context.Context, *sql.Tx) (any, error) {
+			if fail.Load() {
+				return nil, errors.New("brittle breaks")
+			}
+			return sse.PatchElements([]byte(fmt.Sprintf(`<p id="brittle">whole %d</p>`, n.Add(1)))), nil
+		}}, nil
+	})
+	c := webtest.Client(t)
+	webtest.Get(t, c, e.URL+"/")
+	watched := func(key string) bool { _, ok := e.Hub.Stats().RendersByKey[key]; return ok }
+	events, closeIt := webtest.Open(t, c, e.URL+"/stream?tab=life1&v=brittle:1,thing:3", nil)
+	webtest.Next(t, events, `<p id="brittle">whole 1</p>`)
+	webtest.Next(t, events, `<p id="thing-3">`)
+	other := webtest.Listen(t, c, e.URL+"/stream?tab=life2&v=thing:3", nil)
+	webtest.Next(t, other, `<p id="thing-3">`)
+
+	fail.Store(true)
+	before := e.Hub.Stats().RendersByKey["thing:3"]
+	e.Do(t, writer.Func(func(tx *writer.Tx) error { tx.Touch("thing"); return nil }))
+	webtest.Silent(t, events, `id="brittle"`, 200*time.Millisecond)
+	if e.Hub.Stats().RendersByKey["thing:3"] <= before {
+		t.Error("MP-11.3: the failed render held up another view")
+	}
+	if !strings.Contains(e.Logs(), "brittle breaks") {
+		t.Error("MP-11.3: the failed render was not logged")
+	}
+	fail.Store(false)
+	e.Do(t, writer.Func(func(tx *writer.Tx) error { tx.Touch("thing"); return nil }))
+	webtest.Next(t, events, `<p id="brittle">whole 2</p>`)
+
+	if !watched("brittle:1") || !watched("thing:3") {
+		t.Fatalf("the views: %v", e.Hub.Stats().RendersByKey)
+	}
+	closeIt()
+	deadline := time.Now().Add(time.Second)
+	for watched("brittle:1") {
+		if time.Now().After(deadline) {
+			t.Fatal("MP-11.2: the view stayed after its last tab")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if !watched("thing:3") {
+		t.Error("MP-11.2: a view another tab watches went")
 	}
 }
