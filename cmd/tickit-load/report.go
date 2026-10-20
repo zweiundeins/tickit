@@ -31,7 +31,8 @@ func (d Dist) String() string {
 // Growth is one sample of the database during the sustained run.
 type Growth struct {
 	Minute       float64
-	Bytes        int64
+	Bytes        int64 // the database and its WAL
+	WAL          int64
 	FreePages    int64
 	Events       map[string]int64
 	Folded       float64 // events folded
@@ -243,7 +244,7 @@ func (r *Results) Print(w io.Writer) {
 	if len(r.Growth) > 0 {
 		p("NFR-43 sustained run (minute, size, free pages, events by kind, events folded, fold commands, of them over 5 ms, mean):")
 		for _, g := range r.Growth {
-			p("  %5.1f  %s  free %d  %v  folded %.0f  folds %.0f  over 5 ms %.0f  mean %.2f ms  rss %s", g.Minute, mib(g.Bytes), g.FreePages, g.Events, g.Folded, g.Folds, g.FoldsOver5ms, 1000*g.FoldMean, mib(g.RSS))
+			p("  %5.1f  %s (WAL %s)  free %d  %v  folded %.0f  folds %.0f  over 5 ms %.0f  mean %.2f ms  rss %s", g.Minute, mib(g.Bytes), mib(g.WAL), g.FreePages, g.Events, g.Folded, g.Folds, g.FoldsOver5ms, 1000*g.FoldMean, mib(g.RSS))
 		}
 		p("  peak RSS over the whole run %s", mib(r.RSSPeakSustain))
 	}

@@ -149,6 +149,7 @@ type editor struct {
 	head    int64
 	confirm chan string
 	typed   int // keystrokes the server took
+	commits int // refs used: each commit's ref is new, or writer.Once answers the old one
 	seq     int64
 	lastAck time.Time
 	state   string
@@ -626,7 +627,7 @@ func (l *load) type5(ctx context.Context, e *editor) {
 	time.Sleep(time.Duration(e.i) * 200 * time.Millisecond / nEditors)
 	tick := time.NewTicker(200 * time.Millisecond)
 	defer tick.Stop()
-	typed, inflight, k := 0, "", 0
+	typed, inflight := 0, ""
 	letter := string(rune('a' + e.i%26))
 	for {
 		select {
@@ -644,9 +645,9 @@ func (l *load) type5(ctx context.Context, e *editor) {
 		if inflight != "" || typed == 0 {
 			continue
 		}
-		k++
-		ref := fmt.Sprintf("e%02d-%d", e.i, k)
 		e.mu.Lock()
+		e.commits++
+		ref := fmt.Sprintf("e%02d-%d", e.i, e.commits)
 		base := e.head
 		e.mu.Unlock()
 		body := fmt.Sprintf(`{"tab":%q,"epoch":%q,"base":%d,"ref":%q,"client":%q,"steps":[{"stepType":"replace","from":1,"to":1,"slice":{"content":[{"type":"text","text":%q}]}}]}`,
@@ -821,6 +822,9 @@ func (l *load) sustain(r *Results, db string, d time.Duration) error {
 	start := time.Now()
 	take := func() Growth {
 		g := Growth{Minute: time.Since(start).Minutes(), Bytes: fileSize(db), Events: map[string]int64{}}
+		if fi, err := os.Stat(db + "-wal"); err == nil {
+			g.WAL = fi.Size()
+		}
 		if rows, err := ro.R.QueryContext(l.ctx, `SELECT stream, count(*) FROM lith_events GROUP BY stream`); err == nil {
 			for rows.Next() {
 				var k string
@@ -849,7 +853,7 @@ func (l *load) sustain(r *Results, db string, d time.Duration) error {
 		time.Sleep(min(time.Minute, d-time.Since(start)))
 		g := take()
 		r.Growth = append(r.Growth, g)
-		slog.Info("sustain", "minute", fmt.Sprintf("%.1f", g.Minute), "bytes", g.Bytes, "events", g.Events, "folded", g.Folded, "folds", g.Folds, "over 5 ms", g.FoldsOver5ms)
+		slog.Info("sustain", "minute", fmt.Sprintf("%.1f", g.Minute), "bytes", g.Bytes, "wal", g.WAL, "events", g.Events, "folded", g.Folded, "folds", g.Folds, "over 5 ms", g.FoldsOver5ms)
 	}
 	stop()
 	wg.Wait()

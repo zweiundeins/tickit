@@ -33,6 +33,10 @@ func (s *server) url() string { return "http://" + s.addr }
 // start runs the binary and waits until /healthz answers; it returns that
 // moment.
 func (s *server) start() (time.Time, error) {
+	if res, err := http.Get(s.url() + "/healthz"); err == nil {
+		res.Body.Close()
+		return time.Time{}, fmt.Errorf("something serves %s already", s.addr)
+	}
 	args := []string{s.bin, "serve", "-db", s.db, "-addr", s.addr, "-metrics", s.metrics, "-streams", "200"}
 	if s.cpus != "" {
 		args = append([]string{"taskset", "-c", s.cpus}, args...)
