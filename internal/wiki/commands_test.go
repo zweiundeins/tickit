@@ -15,6 +15,7 @@ import (
 
 	"github.com/mbolli/tickit/internal/access"
 	"github.com/mbolli/tickit/internal/demo/seed"
+	"github.com/mbolli/tickit/internal/search"
 	"github.com/mbolli/tickit/internal/tracker"
 )
 
@@ -469,5 +470,36 @@ func TestSeed(t *testing.T) {
 	}
 	if n := e.row(`SELECT count(*) FROM page_links`); n == "0" {
 		t.Error("no page links")
+	}
+}
+
+// FR-57: pages are found by title and by the text of their versions.
+func TestPageSearch(t *testing.T) {
+	e := newEnv(t)
+	sp, _ := e.space("ENG", true)
+	p := e.page(sunny, CreatePage{Space: sp, Title: "Deploy checklist", Doc: paras("Run the canary first")})
+	e.commit(sunny, p, 1, "s1", steps(insert(1, "Zebra ")))
+	var hits []search.Hit
+	find := func(text string) int {
+		e.View(t, func(tx *sql.Tx) error {
+			res, err := search.Search(context.Background(), tx, search.Query{Text: text, Kinds: []search.Kind{search.Page}, Spaces: []string{sp}, Limit: 10})
+			hits = res.Hits
+			return err
+		})
+		return len(hits)
+	}
+	if find("checklist") != 1 || find("canary") != 1 {
+		t.Fatalf("title or body not found: %+v", hits)
+	}
+	if find("zebra") != 0 {
+		t.Error("a keystroke reached the index before a version")
+	}
+	e.must(CutVersion{By: e.by(sunny), Page: p})
+	if find("zebra") != 1 {
+		t.Error("the new version's text is not indexed")
+	}
+	e.must(TrashPage{By: e.by(sunny), Page: p})
+	if find("checklist") != 0 {
+		t.Error("a trashed page is found")
 	}
 }

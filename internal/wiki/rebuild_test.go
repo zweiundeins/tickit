@@ -46,7 +46,7 @@ func (e *env) dump(table string) string {
 	return b.String()
 }
 
-var wikiTables = []string{"spaces", "pages", "page_labels", "page_watchers", "page_versions", "page_doc", "page_chips", "page_links", "page_comments"}
+var wikiTables = []string{"spaces", "pages", "page_labels", "page_watchers", "page_versions", "page_doc", "page_chips", "page_links", "page_comments", "search_pages"}
 
 // FR-155.2: rebuilding every read model of the wiki from the stored
 // events yields the same tables, after a fold too. FR-155.1: every event
@@ -106,7 +106,7 @@ func TestRebuild(t *testing.T) {
 	docs.reset()
 	commits.reset()
 	e.must(writer.Func(func(tx *writer.Tx) error {
-		if _, err := tx.Exec(`UPDATE lith_projections SET version = version + 100 WHERE name LIKE 'wiki_%'`); err != nil {
+		if _, err := tx.Exec(`UPDATE lith_projections SET version = version + 100 WHERE name LIKE 'wiki_%' OR name = 'search_pages'`); err != nil {
 			return err
 		}
 		for _, tb := range wikiTables {

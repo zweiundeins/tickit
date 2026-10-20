@@ -115,7 +115,7 @@ func init() {
 
 // Parts are the wiki's projectors, for the app's one event store.
 func Parts() []events.Part {
-	return []events.Part{spacesProjector, pagesProjector, versionsProjector, docsProjector, commentsProjector, chipsProjector}
+	return []events.Part{spacesProjector, pagesProjector, versionsProjector, docsProjector, commentsProjector, chipsProjector, pageSearch}
 }
 
 // Bind gives the wiki's commands the app's event store, which holds every

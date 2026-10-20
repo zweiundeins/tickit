@@ -187,8 +187,6 @@ func ownStyle(me people.Person, moderates, edits bool) templ.Component {
 	})
 }
 
-
-
 // The wiki's Datastar expressions: constants, or built from constants;
 // ids reach them through data attributes, never inside an expression
 // (NFR-13).
