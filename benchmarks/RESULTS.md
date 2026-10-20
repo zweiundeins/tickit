@@ -76,6 +76,10 @@ Commands:
     CGO_ENABLED=0 go build -tags pprof -o tickit-pprof ./cmd/tickit    # then run -bin ./tickit-pprof -cpuprofile cpu.pprof
     cp /tmp/tickit-load/run.db fold.db && /tmp/tickit-load/tickit-load fold -db fold.db
 
+## The race detector
+
+20 October 2026, same machine: `go test -race -count=1 -timeout 40m ./...` found no data race. The first run, before the merge of `rewrite`, timed out in `internal/web` after 10 minutes, in `TestSearchSpeed` (10,000 issues), and `internal/search`'s `TestRebuild` missed its 20 s wait for the rebuild; the run after the merge passed every package in 4 min 3 s but `internal/people`'s `TestHashesAtOnce`, a heap measurement that read 171 MiB under `-race` with the suite running (it passes alone, with and without `-race`). Timing and heap measurements now skip under `-race` (`raceDetector`, set by `race_test.go`), and the rebuild test waits 2 minutes there; `internal/web` takes 3 min 46 s and `internal/search` 1 min 17 s under the detector.
+
 ## Search and the issue list (NFR-40)
 
 20 October 2026, Intel i5-13500 (14 cores, 20 threads), 62 GB, Linux 6.18 (Unraid), the test database in the test's temporary directory, Go 1.27.2, modernc.org/sqlite v1.60.1, other jobs running. `go test ./internal/web -run TestSearchSpeed -v` (skipped with `-short`): 10,000 issues in two projects made through `tracker.CreateIssue`, 500 to a transaction (4.7 s with the tracker's projections and the search index), and 2,000 pages of 200 to 600 words put in the index through its hook, as the wiki's projector would. Texts of 3 to 7 words for summaries and 20 to 80 for descriptions, from a list of 100 words, so common words match thousands of documents.

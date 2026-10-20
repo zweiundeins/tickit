@@ -13,6 +13,9 @@ import (
 // NFR-41: many sign-ins at once hash a few at a time, so their 19 MiB
 // each stay within the process's memory.
 func TestHashesAtOnce(t *testing.T) {
+	if raceDetector {
+		t.Skip("a heap measurement: under -race, with the whole suite running, it read 171 MiB")
+	}
 	h, err := people.HashPassword("correct horse battery")
 	if err != nil {
 		t.Fatal(err)
