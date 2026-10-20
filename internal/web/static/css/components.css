@@ -2255,6 +2255,33 @@
 			fill: Canvas;
 		}
 
+		/* Glyphs drawn as masks (ui.Glyphs, ui.FaceStyles) are a fill the
+		 * system would paint Canvas: they keep the text colour instead. */
+		i:is([data-type], [data-prio], [data-cat])::before,
+		.tk-icon-glyph::before,
+		.tk-av[data-face]::before,
+		.tk-board--flat .tk-card > button::before,
+		:is(.tk-board--flat, .tk-blrow) .tk-due::before,
+		.page-link::before {
+			forced-color-adjust: none;
+			background: CanvasText;
+		}
+
+		i[data-type]::after {
+			forced-color-adjust: none;
+			background: Canvas;
+		}
+
+		.prose .task-item > input {
+			forced-color-adjust: none;
+			border: 1px solid CanvasText;
+			background: Canvas;
+
+			&:checked {
+				background: CanvasText;
+			}
+		}
+
 		.tk-lozenge,
 		.tk-label,
 		.tk-count {
