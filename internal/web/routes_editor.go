@@ -549,7 +549,10 @@ func spaceOf(ctx context.Context, q sqlite.Querier, page string) string {
 func (s *Server) WikiJobs(ctx context.Context) {
 	cut := time.NewTicker(3 * time.Second)
 	defer cut.Stop()
-	fold := time.NewTicker(time.Minute)
+	// 20 editors at 5 characters a second commit about 7,000 times a
+	// minute (benchmarks/RESULTS.md); 20 folds of FoldBatch every 10 s
+	// take 24,000, each holding the writer a few milliseconds (NFR-43.3).
+	fold := time.NewTicker(10 * time.Second)
 	defer fold.Stop()
 	sweep := time.NewTicker(time.Hour)
 	defer sweep.Stop()
@@ -565,7 +568,7 @@ func (s *Server) WikiJobs(ctx context.Context) {
 		case <-cut.C:
 			do(wiki.CutDue{At: time.Now(), Editing: s.Editing})
 		case <-fold.C:
-			for range 20 { // at most FoldBatch events a command, a few a minute
+			for range 20 { // at most FoldBatch events a command
 				f := &wiki.Fold{At: time.Now()}
 				do(f)
 				if f.Deleted == 0 {
