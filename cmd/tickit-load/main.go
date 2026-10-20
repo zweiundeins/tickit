@@ -3,6 +3,7 @@
 //
 //	tickit-load gen -db PATH       write the data of NFR-38.2 into a new database
 //	tickit-load run [flags]        start the binary on a copy of it, drive the load, report
+//	tickit-load fold -db PATH      time the fold's commands on a copy of a database after a run
 //
 // gen goes through the real commands and the writer, so the projections and
 // the search index are what the server would hold. run starts `tickit
@@ -31,8 +32,10 @@ func main() {
 		err = gen(os.Args[2:])
 	case "run":
 		err = run(os.Args[2:])
+	case "fold":
+		err = fold(os.Args[2:])
 	default:
-		err = fmt.Errorf("unknown command %q: gen or run", os.Args[1])
+		err = fmt.Errorf("unknown command %q: gen, run or fold", os.Args[1])
 	}
 	if err != nil {
 		slog.Error(os.Args[1], "err", err)

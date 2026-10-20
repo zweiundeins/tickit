@@ -1,6 +1,7 @@
 package wiki
 
 import (
+	"cmp"
 	"database/sql"
 	"time"
 
@@ -31,7 +32,8 @@ const (
 // It reports how many events it deleted; the job sends it again while it
 // deletes some.
 type Fold struct {
-	At time.Time
+	At    time.Time
+	Limit int // events at most, FoldBatch when 0; the job lowers it for large documents
 
 	Deleted int64
 	Took    time.Duration // in the writer: NFR-43.3 wants at most 5 ms
@@ -50,7 +52,7 @@ func (c *Fold) Apply(tx *writer.Tx) error {
 	if oldest.Valid && time.UnixMilli(oldest.Int64).Before(since) {
 		since = time.UnixMilli(oldest.Int64)
 	}
-	n, err := events.Compact(Store(), tx, DocSnapshotType, events.Retention{Since: since, Limit: FoldBatch}, peekDocDecider,
+	n, err := events.Compact(Store(), tx, DocSnapshotType, events.Retention{Since: since, Limit: cmp.Or(c.Limit, FoldBatch)}, peekDocDecider,
 		func(s DocState) DocSnapshot { return DocSnapshot{Epoch: s.Epoch, Doc: marshalDoc(s.doc)} })
 	c.Deleted = n
 	return err
