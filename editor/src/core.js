@@ -429,7 +429,8 @@ class Editor {
 		const unsaved = collabState(this.view.state).unconfirmed.length
 		const status = unsaved ? 'saving' : 'saved'
 		const el = this.ui.getElementById('saved')
-		if (el) el.textContent = this.stopped && this.stopped !== 'readonly' ? (unsaved ? 'Not saved' : '') : unsaved ? 'Saving…' : 'Saved'
+		// Stopped, nothing goes out: unconfirmed text is not saved (MP-14.1).
+		if (el) el.textContent = this.stopped ? (unsaved ? 'Not saved' : this.stopped === 'readonly' ? 'Saved' : '') : unsaved ? 'Saving…' : 'Saved'
 		if (status !== this.status) {
 			this.status = status
 			if (status === 'saved') this.clearNotice('rate')

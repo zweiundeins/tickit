@@ -279,6 +279,14 @@ func (s *Server) commit(w http.ResponseWriter, r *http.Request) {
 	if err := s.w.Do(ctx, op); err != nil {
 		var denial interface{ Denied() bool }
 		if errors.As(err, &denial) && denial.Denied() {
+			// MP-14.1: the tab's editor stops and says why (wiki.PauseEditor).
+			sid, msg := c.Session, "This change was not saved."
+			if d := (*access.Denial)(nil); errors.As(err, &d) {
+				msg = d.Msg
+			}
+			if err := s.w.Do(ctx, writer.Func(func(tx *writer.Tx) error { return wiki.PauseEditor(tx, sid, req.Tab, page, msg) })); err != nil {
+				s.log.Debug("pause an editor", "err", err)
+			}
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
@@ -354,6 +362,10 @@ func editorHost(ctx context.Context, q sqlite.Querier, actor people.Person, page
 		return host, nil
 	}
 	host.Client, host.Epoch, host.Base, host.Refusal = row.Client, row.Epoch, row.Ack, row.Refusal
+	paused, isPaused := wiki.Paused(row.Refusal)
+	if isPaused {
+		host.Refusal = paused
+	}
 	p, err := wiki.PageByID(ctx, q, page)
 	if err != nil || p.State != wiki.Current {
 		host.State = "gone"
@@ -384,7 +396,7 @@ func editorHost(ctx context.Context, q sqlite.Querier, actor people.Person, page
 	if host.Chips, err = chipsJSON(ctx, q, h.Doc); err != nil {
 		return host, err
 	}
-	if !canIn(ctx, q, actor, access.EditIssues, p.Space) {
+	if isPaused || !canIn(ctx, q, actor, access.EditIssues, p.Space) {
 		host.State, host.Readonly = "readonly", true
 	}
 	return host, nil

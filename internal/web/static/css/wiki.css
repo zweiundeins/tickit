@@ -460,6 +460,38 @@
 		display: grid;
 	}
 
+	/* The editor and, after a gap it could not merge, the person's copy
+	   beside it (MP-05.6). */
+	.wk-editarea {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--tk-space-4);
+		align-items: start;
+	}
+
+	@media (min-width: 64rem) {
+		.wk-editarea:has(> .wk-copy:not([hidden])) {
+			grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+		}
+	}
+
+	.wk-copy[hidden] {
+		display: none;
+	}
+
+	.wk-copy__head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--tk-space-2);
+	}
+
+	.wk-copy__body {
+		max-block-size: 70vh;
+		overflow-y: auto;
+	}
+
 	/* The pickers of issues, people and pages. */
 	.wk-pick {
 		display: grid;

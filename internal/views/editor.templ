@@ -10,18 +10,32 @@ import (
 // 'disabled' so that the next post does not abort them, and no retry by
 // Datastar, so that the component decides when to resend.
 const (
-	editorSignals = `{_editor: {status: 'saved', stopped: '', unsaved: 0, problem: ''}, _carets: '[]', _wkTitle: '',` +
+	editorSignals = `{_editor: {status: 'saved', stopped: '', unsaved: 0, problem: '', reason: ''}, _carets: '[]', _wkTitle: '',` +
 		` _title: {focus: false, op: '', msg: ''}, _pick: {kind: '', q: '', label: ''}}`
 	editorCommit = `@post('/cmd/pages/' + evt.detail.page + '/commit', {payload: {...evt.detail, tab: $_tab, client: el.getAttribute('client')}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0})` +
 		`.then(() => el.posted(evt.detail.ref, true), () => el.posted(evt.detail.ref, false))`
 	editorPresence = `@post('/cmd/pages/' + evt.detail.page + '/presence', {payload: {...evt.detail, tab: $_tab}, retry: 'never', retryMaxCount: 0}).catch(() => {})`
 	editorStatus   = `$_editor.status = evt.detail.status, $_editor.unsaved = evt.detail.unsaved, evt.detail.status === 'saved' && ($_editor.problem = '')`
-	editorStopped  = `$_editor.stopped = evt.detail.state, $_editor.unsaved = evt.detail.unsaved`
+	editorStopped  = `$_editor.stopped = evt.detail.state, $_editor.unsaved = evt.detail.unsaved, ` + stoppedReason + `, ` + keepCopy
+	// stoppedReason is why a read-only editor stops: the refusal its frame
+	// brought, as a paused guest's (MP-14.1), shown above the editor.
+	stoppedReason = `$_editor.reason = evt.detail.state !== 'readonly' ? '' : ((r) => { try { return JSON.parse(r).message || '' } catch (e) { return r || '' } })(el.getAttribute('refusal'))`
+	// keepCopy shows the person's text beside the page when the editor
+	// cannot merge it after a long gap (MP-05.6), and keeps it in the tab
+	// (sessionStorage) for the page loaded again. The HTML is the editor's
+	// own document as its schema writes it; data-ignore keeps Datastar out.
+	keepCopy = `evt.detail.state === 'gap' && evt.detail.unsaved > 0 && ((html) => { try { sessionStorage.setItem('tickit-copy:' + el.getAttribute('page'), html) } catch (e) {} document.getElementById('` + CopyID + `-body').innerHTML = html; document.getElementById('` + CopyID + `').hidden = false })(el.html())`
+	copyRestore = `((html) => html && (document.getElementById('` + CopyID + `-body').innerHTML = html, el.hidden = false))((() => { try { return sessionStorage.getItem('tickit-copy:' + el.dataset.page) } catch (e) { return null } })())`
+	copyDismiss = `(() => { try { sessionStorage.removeItem('tickit-copy:' + document.getElementById('` + CopyID + `').dataset.page) } catch (e) {} })(), document.getElementById('` + CopyID + `').hidden = true`
+	copyText    = `navigator.clipboard?.writeText(document.getElementById('` + CopyID + `-body').innerText).catch(() => {})`
+	reloadPage  = `location.reload()`
 	// editorFetch says at the editor why a commit did not go through
-	// (MP-14.1); the component resends it by itself after a rate limit.
+	// (MP-14.1); the component resends it by itself after a rate limit. A
+	// refusal for want of a right (403) says why in the editor itself: the
+	// next frame stops it with the reason (wiki.PauseEditor).
 	editorFetch = `evt.detail.el === el && evt.detail.type === 'error' && ['403', '429', '500', '502', '503'].includes(evt.detail.argsRaw.status) && ($_editor.problem = ` +
 		`evt.detail.argsRaw.status === '429' ? 'Too many changes at once. Your edits are kept here and go out in a moment.' : ` +
-		`evt.detail.argsRaw.status === '403' ? 'Your changes are not accepted here. They stay in this tab only.' : ` +
+		`evt.detail.argsRaw.status === '403' ? '' : ` +
 		`document.querySelector('#` + DemoAlertID + `[data-resetting]') ? 'The demo is resetting, and the page comes back as seeded. Copy your edits to keep them.' : 'The server is restarting. Your edits are kept here and go out when it is back.')`
 	// editorOpen registers the tab as an editor of the page, from the
 	// version the page rendered (docs/editor.md).
@@ -55,8 +69,9 @@ templ EditorPage(p EditorProps) {
 		</div>
 		<div class="wk-editbar">
 			<p class="wk-status" role="status" data-attr:data-state="$_editor.status">
-				<span data-show="$_editor.status === 'saving'" style="display: none"><span class="tk-editor__dot" aria-hidden="true"></span> Saving</span>
-				<span data-show="$_editor.status !== 'saving'">
+				<span data-show="$_editor.status === 'saving' && !$_editor.stopped" style="display: none"><span class="tk-editor__dot" aria-hidden="true"></span> Saving</span>
+				<span data-show="!!$_editor.stopped && $_editor.unsaved > 0" style="display: none">Not saved</span>
+				<span data-show="$_editor.status !== 'saving' || (!!$_editor.stopped && $_editor.unsaved === 0)">
 					@ui.Icon("check")
 					Saved
 				</span>
@@ -95,9 +110,15 @@ templ EditorPage(p EditorProps) {
 				<p data-show="$_editor.stopped === 'diverged'" style="display: none">The editor lost track of the page. Reload it; copy your text first.</p>
 			}
 		</div>
+		<div class="wk-stopped" style="display: none" data-show="$_editor.stopped === 'readonly'">
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Title: "Your changes are not saved", Live: true, Action: ui.Button(ui.ButtonProps{Label: "Copy my text", Icon: "copy", Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": copyEdits}})}) {
+				<p><span data-text="$_editor.reason || 'You cannot change this page.'"></span> Your text stays in this tab only.</p>
+			}
+		</div>
 		<div class="wk-stopped" style="display: none" data-show="$_editor.stopped === 'gap'">
-			@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Title: "This tab fell too far behind", Live: true, Action: ui.Button(ui.ButtonProps{Label: "Copy my text", Icon: "copy", Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": copyEdits}})}) {
-				<p>The page moved on while this tab was away. Copy your text, then reload the page.</p>
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Title: "This tab fell too far behind", Live: true, Action: ui.Button(ui.ButtonProps{Label: "Load the page again", Icon: "restore", Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": reloadPage}})}) {
+				<p data-show="$_editor.unsaved > 0">The page moved on too far while this tab was away to merge your changes. Your text stays beside the page, in this tab: load the page again and take what you need from it.</p>
+				<p data-show="$_editor.unsaved === 0" style="display: none">The page moved on while this tab was away. Load it again to keep editing.</p>
 			}
 		</div>
 		<p class="wk-problem wk-editor-problem" role="alert" data-text="$_editor.problem"></p>
@@ -107,7 +128,10 @@ templ EditorPage(p EditorProps) {
 			@ui.Button(ui.ButtonProps{Label: "Mention", Icon: "user", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-kind": "person", "data-label": "Find a person", "data-on:click": pickOpen}})
 			@ui.Button(ui.ButtonProps{Label: "Page link", Icon: "page", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-kind": "page", "data-label": "Find a page by its title", "data-on:click": pickOpen}})
 		</div>
-		@EditorHostEl(p.Host)
+		<div class="wk-editarea">
+			@EditorHostEl(p.Host)
+			@editorCopy(p.Page.ID)
+		</div>
 		@pickDialog()
 		@saveVersionDialog(p.Page.ID)
 		<p class="wk-problem" role="status" data-text="$_wk.version.msg"></p>
@@ -147,6 +171,25 @@ templ EditorHostEl(h EditorHost) {
 		@templ.Raw(`<script type="application/json" data-ignore-morph>` + h.Doc + `</script>`)
 		<div class="pm-mount prose" data-ignore-morph data-ignore></div>
 	</sb-rich-editor>
+}
+
+// CopyID is the id of the person's copy beside the editor (MP-05.6).
+const CopyID = "wk-copy"
+
+// editorCopy is the person's text that the editor could not merge after
+// a long gap, beside the page until they dismiss it (MP-05.6).
+templ editorCopy(page string) {
+	<aside id={ CopyID } class="wk-copy tk-box" hidden aria-labelledby="wk-copy-title" data-page={ page } data-init={ copyRestore }>
+		<div class="wk-copy__head">
+			<h2 id="wk-copy-title" class="tk-eyebrow">Your copy</h2>
+			<div class="cluster">
+				@ui.Button(ui.ButtonProps{Label: "Copy", Icon: "copy", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-on:click": copyText}})
+				@ui.Button(ui.ButtonProps{Label: "Dismiss", Icon: "close", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-on:click": copyDismiss}})
+			</div>
+		</div>
+		<p class="muted">Your text as this tab held it when the page moved on without it. It was not saved.</p>
+		<div id={ CopyID + "-body" } class="wk-copy__body prose" data-ignore></div>
+	</aside>
 }
 
 // pickDialog finds an issue, a person or a page to insert (FR-100.1,

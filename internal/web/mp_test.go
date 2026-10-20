@@ -382,3 +382,39 @@ func TestRoleChangeReloads(t *testing.T) {
 	webtest.Next(t, issuePage, `"_revoked":true`)
 	webtest.Silent(t, elsewhere, `_revoked`, 200*time.Millisecond)
 }
+
+// MP-14.1: a blocked guest's commit answers 403, and the tab's editor
+// frame stops the editor read-only with the reason, which the editor
+// shows at the editor and keeps the text unsaved.
+func TestBlockedCommitSaysWhy(t *testing.T) {
+	e := startWiki(t)
+	e.Account(t, "mo@example.com", "correct horse battery", people.Moderator)
+	mo := webtest.Client(t)
+	e.Login(t, mo, "mo@example.com", "correct horse battery")
+	c := webtest.Client(t)
+	me := guest(t, e, c)
+	space, home := wikiSpace(t, e, c, "ENG")
+	page := wikiPage(t, e, c, space, home, "Notes")
+	h := head(t, e, page)
+	editor := webtest.Listen(t, c, e.URL+"/stream?tab=tab1&v=carets:"+page, nil)
+	if code, _ := act(t, e, c, "/cmd/pages/"+page+"/open", "tab1", map[string]any{"base": h.Version, "client": "0123456789ab"}); code != http.StatusNoContent {
+		t.Fatalf("open: %d", code)
+	}
+	webtest.Next(t, editor, `state="ok"`)
+	if code, body := webtest.Post(t, mo, e.URL+"/cmd/moderation/block", `{"tab":"m1","op":"b1","person":"`+me.ID+`","reason":"spam"}`); code != http.StatusNoContent {
+		t.Fatalf("block: %d %s", code, body)
+	}
+	text := `[{"stepType":"replace","from":1,"to":1,"slice":{"content":[{"type":"text","text":"Hi"}]}}]`
+	code, _ := webtest.Post(t, c, e.URL+"/cmd/pages/"+page+"/commit",
+		fmt.Sprintf(`{"tab":"tab1","epoch":%q,"base":%d,"ref":"r1","client":"0123456789ab","steps":%s}`, h.Epoch, h.Version, text))
+	if code != http.StatusForbidden {
+		t.Errorf("a blocked guest's commit: %d", code)
+	}
+	ev := webtest.Next(t, editor, `state="readonly"`)
+	if !strings.Contains(ev, `refusal="Changes from this browser are paused."`) || !strings.Contains(ev, " readonly") {
+		t.Errorf("the editor's frame: %.400s", ev)
+	}
+	if got := head(t, e, page); got.Version != h.Version {
+		t.Errorf("the commit applied: version %d", got.Version)
+	}
+}

@@ -78,6 +78,7 @@ func (s *realServer) Start() {
 	t := s.t
 	t.Helper()
 	store := bindStores()
+	wiki.ResetCaches() // a new process
 	log := slog.New(slog.NewTextHandler(s.logs, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	ctx := context.Background()
 	db, err := sqlite.Open(ctx, s.path, sqlite.Options{Synchronous: "NORMAL", Migrations: migrations.FS, Readers: runtime.GOMAXPROCS(0) + 4, Checkpoint: sqlite.CheckpointWriter})
