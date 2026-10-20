@@ -1,0 +1,945 @@
+package views
+
+import (
+	"github.com/mbolli/tickit/internal/people"
+	"github.com/mbolli/tickit/internal/tracker"
+	"github.com/mbolli/tickit/internal/ui"
+)
+
+// The issue's page (FR-13): a frame the document renders once, with the
+// regions of the live view issue:<id> in it, the presence row of
+// presence:issue:<id> and the typing indicators of issue-typing:<id>.
+// The regions are siblings, never nested: a patch skips an element inside
+// a data-ignore-morph one. Fields people type in are in the frame or
+// marked data-ignore-morph, so no frame resets them (MP-03.3).
+
+// IssueFrameProps is what the frame needs of its document.
+type IssueFrameProps struct {
+	// Issue is the view's first render; nil in the panel, whose regions
+	// the stream fills once the panel watches the view.
+	Issue *Issue
+	ID    string // the issue's id, "" in the panel until one opens
+	Key   string
+	Me    string // the viewer's person id, for viewerStyle
+	// ReadOnly is a Viewer's page: controls disabled, comments allowed.
+	ReadOnly  bool
+	Moderates bool // may hide comments (FR-66.2)
+	Panel     bool
+}
+
+// IssuePage is the issue's page.
+templ IssuePage(p IssueFrameProps) {
+	@issueFrame(p)
+	@issueDeleteDialog()
+}
+
+templ issueFrame(p IssueFrameProps) {
+	<article
+		class="tk-issue"
+		id="issue"
+		if !p.Panel {
+			data-signals={ issueSignals(p.ID, p.Key, p.Me, p.ReadOnly, p.Moderates) }
+		}
+		data-effect={ issueSettle }
+		data-on:datastar-fetch={ issueFailed }
+	>
+		@viewerStyle(p.Me)
+		<div class="tk-issue__head">
+			@region(p, "issue-main", "div")
+			<div class="tk-issue__presence" id="issue-presence-slot">
+				if p.ID != "" {
+					@Presence(PresenceID("issue:"+p.ID), nil)
+				}
+			</div>
+		</div>
+		<p class="tk-typing" id="issue-typing-summary" aria-live="off"></p>
+		<div class="tk-issue__asofbar cluster" { showIf(`$_is.tab === 'history' || $_is.at !== 0`)... }>
+			<label class="tk-eyebrow" for="issue-asof-range">Version</label>
+			<input
+				id="issue-asof-range"
+				class="tk-issue__range"
+				type="range"
+				min="1"
+				step="1"
+				data-attr:max="$_is.max"
+				data-effect={ "el.value = " + asOfValue }
+				data-on:input__debounce.150ms={ asOfInput }
+				aria-describedby="issue-asof-text"
+			/>
+			<span class="mono tk-issue__asoftext" id="issue-asof-text" data-text="($_is.at || $_is.max) + ' of ' + $_is.max"></span>
+		</div>
+		<div class="tk-issue__asof" { showIf(`$_is.at !== 0`)... }>
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Icon: "clock", Title: "This is an old version", Action: ui.Button(ui.ButtonProps{Label: "Now", Size: ui.SizeSM, Variant: ui.Primary, Attrs: templ.Attributes{"data-on:click": asOfNow}})}) {
+				<p>It shows the issue as it stood then and takes no changes. Now goes back to the live issue.</p>
+			}
+			<div id="issue-asof" class="tk-issue__asofbody"></div>
+		</div>
+		<div class="tk-detail tk-issue__detail" { showIf(`$_is.at === 0`)... }>
+			<div class="stack tk-issue__body">
+				@region(p, "issue-desc", "section")
+				<p class="tk-typing" id="issue-typing-description" aria-live="off"></p>
+				@region(p, "issue-related", "section")
+				<div class="tk-issue__tabs">
+					<div class="tk-issue__tablist" role="tablist" aria-label="Comments and history" data-on:keydown={ tabKeys }>
+						@issueTab("comments", "Comments")
+						@issueTab("history", "History")
+						@issueTab("activity", "Activity")
+					</div>
+					<div class="tk-issue__panel" id="issue-tab-comments" role="tabpanel" aria-labelledby="issue-tabbtn-comments" { showIf(`$_is.tab === 'comments'`)... }>
+						@region(p, "issue-comments", "div")
+						<p class="tk-typing" id="issue-typing-comment" aria-live="off"></p>
+						@commentForm(p)
+					</div>
+					<div class="tk-issue__panel" id="issue-tab-history" role="tabpanel" aria-labelledby="issue-tabbtn-history" { showIf(`$_is.tab === 'history'`)... }>
+						@region(p, "issue-history", "div")
+					</div>
+					<div class="tk-issue__panel" id="issue-tab-activity" role="tabpanel" aria-labelledby="issue-tabbtn-activity" { showIf(`$_is.tab === 'activity'`)... }>
+						@region(p, "issue-activity", "div")
+					</div>
+				</div>
+			</div>
+			@region(p, "issue-side", "aside")
+		</div>
+	</article>
+}
+
+// region is one region of the view: its first render, or an empty element
+// with its id for the stream to fill.
+templ region(p IssueFrameProps, id, tag string) {
+	if p.Issue != nil {
+		switch id {
+			case "issue-main":
+				@issueMain(*p.Issue)
+			case "issue-desc":
+				@issueDesc(*p.Issue)
+			case "issue-related":
+				@issueRelated(*p.Issue)
+			case "issue-comments":
+				@issueComments(*p.Issue)
+			case "issue-history":
+				@issueHistory(*p.Issue)
+			case "issue-activity":
+				@issueActivity(*p.Issue)
+			case "issue-side":
+				@issueSide(*p.Issue)
+			case "issue-mentions":
+				@issueMentions(*p.Issue)
+		}
+	} else if tag == "aside" {
+		<aside id={ id } class="tk-box tk-issue__side" data-region>
+			@ui.Skeleton("text", 6)
+		</aside>
+	} else if tag == "section" {
+		<section id={ id } data-region></section>
+	} else {
+		<div id={ id } data-region>
+			if id == "issue-main" {
+				@ui.Skeleton("text", 2)
+			}
+		</div>
+	}
+}
+
+templ issueTab(name, label string) {
+	<button
+		type="button"
+		role="tab"
+		class="tk-issue__tab"
+		id={ "issue-tabbtn-" + name }
+		aria-controls={ "issue-tab-" + name }
+		data-attr:aria-selected={ "$_is.tab === '" + name + "'" }
+		data-attr:tabindex={ "$_is.tab === '" + name + "' ? 0 : -1" }
+		data-on:click={ "$_is.tab = '" + name + "'" }
+	>{ label }</button>
+}
+
+// IssueRegions is the live view's render: every region, each by its id.
+templ IssueRegions(m Issue) {
+	@issueMain(m)
+	@issueDesc(m)
+	@issueRelated(m)
+	@issueSide(m)
+	@issueComments(m)
+	@issueHistory(m)
+	@issueActivity(m)
+	@issueMentions(m)
+}
+
+// issueNote is what became of a field's last change, next to it: a
+// conflict with "Use Critical anyway" (MP-08.3), a refusal (MP-09.2), or
+// "This did not go through" with Retry (MP-09.3).
+templ issueNote(f string) {
+	<div class="tk-issue__note" { showIf(fieldExpr(noteShown, f))... }>
+		<div { showIf(fieldExpr(noteConflict, f))... }>
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneDanger, Live: true, Class: "tk-issue__conflict", Action: anywayButton(f)}) {
+				<p data-text={ fieldExpr(noteMsg, f) }></p>
+			}
+		</div>
+		<p class="tk-outcome" data-kind="refused" role="status" { showIf(fieldExpr(noteRefused, f))... }>
+			@ui.Icon("warning")
+			<span data-text={ fieldExpr(noteMsg, f) }></span>
+		</p>
+		<p class="tk-outcome" data-kind="failed" role="alert" { showIf(fieldExpr(noteFailed, f))... }>
+			@ui.Icon("warning")
+			<span data-text={ fieldExpr(noteFail, f) }></span>
+			@ui.Button(ui.ButtonProps{Label: "Retry", Icon: "undo", Size: ui.SizeSM, Attrs: templ.Attributes{"data-field": f, "data-on:click": issueRetry}})
+		</p>
+	</div>
+}
+
+templ anywayButton(f string) {
+	<button type="button" class="tk-btn tk-btn--sm tk-btn--secondary" data-field={ f } data-on:click={ issueAnyway }>
+		<span class="tk-btn__label" data-text={ fieldExpr(noteAnyway, f) }>Use mine anyway</span>
+	</button>
+}
+
+templ issueMain(m Issue) {
+	<div id="issue-main" class="tk-issue__main" data-v={ i64(m.Version) } data-key={ m.Key } data-issue={ m.ID }>
+		@ui.Breadcrumbs(crumbs(m))
+		if !m.Deleted.IsZero() {
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneDanger, Icon: "trash", Title: "This issue was deleted"}) {
+				<p>{ m.person(m.DeletedBy).Name } deleted it { ui.Ago(m.Deleted, m.Now) }. Its history stays.</p>
+			}
+		}
+		<p class="cluster tk-issue__key">
+			@ui.TypeLabel(uiType(m.Type))
+			<span class="mono">{ m.Key }</span>
+			@ui.Button(ui.ButtonProps{Label: "Copy link to " + m.Key, Icon: "link", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": copyLink}})
+			<span class="tk-issue__copied" role="status" data-text="$_is.copied ? 'Link copied' : ''"></span>
+		</p>
+		<div class="tk-issue__titlerow" { showIf(fieldExpr(editHidden, "summary"))... }>
+			<h1 class="tk-issue__title" data-field="summary" data-src="issue-summary-text" data-on:click={ issueEdit }><span id="issue-summary-text">{ m.Summary }</span></h1>
+			@ui.Button(ui.ButtonProps{Label: "Edit the summary", Icon: "edit", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: merge(locked, pending("summary"), templ.Attributes{"data-field": "summary", "data-src": "issue-summary-text", "data-on:click": issueEdit})})
+		</div>
+		<div class="tk-issue__editor" data-ignore-morph data-show={ fieldExpr(editShown, "summary") } data-on:focusout={ issueEditOut } data-on:input__throttle.2s={ issueTyping } data-typing="edit">
+			<label class="visually-hidden" for="issue-edit-summary">Summary</label>
+			<input
+				id="issue-edit-summary"
+				class="tk-input tk-input--lg tk-issue__titleinput"
+				data-field="summary"
+				data-bind="_is.val"
+				maxlength="255"
+				data-on:keydown={ issueEditKeys }
+				data-attr:readonly={ fieldExpr(editReadonly, "summary") }
+				data-attr:aria-busy={ fieldExpr(noteBusy, "summary") }
+			/>
+			<div class="cluster">
+				<button type="button" class="tk-btn tk-btn--sm tk-btn--primary" data-field="summary" data-on:click={ issueSave } data-attr:aria-busy={ fieldExpr(noteBusy, "summary") }><span class="tk-btn__label">Save</span></button>
+				<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-on:click={ issueCancel }><span class="tk-btn__label">Cancel</span></button>
+				<span class="tk-field__hint">Enter saves, Escape cancels.</span>
+			</div>
+		</div>
+		@issueNote("summary")
+		<div class="cluster tk-issue__actions">
+			@statusMenu(m)
+			<button type="button" class={ "tk-btn tk-btn--sm tk-btn--ghost tk-watch" } data-field="watch" data-value="" data-on:click={ issueChoose } { merge(pending("watch"), locked)... }>
+				@ui.Icon("eye")
+				<span class="tk-btn__label tk-watch__off">Watch</span>
+				<span class="tk-btn__label tk-watch__on">Watching</span>
+				<span class="tk-count">{ itoa(len(m.Watchers)) }</span>
+			</button>
+			@ui.Menu(ui.MenuProps{ID: "issue-more", Label: "More actions", Icon: "more", IconOnly: true, Size: ui.SizeSM, Attrs: locked}) {
+				if m.canHaveSubtasks() {
+					@ui.MenuItem(ui.MenuItemProps{Label: "Add subtask", Icon: "plus", Autofocus: true, Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-subtask')?.focus()"}})
+				}
+				@ui.MenuItem(ui.MenuItemProps{Label: "Link issue", Icon: "link", Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-link-key')?.focus()"}})
+				@ui.MenuSeparator()
+				@ui.MenuItem(ui.MenuItemProps{Label: "Delete issue", Icon: "trash", Danger: true, Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-delete').showModal()"}})
+			}
+		</div>
+		@issueNote("status")
+		@issueNote("watch")
+	</div>
+}
+
+templ statusMenu(m Issue) {
+	@ui.Menu(ui.MenuProps{ID: "issue-status", Label: "Status: " + m.StatusName, Trigger: statusTrigger(m), Caret: true, Variant: ui.Secondary, Size: ui.SizeSM, Attrs: menu("status")}) {
+		@ui.MenuLabel("Move to")
+		for i, c := range m.transitions() {
+			@ui.MenuItem(ui.MenuItemProps{Label: c.Name, Checked: ui.Pressed(c.ID == m.Status), Autofocus: i == 0, Attrs: choice("status", c.ID, "")})
+		}
+	}
+}
+
+templ statusTrigger(m Issue) {
+	@ui.StatusLozenge(m.StatusName, uiCat(m.Category))
+}
+
+func crumbs(m Issue) []ui.Crumb {
+	out := []ui.Crumb{{Label: m.Project.Name, Href: "/" + m.Project.Key, Icon: "folder"}}
+	if m.Epic != nil && m.Epic.ID != m.ID {
+		out = append(out, ui.Crumb{Label: m.Epic.Summary, Href: issueHref(m.Epic.Key)})
+	}
+	if m.Parent != nil && (m.Epic == nil || m.Parent.ID != m.Epic.ID) {
+		out = append(out, ui.Crumb{Label: m.Parent.Key, Href: issueHref(m.Parent.Key)})
+	}
+	return append(out, ui.Crumb{Label: m.Key})
+}
+
+templ issueDesc(m Issue) {
+	<section id="issue-desc" class="tk-issue__desc" aria-labelledby="issue-desc-h">
+		<div class="split">
+			<h2 class="tk-eyebrow" id="issue-desc-h">Description</h2>
+			@ui.Button(ui.ButtonProps{Label: "Edit", Icon: "edit", Variant: ui.Ghost, Size: ui.SizeSM, Attrs: merge(locked, pending("description"), showIf(fieldExpr(editHidden, "description")), templ.Attributes{"data-field": "description", "data-src": "issue-desc-markup", "data-on:click": issueEdit})})
+		</div>
+		<pre hidden id="issue-desc-markup">{ m.DescMarkup }</pre>
+		<div class="tk-issue__descview" { showIf(fieldExpr(editHidden, "description"))... }>
+			if m.DescHTML != "" {
+				<div class="prose" data-field="description" data-src="issue-desc-markup" data-on:dblclick={ issueEdit }>
+					@templ.Raw(m.DescHTML)
+				</div>
+			} else {
+				<button type="button" class="tk-issue__empty" data-field="description" data-src="issue-desc-markup" data-on:click={ issueEdit } { locked... }>Add a description</button>
+			}
+		</div>
+		<div class="tk-issue__editor" data-ignore-morph data-show={ fieldExpr(editShown, "description") } data-on:focusout={ issueEditOut } data-on:input__throttle.2s={ issueTyping } data-typing="edit">
+			<label class="visually-hidden" for="issue-edit-description">Description</label>
+			<textarea
+				id="issue-edit-description"
+				class="tk-input tk-textarea tk-issue__descinput"
+				data-field="description"
+				data-bind="_is.val"
+				rows="10"
+				aria-describedby="issue-desc-hint"
+				data-on:keydown={ issueEditKeys }
+				data-attr:readonly={ fieldExpr(editReadonly, "description") }
+				data-attr:aria-busy={ fieldExpr(noteBusy, "description") }
+			></textarea>
+			<p class="tk-field__hint" id="issue-desc-hint">{ descHint }</p>
+			<div class="cluster">
+				<button type="button" class="tk-btn tk-btn--sm tk-btn--primary" data-field="description" data-on:click={ issueSave } data-attr:aria-busy={ fieldExpr(noteBusy, "description") }><span class="tk-btn__label">Save</span></button>
+				<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-on:click={ issueCancel }><span class="tk-btn__label">Cancel</span></button>
+			</div>
+		</div>
+		@issueNote("description")
+	</section>
+}
+
+templ issueRelated(m Issue) {
+	<section id="issue-related" class="stack tk-issue__related">
+		if m.Type == tracker.Epic {
+			<div class="tk-issue__group">
+				<div class="split">
+					<h2 class="tk-eyebrow">Issues in this epic</h2>
+					if m.Progress.All > 0 {
+						@ui.Progress(m.Progress.Done, m.Progress.All, "Done in "+m.Summary)
+					}
+				</div>
+				@refList(m.Children, "No issues in this epic yet. Pick it as the epic of a story, task or bug.")
+			</div>
+		}
+		if m.canHaveSubtasks() {
+			<div class="tk-issue__group">
+				<div class="split">
+					<h2 class="tk-eyebrow">Subtasks</h2>
+					if m.Progress.All > 0 {
+						@ui.Progress(m.Progress.Done, m.Progress.All, "Subtasks done")
+					}
+				</div>
+				@refList(m.Children, "")
+				<div class="tk-issue__addrow" data-ignore-morph>
+					<label class="visually-hidden" for="issue-subtask">Add subtask</label>
+					<input id="issue-subtask" class="tk-input tk-input--sm" data-bind="_is.sub" placeholder="Add subtask" maxlength="255" data-field="subtask" data-on:keydown={ subtaskKeys } data-attr:readonly={ fieldExpr(editReadonly, "subtask") } data-attr:disabled={ disabledWhile }/>
+					<button type="button" class="tk-btn tk-btn--sm tk-btn--secondary" data-field="subtask" data-on:click={ subtaskAdd } data-attr:aria-busy={ fieldExpr(noteBusy, "subtask") } data-attr:disabled={ disabledWhile }><span class="tk-btn__label">Add</span></button>
+				</div>
+				@issueNote("subtask")
+			</div>
+		}
+		<div class="tk-issue__group">
+			<h2 class="tk-eyebrow">Links</h2>
+			if len(m.Links) > 0 {
+				<ul class="tk-issue__refs" role="list">
+					for _, l := range m.Links {
+						<li>
+							<span class="tk-issue__wording">{ l.Wording }</span>
+							@ui.IssueChip(chip(l.Issue))
+							@ui.Button(ui.ButtonProps{Label: "Remove the link to " + l.Issue.Key, Icon: "close", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: merge(locked, choice("unlink", l.Issue.ID, string(l.Type)))})
+						</li>
+					}
+				</ul>
+			}
+			<div class="tk-issue__addrow" data-ignore-morph>
+				<label class="visually-hidden" for="issue-link-type">Link type</label>
+				<span class="tk-select tk-select--sm">
+					<select id="issue-link-type" data-bind="_is.link.type" data-attr:disabled={ disabledWhile }>
+						for _, t := range tracker.LinkTypes {
+							<option value={ string(t) }>{ t.Wording(true) }</option>
+						}
+					</select>
+					@ui.Icon("chevron-down")
+				</span>
+				<label class="visually-hidden" for="issue-link-key">Issue key or summary</label>
+				<input id="issue-link-key" class="tk-input tk-input--sm" data-bind="_is.link.key" placeholder="WEB-12 or a summary" list="issue-link-options" autocomplete="off" data-field="link" data-on:keydown={ linkKeys } data-attr:readonly={ fieldExpr(editReadonly, "link") } data-attr:disabled={ disabledWhile }/>
+				<button type="button" class="tk-btn tk-btn--sm tk-btn--secondary" data-field="link" data-on:click={ linkAdd } data-attr:aria-busy={ fieldExpr(noteBusy, "link") } data-attr:disabled={ disabledWhile }><span class="tk-btn__label">Link</span></button>
+			</div>
+			<datalist id="issue-link-options">
+				for _, o := range m.Others {
+					if o.ID != m.ID {
+						<option value={ o.Key }>{ o.Key + " " + o.Summary }</option>
+					}
+				}
+			</datalist>
+			@issueNote("link")
+			@issueNote("unlink")
+		</div>
+	</section>
+}
+
+templ refList(refs []tracker.IssueRef, empty string) {
+	if len(refs) > 0 {
+		<ul class="tk-issue__refs" role="list">
+			for _, r := range refs {
+				<li>
+					@ui.IssueChip(chip(r))
+				</li>
+			}
+		</ul>
+	} else if empty != "" {
+		<p class="muted">{ empty }</p>
+	}
+}
+
+// prop is a row of the details: its label and its value.
+templ prop(label string) {
+	<dt>{ label }</dt>
+	<dd>
+		{ children... }
+	</dd>
+}
+
+templ issueSide(m Issue) {
+	<aside id="issue-side" class="tk-box tk-issue__side" aria-label="Details">
+		<dl class="tk-props">
+			@prop("Assignee") {
+				@assigneeMenu(m)
+				@issueNote("assignee")
+			}
+			@prop("Reporter") {
+				@personLine(m.person(m.Reporter))
+			}
+			@prop("Priority") {
+				@ui.Menu(ui.MenuProps{ID: "issue-priority", Label: "Priority: " + m.Priority.Name(), Trigger: ui.PriorityLabel(uiPrio(m.Priority)), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("priority")}) {
+					for i, p := range tracker.Priorities {
+						@ui.MenuItem(ui.MenuItemProps{Label: p.Name(), Checked: ui.Pressed(p == m.Priority), Autofocus: i == 0, Attrs: choice("priority", string(p), "")})
+					}
+				}
+				@issueNote("priority")
+			}
+			@prop("Type") {
+				@ui.Menu(ui.MenuProps{ID: "issue-type", Label: "Type: " + m.Type.Name(), Trigger: ui.TypeLabel(uiType(m.Type)), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("type")}) {
+					for i, t := range tracker.Types {
+						@ui.MenuItem(ui.MenuItemProps{Label: t.Name(), Checked: ui.Pressed(t == m.Type), Autofocus: i == 0, Attrs: choice("type", string(t), "")})
+					}
+				}
+				@issueNote("type")
+			}
+			@prop("Labels") {
+				<div class="tk-issue__chips">
+					for _, l := range m.Detail.Labels {
+						<span class="tk-issue__label">
+							@ui.Label(l, "/issues?label="+l)
+							<button type="button" class="tk-issue__x" aria-label={ "Remove the label " + l } { merge(locked, choice("labels", l, "remove"))... }>
+								@ui.Icon("close")
+							</button>
+						</span>
+					}
+				</div>
+				<div data-ignore-morph class="tk-issue__addrow">
+					<label class="visually-hidden" for="issue-label">Add a label</label>
+					<input id="issue-label" class="tk-input tk-input--sm" list="issue-label-options" placeholder="Add a label" maxlength="50" autocomplete="off" data-bind="_is.lq" data-field="labels" data-on:keydown={ labelKeys } data-attr:readonly={ fieldExpr(editReadonly, "labels") } data-attr:disabled={ disabledWhile }/>
+				</div>
+				<datalist id="issue-label-options">
+					for _, l := range m.Labels {
+						<option value={ l }></option>
+					}
+				</datalist>
+				@issueNote("labels")
+			}
+			if len(m.Components) > 0 || len(m.Detail.Components) > 0 {
+				@prop("Components") {
+					@ui.Menu(ui.MenuProps{ID: "issue-components", Label: "Components", Trigger: componentsTrigger(m), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("components")}) {
+						for i, c := range m.Components {
+							if m.hasComponent(c.Name) {
+								@ui.MenuItem(ui.MenuItemProps{Label: c.Name, Checked: ui.Pressed(true), Autofocus: i == 0, Attrs: choice("components", c.Name, "remove")})
+							} else {
+								@ui.MenuItem(ui.MenuItemProps{Label: c.Name, Checked: ui.Pressed(false), Autofocus: i == 0, Attrs: choice("components", c.Name, "add")})
+							}
+						}
+					}
+					@issueNote("components")
+				}
+			}
+			if m.canHaveParent() {
+				@prop("Epic") {
+					@ui.Menu(ui.MenuProps{ID: "issue-epic", Label: "Epic", Trigger: epicTrigger(m), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("parent")}) {
+						@ui.MenuItem(ui.MenuItemProps{Label: "No epic", Checked: ui.Pressed(m.Parent == nil), Autofocus: true, Attrs: choice("parent", "", "")})
+						for _, e := range m.Epics {
+							@ui.MenuItem(ui.MenuItemProps{Label: e.Key + " " + e.Summary, Checked: ui.Pressed(m.Parent != nil && m.Parent.ID == e.ID), Attrs: choice("parent", e.ID, "")})
+						}
+					}
+					@issueNote("parent")
+				}
+			}
+			if m.Type == tracker.Subtask && m.Parent != nil {
+				@prop("Parent") {
+					@ui.IssueChip(chip(*m.Parent))
+				}
+			}
+			@prop("Sprint") {
+				@ui.Menu(ui.MenuProps{ID: "issue-sprint", Label: "Sprint", Trigger: sprintTrigger(m), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("sprint")}) {
+					@ui.MenuItem(ui.MenuItemProps{Label: "Backlog", Checked: ui.Pressed(m.Sprint == ""), Autofocus: true, Attrs: choice("sprint", "", "")})
+					for _, s := range m.openSprints() {
+						@ui.MenuItem(ui.MenuItemProps{Label: s.Name, Hint: s.State, Checked: ui.Pressed(m.Sprint == s.ID), Attrs: choice("sprint", s.ID, "")})
+					}
+				}
+				@issueNote("sprint")
+			}
+			@prop("Due date") {
+				@editable(m, "due", "date", m.Due, dueDisplay(m))
+			}
+			@prop("Story points") {
+				@editable(m, "points", "number", intp(m.Points), textDisplay(intp(m.Points)))
+			}
+			@prop("Estimate") {
+				@editable(m, "estimate", "text", minutes(m.Estimate), textDisplay(minutes(m.Estimate)))
+			}
+			@prop("Remaining") {
+				@editable(m, "remaining", "text", minutes(m.Remaining), textDisplay(minutes(m.Remaining)))
+			}
+			@prop("Watchers") {
+				<ul class="tk-issue__faces" role="list" aria-label={ counted(len(m.Watchers), "watcher", "watchers") }>
+					for _, w := range m.watching() {
+						<li data-watcher={ w.ID }>
+							@ui.Tip(w.Name) {
+								@ui.Avatar(ui.AvatarProps{Person: UIPerson(w), Size: ui.SizeXS})
+							}
+						</li>
+					}
+				</ul>
+			}
+			@prop("Created") {
+				@ui.RelativeTime(at(m.Created), m.Now)
+			}
+			@prop("Updated") {
+				@ui.RelativeTime(at(m.Updated), m.Now)
+			}
+			if !m.Resolved.IsZero() {
+				@prop("Resolved") {
+					@ui.RelativeTime(at(m.Resolved), m.Now)
+				}
+			}
+		</dl>
+	</aside>
+}
+
+templ personLine(p people.Person) {
+	<span class="tk-cell">
+		@ui.Avatar(ui.AvatarProps{Person: UIPerson(p), Size: ui.SizeSM, Decorative: true})
+		<span>{ p.Name }</span>
+	</span>
+}
+
+templ assigneeMenu(m Issue) {
+	@ui.Menu(ui.MenuProps{ID: "issue-assignee", Label: "Assignee", Trigger: assigneeTrigger(m), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("assignee")}) {
+		<div class="tk-issue__menusearch" data-ignore-morph>
+			<label class="visually-hidden" for="issue-assignee-q">Find a person</label>
+			<input id="issue-assignee-q" class="tk-input tk-input--sm" type="search" placeholder="Find a person" autocomplete="off" data-bind="_is.aq" autofocus/>
+		</div>
+		@ui.MenuItem(ui.MenuItemProps{Label: "Assign to me", Icon: "user", Attrs: choice("assignee", "me", "")})
+		@ui.MenuItem(ui.MenuItemProps{Label: "Unassigned", Checked: ui.Pressed(m.Assignee == ""), Attrs: choice("assignee", "", "")})
+		@ui.MenuSeparator()
+		for _, p := range m.Assignable {
+			<button type="button" class="tk-menu__item" data-name={ p.Name } aria-pressed={ boolStr(p.ID == m.Assignee) } { merge(choice("assignee", p.ID, ""), showIf(assigneeMatch))... }>
+				@ui.Avatar(ui.AvatarProps{Person: UIPerson(p), Size: ui.SizeXS, Decorative: true})
+				<span>{ p.Name }</span>
+			</button>
+		}
+	}
+}
+
+templ assigneeTrigger(m Issue) {
+	if m.Assignee == "" {
+		<span class="muted">Unassigned</span>
+	} else {
+		@personLine(m.person(m.Assignee))
+	}
+}
+
+templ componentsTrigger(m Issue) {
+	if len(m.Detail.Components) == 0 {
+		<span class="muted">None</span>
+	} else {
+		<span>{ joinComma(m.Detail.Components) }</span>
+	}
+}
+
+templ epicTrigger(m Issue) {
+	if m.Parent == nil {
+		<span class="muted">None</span>
+	} else {
+		<span class="tk-cell">
+			@ui.TypeIcon(uiType(m.Parent.Type))
+			<span class="mono">{ m.Parent.Key }</span>
+			<span class="truncate">{ m.Parent.Summary }</span>
+		</span>
+	}
+}
+
+templ sprintTrigger(m Issue) {
+	if m.Sprint == "" {
+		<span class="muted">Backlog</span>
+	} else {
+		<span>{ m.sprintName(m.Sprint) }</span>
+	}
+}
+
+templ dueDisplay(m Issue) {
+	if m.Due == "" {
+		<span class="muted">None</span>
+	} else {
+		@ui.Due(dueTime(m.Due), m.Now, m.Overdue(m.Now))
+	}
+}
+
+templ textDisplay(s string) {
+	if s == "" {
+		<span class="muted">None</span>
+	} else {
+		<span>{ s }</span>
+	}
+}
+
+// editable is a small field that opens an editor in place: due date,
+// story points, estimates (FR-25, FR-26).
+templ editable(m Issue, f, typ, value string, display templ.Component) {
+	<span hidden id={ "issue-src-" + f }>{ value }</span>
+	<button type="button" class="tk-issue__value" data-field={ f } data-src={ "issue-src-" + f } data-on:click={ issueEdit } aria-label={ "Edit the " + tracker.FieldLabel(f) } { merge(locked, pending(f), showIf(fieldExpr(editHidden, f)))... }>
+		@display
+	</button>
+	<span class="tk-issue__editor tk-issue__inline" data-ignore-morph data-show={ fieldExpr(editShown, f) } data-on:focusout={ issueEditOut }>
+		<label class="visually-hidden" for={ "issue-edit-" + f }>{ tracker.FieldLabel(f) }</label>
+		<input
+			id={ "issue-edit-" + f }
+			class="tk-input tk-input--sm"
+			type={ typ }
+			if typ == "number" {
+				min="0"
+				max="100"
+			}
+			if typ == "text" {
+				placeholder="2h 30m"
+			}
+			data-field={ f }
+			data-bind="_is.val"
+			data-on:keydown={ issueEditKeys }
+			data-attr:readonly={ fieldExpr(editReadonly, f) }
+			data-attr:aria-busy={ fieldExpr(noteBusy, f) }
+		/>
+		<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" aria-label="Clear" data-field={ f } data-on:click={ "$_is.val = '', " + issueSave }>
+			@ui.Icon("close")
+		</button>
+	</span>
+	@issueNote(f)
+}
+
+templ issueComments(m Issue) {
+	<div id="issue-comments" class="tk-issue__comments">
+		if len(m.Comments) == 0 {
+			<p class="muted">No comments yet.</p>
+		} else {
+			<ol class="tk-feed tk-issue__thread" aria-label={ counted(len(m.Comments), "comment", "comments") }>
+				for _, c := range m.Comments {
+					@commentItem(m, c)
+				}
+			</ol>
+		}
+		@issueNote("cedit")
+		@issueNote("cdelete")
+		@issueNote("chide")
+	</div>
+}
+
+templ commentItem(m Issue, c Comment) {
+	{{ author := m.person(c.Author) }}
+	<li class="tk-feed__item tk-comment" id={ "comment-" + c.ID } data-author={ c.Author }>
+		@ui.Avatar(ui.AvatarProps{Person: UIPerson(author), Size: ui.SizeSM, Decorative: true})
+		<div class="tk-feed__text tk-comment__main">
+			<p class="tk-comment__head">
+				<b>{ author.Name }</b>
+				@ui.RelativeTime(at(c.Created), m.Now)
+				if !c.Edited.IsZero() && !c.IsDeleted() {
+					<span class="muted" title={ ui.Absolute(at(c.Edited)) }>edited</span>
+				}
+				if !c.IsDeleted() && !c.IsHidden() {
+					<span class="tk-comment__own">
+						<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-comment={ c.ID } data-on:click={ commentEdit }><span class="tk-btn__label">Edit</span></button>
+						<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-field="cdelete" data-comment={ c.ID } data-on:click={ commentDelete } { pending("cdelete")... }><span class="tk-btn__label">Delete</span></button>
+					</span>
+				}
+				if !c.IsDeleted() {
+					<span class="tk-comment__mod" { showIf("$_is.mod")... }>
+						if c.IsHidden() {
+							<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-field="chide" data-value="show" data-comment={ c.ID } data-on:click={ commentHide }><span class="tk-btn__label">Show</span></button>
+						} else {
+							<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-field="chide" data-value="hide" data-comment={ c.ID } data-on:click={ commentHide }><span class="tk-btn__label">Hide</span></button>
+						}
+					</span>
+				}
+			</p>
+			switch {
+				case c.IsDeleted():
+					<p class="muted tk-comment__gone">Comment deleted</p>
+				case c.IsHidden():
+					<p class="muted tk-comment__gone">Comment hidden by a moderator</p>
+				default:
+					<div class="prose prose--small" { showIf("$_is.cedit !== '" + c.ID + "'")... }>
+						@templ.Raw(c.HTML)
+					</div>
+					<pre hidden id={ "comment-src-" + c.ID }>{ c.Markup }</pre>
+					<div class="tk-comment__edit" data-ignore-morph data-comment={ c.ID } data-show={ commentEditing }>
+						<label class="visually-hidden" for={ "comment-edit-" + c.ID }>Edit the comment</label>
+						<textarea id={ "comment-edit-" + c.ID } class="tk-input tk-textarea" rows="3" data-bind="_is.ctext" data-comment={ c.ID } data-on:keydown={ commentEditKeys } data-attr:readonly={ fieldExpr(editReadonly, "cedit") }></textarea>
+						<div class="cluster">
+							<button type="button" class="tk-btn tk-btn--sm tk-btn--primary" data-field="cedit" data-comment={ c.ID } data-on:click={ commentEditSave } data-attr:aria-busy={ fieldExpr(noteBusy, "cedit") }><span class="tk-btn__label">Save</span></button>
+							<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-on:click="$_is.cedit = ''"><span class="tk-btn__label">Cancel</span></button>
+						</div>
+					</div>
+			}
+		</div>
+	</li>
+}
+
+// commentForm is the comment box, in the frame: no frame touches what
+// someone types (MP-03.3).
+templ commentForm(p IssueFrameProps) {
+	<div class="tk-issue__commentform" data-on:input__throttle.2s={ issueTyping } data-typing="comment">
+		<label class="visually-hidden" for="issue-comment">Add a comment</label>
+		<textarea
+			id="issue-comment"
+			class="tk-input tk-textarea"
+			rows="3"
+			placeholder="Add a comment"
+			maxlength="10000"
+			aria-describedby="issue-comment-hint"
+			data-bind="_is.draft"
+			data-field="comment"
+			data-init={ commentInit }
+			data-on:input={ commentInput }
+			data-on:keydown={ commentKeys }
+			data-attr:readonly={ fieldExpr(editReadonly, "comment") }
+			data-attr:aria-busy={ fieldExpr(noteBusy, "comment") }
+			data-attr:disabled="$_is.at !== 0"
+		></textarea>
+		@region(p, "issue-mentions", "div")
+		<div class="split">
+			<p class="tk-field__hint" id="issue-comment-hint">{ commentHint }</p>
+			<button type="button" class="tk-btn tk-btn--sm tk-btn--primary" data-field="comment" data-on:click={ commentSend } data-attr:aria-busy={ fieldExpr(noteBusy, "comment") }><span class="tk-btn__label">Comment</span></button>
+		</div>
+		@issueNote("comment")
+	</div>
+}
+
+// issueMentions are the people "@" offers in the comment box (FR-67.1).
+templ issueMentions(m Issue) {
+	<div class="tk-issue__mentions tk-menu" id="issue-mentions" role="listbox" aria-label="Mention a person" { showIf(mentionsShown)... }>
+		for _, p := range m.Assignable {
+			<button type="button" class="tk-menu__item" role="option" data-id={ p.ID } data-name={ p.Name } data-on:click={ mentionPick } { showIf(mentionShow)... }>
+				@ui.Avatar(ui.AvatarProps{Person: UIPerson(p), Size: ui.SizeXS, Decorative: true})
+				<span>{ p.Name }</span>
+			</button>
+		}
+	</div>
+}
+
+templ issueHistory(m Issue) {
+	<div id="issue-history" class="tk-issue__history">
+		<ol class="tk-feed" aria-label="History">
+			for i := len(m.History) - 1; i >= 0; i-- {
+				@historyItem(m, m.History[i])
+			}
+		</ol>
+	</div>
+}
+
+templ historyItem(m Issue, e tracker.Entry) {
+	{{ who := m.person(e.Actor) }}
+	<li class="tk-feed__item">
+		@ui.Avatar(ui.AvatarProps{Person: UIPerson(who), Size: ui.SizeSM, Decorative: true})
+		<div class="tk-feed__text">
+			<p><b>{ who.Name }</b> { entryText(e) }</p>
+			<p class="tk-feed__meta">
+				@ui.RelativeTime(at(e.At), m.Now)
+				<span class="mono muted">{ "v" + i64(e.Version) }</span>
+			</p>
+		</div>
+	</li>
+}
+
+templ issueActivity(m Issue) {
+	<div id="issue-activity" class="tk-issue__activity">
+		<ol class="tk-feed" aria-label="Activity">
+			for _, a := range m.Activity {
+				if a.Entry != nil {
+					@historyItem(m, *a.Entry)
+				} else if a.Comment != nil {
+					{{ who := m.person(a.Comment.Author) }}
+					<li class="tk-feed__item">
+						@ui.Avatar(ui.AvatarProps{Person: UIPerson(who), Size: ui.SizeSM, Decorative: true})
+						<div class="tk-feed__text">
+							<p><b>{ who.Name }</b> commented</p>
+							if c, ok := m.comment(a.Comment.ID); ok && !c.IsDeleted() && !c.IsHidden() {
+								<div class="prose prose--small">
+									@templ.Raw(c.HTML)
+								</div>
+							} else {
+								<p class="muted">Comment deleted</p>
+							}
+							<p class="tk-feed__meta">
+								@ui.RelativeTime(at(a.At), m.Now)
+							</p>
+						</div>
+					</li>
+				}
+			}
+		</ol>
+	</div>
+}
+
+// IssueTypingRegions are the indicators of who types where (MP-07): the
+// view issue-typing:<id>. The viewer's own is hidden (viewerStyle).
+templ IssueTypingRegions(t Typing) {
+	@typingLine(t, tracker.TypingSummary, "issue-typing-summary", "is editing the summary")
+	@typingLine(t, tracker.TypingDescription, "issue-typing-description", "is editing the description")
+	@typingLine(t, tracker.TypingComment, "issue-typing-comment", "is typing")
+}
+
+templ typingLine(t Typing, field, id, verb string) {
+	<p class="tk-typing" id={ id } aria-live="off">
+		for _, ty := range t.Typists {
+			if ty.Field == field {
+				{{ p := lookup(t.People, ty.Person) }}
+				<span class="tk-typing__who" data-who={ p.ID }>
+					@ui.Avatar(ui.AvatarProps{Person: UIPerson(p), Size: ui.SizeXS, Decorative: true})
+					{ p.Name + " " + verb }
+				</span>
+			}
+		}
+	</p>
+}
+
+// IssueAsOfRegion is the issue as it stood at a version (FR-70),
+// read-only.
+templ IssueAsOfRegion(a IssueAsOf) {
+	<div id="issue-asof" class="tk-issue__asofbody" data-version={ i64(a.Version) }>
+		<p class="cluster tk-issue__key">
+			@ui.TypeLabel(uiType(a.State.Type))
+			<span class="mono">{ a.Key }</span>
+			<span class="muted">{ "version " + i64(a.Version) + " of " + i64(a.Latest) }</span>
+		</p>
+		<h1 class="tk-issue__title">{ a.State.Summary }</h1>
+		if len(a.Changes) > 0 {
+			<ul class="tk-feed" aria-label="What changed at this version">
+				for _, e := range a.Changes {
+					{{ who := lookup(a.People, e.Actor) }}
+					<li class="tk-feed__item">
+						@ui.Avatar(ui.AvatarProps{Person: UIPerson(who), Size: ui.SizeSM, Decorative: true})
+						<div class="tk-feed__text">
+							<p><b>{ who.Name }</b> { entryText(e) }</p>
+							<p class="tk-feed__meta">
+								@ui.RelativeTime(at(e.At), a.Now)
+							</p>
+						</div>
+					</li>
+				}
+			</ul>
+		}
+		<div class="tk-detail">
+			<div class="prose">
+				if a.DescHTML != "" {
+					@templ.Raw(a.DescHTML)
+				} else {
+					<p class="muted">No description.</p>
+				}
+			</div>
+			<dl class="tk-props tk-box">
+				<dt>Status</dt>
+				<dd>
+					@ui.StatusLozenge(a.Workflow.Name(a.State.Status), uiCat(a.State.Category))
+				</dd>
+				<dt>Priority</dt>
+				<dd>
+					@ui.PriorityLabel(uiPrio(a.State.Priority))
+				</dd>
+				<dt>Assignee</dt>
+				<dd>
+					if a.State.Assignee == "" {
+						<span class="muted">Unassigned</span>
+					} else {
+						@personLine(lookup(a.People, a.State.Assignee))
+					}
+				</dd>
+				<dt>Reporter</dt>
+				<dd>
+					@personLine(lookup(a.People, a.State.Reporter))
+				</dd>
+				if a.State.Parent != "" {
+					<dt>Parent</dt>
+					<dd class="mono">{ a.Keys[a.State.Parent] }</dd>
+				}
+				if len(a.State.Labels) > 0 {
+					<dt>Labels</dt>
+					<dd>
+						for _, l := range a.State.Labels {
+							@ui.Label(l, "")
+						}
+					</dd>
+				}
+				if a.State.Due != "" {
+					<dt>Due date</dt>
+					<dd>{ tracker.Date(a.State.Due) }</dd>
+				}
+				if a.State.Points != nil {
+					<dt>Story points</dt>
+					<dd>{ intp(a.State.Points) }</dd>
+				}
+				if a.State.Estimate != nil {
+					<dt>Estimate</dt>
+					<dd>{ minutes(a.State.Estimate) }</dd>
+				}
+			</dl>
+		</div>
+	</div>
+}
+
+templ issueDeleteDialog() {
+	@ui.Dialog(ui.DialogProps{ID: "issue-delete", Title: "Delete this issue?", Size: ui.SizeSM, Footer: deleteFooter()}) {
+		<p>It leaves every board, list and search. Its key and history stay, and the key says it was deleted.</p>
+		@issueNote("delete")
+	}
+}
+
+templ deleteFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: "issue-delete"})
+	@ui.Button(ui.ButtonProps{Label: "Delete", Icon: "trash", Variant: ui.Danger, Attrs: merge(pending("delete"), templ.Attributes{"data-field": "delete", "data-on:click": issueDelete})})
+}
+
+// IssueNotFound is the page of a key that names no issue (FR-12.2): it
+// says so and offers search.
+templ IssueNotFound(key string) {
+	<div class="stack tk-issue__missing">
+		@ui.EmptyState(ui.EmptyProps{Icon: "search", Title: "No issue " + key, Text: "No issue has this key, or you may not see it. Search for it instead."})
+		<form class="tk-issue__search" role="search" action="/search" method="get">
+			<label class="visually-hidden" for="missing-q">Search issues and pages</label>
+			@ui.Input(ui.InputProps{ID: "missing-q", Name: "q", Type: "search", Icon: "search", Value: key, Placeholder: "Search issues and pages"})
+			@ui.Button(ui.ButtonProps{Label: "Search", Type: "submit", Variant: ui.Primary})
+		</form>
+	</div>
+}
+
+// IssueGone is the page of a deleted issue's key (FR-12.2).
+templ IssueGone(key, by string, on string) {
+	<div class="stack tk-issue__missing">
+		@ui.EmptyState(ui.EmptyProps{Icon: "trash", Title: key + " was deleted", Text: key + " was deleted by " + by + " on " + on + ". Its number is not given again."})
+		<p><a href="/">Go to the home page</a></p>
+	</div>
+}

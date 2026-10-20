@@ -1,0 +1,121 @@
+package views
+
+import (
+	"github.com/mbolli/tickit/internal/people"
+	"github.com/mbolli/tickit/internal/tracker"
+	"github.com/mbolli/tickit/internal/ui"
+)
+
+// CreateIssueProps is what the create dialog offers (FR-10).
+type CreateIssueProps struct {
+	// Projects are those the person may create issues in.
+	Projects []tracker.Project
+	// Project is the id of the project to preselect: the page's.
+	Project string
+	// Status is a status id for a board column's "+", "" for the start.
+	Status string
+	// People are who the assignee field offers: the preselected project's
+	// assignable people.
+	People []people.Person
+}
+
+// CreateIssueDialog is the header's create dialog (views.CreateID): web
+// sets it as Page.Create on every page. The header's Create opens it
+// (command="show-modal" commandfor="create"); a board column's "+" opens
+// it with a status through CreateWithStatus.
+templ CreateIssueDialog(p CreateIssueProps) {
+	@ui.Dialog(ui.DialogProps{ID: CreateID, Title: "Create an issue", Size: ui.SizeLG, Footer: createFooter(), Attrs: templ.Attributes{
+		"data-signals":           createSignals(p.Project, p.Status),
+		"data-effect":            createSettle + "; " + createdOpen,
+		"data-on:keydown":        createKeys,
+		"data-on:datastar-fetch": createFailed,
+	}}) {
+		if len(p.Projects) == 0 {
+			<p>There is no project to create an issue in yet.</p>
+		} else {
+			<div class="tk-issue__form">
+				{{ fp := ui.FieldProps{ID: "create-project", Label: "Project", Required: true, ErrorAttrs: createError("project")} }}
+				@ui.Field(fp) {
+					<span class="tk-select">
+						<select id={ fp.ID } data-bind="_new.project" required aria-describedby={ fp.DescribedBy() }>
+							for _, pr := range p.Projects {
+								<option value={ pr.ID } selected?={ pr.ID == p.Project }>{ pr.Name + " (" + pr.Key + ")" }</option>
+							}
+						</select>
+						@ui.Icon("chevron-down")
+					</span>
+				}
+				@ui.RadioGroup(ui.RadioGroupProps{Name: "type", Legend: "Type", Segmented: true, Required: true, Options: typeOptions(), Attrs: templ.Attributes{"data-on:change": createType}})
+				<p class="tk-field__error" aria-live="polite" { createError("type")... }></p>
+				{{ fs := ui.FieldProps{ID: "create-summary", Label: "Summary", Required: true, ErrorAttrs: createError("summary")} }}
+				@ui.Field(fs) {
+					@ui.Input(ui.InputProps{ID: fs.ID, Required: true, MaxLength: tracker.MaxSummary, DescribedBy: fs.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_new.summary", "autofocus": true, "data-attr:readonly": "$_new.op !== ''"}})
+				}
+				{{ fd := ui.FieldProps{ID: "create-description", Label: "Description", Optional: true, Hint: descHint, ErrorAttrs: createError("description")} }}
+				@ui.Field(fd) {
+					@ui.Textarea(ui.TextareaProps{ID: fd.ID, Rows: 4, DescribedBy: fd.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_new.description", "data-attr:readonly": "$_new.op !== ''"}})
+				}
+				@ui.RadioGroup(ui.RadioGroupProps{Name: "priority", Legend: "Priority", Segmented: true, Options: prioOptions(), Attrs: templ.Attributes{"data-on:change": createPrio}})
+				<div class="tk-issue__formrow">
+					{{ fa := ui.FieldProps{ID: "create-assignee", Label: "Assignee", Optional: true, ErrorAttrs: createError("assignee")} }}
+					@ui.Field(fa) {
+						<span class="tk-select">
+							<select id={ fa.ID } data-bind="_new.assignee" aria-describedby={ fa.DescribedBy() }>
+								<option value="">Unassigned</option>
+								<option value="me">Me</option>
+								for _, pp := range p.People {
+									<option value={ pp.ID }>{ pp.Name }</option>
+								}
+							</select>
+							@ui.Icon("chevron-down")
+						</span>
+					}
+					{{ fpar := ui.FieldProps{ID: "create-parent", Label: "Parent or epic", Optional: true, Hint: "Its key: WEB-3.", ErrorAttrs: createError("parent")} }}
+					@ui.Field(fpar) {
+						@ui.Input(ui.InputProps{ID: fpar.ID, Placeholder: "WEB-3", DescribedBy: fpar.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_new.parent"}})
+					}
+				</div>
+				{{ fl := ui.FieldProps{ID: "create-labels", Label: "Labels", Optional: true, Hint: "Words without spaces, separated by commas.", ErrorAttrs: createError("labels")} }}
+				@ui.Field(fl) {
+					@ui.Input(ui.InputProps{ID: fl.ID, DescribedBy: fl.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_new.labels"}})
+				}
+				<p class="tk-outcome" data-kind="refused" role="status" { showIf(`$_new.msg !== '' && ['project', 'type', 'summary', 'description', 'assignee', 'parent', 'labels'].indexOf($_new.field) < 0`)... }>
+					@ui.Icon("warning")
+					<span data-text="$_new.msg"></span>
+				</p>
+				<p class="tk-outcome" data-kind="failed" role="alert" { showIf(`$_new.fail !== ''`)... }>
+					@ui.Icon("warning")
+					<span data-text="$_new.fail"></span>
+					@ui.Button(ui.ButtonProps{Label: "Retry", Icon: "undo", Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": createSubmit}})
+				</p>
+			</div>
+		}
+	}
+}
+
+// createError is the message of a field the server refused, which stays
+// until the next try (FR-10.4).
+func createError(field string) templ.Attributes {
+	return templ.Attributes{"data-text": "$_new.field === '" + field + "' ? $_new.msg : ''"}
+}
+
+templ createFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: CreateID})
+	@ui.Button(ui.ButtonProps{Label: "Create", Variant: ui.Primary, Attrs: templ.Attributes{"data-on:click": createSubmit, "data-attr:aria-busy": createBusy, "data-on:datastar-fetch": createFailed}})
+}
+
+func typeOptions() []ui.Option {
+	var out []ui.Option
+	for _, t := range tracker.Types {
+		out = append(out, ui.Option{Value: string(t), Label: t.Name(), Selected: t == tracker.Task, Icon: ui.TypeMark(uiType(t))})
+	}
+	return out
+}
+
+func prioOptions() []ui.Option {
+	var out []ui.Option
+	for _, p := range tracker.Priorities {
+		out = append(out, ui.Option{Value: string(p), Label: p.Name(), Selected: p == tracker.Medium, Icon: ui.PriorityMark(uiPrio(p))})
+	}
+	return out
+}

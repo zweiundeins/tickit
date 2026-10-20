@@ -1,0 +1,27 @@
+package views
+
+import "github.com/mbolli/tickit/internal/ui"
+
+// IssuePanel is the side panel an issue opens in beside a board, a list or
+// a search (FR-13.2). Put it once in the page's body; a link to an issue
+// opens it when it carries IssueLinkAttrs(id): <a href="/WEB-12"
+// data-issue-panel="<id>">. me is the viewer's person id, moderates
+// whether they may hide comments. docs/architecture.md, "Issue panel".
+templ IssuePanel(me string, moderates bool) {
+	<div class="tk-issue-host" data-signals={ issueSignals("", "", me, false, moderates) } data-on:click__window={ panelOpen } data-on:popstate__window={ panelPop }>
+		@ui.SidePanel(ui.PanelProps{ID: "issue-panel", Title: "Issue", Lead: panelLead(), Actions: panelActions(), Class: "tk-issue-panel", Attrs: templ.Attributes{"data-on:close": panelClose}}) {
+			@issueFrame(IssueFrameProps{Panel: true, Me: me, Moderates: moderates})
+		}
+		@issueDeleteDialog()
+	</div>
+}
+
+templ panelLead() {
+	<span class="mono" data-text="$_is.key"></span>
+}
+
+templ panelActions() {
+	<a class="tk-btn tk-btn--sm tk-btn--ghost tk-btn--icon" data-attr:href={ panelPage } href="/" aria-label="Open the issue's page">
+		@ui.Icon("external")
+	</a>
+}

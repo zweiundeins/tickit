@@ -1,0 +1,490 @@
+/* The issue's page and panel (internal/views/issue*.templ): the frame,
+ * its regions, the editors in place, the notes beside a field, comments,
+ * history, the as-of slider and the create dialog's form. */
+@layer components {
+	.tk-issue {
+		display: grid;
+		gap: var(--tk-space-4);
+		min-inline-size: 0;
+	}
+
+	.tk-issue__head {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: var(--tk-space-4);
+		align-items: start;
+	}
+
+	.tk-issue__main {
+		display: grid;
+		gap: var(--tk-space-2);
+		min-inline-size: 0;
+	}
+
+	.tk-issue__presence {
+		padding-block-start: var(--tk-space-1);
+	}
+
+	.tk-issue__key {
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+	}
+
+	.tk-issue__copied {
+		color: var(--tk-ok);
+		font-size: var(--tk-text-xs);
+	}
+
+	.tk-issue__titlerow {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--tk-space-1);
+
+		&[hidden] {
+			display: none;
+		}
+	}
+
+	.tk-issue__title {
+		margin: 0;
+		font-size: var(--tk-text-2xl);
+		line-height: 1.25;
+		overflow-wrap: anywhere;
+		cursor: text;
+	}
+
+	.tk-issue__titleinput {
+		inline-size: 100%;
+		font-size: var(--tk-text-xl);
+		font-weight: 600;
+	}
+
+	.tk-issue__editor {
+		display: grid;
+		gap: var(--tk-space-2);
+	}
+
+	.tk-issue__inline {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-1);
+
+		& .tk-input {
+			inline-size: 9rem;
+		}
+	}
+
+	.tk-issue__actions {
+		gap: var(--tk-space-2);
+	}
+
+	/* The watch button says Watch, or Watching for the viewer who does
+	 * (viewerStyle in the document). */
+	.tk-watch__on {
+		display: none;
+	}
+
+	.tk-issue__note {
+		display: grid;
+		gap: var(--tk-space-1);
+		grid-column: 1 / -1;
+		min-inline-size: 0;
+
+		&[hidden] {
+			display: none;
+		}
+
+		& .tk-notice {
+			font-size: var(--tk-text-sm);
+			padding: var(--tk-space-2) var(--tk-space-3);
+		}
+	}
+
+	.tk-props dd > .tk-issue__note {
+		flex-basis: 100%;
+	}
+
+	.tk-issue__desc {
+		display: grid;
+		gap: var(--tk-space-2);
+
+		& .prose {
+			font-size: var(--tk-text-lg);
+		}
+	}
+
+	.tk-issue__descinput {
+		min-block-size: 12rem;
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-sm);
+	}
+
+	.tk-issue__empty,
+	.tk-issue__value {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-1);
+		padding: var(--tk-space-1) var(--tk-space-2);
+		margin-inline-start: calc(-1 * var(--tk-space-2));
+		border: 1px solid transparent;
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-align: start;
+		cursor: pointer;
+
+		&:hover:not(:disabled) {
+			border-color: var(--tk-border);
+			background: var(--tk-surface-hover);
+		}
+
+		&:disabled {
+			cursor: default;
+		}
+
+		&[hidden] {
+			display: none;
+		}
+	}
+
+	.tk-issue__empty {
+		color: var(--tk-text-muted);
+		inline-size: 100%;
+		padding-block: var(--tk-space-3);
+		border-color: var(--tk-border-subtle);
+		border-style: dashed;
+		margin-inline-start: 0;
+	}
+
+	.tk-issue__value[aria-busy="true"] {
+		opacity: 0.6;
+	}
+
+	.tk-issue__related {
+		gap: var(--tk-space-5);
+	}
+
+	.tk-issue__group {
+		display: grid;
+		gap: var(--tk-space-2);
+	}
+
+	.tk-issue__refs {
+		display: grid;
+		gap: var(--tk-space-1);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+
+		& li {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: var(--tk-space-2);
+			min-inline-size: 0;
+		}
+	}
+
+	.tk-issue__wording {
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+		min-inline-size: 7rem;
+	}
+
+	.tk-issue__addrow {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-2);
+
+		& .tk-input {
+			flex: 1 1 12rem;
+			min-inline-size: 0;
+		}
+
+		& .tk-select {
+			flex: 0 1 12rem;
+		}
+	}
+
+	.tk-issue__chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-1);
+	}
+
+	.tk-issue__label {
+		display: inline-flex;
+		align-items: center;
+	}
+
+	.tk-issue__x {
+		display: inline-grid;
+		place-items: center;
+		inline-size: 1.25rem;
+		block-size: 1.25rem;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: var(--tk-text-muted);
+		cursor: pointer;
+
+		& .tk-icon {
+			inline-size: 0.75rem;
+			block-size: 0.75rem;
+		}
+
+		&:hover:not(:disabled) {
+			color: var(--tk-danger);
+		}
+
+		&:disabled {
+			display: none;
+		}
+	}
+
+	.tk-issue__faces {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-1);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.tk-issue__side {
+		position: sticky;
+		inset-block-start: calc(var(--tk-header-height) + var(--tk-space-4));
+		min-inline-size: 0;
+
+		& .tk-props {
+			grid-template-columns: 6.5rem minmax(0, 1fr);
+		}
+
+		@container page (width < 50rem) {
+			position: static;
+		}
+	}
+
+	.tk-issue__menusearch {
+		padding: var(--tk-space-1) var(--tk-space-1) var(--tk-space-2);
+
+		& .tk-input {
+			inline-size: 100%;
+		}
+	}
+
+	.tk-menu__item[hidden] {
+		display: none;
+	}
+
+	/* Tabs: Comments, History, Activity (FR-68). */
+	.tk-issue__tabs {
+		display: grid;
+		gap: var(--tk-space-3);
+	}
+
+	.tk-issue__tablist {
+		display: flex;
+		gap: var(--tk-space-1);
+		border-block-end: 1px solid var(--tk-border);
+	}
+
+	.tk-issue__tab {
+		padding: var(--tk-space-2) var(--tk-space-3);
+		margin-block-end: -1px;
+		border: 0;
+		border-block-end: 2px solid transparent;
+		background: none;
+		color: var(--tk-text-2);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-xs);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		cursor: pointer;
+
+		&:hover {
+			color: var(--tk-text-1);
+		}
+
+		&[aria-selected="true"] {
+			color: var(--tk-accent-text);
+			border-block-end-color: var(--tk-accent);
+		}
+	}
+
+	.tk-issue__panel {
+		display: grid;
+		gap: var(--tk-space-3);
+
+		&[hidden] {
+			display: none;
+		}
+	}
+
+	.tk-issue__thread {
+		margin: 0;
+	}
+
+	.tk-comment__head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: var(--tk-space-2);
+		margin: 0;
+		font-size: var(--tk-text-sm);
+
+		& .tk-time {
+			color: var(--tk-text-muted);
+			font-size: var(--tk-text-xs);
+		}
+	}
+
+	.tk-comment__main {
+		display: grid;
+		gap: var(--tk-space-1);
+		min-inline-size: 0;
+	}
+
+	/* A comment's Edit and Delete show for its author (viewerStyle). */
+	.tk-comment__own {
+		display: none;
+		gap: var(--tk-space-1);
+		margin-inline-start: auto;
+	}
+
+	.tk-comment__mod {
+		display: inline-flex;
+
+		&[hidden] {
+			display: none;
+		}
+	}
+
+	.tk-comment__gone {
+		font-style: italic;
+	}
+
+	.tk-comment__edit {
+		display: grid;
+		gap: var(--tk-space-2);
+	}
+
+	.tk-issue__commentform {
+		display: grid;
+		gap: var(--tk-space-2);
+		position: relative;
+	}
+
+	.tk-issue__mentions {
+		position: static;
+		display: grid;
+		max-block-size: 14rem;
+		overflow: auto;
+		inline-size: min(100%, 18rem);
+		margin: 0;
+		inset: auto;
+
+		&[hidden] {
+			display: none;
+		}
+	}
+
+	/* Who types where (MP-07). */
+	.tk-typing {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-3);
+		margin: 0;
+		color: var(--tk-text-muted);
+		font-size: var(--tk-text-xs);
+		font-style: italic;
+
+		&:empty {
+			display: none;
+		}
+	}
+
+	.tk-typing__who {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-1_5);
+	}
+
+	/* The as-of slider (FR-70). */
+	.tk-issue__asofbar {
+		gap: var(--tk-space-3);
+		padding: var(--tk-space-2) var(--tk-space-3);
+		border: 1px solid var(--tk-border-subtle);
+		background: var(--tk-surface-1);
+
+		&[hidden] {
+			display: none;
+		}
+	}
+
+	.tk-issue__range {
+		flex: 1 1 12rem;
+		min-inline-size: 0;
+		accent-color: var(--tk-accent);
+	}
+
+	.tk-issue__asoftext {
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-xs);
+	}
+
+	.tk-issue__asof {
+		display: grid;
+		gap: var(--tk-space-3);
+
+		&[hidden] {
+			display: none;
+		}
+	}
+
+	.tk-issue__asofbody {
+		display: grid;
+		gap: var(--tk-space-3);
+	}
+
+	.tk-issue__detail[hidden] {
+		display: none;
+	}
+
+	.tk-issue__missing {
+		max-inline-size: var(--tk-prose-max);
+		margin-inline: auto;
+	}
+
+	.tk-issue__search {
+		display: flex;
+		gap: var(--tk-space-2);
+
+		& .tk-input-wrap {
+			flex: 1;
+		}
+	}
+
+	/* The panel holds the page's frame; its regions stack (a container of
+	 * its own). */
+	.tk-issue-panel .tk-issue__head {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	/* The create dialog's form (FR-10). */
+	.tk-issue__form {
+		display: grid;
+		gap: var(--tk-space-4);
+	}
+
+	.tk-issue__formrow {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+		gap: var(--tk-space-4);
+	}
+
+	.tk-outcome[hidden] {
+		display: none;
+	}
+}
