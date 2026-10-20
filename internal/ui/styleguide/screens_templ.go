@@ -1308,7 +1308,7 @@ func issueBody(p Props, at string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ui.Select(ui.SelectProps{ID: at + "prio-sel", Size: ui.SizeSM, Invalid: true, DescribedBy: at + "prio-conflict", Options: []ui.Option{{Value: "low", Label: "Low"}, {Value: "medium", Label: "Medium"}, {Value: "high", Label: "High"}, {Value: "critical", Label: "Critical", Selected: true}}}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ui.Select(ui.SelectProps{ID: at + "prio-sel", Size: ui.SizeSM, Invalid: true, DescribedBy: at + "prio-conflict", Attrs: templ.Attributes{"aria-label": "Priority"}, Options: []ui.Option{{Value: "low", Label: "Low"}, {Value: "medium", Label: "Medium"}, {Value: "high", Label: "High"}, {Value: "critical", Label: "Critical", Selected: true}}}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

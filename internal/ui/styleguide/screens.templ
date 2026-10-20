@@ -294,7 +294,7 @@ templ issueBody(p Props, at string) {
 				</dd>
 				<dt>Priority</dt>
 				<dd class="sg-conflict-field">
-					@ui.Select(ui.SelectProps{ID: at + "prio-sel", Size: ui.SizeSM, Invalid: true, DescribedBy: at + "prio-conflict", Options: []ui.Option{{Value: "low", Label: "Low"}, {Value: "medium", Label: "Medium"}, {Value: "high", Label: "High"}, {Value: "critical", Label: "Critical", Selected: true}}})
+					@ui.Select(ui.SelectProps{ID: at + "prio-sel", Size: ui.SizeSM, Invalid: true, DescribedBy: at + "prio-conflict", Attrs: templ.Attributes{"aria-label": "Priority"}, Options: []ui.Option{{Value: "low", Label: "Low"}, {Value: "medium", Label: "Medium"}, {Value: "high", Label: "High"}, {Value: "critical", Label: "Critical", Selected: true}}})
 				</dd>
 				<dd class="sg-conflict" id={ at + "prio-conflict" }>
 					@ui.Notice(ui.NoticeProps{Tone: ui.ToneDanger, Live: true, Action: ui.Button(ui.ButtonProps{Label: "Use Critical anyway", Size: ui.SizeSM})}) {
