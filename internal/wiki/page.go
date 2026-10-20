@@ -151,6 +151,9 @@ type PageState struct {
 	CutTitle string `json:"cut_title"`
 	CutAt    int64  `json:"cut_at"`
 	Version  int64  `json:"version"`
+	// HiddenVersions are the numbers of the versions a moderator hid
+	// (moderation.go).
+	HiddenVersions []int `json:"hidden_versions,omitempty"`
 }
 
 const pageFold = 1
@@ -181,6 +184,12 @@ func evolvePage(s PageState, e PageEvent) PageState {
 		s.State = Deleted
 	case VersionCut:
 		s.Versions, s.CutUpto, s.CutTitle, s.CutAt = e.Number, e.Upto, e.Title, s.Version
+	case VersionHidden:
+		if !slices.Contains(s.HiddenVersions, e.Number) {
+			s.HiddenVersions = append(slices.Clone(s.HiddenVersions), e.Number)
+		}
+	case VersionUnhidden:
+		s.HiddenVersions = slices.DeleteFunc(slices.Clone(s.HiddenVersions), func(n int) bool { return n == e.Number })
 	}
 	return s
 }

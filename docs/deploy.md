@@ -89,7 +89,38 @@ The seed takes about 0.3 s on libretto. `/etc/tickit/admin-password` is root:roo
 
 ### A restore, once
 
-Take a copy and restore it as [Restoring a copy](#restoring-a-copy) describes, then check that the site answers (NFR-70, acceptance 12.11). The procedure is then known to work on this host before anybody depends on it. On libretto this is still to do.
+Take a copy and restore it as [Restoring a copy](#restoring-a-copy) describes, then check that the site answers (NFR-70, acceptance 12.11). The procedure is then known to work on this host before anybody depends on it.
+
+The drill can run beside production without touching it: a copy of the newest daily copy in a scratch directory, served by the release binary as an unprivileged user on a free loopback port, without metrics. As root on the host:
+
+```sh
+ls -la /var/lib/tickit/backups/                       # the newest tickit-<UTC time>.db
+D=$(mktemp -d /tmp/tickit-drill.XXXXXX)
+install -o nobody -g nogroup -m 0600 /var/lib/tickit/backups/tickit-20261020T181927Z.db $D/tickit.db
+chown nobody:nogroup $D && chmod 0700 $D
+sqlite3 -readonly $D/tickit.db 'PRAGMA integrity_check'                  # ok
+runuser -u nobody -- /opt/tickit/tickit migrations-pending -db $D/tickit.db
+sqlite3 -readonly $D/tickit.db 'SELECT username, site_role, status FROM accounts'
+sqlite3 -readonly $D/tickit.db 'SELECT count(*) FROM moderation_log'
+ss -ltn 'sport = :7199'                                # the port is free
+runuser -u nobody -- /opt/tickit/tickit serve -db $D/tickit.db -addr 127.0.0.1:7199 -metrics '' &
+curl -sS http://127.0.0.1:7199/healthz
+curl -sS -w ' %{http_code}\n' http://127.0.0.1:7199/readyz
+for u in / /projects /login /WEB-1; do curl -sS -o /dev/null -w "$u %{http_code}\n" http://127.0.0.1:7199$u; done
+sleep 60; curl -sS http://127.0.0.1:7199/healthz; curl -sS -w ' %{http_code}\n' http://127.0.0.1:7199/readyz
+kill -TERM $(pgrep -f "tickit serve -db $D/tickit.db")
+rm -rf $D
+```
+
+`nobody` cannot read `/var/lib/tickit`, so the server sees the copy and nothing else. On libretto on 2026-10-20 at 21:08 UTC, with the binary `c277aad`, from `tickit-20261020T181927Z.db` (2.8 MB, the only daily copy then):
+
+- The copy passed `integrity_check`. `migrations-pending` printed 1 (the copy was at schema 72, the binary brings 73), and `serve` applied it at the start: afterwards the copy was at 73 and `migrations-pending` printed 0.
+- `/healthz` answered `ok c277aad` 113 ms after the start. `/readyz` answered 503 `not ready: static` while the static files were compressed, and 200 from about 1.1 s on; after the minute both still answered.
+- `/` (200, 128 KB), `/projects` (200), `/login` (200) and `/WEB-1` (200, "WEB-1 One-page checkout") rendered from the copy, with its 139 issues and 988 events.
+- The staff account was there: `admin`, site role admin, active. The moderation log had 0 rows (nothing had been moderated yet), the security log 1, `demo_resets` 0 (no nightly reset had run yet).
+- The server logged a warning that no `GOMEMLIMIT` was set (the unit sets one; the drill runs outside it), stopped within 2 s of SIGTERM, and the scratch directory was deleted. Production answered `ok c277aad` throughout.
+
+So a restore of a real copy brings back the staff accounts and the moderation log (NFR-72); the seed brings back the demo content as [A lost database](#a-lost-database) says.
 
 ### Deploys from CI
 
@@ -208,7 +239,7 @@ The old demo (Go with an embedded NATS, `/opt/tickit/bin/web` on `*:7105`, five 
 - **Probes:** the blackbox exporter fetches `https://tickit.zweiundeins.gmbh/` with `http_2xx` and `/healthz` with `http_2xx_ok` (a 200 whose body starts with `ok `), labelled `service: tickit`.
 - **Health:** `/healthz` answers `ok <version>` while the process serves; `/readyz` answers 200 while the read pool answers and the writer, the hub and the event runner run, else 503 naming the failing check (NFR-75). Neither goes through the request log.
 - **Logs:** tickit logs slog's text format to the journal, at Info and above. Alloy ships it to Loki as `{job="tickit", level="..."}`, and the access log as `{job="caddy", site="tickit"}` through the host's `caddy_logs` pipeline. Loki and Caddy keep 30 days (NFR-28); the journal is a size-capped buffer.
-- **Alerts:** `rules-tickit.yaml` fires when more than 1% of requests answer a 5xx for 5 minutes (from the access log, with at least 5 errors), when a reset fails (`tickit_resets_total{outcome="failed"}` rises), and when no reset succeeds for 26 hours. The host's rules cover the rest of NFR-78: a failed probe ("External endpoint unreachable"), tick overruns and a parked projector (`rules-lith-apps.yaml`), and a unit that fails or keeps restarting (`rules-services.yaml`).
+- **Alerts:** `rules-tickit.yaml` fires when more than 1% of requests answer a 5xx for 5 minutes (from the access log, with at least 5 errors), when a reset fails (`tickit_resets_total{outcome="failed"}` rises), and when no reset succeeds for 26 hours. The host's rules cover the rest of NFR-78: a failed probe ("External endpoint unreachable"), tick overruns and a parked projector (`rules-lith-apps.yaml`), and a unit that fails or keeps restarting (`rules-services.yaml`). Checked on 2026-10-20 at 21:09 UTC through Grafana's read-only rules API (`GET http://127.0.0.1:3000/api/prometheus/grafana/api/v1/rules` with the admin credentials of `/etc/grafana/grafana.env`): the group `tickit` holds its three rules, each evaluated every 60 s with health ok, state inactive and its one instance Normal, and the host rules named above evaluate with health ok as well (NFR-78).
 
 To check the metrics by hand: `curl -s http://127.0.0.1:7205/metrics | grep ^tickit_`.
 

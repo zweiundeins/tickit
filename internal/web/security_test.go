@@ -140,6 +140,8 @@ var secCases = []secCase{
 		f.client(wGuest)
 		return "/cmd/moderation/block", map[string]any{"person": f.p[wGuest].ID, "reason": "spam"}
 	}},
+	{name: "moderation/dismiss", pattern: "POST /cmd/moderation/dismiss", need: moderator, guard: true, outcome: true, by: wMod, open: true, req: at("/cmd/moderation/dismiss", "report", "#report")},
+	{name: "report", pattern: "POST /cmd/report", need: read, guard: true, outcome: true, by: wViewer, req: at("/cmd/report", "kind", "issue", "id", "@issue", "reason", "Spam")},
 	{name: "moderation/unblock", pattern: "POST /cmd/moderation/unblock", need: moderator, guard: true, outcome: true, by: wMod, open: true, targets: []string{"person"}, req: func(f *fixture, open bool) (string, map[string]any) {
 		f.client(wBlocked)
 		return "/cmd/moderation/unblock", map[string]any{"person": f.p[wBlocked].ID}
@@ -165,6 +167,7 @@ var secCases = []secCase{
 			f.e.Do(f.t, wiki.SetDocument{By: f.by(wOwner), Page: f.id("page", false), Doc: tracker.PlainDoc("Another text"), Message: "Two"})
 		}},
 	{name: "pages/comment", pattern: "POST /cmd/pages/comment", need: read, guard: true, outcome: true, by: wViewer, req: at("/cmd/pages/comment", "page", "@page", "body", "A reply")},
+	{name: "pages/comment/edit", pattern: "POST /cmd/pages/comment/edit", need: ownComment, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/comment/edit", "comment", "@pcomment", "body", "Edited")},
 	{name: "pages/comment/delete", pattern: "POST /cmd/pages/comment/delete", need: ownComment, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/comment/delete", "comment", "@pcomment")},
 	{name: "pages/comment/hide", pattern: "POST /cmd/pages/comment/hide", need: admin, guard: true, outcome: true, by: wOwner, req: at("/cmd/pages/comment/hide", "comment", "@pcomment", "hidden", true)},
 	{name: "pages/open", pattern: "POST /cmd/pages/{id}/open", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/{page}/open", "base", 0, "client", "0123456789ab")},
@@ -210,6 +213,7 @@ var secCases = []secCase{
 	{name: "admin/create", pattern: "POST /cmd/admin/create", need: siteAdmin, guard: true, outcome: true, by: wRoot, req: at("/cmd/admin/create", "email", "new@example.com", "username", "newbie", "name", "New", "role", "none", "password", "a first password")},
 	{name: "admin/role", pattern: "POST /cmd/admin/role", need: siteAdmin, guard: true, outcome: true, by: wRoot, targets: []string{"account"}, req: at("/cmd/admin/role", "account", "@victim", "role", "moderator")},
 	{name: "admin/active", pattern: "POST /cmd/admin/active", need: siteAdmin, guard: true, outcome: true, by: wRoot, targets: []string{"account"}, req: at("/cmd/admin/active", "account", "@victim", "active", false)},
+	{name: "admin/erase", pattern: "POST /cmd/admin/erase", need: siteAdmin, guard: true, outcome: true, by: wRoot, targets: []string{"account"}, req: at("/cmd/admin/erase", "account", "@victim")},
 	{name: "admin/reset", pattern: "POST /cmd/admin/reset", need: siteAdmin, guard: true, outcome: true, reseeds: true, by: wRoot, req: at("/cmd/admin/reset")},
 	{name: "account/password", pattern: "POST /cmd/account/password", need: account, guard: true, outcome: true, mustOK: true, by: wViewer, req: at("/cmd/account/password", "current", fixturePassword, "password", "a new password here")},
 	{name: "account/end-session", pattern: "POST /cmd/account/end-session", need: account, guard: true, outcome: true, by: wViewer, req: at("/cmd/account/end-session", "session", "@session"),

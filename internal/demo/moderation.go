@@ -73,6 +73,9 @@ type Moderated struct {
 	// Newest lists the newest of this kind that visitors (guests and
 	// accounts, not the seed) wrote, hidden ones too, newest first.
 	Newest func(ctx context.Context, q sqlite.Querier, limit int) ([]Target, error)
+	// Scope is where a thing is, which a reporter must read (DM-08); nil,
+	// or the zero scope, for what everyone reads (the image library).
+	Scope func(tx *writer.Tx, id string) (access.Scope, error)
 }
 
 var (
@@ -126,6 +129,9 @@ func init() {
 			return key + " " + summary, err
 		},
 		Newest: newestIssues,
+		Scope: func(tx *writer.Tx, id string) (access.Scope, error) {
+			return scopeOf(tx, `SELECT 'project', project_id FROM issues WHERE id = ?`, id)
+		},
 	})
 	RegisterModerated(Moderated{
 		Kind: "comment", Name: "Comment",
@@ -147,7 +153,24 @@ func init() {
 			return label, err
 		},
 		Newest: newestComments,
+		Scope: func(tx *writer.Tx, id string) (access.Scope, error) {
+			return scopeOf(tx, `SELECT CASE c.subject WHEN 'page' THEN 'space' ELSE 'project' END, CASE c.subject WHEN 'page' THEN coalesce(p.space_id, '') ELSE c.project_id END
+				FROM comments c LEFT JOIN pages p ON c.subject = 'page' AND p.id = c.subject_id WHERE c.id = ?`, id)
+		},
 	})
+}
+
+// scopeOf reads a thing's scope as (kind, id) with query.
+func scopeOf(tx *writer.Tx, query, id string) (access.Scope, error) {
+	var kind, sid string
+	err := tx.QueryRow(query, id).Scan(&kind, &sid)
+	if errors.Is(err, sql.ErrNoRows) {
+		return access.Scope{}, fmt.Errorf("%s: %w", id, access.ErrNotFound)
+	}
+	if kind == "space" {
+		return access.SpaceScope(sid), err
+	}
+	return access.ProjectScope(sid), err
 }
 
 // visitor is the SQL condition of an author who is no seeded person.
@@ -256,6 +279,11 @@ func (c Moderate) Apply(tx *writer.Tx) error {
 	}
 	if err := cmd.Apply(tx); err != nil {
 		return err
+	}
+	if c.Action != ActRestore { // DM-08: acting on a thing settles its reports
+		if err := closeReports(tx, c.By, c.Kind, c.ID); err != nil {
+			return err
+		}
 	}
 	return logModeration(tx, c.By, c.Action, c.Kind, c.ID, label, reason)
 }

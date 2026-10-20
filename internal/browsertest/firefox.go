@@ -30,6 +30,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -319,7 +320,7 @@ func (b *Browser) newFirefoxPage(t testing.TB, width, height int) *Page {
 	}
 	var bc struct{ Context string }
 	json.Unmarshal(res, &bc)
-	p := &Page{b: b, session: bc.Context, target: bc.Context, loaded: make(chan struct{}, 1)}
+	p := &Page{b: b, session: bc.Context, target: bc.Context, userCtx: uc.UserContext, loaded: make(chan struct{}, 1)}
 	b.mu.Lock()
 	b.pages[p.session] = p
 	b.mu.Unlock()
@@ -607,11 +608,73 @@ func (p *Page) callFirefox(t testing.TB, method string, params any) json.RawMess
 	case "Page.addScriptToEvaluateOnNewDocument":
 		p.AddInitScript(t, str("source"))
 		return json.RawMessage(`{}`)
+	case "Input.insertText":
+		var acts []any
+		for _, r := range str("text") {
+			acts = append(acts, map[string]any{"type": "keyDown", "value": string(r)}, map[string]any{"type": "keyUp", "value": string(r)})
+		}
+		return act(map[string]any{"type": "key", "id": "keyboard", "actions": acts})
+	case "Network.getCookies":
+		res := p.BiDi(t, "storage.getCookies", map[string]any{"partition": map[string]any{"type": "storageKey", "userContext": p.userCtx}})
+		var got struct {
+			Cookies []struct {
+				Name             string
+				Value            struct{ Value string }
+				Domain, Path     string
+				HTTPOnly, Secure bool
+				SameSite         string
+			}
+		}
+		json.Unmarshal(res, &got)
+		out := []map[string]any{}
+		for _, c := range got.Cookies {
+			out = append(out, map[string]any{"name": c.Name, "value": c.Value.Value, "domain": c.Domain, "path": c.Path,
+				"httpOnly": c.HTTPOnly, "secure": c.Secure, "sameSite": cdpSameSite(c.SameSite)})
+		}
+		b, _ := json.Marshal(map[string]any{"cookies": out})
+		return b
+	case "Network.setCookie":
+		u, err := url.Parse(str("url"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := map[string]any{"name": str("name"), "value": map[string]any{"type": "string", "value": str("value")},
+			"domain": u.Hostname(), "path": "/", "httpOnly": m["httpOnly"] == true, "secure": u.Scheme == "https"}
+		if s := strings.ToLower(str("sameSite")); s != "" {
+			c["sameSite"] = s
+		}
+		p.BiDi(t, "storage.setCookie", map[string]any{"cookie": c, "partition": map[string]any{"type": "storageKey", "userContext": p.userCtx}})
+		return json.RawMessage(`{}`)
+	case "Network.setExtraHTTPHeaders":
+		hs, _ := m["headers"].(map[string]any)
+		var list []any
+		for k, v := range hs {
+			list = append(list, map[string]any{"name": k, "value": map[string]any{"type": "string", "value": fmt.Sprint(v)}})
+		}
+		if _, err := p.b.ff.call("network.setExtraHeaders", map[string]any{"headers": list, "contexts": []string{p.session}}, 30*time.Second); err != nil {
+			t.Logf("firefox: %s: %v; ignored", method, err)
+		}
+		return json.RawMessage(`{}`)
+	case "Emulation.setFocusEmulationEnabled":
+		return json.RawMessage(`{}`) // focus() activates the page's window first
 	case "Security.setIgnoreCertificateErrors", "Network.enable", "Page.enable", "Runtime.enable", "Log.enable":
 		return json.RawMessage(`{}`) // the session accepts insecure certificates; events come by subscription
 	}
 	p.b.warnOnce(t, method)
 	return json.RawMessage(`{}`)
+}
+
+// cdpSameSite writes a BiDi cookie's sameSite as DevTools does.
+func cdpSameSite(s string) string {
+	switch s {
+	case "strict":
+		return "Strict"
+	case "lax":
+		return "Lax"
+	case "none":
+		return "None"
+	}
+	return ""
 }
 
 func (b *Browser) warnOnce(t testing.TB, method string) {

@@ -74,4 +74,6 @@ var pageReactions = events.NewProjector(wiki.PageStream, "notify_pages", 1,
 	events.Ignore(wiki.PageTrashedType),
 	events.Ignore(wiki.PageRestoredType),
 	events.Ignore(wiki.PageDeletedType),
+	events.Ignore(wiki.VersionHiddenType),
+	events.Ignore(wiki.VersionUnhiddenType),
 ).SkipHistory()

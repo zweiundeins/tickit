@@ -251,11 +251,12 @@ type VersionInfo struct {
 	By      string
 	At      time.Time
 	Doc     json.RawMessage // Version only
+	Hidden  bool            // by a moderator (moderation.go)
 }
 
 // Versions lists a page's versions, the newest first.
 func Versions(ctx context.Context, q sqlite.Querier, page string) ([]VersionInfo, error) {
-	rows, err := q.QueryContext(ctx, `SELECT number, upto, title, editors, message, reason, created_by, created_at
+	rows, err := q.QueryContext(ctx, `SELECT number, upto, title, editors, message, reason, created_by, created_at, hidden_at IS NOT NULL
 		FROM page_versions WHERE page_id = ? ORDER BY number DESC`, page)
 	if err != nil {
 		return nil, err
@@ -266,7 +267,7 @@ func Versions(ctx context.Context, q sqlite.Querier, page string) ([]VersionInfo
 		var v VersionInfo
 		var editors string
 		var at int64
-		if err := rows.Scan(&v.Number, &v.Upto, &v.Title, &editors, &v.Message, &v.Reason, &v.By, &at); err != nil {
+		if err := rows.Scan(&v.Number, &v.Upto, &v.Title, &editors, &v.Message, &v.Reason, &v.By, &at, &v.Hidden); err != nil {
 			return nil, err
 		}
 		json.Unmarshal([]byte(editors), &v.Editors)
@@ -281,9 +282,9 @@ func Version(ctx context.Context, q sqlite.Querier, page string, number int) (Ve
 	var v VersionInfo
 	var editors, raw string
 	var at int64
-	err := q.QueryRowContext(ctx, `SELECT number, upto, title, editors, message, reason, created_by, created_at, doc
+	err := q.QueryRowContext(ctx, `SELECT number, upto, title, editors, message, reason, created_by, created_at, doc, hidden_at IS NOT NULL
 		FROM page_versions WHERE page_id = ? AND number = ?`, page, number).
-		Scan(&v.Number, &v.Upto, &v.Title, &editors, &v.Message, &v.Reason, &v.By, &at, &raw)
+		Scan(&v.Number, &v.Upto, &v.Title, &editors, &v.Message, &v.Reason, &v.By, &at, &raw, &v.Hidden)
 	if errors.Is(err, sql.ErrNoRows) {
 		return v, nil, notFound("version", page)
 	}
@@ -436,10 +437,17 @@ func Resolve(ctx context.Context, q sqlite.Querier, refs doc.Refs) (doc.StaticRe
 		if err != nil {
 			return r, err
 		}
-		for id, p := range found {
-			if p.Kind != people.Deleted {
-				r.People[id] = p.Name
-			}
+		for id, p := range found { // an erased account: DeletedName (NFR-27.1)
+			r.People[id] = p.Name
+		}
+	}
+	if len(refs.Images) > 0 {
+		hidden, err := HiddenImages(ctx, q, refs.Images...)
+		if err != nil {
+			return r, err
+		}
+		if len(hidden) > 0 {
+			r.Hidden = hidden
 		}
 	}
 	for _, id := range refs.Pages {

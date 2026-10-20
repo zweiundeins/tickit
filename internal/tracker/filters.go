@@ -206,3 +206,21 @@ func SavedFilters(ctx context.Context, q sqlite.Querier, person string) ([]Saved
 	}
 	return out, rows.Err()
 }
+
+// An erased account's saved filters, their stars and its own stars go
+// with it (NFR-27.1), and so do its typing indicators.
+func init() {
+	people.RegisterEraser(func(tx *writer.Tx, person string) error {
+		for _, q := range []string{
+			`DELETE FROM saved_filter_stars WHERE person_id = ?1 OR filter_id IN (SELECT id FROM saved_filters WHERE owner = ?1)`,
+			`DELETE FROM saved_filters WHERE owner = ?1`,
+			`DELETE FROM issue_typing WHERE person_id = ?1`,
+		} {
+			if _, err := tx.Exec(q, person); err != nil {
+				return err
+			}
+		}
+		tx.Touch(FiltersTopic)
+		return nil
+	})
+}
