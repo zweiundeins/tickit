@@ -1,0 +1,1443 @@
+{
+  "project": "OPS",
+  "rank": [
+    "OPS-21",
+    "OPS-23",
+    "OPS-11",
+    "OPS-12",
+    "OPS-44",
+    "OPS-45",
+    "OPS-31",
+    "OPS-32",
+    "OPS-25",
+    "OPS-26",
+    "OPS-43",
+    "OPS-33",
+    "OPS-18",
+    "OPS-29",
+    "OPS-19",
+    "OPS-41",
+    "OPS-1",
+    "OPS-2",
+    "OPS-37",
+    "OPS-42",
+    "OPS-38",
+    "OPS-27",
+    "OPS-34",
+    "OPS-3",
+    "OPS-20",
+    "OPS-36",
+    "OPS-35",
+    "OPS-40",
+    "OPS-46",
+    "OPS-4",
+    "OPS-5",
+    "OPS-6",
+    "OPS-7",
+    "OPS-8",
+    "OPS-9",
+    "OPS-10",
+    "OPS-13",
+    "OPS-14",
+    "OPS-15",
+    "OPS-16",
+    "OPS-17",
+    "OPS-22",
+    "OPS-24",
+    "OPS-28",
+    "OPS-30",
+    "OPS-39"
+  ],
+  "issues": [
+    {
+      "key": "OPS-1",
+      "type": "Epic",
+      "summary": "Upgrade the database to PostgreSQL 18",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["database", "migration"],
+      "components": ["Database"],
+      "due": 4,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-mateo"],
+      "created": "-30d 08:50",
+      "description": [
+        "We run PostgreSQL 15 and its support ends in a year. 18 gives us faster joins on the order tables and the new I/O path. One maintenance window, under 30 minutes of read-only shop.",
+        "",
+        "Plan and rollback: [[page:ENG/PostgreSQL 18 upgrade plan]]"
+      ],
+      "history": [
+        {"at": "-29d 09:00", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-29d 09:40",
+          "body": "I am in. Fair warning: migration 0142 has a view I wrote two years ago and I do not trust it."
+        },
+        {
+          "by": "s-tomasz",
+          "at": "-29d 09:42",
+          "body": "Noted. Past you is always the suspect."
+        }
+      ]
+    },
+    {
+      "key": "OPS-2",
+      "type": "Epic",
+      "summary": "Move search to cairn",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["performance"],
+      "components": ["Search index"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-priya"],
+      "created": "-30d 09:10",
+      "description": [
+        "Search runs as `ILIKE` queries in summit today: slow, no typo tolerance, no ranking. cairn is our small search service: it reads changes from the outbox and keeps its own index.",
+        "",
+        "![Search indexing on cairn](lib:search-indexing)",
+        "",
+        "Decision: [[page:ENG/ADR 7: Keep summit one service]] explains why cairn is the one exception."
+      ],
+      "history": [
+        {"at": "-29d 10:00", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-3",
+      "type": "Epic",
+      "summary": "Tracing and service level objectives",
+      "status": "Selected for Development",
+      "priority": "Medium",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["monitoring"],
+      "components": ["Observability"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-29d 09:30",
+      "description": "Alerts today fire on CPU and disk, which tells us when a server is busy, not when customers suffer. We want alerts on what customers feel: checkout errors, slow search, late emails.",
+      "history": [
+        {"at": "-26d 09:00", "by": "s-tomasz", "field": "status", "from": "Backlog", "to": "Selected for Development"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-4",
+      "type": "Task",
+      "summary": "Restore last night's backup to a scratch server and time it",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "OPS-1",
+      "labels": ["backup", "database"],
+      "components": ["Database"],
+      "due": null,
+      "points": null,
+      "estimate": "3h",
+      "remaining": "",
+      "watchers": [],
+      "created": "-29d 10:00",
+      "description": "See [[page:ENG/Restore a database backup]].",
+      "history": [
+        {"at": "-29d 10:10", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-29d 15:30", "by": "s-tomasz", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-tomasz",
+          "at": "-29d 15:30",
+          "body": "Restore took 18 minutes for 41 GB, checks passed. Wrote the times into the runbook. Nobody likes surprises during a restore."
+        }
+      ]
+    },
+    {
+      "key": "OPS-5",
+      "type": "Story",
+      "summary": "cairn indexer reads changes from the outbox",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-mateo",
+      "parent": "OPS-2",
+      "labels": ["performance"],
+      "components": ["Search index", "API"],
+      "due": null,
+      "points": 8,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-29d 11:00",
+      "description": [
+        "summit writes a row to `outbox` in the same transaction as the product change. The indexer reads rows in order and remembers the last id it saw.",
+        "",
+        "```sql",
+        "SELECT id, topic, payload",
+        "FROM outbox",
+        "WHERE id > $1 AND topic LIKE 'product.%'",
+        "ORDER BY id",
+        "LIMIT 500;",
+        "```"
+      ],
+      "history": [
+        {"at": "-29d 11:30", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-22d 16:00", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-21d 11:00", "by": "s-tomasz", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-tomasz",
+          "at": "-22d 17:00",
+          "body": "Looks right. Please add a metric for the lag between the newest outbox row and the indexer's position, we will want to alert on it."
+        },
+        {
+          "by": "s-mateo",
+          "at": "-21d 10:00",
+          "body": "Added `cairn_outbox_lag_seconds`. Typical value 1.4 s."
+        }
+      ]
+    },
+    {
+      "key": "OPS-6",
+      "type": "Task",
+      "summary": "Run the test suite against PostgreSQL 18",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-tomasz",
+      "parent": "OPS-1",
+      "labels": ["database"],
+      "components": ["Database"],
+      "due": null,
+      "points": null,
+      "estimate": "4h",
+      "remaining": "",
+      "watchers": [],
+      "created": "-28d 09:00",
+      "description": "",
+      "history": [
+        {"at": "-28d 09:30", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-27d 10:02", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-27d 10:02",
+          "body": "1,912 tests, 1,911 green. The red one is migration 0142, as predicted: [[OPS-8]]."
+        }
+      ]
+    },
+    {
+      "key": "OPS-7",
+      "type": "Story",
+      "summary": "Swap the search index by alias after a full rebuild",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-mateo",
+      "reporter": "s-mateo",
+      "parent": "OPS-2",
+      "labels": [],
+      "components": ["Search index"],
+      "due": null,
+      "points": 5,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-28d 11:00",
+      "description": "",
+      "history": [
+        {"at": "-21d 11:30", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-17d 15:00", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-16d 10:00", "by": "s-tomasz", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-8",
+      "type": "Bug",
+      "summary": "Migration 0142 fails on PostgreSQL 18: implicit cast in a view",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-mateo",
+      "parent": "OPS-1",
+      "labels": ["database", "migration"],
+      "components": ["Database"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-27d 10:00",
+      "description": [
+        "```text",
+        "ERROR:  operator does not exist: text = integer",
+        "LINE 4:   WHERE o.status = 3",
+        "```",
+        "",
+        "The view compared a text column with a number and relied on an old implicit cast."
+      ],
+      "history": [
+        {"at": "-27d 10:05", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-26d 11:00", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-26d 14:00", "by": "s-tomasz", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-26d 10:50",
+          "body": [
+            "Fixed with an explicit status name, and a new migration rather than editing 0142, since it has shipped:",
+            "",
+            "```sql",
+            "CREATE OR REPLACE VIEW open_orders AS",
+            "SELECT o.* FROM orders o WHERE o.status = 'paid';",
+            "```"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "OPS-9",
+      "type": "Task",
+      "summary": "Upgrade staging to PostgreSQL 18",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "OPS-1",
+      "labels": ["database"],
+      "components": ["Database", "Infrastructure"],
+      "due": null,
+      "points": null,
+      "estimate": "4h",
+      "remaining": "",
+      "watchers": [],
+      "created": "-26d 09:00",
+      "description": "",
+      "history": [
+        {"at": "-26d 15:00", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-26d 17:30", "by": "s-tomasz", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-tomasz",
+          "at": "-26d 17:31",
+          "body": "Staging runs 18. 22 minutes of downtime, mostly the analyze step. Production has twenty times the data, so I asked for a longer window."
+        }
+      ]
+    },
+    {
+      "key": "OPS-10",
+      "type": "Task",
+      "summary": "Dashboards for summit: requests, latency, errors",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "OPS-3",
+      "labels": ["monitoring"],
+      "components": ["Observability"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-26d 10:00",
+      "description": "![The summit dashboard](lib:ops-dashboard)",
+      "history": [
+        {"at": "-25d 09:00", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-23d 16:00", "by": "s-tomasz", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-11",
+      "type": "Task",
+      "summary": "Book the maintenance window with the hosting provider",
+      "status": "Blocked",
+      "priority": "High",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "OPS-1",
+      "labels": ["database"],
+      "components": ["Infrastructure"],
+      "due": -2,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-25d 09:00",
+      "description": "We need 60 minutes on a weeknight, with their database team on call, and the shop in read-only mode.",
+      "history": [
+        {"at": "-25d 09:10", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-20d 11:00", "by": "s-tomasz", "field": "status", "from": "In Progress", "to": "Blocked"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-tomasz",
+          "at": "-20d 11:00",
+          "body": "Asked for two dates. They confirm windows two weeks ahead and it is still \"in planning\". Blocked on them."
+        },
+        {
+          "by": "s-priya",
+          "at": "-4d 09:00",
+          "body": "Is this at risk for the sale? I would rather not upgrade the database in the sale week."
+        },
+        {
+          "by": "s-tomasz",
+          "at": "-4d 09:20",
+          "body": "Agreed. If they do not confirm by Friday, the upgrade moves to after the sale. Nothing breaks if we wait."
+        }
+      ]
+    },
+    {
+      "key": "OPS-12",
+      "type": "Task",
+      "summary": "Upgrade production to PostgreSQL 18",
+      "status": "To Do",
+      "priority": "High",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "OPS-1",
+      "labels": ["database", "migration"],
+      "components": ["Database"],
+      "due": 4,
+      "points": null,
+      "estimate": "2h",
+      "remaining": "",
+      "watchers": [],
+      "created": "-25d 09:20",
+      "description": [
+        "- [ ] Shop in read-only mode, banner on",
+        "- [ ] Final backup, checked",
+        "- [ ] Upgrade, analyze",
+        "- [ ] Smoke tests on the shop and the app",
+        "- [ ] Read-only off"
+      ],
+      "history": [],
+      "links": [
+        {"type": "relates to", "key": "OPS-4", "by": "s-tomasz", "at": "-25d 09:25"}
+      ],
+      "comments": []
+    },
+    {
+      "key": "OPS-13",
+      "type": "Task",
+      "summary": "Send 10 % of search traffic to cairn",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-mateo",
+      "reporter": "s-mateo",
+      "parent": "OPS-2",
+      "labels": [],
+      "components": ["Search index", "API"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-24d 09:00",
+      "description": "",
+      "history": [
+        {"at": "-16d 11:00", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-10d 15:00", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-9d 09:00", "by": "s-tomasz", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-9d 09:05",
+          "body": "Live at 10 %. p95 for search went from 410 ms to 38 ms. I may have done a small dance."
+        }
+      ]
+    },
+    {
+      "key": "OPS-14",
+      "type": "Bug",
+      "summary": "Nightly cairn rebuild overlaps the database backup",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-mateo",
+      "reporter": "s-tomasz",
+      "parent": "OPS-2",
+      "labels": ["backup"],
+      "components": ["Search index", "Database"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-23d 08:30",
+      "description": "Both start at 03:00 and the backup took 40 minutes instead of 15. Moved the rebuild to 03:10, after the backup's snapshot.",
+      "history": [
+        {"at": "-23d 09:00", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-23d 11:00", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-15",
+      "type": "Task",
+      "summary": "Turn on the slow query log in production for a week",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-mateo",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["performance", "database"],
+      "components": ["Database"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-23d 10:00",
+      "description": [
+        "```sql",
+        "ALTER SYSTEM SET log_min_duration_statement = '250ms';",
+        "SELECT pg_reload_conf();",
+        "```"
+      ],
+      "history": [
+        {"at": "-23d 10:30", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-15d 10:00", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-15d 09:50",
+          "body": "Top offender by far: the order history page, 1.8 s at p95. Filed [[OPS-29]]."
+        }
+      ]
+    },
+    {
+      "key": "OPS-16",
+      "type": "Task",
+      "summary": "Rotate the payment webhook secret",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["security"],
+      "components": ["API"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-22d 09:00",
+      "description": "Yearly rotation. summit accepts the old and the new secret for 24 hours, then only the new one.",
+      "history": [
+        {"at": "-22d 14:00", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-22d 14:40", "by": "s-tomasz", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-17",
+      "type": "Task",
+      "summary": "Delete the old staging server",
+      "status": "Done",
+      "priority": "Low",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["cost"],
+      "components": ["Infrastructure"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-22d 10:00",
+      "description": "",
+      "history": [
+        {"at": "-21d 16:00", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-tomasz",
+          "at": "-21d 16:00",
+          "body": "Gone. CHF 140 a month back, and one less server with a certificate to forget."
+        }
+      ]
+    },
+    {
+      "key": "OPS-18",
+      "type": "Bug",
+      "summary": "Search synonyms are dropped after a full rebuild",
+      "status": "In Review",
+      "priority": "Medium",
+      "assignee": "s-mateo",
+      "reporter": "s-mateo",
+      "parent": "OPS-2",
+      "labels": [],
+      "components": ["Search index"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-21d 09:00",
+      "description": "The rebuild creates the new index from the mapping file, but the synonyms live in a second file it does not read. \"Shell\" stops finding jackets after 03:10.",
+      "history": [
+        {"at": "-8d 16:10", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-5d 11:00", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "In Review"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-19",
+      "type": "Task",
+      "summary": "Write service level objectives for checkout and search",
+      "status": "In Review",
+      "priority": "Medium",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "OPS-3",
+      "labels": ["monitoring"],
+      "components": ["Observability"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-21d 10:00",
+      "description": [
+        "Drafts, for review by @s-priya and @s-mateo:",
+        "",
+        "- Checkout: 99.9 % of payments that reach summit complete without an error, over 28 days",
+        "- Search: 99 % of searches answer within 300 ms, over 28 days",
+        "- Order emails: 99 % leave within 5 minutes of payment"
+      ],
+      "history": [
+        {"at": "-12d 09:00", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-6d 15:00", "by": "s-tomasz", "field": "status", "from": "In Progress", "to": "In Review"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-priya",
+          "at": "-5d 10:00",
+          "body": "Emails within 5 minutes feels generous to me. Customers start writing to us after 10. Fine as a start."
+        },
+        {
+          "by": "s-mateo",
+          "at": "-5d 11:30",
+          "body": "Search at 300 ms is easy on cairn and impossible on the old search. Which is the point, I suppose."
+        }
+      ]
+    },
+    {
+      "key": "OPS-20",
+      "type": "Story",
+      "summary": "Trace a checkout from the edge to the database",
+      "status": "Selected for Development",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-tomasz",
+      "parent": "OPS-3",
+      "labels": ["monitoring"],
+      "components": ["Observability", "API"],
+      "due": null,
+      "points": 5,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-20d 09:00",
+      "description": "",
+      "history": [
+        {"at": "-12d 09:05", "by": "s-tomasz", "field": "status", "from": "Backlog", "to": "Selected for Development"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-21",
+      "type": "Bug",
+      "summary": "Stock sync marked 412 products as sold out",
+      "status": "Done",
+      "priority": "Critical",
+      "assignee": "s-mateo",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["incident", "on-call"],
+      "components": ["Warehouse sync", "Jobs"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-priya", "s-lena"],
+      "created": "-19d 06:25",
+      "description": [
+        "The 05:45 stock file from the warehouse had 1,184 rows instead of 41,000. The sync took every missing row as 0 in stock.",
+        "",
+        "```bash",
+        "$ wc -l /srv/sftp/warehouse/stock-0545.csv",
+        "1185 /srv/sftp/warehouse/stock-0545.csv",
+        "```",
+        "",
+        "Fixed by loading the 05:30 file again. Postmortem: [[page:ENG/Postmortem: the sold-out socks]]"
+      ],
+      "history": [
+        {"at": "-19d 06:26", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-19d 09:02", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-18d 10:00", "by": "s-tomasz", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-19d 06:50",
+          "body": "The file is cut off in the middle of a line. Their export was still writing when our job picked it up."
+        },
+        {
+          "by": "s-mateo",
+          "at": "-19d 09:02",
+          "body": "Reloaded the 05:30 file by hand, 412 products back in stock. Pausing the job until we have a guard."
+        },
+        {
+          "by": "s-tomasz",
+          "at": "-19d 09:10",
+          "body": "Thanks. Status page updated, incident over. Postmortem tomorrow at 10, no blame, bring coffee."
+        }
+      ]
+    },
+    {
+      "key": "OPS-22",
+      "type": "Task",
+      "summary": "Postmortem: the sold-out socks",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["incident"],
+      "components": ["Warehouse sync"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-18d 08:30",
+      "description": "Written up on [[page:ENG/Postmortem: the sold-out socks]]. Follow-ups are under [[OPS-23]].",
+      "history": [
+        {"at": "-18d 10:00", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-17d 12:00", "by": "s-tomasz", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-23",
+      "type": "Epic",
+      "summary": "Harden the stock sync",
+      "status": "In Progress",
+      "priority": "Critical",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["incident"],
+      "components": ["Warehouse sync", "Jobs"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-mateo", "s-priya"],
+      "created": "-18d 11:00",
+      "description": [
+        "![The stock sync with its guard](lib:stock-sync-flow)",
+        "",
+        "1. Refuse a short file ([[OPS-24]])",
+        "2. Refuse a file that sells out too much at once ([[OPS-25]])",
+        "3. Alert when the newest file is too old ([[OPS-26]])",
+        "4. A checksum line from the warehouse ([[OPS-27]])"
+      ],
+      "history": [
+        {"at": "-18d 11:05", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-24",
+      "type": "Story",
+      "summary": "Guard the stock sync: refuse a short file",
+      "status": "Done",
+      "priority": "Critical",
+      "assignee": "s-mateo",
+      "reporter": "s-tomasz",
+      "parent": "OPS-23",
+      "labels": [],
+      "components": ["Warehouse sync", "Jobs"],
+      "due": null,
+      "points": 5,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-18d 11:10",
+      "description": [
+        "```go",
+        "func checkRows(got, yesterday int) error {",
+        "\tif got < yesterday*9/10 {",
+        "\t\treturn fmt.Errorf(\"stock file has %d rows, yesterday's had %d: refusing\", got, yesterday)",
+        "\t}",
+        "\treturn nil",
+        "}",
+        "```"
+      ],
+      "history": [
+        {"at": "-18d 13:00", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-16d 15:00", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-15d 11:00", "by": "s-tomasz", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-lena",
+          "at": "-15d 10:30",
+          "body": "Replayed all 2,880 files of last month through the guard: no false alarm. The cut-off file from the incident is refused, as it should be."
+        }
+      ]
+    },
+    {
+      "key": "OPS-25",
+      "type": "Story",
+      "summary": "Guard: refuse a file that sells out more than 5 % of products",
+      "status": "In Review",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-tomasz",
+      "parent": "OPS-23",
+      "labels": [],
+      "components": ["Warehouse sync"],
+      "due": null,
+      "points": 3,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-17d 09:00",
+      "description": "",
+      "history": [
+        {"at": "-15d 11:30", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-8d 14:00", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "In Review"}
+      ],
+      "links": [
+        {"type": "blocks", "key": "APP-23", "by": "s-mateo", "at": "-16d 15:06"}
+      ],
+      "comments": [
+        {
+          "by": "s-priya",
+          "at": "-8d 15:00",
+          "body": "What happens in the sale, when lots of things do sell out?"
+        },
+        {
+          "by": "s-mateo",
+          "at": "-8d 15:20",
+          "body": "Good question. Real sell-outs come one by one over the day, a broken file sells out hundreds at once. The guard looks at one file against the one before, so the sale is fine. I added a test with last year's sale day."
+        }
+      ]
+    },
+    {
+      "key": "OPS-26",
+      "type": "Task",
+      "summary": "Alert when the newest stock file is older than 30 minutes",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "OPS-23",
+      "labels": ["monitoring", "on-call"],
+      "components": ["Warehouse sync", "Observability"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-17d 09:20",
+      "description": [
+        "```yaml",
+        "- alert: StockFileStale",
+        "  expr: time() - porter_stock_file_newest_timestamp_seconds > 1800",
+        "  for: 5m",
+        "  labels:",
+        "    severity: page",
+        "  annotations:",
+        "    summary: \"No new stock file for 30 minutes\"",
+        "    runbook: \"Stock sync failures\"",
+        "```"
+      ],
+      "history": [
+        {"at": "-10d 09:00", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-27",
+      "type": "Task",
+      "summary": "Ask the warehouse for a checksum line in stock.csv",
+      "status": "Blocked",
+      "priority": "Medium",
+      "assignee": "s-priya",
+      "reporter": "s-tomasz",
+      "parent": "OPS-23",
+      "labels": [],
+      "components": ["Warehouse sync"],
+      "due": -5,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-17d 09:40",
+      "description": "A last line with the number of rows and a checksum would let us tell a cut-off file from a short one.",
+      "history": [
+        {"at": "-17d 10:00", "by": "s-priya", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-14d 09:00", "by": "s-priya", "field": "status", "from": "In Progress", "to": "Blocked"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-priya",
+          "at": "-14d 09:00",
+          "body": "Their IT agrees in principle and has a change freeze until the end of the month. Blocked on them, I will ask again on Monday."
+        },
+        {
+          "by": "s-priya",
+          "at": "-2d 09:30",
+          "body": "Asked again. New date: the week after the sale. Our guards cover us until then."
+        }
+      ]
+    },
+    {
+      "key": "OPS-28",
+      "type": "Subtask",
+      "summary": "Test the guard with last month's files",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-lena",
+      "reporter": "s-mateo",
+      "parent": "OPS-24",
+      "labels": [],
+      "components": ["Warehouse sync"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-16d 09:00",
+      "description": "",
+      "history": [
+        {"at": "-16d 09:30", "by": "s-lena", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-15d 10:35", "by": "s-lena", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-29",
+      "type": "Bug",
+      "summary": "Slow query: order history scans every order",
+      "status": "In Review",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-mateo",
+      "parent": "",
+      "labels": ["performance", "database"],
+      "components": ["Database", "API"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-15d 09:55",
+      "description": [
+        "```sql",
+        "EXPLAIN ANALYZE",
+        "SELECT id, placed_at, total_chf FROM orders",
+        "WHERE customer_id = $1 ORDER BY placed_at DESC LIMIT 20;",
+        "-- Seq Scan on orders  (rows=1204331)  Execution Time: 1812.4 ms",
+        "```"
+      ],
+      "history": [
+        {"at": "-14d 09:00", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-7d 16:00", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "In Review"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-7d 16:05",
+          "body": "With the index from [[OPS-30]]: 0.9 ms. That is two thousand times faster, I checked twice."
+        }
+      ]
+    },
+    {
+      "key": "OPS-30",
+      "type": "Subtask",
+      "summary": "Index orders on customer and placed time",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-mateo",
+      "parent": "OPS-29",
+      "labels": [],
+      "components": ["Database"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-15d 10:10",
+      "description": "`CREATE INDEX CONCURRENTLY orders_customer_placed ON orders (customer_id, placed_at DESC);`",
+      "history": [
+        {"at": "-8d 09:00", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-7d 15:50", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-31",
+      "type": "Task",
+      "summary": "Capacity plan for the First Snow Sale",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-tomasz",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": ["first-snow-sale", "performance"],
+      "components": ["Infrastructure"],
+      "due": 3,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-14d 09:00",
+      "description": [
+        "| Part | Today | Sale peak, planned |",
+        "| --- | --- | --- |",
+        "| summit instances | 3 | 8 |",
+        "| Database connections | 120 | 300 |",
+        "| porter workers | 2 | 4 |",
+        "| Edge cache for category pages | none | 60 s ([[WEB-24]]) |"
+      ],
+      "history": [
+        {"at": "-12d 09:00", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-tomasz",
+          "at": "-6d 10:00",
+          "body": "Numbers depend on the load test, which depends on [[OPS-32]]. Everything depends on everything, as usual."
+        }
+      ]
+    },
+    {
+      "key": "OPS-32",
+      "type": "Task",
+      "summary": "Load test environment with production-sized data",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["first-snow-sale"],
+      "components": ["Infrastructure", "Database"],
+      "due": null,
+      "points": null,
+      "estimate": "16h",
+      "remaining": "5h",
+      "watchers": [],
+      "created": "-14d 09:30",
+      "description": [
+        "A copy of production with customers replaced by made-up ones:",
+        "",
+        "```bash",
+        "alp db snapshot create --from prod --name loadtest-base",
+        "alp db restore loadtest-base --to loadtest",
+        "psql loadtest -f scripts/anonymise.sql",
+        "```"
+      ],
+      "history": [
+        {"at": "-11d 10:00", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-5d 17:00", "by": "s-mateo", "field": "remaining", "from": "16h", "to": "5h"}
+      ],
+      "links": [
+        {"type": "blocks", "key": "WEB-15", "by": "s-mateo", "at": "-11d 16:41"}
+      ],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-5d 17:05",
+          "body": "Anonymising 1.2 million orders takes longer than I hoped, 3 hours. Rewriting it as one UPDATE per table instead of per row."
+        }
+      ]
+    },
+    {
+      "key": "OPS-33",
+      "type": "Bug",
+      "summary": "porter retries failed emails forever",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-tomasz",
+      "reporter": "s-lena",
+      "parent": "",
+      "labels": ["toil"],
+      "components": ["Jobs"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-13d 11:00",
+      "description": "An email to a mailbox that no longer exists is retried every 5 minutes since March. There are 312 of them in the queue.",
+      "history": [
+        {"at": "-6d 09:00", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-tomasz",
+          "at": "-6d 09:10",
+          "body": "Five attempts with backoff, then the job goes to a dead letter table with a reason, and support sees it."
+        }
+      ]
+    },
+    {
+      "key": "OPS-34",
+      "type": "Task",
+      "summary": "Send all search traffic to cairn",
+      "status": "Selected for Development",
+      "priority": "Medium",
+      "assignee": "s-mateo",
+      "reporter": "s-mateo",
+      "parent": "OPS-2",
+      "labels": [],
+      "components": ["Search index"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-9d 09:30",
+      "description": "",
+      "history": [
+        {"at": "-9d 09:40", "by": "s-mateo", "field": "status", "from": "Backlog", "to": "Selected for Development"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-35",
+      "type": "Task",
+      "summary": "Retire the old search queries in summit",
+      "status": "Backlog",
+      "priority": "Low",
+      "assignee": "",
+      "reporter": "s-mateo",
+      "parent": "OPS-2",
+      "labels": ["tech-debt"],
+      "components": ["API"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-9d 11:00",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-36",
+      "type": "Task",
+      "summary": "Alert on error budgets instead of CPU",
+      "status": "Backlog",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-tomasz",
+      "parent": "OPS-3",
+      "labels": ["monitoring", "on-call"],
+      "components": ["Observability"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-8d 09:00",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-37",
+      "type": "Bug",
+      "summary": "Staging certificate expires in 9 days",
+      "status": "To Do",
+      "priority": "Medium",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": [],
+      "components": ["Infrastructure"],
+      "due": 6,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-8d 10:00",
+      "description": "Renewal fails because staging's DNS moved. The alert is silenced until Friday so it does not page at night.",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-38",
+      "type": "Bug",
+      "summary": "Disk on the log server fills up every Sunday",
+      "status": "To Do",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["toil", "monitoring"],
+      "components": ["Observability"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-7d 08:15",
+      "description": "Weekly report job writes 40 GB of temporary files and cleans them up on Monday. Third Sunday in a row.",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-39",
+      "type": "Task",
+      "summary": "Account deletion endpoint fit for the app",
+      "status": "Done",
+      "priority": "Critical",
+      "assignee": "s-mateo",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["security"],
+      "components": ["API"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-6d 10:16",
+      "description": "`DELETE /v2/account` with a confirmation token. It cancels open orders, refunds them through Paygrove, removes pack lists and alerts, and keeps invoices for the 10 years the law asks for, without the name.",
+      "history": [
+        {"at": "-6d 10:20", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-4d 16:00", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-3d 11:00", "by": "s-tomasz", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-40",
+      "type": "Task",
+      "summary": "Move image resizing from summit to porter",
+      "status": "Backlog",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-mateo",
+      "parent": "",
+      "labels": ["performance"],
+      "components": ["Jobs", "API"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-6d 11:00",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-41",
+      "type": "Task",
+      "summary": "Update the paging rules in the on-call handbook",
+      "status": "In Review",
+      "priority": "Medium",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["on-call"],
+      "components": ["Observability"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-5d 09:00",
+      "description": "Draft is on [[page:ENG/On-call]]. Main change: the stale stock file pages at night, everything about staging waits for the morning.",
+      "history": [
+        {"at": "-5d 09:30", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-4d 15:00", "by": "s-tomasz", "field": "status", "from": "In Progress", "to": "In Review"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-42",
+      "type": "Bug",
+      "summary": "Deploy pipeline hangs when the canary gets no traffic at night",
+      "status": "To Do",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-mateo",
+      "parent": "",
+      "labels": [],
+      "components": ["Infrastructure"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-5d 10:00",
+      "description": "At 02:00 the canary sees 3 requests in 15 minutes and the error check never decides. Wait for 500 requests or 30 minutes, whichever comes first.",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-43",
+      "type": "Bug",
+      "summary": "Back-in-stock events double when a stock file is replayed",
+      "status": "To Do",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-mateo",
+      "parent": "OPS-23",
+      "labels": [],
+      "components": ["Warehouse sync", "Jobs"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-4d 09:40",
+      "description": "Replaying a file by hand, as in the incident runbook, sends the events again. Events need the file's name as a key, so a replay changes nothing.",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-44",
+      "type": "Subtask",
+      "summary": "Rehearse the production upgrade on a copy",
+      "status": "To Do",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-tomasz",
+      "parent": "OPS-12",
+      "labels": [],
+      "components": ["Database"],
+      "due": 2,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-4d 11:00",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-45",
+      "type": "Subtask",
+      "summary": "Write the rollback steps for the upgrade",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-tomasz",
+      "reporter": "s-tomasz",
+      "parent": "OPS-12",
+      "labels": [],
+      "components": ["Database"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-3d 09:00",
+      "description": "",
+      "history": [
+        {"at": "-3d 09:10", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "OPS-46",
+      "type": "Task",
+      "summary": "Review cloud costs after the sale",
+      "status": "Backlog",
+      "priority": "Low",
+      "assignee": "",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["cost"],
+      "components": ["Infrastructure"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-2d 16:00",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    }
+  ]
+}

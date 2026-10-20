@@ -1,0 +1,1604 @@
+{
+  "project": "WEB",
+  "rank": [
+    "WEB-2",
+    "WEB-15",
+    "WEB-44",
+    "WEB-48",
+    "WEB-6",
+    "WEB-14",
+    "WEB-40",
+    "WEB-17",
+    "WEB-1",
+    "WEB-7",
+    "WEB-12",
+    "WEB-13",
+    "WEB-27",
+    "WEB-19",
+    "WEB-24",
+    "WEB-43",
+    "WEB-41",
+    "WEB-4",
+    "WEB-22",
+    "WEB-23",
+    "WEB-26",
+    "WEB-25",
+    "WEB-18",
+    "WEB-37",
+    "WEB-9",
+    "WEB-3",
+    "WEB-34",
+    "WEB-5",
+    "WEB-31",
+    "WEB-32",
+    "WEB-28",
+    "WEB-35",
+    "WEB-36",
+    "WEB-45",
+    "WEB-8",
+    "WEB-10",
+    "WEB-11",
+    "WEB-16",
+    "WEB-20",
+    "WEB-21",
+    "WEB-29",
+    "WEB-30",
+    "WEB-33",
+    "WEB-38",
+    "WEB-39",
+    "WEB-42",
+    "WEB-46",
+    "WEB-47"
+  ],
+  "issues": [
+    {
+      "key": "WEB-1",
+      "type": "Epic",
+      "summary": "One-page checkout",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-priya",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": ["checkout"],
+      "components": ["Cart and checkout"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-tomasz", "s-yuki"],
+      "created": "-30d 09:12",
+      "description": [
+        "## Why",
+        "",
+        "Our checkout takes three steps and loses a third of the people who start it. Most of them leave on the delivery step, where we ask for the address a second time.",
+        "",
+        "## What",
+        "",
+        "One page with address, delivery and payment, and the order summary beside it. Vouchers apply without a reload. The old checkout stays behind a flag until the new one wins.",
+        "",
+        "## How we know it worked",
+        "",
+        "- Checkout conversion above 3.3 % for two weeks at 50 % of sessions",
+        "- No rise in payment errors",
+        "- Support tickets about vouchers go down, not up",
+        "",
+        "Requirements: [[page:PROD/One-page checkout]]"
+      ],
+      "history": [
+        {"at": "-28d 10:05", "by": "s-priya", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-tomasz",
+          "at": "-29d 16:20",
+          "body": "Fine by me. The flag lives in summit, not in the template, so we can turn it off without a deploy."
+        },
+        {
+          "by": "s-amara",
+          "at": "-27d 11:02",
+          "body": "First layouts are in the design file. The summary sits on the right on desktop and folds into a bar at the bottom on phones. Feedback very welcome before Friday."
+        },
+        {
+          "by": "s-priya",
+          "at": "-6d 09:30",
+          "body": "Week 3 at 50 %: conversion 3.6 % against 2.8 % on the old flow. @s-lena, how do the voucher tickets look?"
+        },
+        {
+          "by": "s-lena",
+          "at": "-6d 10:14",
+          "body": "Two voucher tickets this week, both about [[WEB-44]]. Last month we had eleven. I would call that a win."
+        }
+      ]
+    },
+    {
+      "key": "WEB-2",
+      "type": "Epic",
+      "summary": "First Snow Sale readiness",
+      "status": "In Progress",
+      "priority": "Critical",
+      "assignee": "s-priya",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": ["first-snow-sale"],
+      "components": [],
+      "due": 7,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-tomasz", "s-mateo", "s-lena"],
+      "created": "-30d 09:40",
+      "description": [
+        "Everything the shop needs for the First Snow Sale. The sale starts at 08:00 on a Monday and runs for a week. Last year the first hour brought 4 times the usual traffic, and the shop slowed to a crawl at 08:05.",
+        "",
+        "- [x] Sale prices and struck-through old prices",
+        "- [ ] Banner and countdown on the home page",
+        "- [ ] Load test at 5 times last year's peak",
+        "- [ ] Copy for banners, emails and the FAQ",
+        "- [ ] Landing page with category filters",
+        "",
+        "Plan: [[page:PROD/First Snow Sale]]"
+      ],
+      "history": [
+        {"at": "-27d 09:00", "by": "s-priya", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-tomasz",
+          "at": "-30d 11:15",
+          "body": "No deploys during the first hour of the sale. I will put it in the release checklist so nobody has to remember."
+        },
+        {
+          "by": "s-mateo",
+          "at": "-20d 17:40",
+          "body": "Note to self and everyone: the sold-out incident this morning would have been a lot worse during the sale. Hardening is in [[OPS-23]]."
+        },
+        {
+          "by": "s-priya",
+          "at": "-3d 14:05",
+          "body": "Status: on track except the load test, which waits for the test environment ([[OPS-32]]). If it slips past Thursday we run it against staging and accept the noise."
+        }
+      ]
+    },
+    {
+      "key": "WEB-3",
+      "type": "Epic",
+      "summary": "Accessibility pass to WCAG 2.2 AA",
+      "status": "Selected for Development",
+      "priority": "Medium",
+      "assignee": "s-amara",
+      "reporter": "s-amara",
+      "parent": "",
+      "labels": ["accessibility"],
+      "components": [],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-lena"],
+      "created": "-29d 10:30",
+      "description": [
+        "A customer wrote to us that she could not choose a boot size with the keyboard. She was right, and it is not the only gap.",
+        "",
+        "Scope for this cycle: the checkout, the product page and the header. Everything else goes on the list for the next one."
+      ],
+      "history": [
+        {"at": "-22d 14:00", "by": "s-priya", "field": "status", "from": "Backlog", "to": "Selected for Development"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-amara",
+          "at": "-22d 14:20",
+          "body": "I ran the automated checks on five pages: 41 contrast problems, 9 missing labels, 3 traps for the keyboard. The contrast ones are mostly the grey price tags."
+        }
+      ]
+    },
+    {
+      "key": "WEB-4",
+      "type": "Epic",
+      "summary": "Faster product pages",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-tomasz",
+      "parent": "",
+      "labels": ["performance"],
+      "components": ["Catalog"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-priya"],
+      "created": "-29d 11:00",
+      "description": [
+        "A product page takes 4.1 s to show its main image on a mid-range phone on a slow connection. Target: under 2.5 s.",
+        "",
+        "Biggest costs, measured by @s-lena:",
+        "",
+        "1. Product photos as large JPEGs, 380 KB on average",
+        "2. Reviews rendered on the server before anything else",
+        "3. The size picker loading late and pushing the page down"
+      ],
+      "history": [
+        {"at": "-24d 09:30", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-5",
+      "type": "Epic",
+      "summary": "Fewer returns for size",
+      "status": "Backlog",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": ["ux"],
+      "components": ["Catalog"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-29d 15:45",
+      "description": "More than half of our returns are about size. Every return costs us about CHF 14 in shipping and handling, and the customer a week. See [[page:PROD/Return reasons]].",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-6",
+      "type": "Story",
+      "summary": "Collect address, delivery and payment on one page",
+      "status": "In Review",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-priya",
+      "parent": "WEB-1",
+      "labels": ["checkout"],
+      "components": ["Cart and checkout"],
+      "due": null,
+      "points": 8,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-amara"],
+      "created": "-28d 09:20",
+      "description": [
+        "As a customer I want to enter everything on one page, so that I see what is left and do not lose my input when I go back.",
+        "",
+        "## Acceptance",
+        "",
+        "- [x] Address, delivery and payment are sections of one form",
+        "- [x] A section that is complete folds into one line with an Edit link",
+        "- [x] Going back in the browser keeps what was typed",
+        "- [ ] The page works without JavaScript, with a full reload per section",
+        "",
+        "The layout:",
+        "",
+        "![The one-page checkout](lib:checkout-one-page)"
+      ],
+      "history": [
+        {"at": "-27d 09:10", "by": "s-tomasz", "field": "assignee", "from": "", "to": "s-yuki"},
+        {"at": "-27d 09:15", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-12d 16:45", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "In Review"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-yuki",
+          "at": "-20d 15:30",
+          "body": "The form is server-rendered now and each section posts on its own. Without JavaScript it reloads, with it the section swaps in place. Tested on the small phone and the big tablet."
+        },
+        {
+          "by": "s-amara",
+          "at": "-19d 10:12",
+          "body": "Looks great. Tiny nudge: the folded sections need a bit more space above them, 16 px instead of 8, or they read as one block."
+        },
+        {
+          "by": "s-yuki",
+          "at": "-19d 11:40",
+          "body": "Done, and the Edit links are real links now, so the keyboard reaches them."
+        },
+        {
+          "by": "s-lena",
+          "at": "-11d 09:20",
+          "body": "Tested on staging with 14 test orders. One problem: the delivery section forgets the pick-up shop after a failed payment. Filed as part of [[WEB-13]]."
+        },
+        {
+          "by": "s-tomasz",
+          "at": "-10d 17:05",
+          "body": "Reviewing. The handler is long but readable. Two comments in the merge request, nothing blocking."
+        }
+      ]
+    },
+    {
+      "key": "WEB-7",
+      "type": "Story",
+      "summary": "Show the order summary beside the checkout, with vouchers",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-priya",
+      "parent": "WEB-1",
+      "labels": ["checkout"],
+      "components": ["Cart and checkout"],
+      "due": null,
+      "points": 5,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-28d 09:35",
+      "description": [
+        "The summary lists items, voucher, delivery and total, and updates as soon as something changes. On phones it is a bar at the bottom that opens.",
+        "",
+        "A voucher applies without a reload and says why when it does not: expired, not for sale items, minimum not reached."
+      ],
+      "history": [
+        {"at": "-18d 10:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-priya",
+          "at": "-15d 13:00",
+          "body": "Can the voucher message name the minimum? \"Add CHF 12.00 more for this voucher\" converts better than \"Minimum not reached\"."
+        },
+        {
+          "by": "s-yuki",
+          "at": "-15d 13:44",
+          "body": "Yes, summit already returns the missing amount. I will use it."
+        }
+      ]
+    },
+    {
+      "key": "WEB-8",
+      "type": "Task",
+      "summary": "Feature flag for the one-page checkout, at 50 % of sessions",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-mateo",
+      "reporter": "s-tomasz",
+      "parent": "WEB-1",
+      "labels": ["checkout"],
+      "components": ["Cart and checkout"],
+      "due": null,
+      "points": null,
+      "estimate": "4h",
+      "remaining": "",
+      "watchers": [],
+      "created": "-28d 11:00",
+      "description": [
+        "The flag is stored per session, so a customer does not switch checkouts halfway. Sessions are split by a hash of the session id.",
+        "",
+        "```go",
+        "func OnePageCheckout(sessionID string, percent int) bool {",
+        "\th := fnv.New32a()",
+        "\th.Write([]byte(sessionID))",
+        "\treturn int(h.Sum32()%100) < percent",
+        "}",
+        "```"
+      ],
+      "history": [
+        {"at": "-27d 14:00", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-26d 11:30", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-26d 15:10", "by": "s-tomasz", "field": "status", "from": "In Review", "to": "Done"},
+        {"at": "-26d 15:10", "by": "s-mateo", "field": "remaining", "from": "4h", "to": ""}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-9",
+      "type": "Story",
+      "summary": "Remember the address of a returning customer",
+      "status": "To Do",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "WEB-1",
+      "labels": ["checkout"],
+      "components": ["Cart and checkout", "Accounts"],
+      "due": null,
+      "points": 3,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-27d 10:15",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-10",
+      "type": "Bug",
+      "summary": "A voucher code applied twice doubles the discount",
+      "status": "Done",
+      "priority": "Critical",
+      "assignee": "s-mateo",
+      "reporter": "s-lena",
+      "parent": "WEB-1",
+      "labels": ["checkout", "payments"],
+      "components": ["Cart and checkout"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-priya"],
+      "created": "-26d 14:22",
+      "description": [
+        "Steps on staging:",
+        "",
+        "1. Add the Firn 30 backpack to the cart",
+        "2. Enter `FIRSTSNOW` and press Apply",
+        "3. Press Apply again before the first answer arrives",
+        "",
+        "Expected: one discount of 20 %. Actual: two discounts, the total drops from CHF 149.00 to CHF 95.36."
+      ],
+      "history": [
+        {"at": "-26d 14:40", "by": "s-tomasz", "field": "assignee", "from": "", "to": "s-mateo"},
+        {"at": "-26d 14:41", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-25d 11:05", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-25d 15:30", "by": "s-lena", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-26d 15:02",
+          "body": "Found it! Two requests race, and both read the cart before either writes. The fix is a unique index on `(cart_id, voucher_code)` and an upsert. No more double helpings."
+        },
+        {
+          "by": "s-lena",
+          "at": "-25d 15:28",
+          "body": "Tested with five quick clicks and two tabs. One discount every time. Merci, closing."
+        }
+      ]
+    },
+    {
+      "key": "WEB-11",
+      "type": "Subtask",
+      "summary": "Check Swiss postcodes against the town",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-yuki",
+      "reporter": "s-yuki",
+      "parent": "WEB-6",
+      "labels": [],
+      "components": ["Cart and checkout"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-26d 16:00",
+      "description": "Warn, do not block: \"3800 is Interlaken, did you mean that?\" Some villages share a postcode and people know their address better than our table does.",
+      "history": [
+        {"at": "-24d 09:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-23d 15:20", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-12",
+      "type": "Subtask",
+      "summary": "Keyboard order and focus for the checkout form",
+      "status": "In Review",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-amara",
+      "parent": "WEB-6",
+      "labels": ["accessibility"],
+      "components": ["Cart and checkout"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-26d 16:10",
+      "description": "",
+      "history": [
+        {"at": "-14d 10:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-9d 17:20", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "In Review"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-amara",
+          "at": "-9d 18:01",
+          "body": "Focus ring is visible on all controls now. When a section folds, focus moves to its Edit link, which is what I would expect."
+        }
+      ]
+    },
+    {
+      "key": "WEB-13",
+      "type": "Subtask",
+      "summary": "Error states for the payment step",
+      "status": "In Progress",
+      "priority": "Medium",
+      "assignee": "s-amara",
+      "reporter": "s-yuki",
+      "parent": "WEB-6",
+      "labels": [],
+      "components": ["Cart and checkout"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-25d 09:30",
+      "description": [
+        "- Card declined",
+        "- Payment window closed by the customer",
+        "- Paygrove does not answer within 20 s",
+        "- The pick-up shop is forgotten after a failed payment (found by @s-lena)"
+      ],
+      "history": [
+        {"at": "-11d 09:40", "by": "s-amara", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-14",
+      "type": "Story",
+      "summary": "Sale banner and countdown on the home page",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-priya",
+      "parent": "WEB-2",
+      "labels": ["first-snow-sale"],
+      "components": ["Content"],
+      "due": 5,
+      "points": 3,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-25d 10:00",
+      "description": [
+        "![The home page with the sale banner](lib:shop-home)",
+        "",
+        "The countdown shows days until the sale and hours on its last day. At 08:00 the banner switches to \"The sale is on\" without a reload."
+      ],
+      "history": [
+        {"at": "-13d 09:10", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [
+        {"type": "relates to", "key": "APP-26", "by": "s-yuki", "at": "-14d 11:00"}
+      ],
+      "comments": [
+        {
+          "by": "s-amara",
+          "at": "-14d 15:20",
+          "body": "Artwork in three sizes is attached to [[WEB-42]]. The mountain in the banner is our own pixel picture, no stock photo licences to worry about."
+        }
+      ]
+    },
+    {
+      "key": "WEB-15",
+      "type": "Task",
+      "summary": "Load test the shop at 5 times last year's sale peak",
+      "status": "Blocked",
+      "priority": "Critical",
+      "assignee": "s-mateo",
+      "reporter": "s-tomasz",
+      "parent": "WEB-2",
+      "labels": ["first-snow-sale", "performance"],
+      "components": [],
+      "due": -2,
+      "points": null,
+      "estimate": "16h",
+      "remaining": "12h",
+      "watchers": ["s-priya", "s-tomasz"],
+      "created": "-25d 10:30",
+      "description": [
+        "Last year's peak: 1,900 requests per second in the first five minutes. We test at 9,500 for 15 minutes with the product mix of last year's sale.",
+        "",
+        "```bash",
+        "alp loadtest run --profile sale-2025 --rps 9500 --duration 15m --target https://loadtest.example.com",
+        "```",
+        "",
+        "Blocked until the test environment has production-sized data: [[OPS-32]]."
+      ],
+      "history": [
+        {"at": "-13d 09:00", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-12d 10:00", "by": "s-mateo", "field": "remaining", "from": "16h", "to": "12h"},
+        {"at": "-11d 16:40", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "Blocked"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-11d 16:42",
+          "body": "Ran a dry run against staging: the numbers mean nothing because staging has 2,000 products and production 41,000. Waiting for [[OPS-32]]."
+        },
+        {
+          "by": "s-priya",
+          "at": "-3d 14:00",
+          "body": "This is past its date. @s-tomasz, can we have the environment by Thursday, or do we accept a staging run?"
+        },
+        {
+          "by": "s-tomasz",
+          "at": "-3d 14:31",
+          "body": "Thursday. If not, staging with the big catalog copied over, and we add a margin to the result."
+        }
+      ]
+    },
+    {
+      "key": "WEB-16",
+      "type": "Story",
+      "summary": "Sale prices with the old price struck through",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-priya",
+      "parent": "WEB-2",
+      "labels": ["first-snow-sale"],
+      "components": ["Catalog"],
+      "due": null,
+      "points": 3,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-25d 11:10",
+      "description": "The old price is the lowest price of the last 30 days, as the price rules require, not the highest one we ever had.",
+      "history": [
+        {"at": "-23d 09:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-21d 14:00", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-20d 10:30", "by": "s-lena", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-lena",
+          "at": "-20d 10:29",
+          "body": "Checked 30 products against the price history. All correct. Nice touch with the screen reader text \"was CHF 229.00\"."
+        }
+      ]
+    },
+    {
+      "key": "WEB-17",
+      "type": "Task",
+      "summary": "Write sale copy for banners, emails and the FAQ",
+      "status": "In Review",
+      "priority": "Medium",
+      "assignee": "s-priya",
+      "reporter": "s-priya",
+      "parent": "WEB-2",
+      "labels": ["first-snow-sale", "copy"],
+      "components": ["Content", "Emails"],
+      "due": 2,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-24d 09:00",
+      "description": "Drafts follow [[page:PROD/Writing product copy]]. Reviewers: @s-amara for tone, @s-lena for what customers will ask.",
+      "history": [
+        {"at": "-10d 13:00", "by": "s-priya", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-4d 17:30", "by": "s-priya", "field": "status", "from": "In Progress", "to": "In Review"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-amara",
+          "at": "-3d 10:15",
+          "body": "Lovely. Two nits: \"unbeatable\" in the email subject (we never say that), and the banner has three exclamation marks. One is plenty."
+        },
+        {
+          "by": "s-lena",
+          "at": "-3d 11:02",
+          "body": "The FAQ needs one more answer: can I return sale items? Yes, 30 days as always. People ask every year."
+        }
+      ]
+    },
+    {
+      "key": "WEB-18",
+      "type": "Story",
+      "summary": "Sale landing page with filters by category",
+      "status": "Selected for Development",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "WEB-2",
+      "labels": ["first-snow-sale"],
+      "components": ["Catalog"],
+      "due": null,
+      "points": 5,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-24d 09:30",
+      "description": "",
+      "history": [
+        {"at": "-15d 10:00", "by": "s-priya", "field": "status", "from": "Backlog", "to": "Selected for Development"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-19",
+      "type": "Bug",
+      "summary": "Search for \"rain jacket\" shows socks first",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-lena",
+      "parent": "",
+      "labels": ["search", "customer-reported"],
+      "components": ["Search"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-priya"],
+      "created": "-24d 14:10",
+      "description": [
+        "A customer wrote: \"I typed rain jacket and got four pairs of socks. Are they waterproof socks? I wanted a jacket.\"",
+        "",
+        "![Search results for rain jacket](lib:search-results)",
+        "",
+        "The socks match because their description says \"pairs well with a rain jacket\". Titles should weigh more than descriptions."
+      ],
+      "history": [
+        {"at": "-23d 09:00", "by": "s-tomasz", "field": "assignee", "from": "", "to": "s-mateo"},
+        {"at": "-9d 10:00", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [
+        {"type": "blocks", "key": "OPS-34", "by": "s-mateo", "at": "-9d 10:05"},
+        {"type": "relates to", "key": "OPS-18", "by": "s-mateo", "at": "-9d 10:06"}
+      ],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-9d 10:20",
+          "body": "On cairn the title already weighs 3 times the description, and the socks drop to place 14. On the old search they stay on top. One more reason to move everyone to cairn."
+        },
+        {
+          "by": "s-mateo",
+          "at": "-8d 16:00",
+          "body": "Also found that synonyms are dropped after a rebuild, so \"shell\" does not find jackets. That is [[OPS-18]]."
+        },
+        {
+          "by": "s-priya",
+          "at": "-8d 16:30",
+          "body": "Then this blocks [[OPS-34]]: we do not send everyone to cairn while it gets worse for some searches."
+        }
+      ]
+    },
+    {
+      "key": "WEB-20",
+      "type": "Story",
+      "summary": "Serve product images as WebP with width hints",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-yuki",
+      "parent": "WEB-4",
+      "labels": ["performance"],
+      "components": ["Catalog"],
+      "due": null,
+      "points": 5,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-23d 09:15",
+      "description": [
+        "porter writes 400, 800 and 1600 px versions of every photo, and the page lets the browser choose.",
+        "",
+        "```html",
+        "<img src=\"/img/p/firn-30-800.webp\"",
+        "     srcset=\"/img/p/firn-30-400.webp 400w, /img/p/firn-30-800.webp 800w, /img/p/firn-30-1600.webp 1600w\"",
+        "     sizes=\"(max-width: 700px) 100vw, 50vw\" width=\"800\" height=\"800\" alt=\"Firn 30 backpack in glacier teal\">",
+        "```"
+      ],
+      "history": [
+        {"at": "-23d 10:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-18d 16:00", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-17d 11:00", "by": "s-tomasz", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-lena",
+          "at": "-16d 09:30",
+          "body": "Before: 380 KB per photo, main image after 4.1 s. After: 61 KB, 2.3 s. That is the target already."
+        }
+      ]
+    },
+    {
+      "key": "WEB-21",
+      "type": "Task",
+      "summary": "Measure product page speed on a slow phone, before and after",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-lena",
+      "reporter": "s-tomasz",
+      "parent": "WEB-4",
+      "labels": ["performance"],
+      "components": ["Catalog"],
+      "due": null,
+      "points": null,
+      "estimate": "3h",
+      "remaining": "",
+      "watchers": [],
+      "created": "-23d 09:40",
+      "description": [
+        "| Page | Before | After |",
+        "| --- | --- | --- |",
+        "| Firn 30 backpack | 4.1 s | 2.3 s |",
+        "| Gratwander boots | 3.8 s | 2.2 s |",
+        "| Category: Hike | 3.2 s | 2.6 s |",
+        "",
+        "Mid-range phone, throttled to a slow connection, median of five runs."
+      ],
+      "history": [
+        {"at": "-23d 13:00", "by": "s-lena", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-16d 09:35", "by": "s-lena", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-22",
+      "type": "Story",
+      "summary": "Load reviews when they scroll into view",
+      "status": "In Review",
+      "priority": "Medium",
+      "assignee": "s-yuki",
+      "reporter": "s-yuki",
+      "parent": "WEB-4",
+      "labels": ["performance"],
+      "components": ["Catalog"],
+      "due": null,
+      "points": 3,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-23d 10:20",
+      "description": "",
+      "history": [
+        {"at": "-16d 09:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-7d 15:10", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "In Review"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-tomasz",
+          "at": "-6d 11:00",
+          "body": "Keep the first three reviews in the HTML for search engines, load the rest when they scroll into view."
+        },
+        {
+          "by": "s-yuki",
+          "at": "-6d 11:30",
+          "body": "Good point. Changed, the first three are rendered on the server now."
+        }
+      ]
+    },
+    {
+      "key": "WEB-23",
+      "type": "Bug",
+      "summary": "Product page jumps when the size picker loads",
+      "status": "In Progress",
+      "priority": "Medium",
+      "assignee": "s-yuki",
+      "reporter": "s-lena",
+      "parent": "WEB-4",
+      "labels": ["performance", "ux"],
+      "components": ["Catalog"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-22d 11:00",
+      "description": "The picker arrives 300 ms after the rest and pushes the Add to cart button down by 120 px. I clicked a review twice instead of the button.",
+      "history": [
+        {"at": "-15d 09:00", "by": "s-yuki", "field": "assignee", "from": "", "to": "s-yuki"},
+        {"at": "-8d 10:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-24",
+      "type": "Task",
+      "summary": "Cache category pages at the edge for 60 seconds",
+      "status": "To Do",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-tomasz",
+      "parent": "WEB-4",
+      "labels": ["performance", "first-snow-sale"],
+      "components": ["Catalog"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-22d 15:00",
+      "description": "Category pages are the same for everyone except the cart badge, which the page loads on its own. 60 s at the edge would take most of the sale's first wave off summit.",
+      "history": [],
+      "links": [
+        {"type": "relates to", "key": "OPS-31", "by": "s-tomasz", "at": "-14d 10:00"}
+      ],
+      "comments": []
+    },
+    {
+      "key": "WEB-25",
+      "type": "Story",
+      "summary": "Skip link and landmarks on every page",
+      "status": "Selected for Development",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-amara",
+      "parent": "WEB-3",
+      "labels": ["accessibility", "quick-win"],
+      "components": [],
+      "due": null,
+      "points": 2,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-22d 15:30",
+      "description": "",
+      "history": [
+        {"at": "-22d 15:40", "by": "s-amara", "field": "status", "from": "To Do", "to": "Selected for Development"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-26",
+      "type": "Story",
+      "summary": "Bring buttons and price tags to AA contrast",
+      "status": "In Progress",
+      "priority": "Medium",
+      "assignee": "s-amara",
+      "reporter": "s-amara",
+      "parent": "WEB-3",
+      "labels": ["accessibility"],
+      "components": [],
+      "due": null,
+      "points": 3,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-22d 15:45",
+      "description": [
+        "| Element | Now | Needed |",
+        "| --- | --- | --- |",
+        "| Grey price tag | 3.2 : 1 | 4.5 : 1 |",
+        "| Teal button text | 4.1 : 1 | 4.5 : 1 |",
+        "| Placeholder text | 2.6 : 1 | 4.5 : 1 |",
+        "",
+        "The new teal is one step darker. It still looks like us, I promise."
+      ],
+      "history": [
+        {"at": "-12d 09:30", "by": "s-amara", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-priya",
+          "at": "-11d 10:00",
+          "body": "Fine with the darker teal. Please check the sale red too, it sits on a pale background in the cart."
+        }
+      ]
+    },
+    {
+      "key": "WEB-27",
+      "type": "Bug",
+      "summary": "Size buttons cannot be reached with the keyboard",
+      "status": "To Do",
+      "priority": "High",
+      "assignee": "",
+      "reporter": "s-lena",
+      "parent": "WEB-3",
+      "labels": ["accessibility", "customer-reported"],
+      "components": ["Catalog"],
+      "due": -3,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-amara"],
+      "created": "-21d 09:10",
+      "description": [
+        "Reported by a customer by email. Tab skips the size buttons on every product page; they are `div`s with click handlers.",
+        "",
+        "Fix: real radio buttons, styled as today."
+      ],
+      "history": [],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-amara",
+          "at": "-21d 10:00",
+          "body": "This one is on me, I drew them as tiles and we built them as tiles. Radio buttons in a fieldset, with the size as the label."
+        },
+        {
+          "by": "s-lena",
+          "at": "-5d 09:15",
+          "body": "The customer asked again whether it is fixed. Can we give this a date?"
+        }
+      ]
+    },
+    {
+      "key": "WEB-28",
+      "type": "Task",
+      "summary": "Audit the checkout with a screen reader",
+      "status": "Backlog",
+      "priority": "Medium",
+      "assignee": "s-lena",
+      "reporter": "s-amara",
+      "parent": "WEB-3",
+      "labels": ["accessibility"],
+      "components": ["Cart and checkout"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-21d 09:30",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-29",
+      "type": "Bug",
+      "summary": "Order confirmation email shows the time in UTC",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-mateo",
+      "reporter": "s-lena",
+      "parent": "",
+      "labels": ["customer-reported"],
+      "components": ["Emails"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-21d 13:00",
+      "description": "\"Your order was placed at 07:12\" for an order placed at 09:12. Customers think we lost two hours.",
+      "history": [
+        {"at": "-21d 13:30", "by": "s-mateo", "field": "assignee", "from": "", "to": "s-mateo"},
+        {"at": "-21d 13:31", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-20d 11:00", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-19d 15:00", "by": "s-tomasz", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-21d 13:50",
+          "body": "The template formats a `time.Time` in UTC. Now it uses Europe/Zurich, and the test covers the night when the clocks change."
+        }
+      ]
+    },
+    {
+      "key": "WEB-30",
+      "type": "Bug",
+      "summary": "The newsletter box is ticked by default at checkout",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": ["checkout"],
+      "components": ["Cart and checkout", "Accounts"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-20d 09:00",
+      "description": "It must be unticked. People decide for themselves, and the law agrees.",
+      "history": [
+        {"at": "-20d 09:05", "by": "s-priya", "field": "assignee", "from": "", "to": "s-yuki"},
+        {"at": "-20d 09:30", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-20d 11:15", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-31",
+      "type": "Story",
+      "summary": "A size guide per product, with foot length",
+      "status": "Backlog",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "WEB-5",
+      "labels": ["ux"],
+      "components": ["Catalog"],
+      "due": null,
+      "points": 5,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-20d 10:00",
+      "description": "![The size guide dialog](lib:size-guide)",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-32",
+      "type": "Story",
+      "summary": "Ask \"How did it fit?\" a week after delivery",
+      "status": "Backlog",
+      "priority": "Low",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "WEB-5",
+      "labels": [],
+      "components": ["Emails"],
+      "due": null,
+      "points": 3,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-20d 10:10",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-33",
+      "type": "Task",
+      "summary": "Analyse returns by reason for the last 90 days",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-priya",
+      "reporter": "s-priya",
+      "parent": "WEB-5",
+      "labels": [],
+      "components": [],
+      "due": null,
+      "points": null,
+      "estimate": "8h",
+      "remaining": "",
+      "watchers": [],
+      "created": "-20d 10:20",
+      "description": "Results are on [[page:PROD/Return reasons]]. Short version: too small 34 %, too big 21 %.",
+      "history": [
+        {"at": "-20d 13:00", "by": "s-priya", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-19d 17:00", "by": "s-priya", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-34",
+      "type": "Bug",
+      "summary": "Cart badge shows 0 after signing in, until a reload",
+      "status": "In Review",
+      "priority": "Low",
+      "assignee": "s-yuki",
+      "reporter": "s-lena",
+      "parent": "",
+      "labels": [],
+      "components": ["Cart and checkout", "Accounts"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-20d 14:00",
+      "description": "",
+      "history": [
+        {"at": "-5d 10:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-4d 16:00", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "In Review"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-35",
+      "type": "Task",
+      "summary": "Remove the old three-step checkout once the new one wins",
+      "status": "Backlog",
+      "priority": "Low",
+      "assignee": "",
+      "reporter": "s-tomasz",
+      "parent": "WEB-1",
+      "labels": ["tech-debt", "checkout"],
+      "components": ["Cart and checkout"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-20d 15:00",
+      "description": "About 2,400 lines, two templates and a table nobody reads. Not before the sale.",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-36",
+      "type": "Bug",
+      "summary": "Trail journal pages have no meta description",
+      "status": "Backlog",
+      "priority": "Low",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": ["seo"],
+      "components": ["Content"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-20d 15:30",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-37",
+      "type": "Story",
+      "summary": "Sign up for a back-in-stock email on sold-out sizes",
+      "status": "Selected for Development",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": [],
+      "components": ["Catalog", "Emails"],
+      "due": null,
+      "points": 5,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-20d 16:00",
+      "description": "",
+      "history": [
+        {"at": "-12d 09:00", "by": "s-priya", "field": "status", "from": "Backlog", "to": "Selected for Development"}
+      ],
+      "links": [
+        {"type": "relates to", "key": "APP-21", "by": "s-priya", "at": "-12d 09:05"}
+      ],
+      "comments": []
+    },
+    {
+      "key": "WEB-38",
+      "type": "Bug",
+      "summary": "412 products show as sold out",
+      "status": "Done",
+      "priority": "Critical",
+      "assignee": "s-mateo",
+      "reporter": "s-lena",
+      "parent": "",
+      "labels": ["customer-reported"],
+      "components": ["Catalog"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-priya", "s-tomasz"],
+      "created": "-19d 06:31",
+      "description": "Since about 06:00 the shop shows \"Sold out\" on 412 products, most of them socks and base layers. Support has 9 emails and counting.",
+      "history": [
+        {"at": "-19d 06:35", "by": "s-tomasz", "field": "assignee", "from": "", "to": "s-mateo"},
+        {"at": "-19d 06:36", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-19d 09:05", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [
+        {"type": "relates to", "key": "OPS-21", "by": "s-tomasz", "at": "-19d 06:40"}
+      ],
+      "comments": [
+        {
+          "by": "s-tomasz",
+          "at": "-19d 06:38",
+          "body": "Incident declared, I am lead. Cause on the platform side, tracked in [[OPS-21]]."
+        },
+        {
+          "by": "s-mateo",
+          "at": "-19d 09:04",
+          "body": "Restored stock from yesterday's file at 09:02. All 412 products are buyable again."
+        },
+        {
+          "by": "s-lena",
+          "at": "-19d 10:30",
+          "body": "Sent a short apology to the 23 customers who wrote in, with a voucher for free delivery. Several replied that socks are a serious matter. They are not wrong."
+        }
+      ]
+    },
+    {
+      "key": "WEB-39",
+      "type": "Bug",
+      "summary": "Customers report socks as sold out",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": ["customer-reported"],
+      "components": ["Catalog"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-19d 06:50",
+      "description": "",
+      "history": [
+        {"at": "-19d 07:10", "by": "s-lena", "field": "status", "from": "To Do", "to": "Done"}
+      ],
+      "links": [
+        {"type": "duplicates", "key": "WEB-38", "by": "s-lena", "at": "-19d 07:10"}
+      ],
+      "comments": [
+        {
+          "by": "s-lena",
+          "at": "-19d 07:10",
+          "body": "Same as [[WEB-38]], closing this one so we talk in one place."
+        }
+      ]
+    },
+    {
+      "key": "WEB-40",
+      "type": "Bug",
+      "summary": "Old price struck through on products that are not on sale",
+      "status": "To Do",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-lena",
+      "parent": "WEB-2",
+      "labels": ["first-snow-sale"],
+      "components": ["Catalog"],
+      "due": 4,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-16d 11:00",
+      "description": "A product whose price went up shows the lower old price struck through, which looks like a discount that is not one. Seen on the Arve fleece: \"CHF 99.00, was CHF 89.00\".",
+      "history": [],
+      "links": [
+        {"type": "relates to", "key": "WEB-16", "by": "s-lena", "at": "-16d 11:01"}
+      ],
+      "comments": [
+        {
+          "by": "s-yuki",
+          "at": "-15d 09:20",
+          "body": "Ha, the rule compares in the wrong direction when the price rises. Easy fix, I will add tests for rising and unchanged prices."
+        }
+      ]
+    },
+    {
+      "key": "WEB-41",
+      "type": "Subtask",
+      "summary": "The countdown stops at zero instead of switching to the sale",
+      "status": "To Do",
+      "priority": "Medium",
+      "assignee": "s-yuki",
+      "reporter": "s-lena",
+      "parent": "WEB-14",
+      "labels": [],
+      "components": ["Content"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-15d 09:00",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-42",
+      "type": "Subtask",
+      "summary": "Banner artwork in three sizes",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-amara",
+      "reporter": "s-yuki",
+      "parent": "WEB-14",
+      "labels": [],
+      "components": ["Content"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-15d 09:10",
+      "description": "![Alpenglow on the peaks](lib:alpenglow-peaks)",
+      "history": [
+        {"at": "-15d 10:00", "by": "s-amara", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-14d 15:15", "by": "s-amara", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-43",
+      "type": "Task",
+      "summary": "Update the delivery FAQ for the sale weeks",
+      "status": "To Do",
+      "priority": "Medium",
+      "assignee": "s-lena",
+      "reporter": "s-priya",
+      "parent": "WEB-2",
+      "labels": ["first-snow-sale", "copy"],
+      "components": ["Content"],
+      "due": 3,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-14d 10:20",
+      "description": "Delivery may take a day longer in the sale week. Say it plainly on the FAQ and in the checkout.",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-44",
+      "type": "Bug",
+      "summary": "Checkout total is 0.05 off with two vouchers",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-lena",
+      "parent": "WEB-1",
+      "labels": ["checkout", "payments"],
+      "components": ["Cart and checkout"],
+      "due": -1,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-priya"],
+      "created": "-12d 14:00",
+      "description": [
+        "Two vouchers of 10 % and CHF 5 on CHF 214.40 give CHF 187.95 in the summary and CHF 188.00 at Paygrove. Customers notice, and they write.",
+        "",
+        "Prices in rappen are integers; the summary rounds each discount to 0.05 and the payment rounds the total once."
+      ],
+      "history": [
+        {"at": "-12d 14:30", "by": "s-tomasz", "field": "assignee", "from": "", "to": "s-mateo"},
+        {"at": "-6d 09:15", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [
+        {"type": "relates to", "key": "WEB-10", "by": "s-mateo", "at": "-6d 09:20"}
+      ],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-6d 09:30",
+          "body": "Agreed on the rule with @s-priya: compute in rappen, round the final total to 0.05 once, show the discounts unrounded. Same code for the shop, the app and the payment."
+        },
+        {
+          "by": "s-priya",
+          "at": "-2d 10:00",
+          "body": "This was due yesterday. How close is it?"
+        },
+        {
+          "by": "s-mateo",
+          "at": "-2d 10:25",
+          "body": "Code is done, the last test fails on a CHF 0.01 product we use in tests only. Today."
+        }
+      ]
+    },
+    {
+      "key": "WEB-45",
+      "type": "Story",
+      "summary": "Show the expected delivery date on product pages",
+      "status": "Backlog",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": [],
+      "components": ["Catalog"],
+      "due": null,
+      "points": 5,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-10d 09:00",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-46",
+      "type": "Subtask",
+      "summary": "Fall back to JPEG for browsers without WebP",
+      "status": "Done",
+      "priority": "Low",
+      "assignee": "s-yuki",
+      "reporter": "s-yuki",
+      "parent": "WEB-20",
+      "labels": [],
+      "components": [],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-9d 10:00",
+      "description": "",
+      "history": [
+        {"at": "-9d 10:30", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-9d 15:00", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-47",
+      "type": "Task",
+      "summary": "Say \"cart\" everywhere, not \"basket\"",
+      "status": "Done",
+      "priority": "Low",
+      "assignee": "s-amara",
+      "reporter": "s-amara",
+      "parent": "",
+      "labels": ["copy", "quick-win"],
+      "components": ["Content", "Cart and checkout"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-6d 13:00",
+      "description": "Found 37 baskets in templates and emails. The style guide says cart: [[page:PROD/Style guide]].",
+      "history": [
+        {"at": "-6d 13:05", "by": "s-amara", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-6d 16:40", "by": "s-amara", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "WEB-48",
+      "type": "Bug",
+      "summary": "Voucher field loses focus on every keystroke on phones",
+      "status": "To Do",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-lena",
+      "parent": "WEB-1",
+      "labels": ["checkout", "mobile-web"],
+      "components": ["Cart and checkout"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-4d 15:00",
+      "description": [
+        "On phones, the voucher field updates the summary after each letter, and the update replaces the field. You can type one letter at a time.",
+        "",
+        "The field must not sit in the part of the page that is swapped."
+      ],
+      "history": [],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-yuki",
+          "at": "-3d 09:10",
+          "body": "Confirmed. Moving the field out of the summary region fixes it. I will take it after [[WEB-44]]."
+        }
+      ]
+    }
+  ]
+}
