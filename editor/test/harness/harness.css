@@ -1,0 +1,4 @@
+body { font: 16px/1.6 system-ui, sans-serif; margin: 1rem; max-width: 46rem; }
+.pm-mount { min-height: 6rem; border: 1px solid #ccd; padding: .5rem 1rem; }
+.issue-chip { background: #eef; padding: 0 .25em; }
+.tk-caret[data-hue] { color: hsl(calc(var(--h, 0) * 1deg) 70% 45%); }

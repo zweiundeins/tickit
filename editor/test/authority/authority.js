@@ -136,8 +136,10 @@ export class Authority {
 		const from = t.row ? Math.max(t.row.ack, t.base) : t.base
 		if (!t.row || t.row.epoch !== this.epoch) state = 'reset'
 		else if (from < this.floor) state = 'gap'
+		// A test sets t.force to render gone or readonly for this tab.
+		if (t.force && state === 'ok') state = t.force
 		const batches =
-			state === 'ok'
+			state === 'ok' || state === 'readonly'
 				? this.commits
 						.filter((c) => c.v > from)
 						.slice(0, 500)

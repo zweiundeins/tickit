@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en"{{htmlattrs}}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sb-rich-editor harness</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/test/harness.css">
+<script type="importmap" nonce="{{nonce}}">{"imports":{"datastar":"/static/vendor/datastar-rocket.js"}}</script>
+<script type="module" src="/static/vendor/datastar-rocket.js"></script>
+<script type="module" src="/static/editor/sb-rich-editor.min.js"></script>
+<script type="module" src="/test/tab.js"></script>
+</head>
+<body>
+<main id="main" data-signals="{_tab: '', _editor: {status: '', stopped: '', refusal: ''}, _around: 0}">
+<p id="around">Around the editor: <span data-text="$_around"></span></p>
+<div id="slot"></div>
+<p id="status-line" data-text="$_editor.status"></p>
+</main>
+</body>
+</html>
