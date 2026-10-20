@@ -46,3 +46,14 @@ tasks:
       CGO_ENABLED: '0'
     cmds:
       - go build -trimpath -ldflags "-s -w -X main.version={{.VERSION}}" -o {{.BIN}} ./cmd/tickit
+
+  smoke:
+    desc: Build the binary and check it as the host runs it (deploy/smoke-test.sh)
+    deps: [build]
+    cmds:
+      - bash deploy/smoke-test.sh ./{{.BIN}}
+
+  vuln:
+    desc: Known vulnerabilities in the code the binary calls (govulncheck)
+    cmds:
+      - go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
