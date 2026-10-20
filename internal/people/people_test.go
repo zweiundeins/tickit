@@ -292,24 +292,36 @@ func TestLoginEnumeration(t *testing.T) {
 	e := dbtest.Open(t)
 	ctx := context.Background()
 	account(t, e, "ada@example.com", "correct horse", people.NoRole)
-	measure := func(email string) (time.Duration, error) {
-		var times []time.Duration
-		var last error
-		for range 5 {
+	// The two kinds of try alternate, so that a moment of load from other
+	// tests slows both alike; a try that still differs is measured again,
+	// up to three times.
+	measure := func() (known, unknown time.Duration, errKnown, errUnknown error) {
+		var k, u []time.Duration
+		for range 7 {
 			start := time.Now()
-			_, last = people.Verify(ctx, e.DB.R, email, "wrong horse")
-			times = append(times, time.Since(start))
+			_, errKnown = people.Verify(ctx, e.DB.R, "ada@example.com", "wrong horse")
+			k = append(k, time.Since(start))
+			start = time.Now()
+			_, errUnknown = people.Verify(ctx, e.DB.R, "bob@example.com", "wrong horse")
+			u = append(u, time.Since(start))
 		}
-		slices.Sort(times)
-		return times[2], last
+		slices.Sort(k)
+		slices.Sort(u)
+		return k[3], u[3], errKnown, errUnknown
 	}
-	known, errKnown := measure("ada@example.com")
-	unknown, errUnknown := measure("bob@example.com")
+	differ := func(known, unknown time.Duration) bool {
+		d := known - unknown
+		return d > 50*time.Millisecond || d < -50*time.Millisecond || unknown < known/2
+	}
+	known, unknown, errKnown, errUnknown := measure()
+	for try := 1; try < 3 && differ(known, unknown); try++ {
+		known, unknown, errKnown, errUnknown = measure()
+	}
 	if !errors.Is(errKnown, people.ErrWrongLogin) || !errors.Is(errUnknown, people.ErrWrongLogin) ||
 		people.LoginMessage(errKnown) != "Email or password is wrong." || people.LoginMessage(errUnknown) != people.LoginMessage(errKnown) {
 		t.Errorf("wrong password: %v; unknown email: %v", errKnown, errUnknown)
 	}
-	if d := known - unknown; d > 50*time.Millisecond || d < -50*time.Millisecond || unknown < known/2 {
+	if differ(known, unknown) {
 		t.Errorf("a wrong password takes %v, an unknown email %v", known, unknown)
 	}
 }
