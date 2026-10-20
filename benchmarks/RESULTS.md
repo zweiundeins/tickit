@@ -25,3 +25,15 @@ Time from an action to its frame in the browser, with the number of tabs open.
 ## Measuring
 
 `lith/loadtest` runs the writer and the render loop in process, without HTTP: N streams watch the views while M producers send commands, and it reports tick percentiles, renders per tick, bytes per frame and heap per stream. Run it before and after a change and record both runs here; `go doc github.com/zweiundeins/lith/loadtest` has its API. In production the writer's `Stats()` and the hub's overrun log (n, p50, p95, p99 and max of the ticks over 20 seconds) show the same quantities. For the whole path, drive the binary from `go tool task build` with a browser or a load tool on other cores (`taskset`) or another machine. The lith skill's `references/performance.md` has the numbers measured on the other projects and the settings they led to.
+
+## The seed and the reset
+
+2026-10-20, Intel Core i5-13500 (20 threads), Linux 6.18 (Unraid), Go 1.27.2, a test database in the test's temporary directory, `synchronous` NORMAL, without the wiki's pages (no PageSeeder yet).
+
+| What | Took | Command |
+| --- | --- | --- |
+| Seed: 3 projects, 139 issues, 199 changes, 16 links, 99 comments, 83 board moves (593 steps, 1,475 events) | 91 to 110 ms | `go test ./internal/demo -run TestSeed -v` (the `seeded` log line) |
+| Wipe after 1,000 guest issues and 1,000 comments (4,778 events): the one command that holds the writer | 9 ms | a throwaway test that ran `demo.Wipe` in `writer.Func` after `tracker.CreateIssue` and `AddComment` by 1,000 guests |
+| Reset end to end: flush, wipe, seed, log | 138 ms | the same test, `Demo.Reset` |
+
+DM-02.4 wants the seed under 30 s; the reset holds the writer at most for the wipe and then for one batch of 64 seed steps at a time.
