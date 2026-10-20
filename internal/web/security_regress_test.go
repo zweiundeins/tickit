@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mbolli/tickit/internal/demo"
 	"github.com/mbolli/tickit/internal/people"
 	"github.com/mbolli/tickit/internal/web"
 	"github.com/mbolli/tickit/internal/web/webtest"
@@ -273,5 +274,23 @@ func TestModeratorHideHolds(t *testing.T) {
 	act(t, e, g, "/cmd/issues/"+issue+"/chide", "tab1", map[string]any{"value": "show", "ref": own})
 	if n := rowCount(t, e, `SELECT count(*) FROM comments WHERE id = ? AND hidden_at IS NULL`, own); n != 1 {
 		t.Error("an Admin cannot show a comment they hid")
+	}
+}
+
+// DM-04.3: a subtask counts against the demo's cap of new issues.
+func TestSubtaskCap(t *testing.T) {
+	old := demo.Caps[demo.CapIssue]
+	demo.Caps[demo.CapIssue] = 1
+	defer func() { demo.Caps[demo.CapIssue] = old }()
+	e := webtest.Start(t)
+	seedProbes(t, e)
+	g := webtest.Client(t)
+	webtest.Get(t, g, e.URL+"/")
+	before := rowCount(t, e, `SELECT count(*) FROM issues`)
+	for i := range 3 {
+		act(t, e, g, "/cmd/issues/"+web.ProbeIssue+"/subtask", "tab1", map[string]any{"value": fmt.Sprintf("Sub %d", i)})
+	}
+	if n := rowCount(t, e, `SELECT count(*) FROM issues`) - before; n != 1 {
+		t.Errorf("%d subtasks past a cap of 1", n)
 	}
 }

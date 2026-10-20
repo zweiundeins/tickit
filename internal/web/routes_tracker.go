@@ -19,6 +19,7 @@ import (
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/mbolli/tickit/internal/access"
+	"github.com/mbolli/tickit/internal/demo"
 	"github.com/mbolli/tickit/internal/doc"
 	"github.com/mbolli/tickit/internal/markup"
 	"github.com/mbolli/tickit/internal/people"
@@ -939,6 +940,16 @@ func (c linkByKey) Apply(tx *writer.Tx) error {
 		return tabs.Refuse(tracker.FieldLinks, "No issue has the key "+strings.ToUpper(key)+".")
 	}
 	return tracker.LinkIssues{By: c.By, Issue: c.Issue, Type: c.Type, Other: ref.ID}.Apply(tx)
+}
+
+// A subtask is a new issue for the demo's cap (DM-04.3).
+func init() {
+	demo.CountCreations(func(cmd writer.Command) string {
+		if _, ok := cmd.(subtask); ok {
+			return demo.CapIssue
+		}
+		return ""
+	})
 }
 
 // subtask adds a subtask to an issue, with the next number of its
