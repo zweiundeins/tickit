@@ -94,6 +94,7 @@ const window = 512
 // deleted issue).
 type source struct {
 	types   map[string]bool
+	list    string // the types as a JSON list, for SQL
 	entries func(ctx context.Context, q sqlite.Querier, evs []events.Raw) ([]Entry, error)
 }
 
@@ -105,6 +106,8 @@ func addSource(kind string, types []string, entries func(ctx context.Context, q 
 	for _, t := range types {
 		s.types[t] = true
 	}
+	list, _ := json.Marshal(types)
+	s.list = string(list)
 	sources[kind] = s
 }
 
@@ -123,14 +126,9 @@ func Feed(ctx context.Context, q sqlite.Querier, keep func(access.Scope) bool, l
 	size, scanned := int64(window), int64(0)
 	for upto > 0 && len(out) <= limit && scanned < MaxScan {
 		after := max(0, upto-size)
-		byKind := map[string][]events.Raw{}
-		for ev, err := range events.SinceUntil(ctx, q, after, upto) {
-			if err != nil {
-				return nil, false, err
-			}
-			if s, ok := sources[ev.Stream]; ok && s.types[ev.Type] {
-				byKind[ev.Stream] = append(byKind[ev.Stream], ev)
-			}
+		byKind, err := sourceEvents(ctx, q, after, upto)
+		if err != nil {
+			return nil, false, err
 		}
 		var found []Entry
 		for kind, evs := range byKind {
@@ -166,6 +164,38 @@ func Feed(ctx context.Context, q sqlite.Querier, keep func(access.Scope) bool, l
 		return out[:limit], true, nil
 	}
 	return out, false, nil
+}
+
+// sourceEvents are the events after and up to upto of the kinds and types
+// the sources name, by kind. Each kind is read by the log's index of its
+// positions, and only its rows of those types are decoded: the log of a
+// page that people co-edit is mostly commits, which no feed shows.
+func sourceEvents(ctx context.Context, q sqlite.Querier, after, upto int64) (map[string][]events.Raw, error) {
+	byKind := map[string][]events.Raw{}
+	for kind, s := range sources {
+		rows, err := q.QueryContext(ctx, `SELECT position, version, type, data, at, coalesce(actor, ''), coalesce(correlation, ''), coalesce(causation, ''), stream_id
+			FROM lith_events WHERE stream = ? AND position > ? AND position <= ? AND type IN (SELECT value FROM json_each(?)) ORDER BY position`,
+			kind, after, upto, s.list)
+		if err != nil {
+			return nil, err
+		}
+		for rows.Next() {
+			ev := events.Raw{Stream: kind}
+			var at int64
+			var data string
+			if err := rows.Scan(&ev.Position, &ev.Version, &ev.Type, &data, &at, &ev.Actor, &ev.Correlation, &ev.Causation, &ev.ID); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			ev.Data, ev.At = json.RawMessage(data), time.UnixMilli(at)
+			byKind[kind] = append(byKind[kind], ev)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+	}
+	return byKind, nil
 }
 
 // merges reports whether an older entry joins a newer one (FR-69.3).

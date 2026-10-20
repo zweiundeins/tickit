@@ -211,6 +211,20 @@ func TestPageEditsMerge(t *testing.T) {
 	edit("a", sunny, 16)
 	edit("a", sunny, 40) // a pause
 	edit("b", sunny, 41)
+	// After them, what no feed shows: a type the source does not name, and
+	// a co-edited page's 3,000 commits, read past by the log's index.
+	e.must(writer.Func(func(tx *writer.Tx) error {
+		_, err := tx.Exec(`INSERT INTO lith_events (stream, stream_id, version, type, data, at, actor)
+			VALUES ('testpage', 'a', 99, 'testpage.other', '{}', ?, ?)`, t0.Add(42*time.Minute).UnixMilli(), sunny.ID)
+		for i := range 3000 {
+			if err != nil {
+				return err
+			}
+			_, err = tx.Exec(`INSERT INTO lith_events (stream, stream_id, version, type, data, at, actor)
+				VALUES ('noise', 'n', ?, 'noise.committed', '{}', ?, ?)`, i+1, t0.Add(43*time.Minute).UnixMilli(), sunny.ID)
+		}
+		return err
+	}))
 	got, _ := e.feed(func(ctx context.Context, q sqlite.Querier) ([]Entry, bool, error) {
 		return Space(ctx, q, "space-1", 50)
 	})
