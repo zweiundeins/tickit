@@ -145,7 +145,7 @@ func New(cfg Config) (*Server, error) {
 		open:     newOpenStreams(),
 		aliveFor: AliveTimeout,
 		lockout:  people.NewLockout(),
-		metrics:  newMetrics(cfg.DB, cfg.Hub),
+		metrics:  newMetrics(cfg.DB),
 		projects: newProjectsCache(cfg.Hub),
 		mux:      http.NewServeMux(),
 		views:    newViewRegistry(),
@@ -155,7 +155,6 @@ func New(cfg Config) (*Server, error) {
 		return nil, err
 	}
 	s.register()
-	go s.metrics.renders.run()
 	return s, nil
 }
 
@@ -172,6 +171,7 @@ func (s *Server) register() {
 	s.routesSearch()
 	s.routesWiki()
 	s.routesEditor()
+	s.routesDescription()
 	s.routesNotify()
 	s.routesAdmin()
 	s.routesModeration()
@@ -229,10 +229,10 @@ func (s *Server) Handler() http.Handler {
 	h = noIndex(h)
 	h = edge.Compress(h)
 	h = edge.Recover(s.log, h)
-	h = edge.LogRequests(s.log, h)
+	h = edge.LogRequests(requestLog(s.log), h)
 
 	static := noIndex(edge.SecurityHeaders{CSP: edge.DefaultCSP(), HSTS: s.secure}.Handler(s.static))
-	static = edge.LogRequests(s.log, edge.Recover(s.log, static))
+	static = edge.LogRequests(requestLog(s.log), edge.Recover(s.log, static))
 	mux := http.NewServeMux()
 	mux.Handle("GET /static/", static) // precompressed by edge.Static
 	mux.Handle("/", h)

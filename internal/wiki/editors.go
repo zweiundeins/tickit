@@ -2,8 +2,6 @@ package wiki
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"time"
 
@@ -11,16 +9,15 @@ import (
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/zweiundeins/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/collab"
 	"github.com/zweiundeins/tickit/internal/tabs"
 )
 
-// Client is a tab as other editors see it, made from its id: the first
-// 12 hex digits of SHA-256 (docs/editor.md). The editor's page picks a
-// random one instead (its GET knows no tab id); both keep tab ids private.
-func Client(tab string) string {
-	h := sha256.Sum256([]byte(tab))
-	return hex.EncodeToString(h[:6])
-}
+// Client is a tab as other editors see it, made from its id (collab.Client).
+func Client(tab string) string { return collab.Client(tab) }
+
+// ValidClient reports whether s is a client id: 12 lower-case hex digits.
+func ValidClient(s string) bool { return collab.ValidClient(s) }
 
 // EditorView is the spec of a tab's editor view, which the tab's row
 // keeps so that a stream that reconnects watches it again.
@@ -37,19 +34,6 @@ type OpenEditor struct {
 	Client       string // the tab as others see it: 12 hex digits the page chose
 }
 
-// ValidClient reports whether s is a client id: 12 lower-case hex digits.
-func ValidClient(s string) bool {
-	if len(s) != 12 {
-		return false
-	}
-	for _, c := range []byte(s) {
-		if !('0' <= c && c <= '9' || 'a' <= c && c <= 'f') {
-			return false
-		}
-	}
-	return true
-}
-
 func (c OpenEditor) Validate() error {
 	if err := checkBy(c.By); err != nil {
 		return err
@@ -64,22 +48,7 @@ func (c OpenEditor) Apply(tx *writer.Tx) error {
 	if _, err := current(tx, c.By, c.Page, access.EditIssues); err != nil {
 		return err
 	}
-	ds, err := docState(tx, c.Page)
-	if err != nil {
-		return err
-	}
-	base := min(c.Base, ds.Version)
-	now := millis(at(c.By))
-	if _, err := tx.Exec(`INSERT INTO page_editors (sid, tab_id, page_id, person_id, client, epoch, ack, v, moved_at, seen_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (sid, tab_id) DO UPDATE SET page_id = excluded.page_id, person_id = excluded.person_id, epoch = excluded.epoch,
-			client = excluded.client, ack = CASE WHEN page_editors.page_id = excluded.page_id AND page_editors.epoch = excluded.epoch THEN max(page_editors.ack, excluded.ack) ELSE excluded.ack END,
-			v = excluded.v, refusal = '', seen_at = excluded.seen_at`,
-		c.Session, c.Tab, c.Page, c.By.Actor.ID, c.Client, ds.Epoch, base, base, now, now); err != nil {
-		return err
-	}
-	tx.Touch(EditorTopic(c.Tab), CaretsTopic(c.Page))
-	return nil
+	return pageDocs.Open(tx, collab.Open{Session: c.Session, Tab: c.Tab, ID: c.Page, Person: c.By.Actor.ID, Base: c.Base, Client: c.Client, At: at(c.By)})
 }
 
 // WatchEditor records the tab's editor view in its row, so a stream that
@@ -97,12 +66,10 @@ type CloseEditor struct {
 }
 
 func (c CloseEditor) Apply(tx *writer.Tx) error {
-	var page string
-	err := tx.QueryRow(`DELETE FROM page_editors WHERE sid = ? AND tab_id = ? RETURNING page_id`, c.Session, c.Tab).Scan(&page)
-	if err != nil {
-		return nil // no row: nothing to close
+	page, err := pageDocs.Close(tx, c.Session, c.Tab)
+	if err != nil || page == "" {
+		return err
 	}
-	tx.Touch(EditorTopic(c.Tab), CaretsTopic(page))
 	return tabs.RemoveWatched(tx, c.Session, c.Tab, EditorView(page, c.Tab), c.At)
 }
 
@@ -119,77 +86,44 @@ type Presence struct {
 	At           time.Time
 }
 
+func (c Presence) presence() collab.Presence {
+	return collab.Presence{Kind: pageDocs, Session: c.Session, Tab: c.Tab, ID: c.Page, Epoch: c.Epoch, Ack: c.Ack, V: c.V, Anchor: c.Anchor, Head: c.Head, Seq: c.Seq, At: c.At}
+}
+
 func (c Presence) Validate() error {
-	if c.Session == "" || c.Tab == "" || !ValidID(c.Page) || c.Ack < 0 || c.V < 0 || c.Anchor < 0 || c.Head < 0 || c.Seq < 0 {
+	if err := c.presence().Validate(); err != nil {
 		return errors.New("wiki: a malformed presence")
 	}
 	return nil
 }
 
-func (c Presence) Apply(tx *writer.Tx) error {
-	now := c.At.UnixMilli()
-	res, err := tx.Exec(`UPDATE page_editors SET ack = max(ack, ?), v = ?, anchor = ?, head = ?, seq = ?, seen_at = ?,
-		moved_at = CASE WHEN anchor != ? OR head != ? OR v != ? THEN ? ELSE moved_at END
-		WHERE sid = ? AND tab_id = ? AND page_id = ? AND epoch = ? AND seq < ?`,
-		c.Ack, c.V, c.Anchor, c.Head, c.Seq, now, c.Anchor, c.Head, c.V, now, c.Session, c.Tab, c.Page, c.Epoch, c.Seq)
-	if err != nil {
-		return err
-	}
-	if n, _ := res.RowsAffected(); n > 0 {
-		tx.Touch(CaretsTopic(c.Page))
-	}
-	return nil
-}
+func (c Presence) Apply(tx *writer.Tx) error { return c.presence().Apply(tx) }
 
-// EditorRow is an editing tab's row.
-type EditorRow struct {
-	Tab, Page, Person, Client, Epoch string
-	Ack, V                           int64
-	Anchor, Head                     int
-	Refusal                          string
-	MovedAt                          time.Time
-}
+// EditorRow is an editing tab's row; its ID is the page's.
+type EditorRow = collab.EditorRow
 
 // Editor reads the row of an editing tab of a person; access.ErrNotFound
 // when there is none.
 func Editor(ctx context.Context, q sqlite.Querier, tab, person string) (EditorRow, error) {
-	var r EditorRow
-	var moved int64
-	err := q.QueryRowContext(ctx, `SELECT tab_id, page_id, person_id, client, epoch, ack, v, anchor, head, refusal, moved_at
-		FROM page_editors WHERE tab_id = ? AND person_id = ?`, tab, person).
-		Scan(&r.Tab, &r.Page, &r.Person, &r.Client, &r.Epoch, &r.Ack, &r.V, &r.Anchor, &r.Head, &r.Refusal, &moved)
+	r, err := pageDocs.Editor(ctx, q, tab, person)
 	if err != nil {
 		return r, notFound("editor", tab)
 	}
-	r.MovedAt = time.UnixMilli(moved)
 	return r, nil
 }
 
 // Editors are the rows of a page's editing tabs.
 func Editors(ctx context.Context, q sqlite.Querier, page string) ([]EditorRow, error) {
-	rows, err := q.QueryContext(ctx, `SELECT tab_id, page_id, person_id, client, epoch, ack, v, anchor, head, moved_at
-		FROM page_editors WHERE page_id = ? ORDER BY moved_at`, page)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []EditorRow
-	for rows.Next() {
-		var r EditorRow
-		var moved int64
-		if err := rows.Scan(&r.Tab, &r.Page, &r.Person, &r.Client, &r.Epoch, &r.Ack, &r.V, &r.Anchor, &r.Head, &moved); err != nil {
-			return nil, err
-		}
-		r.MovedAt = time.UnixMilli(moved)
-		out = append(out, r)
-	}
-	return out, rows.Err()
+	return pageDocs.Editors(ctx, q, page)
 }
 
 // SweepEditors deletes the rows of editing tabs not seen for a day.
 type SweepEditors struct{ At time.Time }
 
-func (c SweepEditors) Apply(tx *writer.Tx) error {
-	_, err := tx.Exec(`DELETE FROM page_editors WHERE seen_at < ?`, c.At.Add(-24*time.Hour).UnixMilli())
-	return err
+func (c SweepEditors) Apply(tx *writer.Tx) error { return pageDocs.SweepEditors(tx, c.At) }
+
+// PauseEditor pauses the tab's editor of the page (collab.Kind.Pause,
+// MP-14.1).
+func PauseEditor(tx *writer.Tx, session, tab, page, msg string) error {
+	return pageDocs.Pause(tx, session, tab, page, msg)
 }

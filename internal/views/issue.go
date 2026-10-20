@@ -31,8 +31,7 @@ type Issue struct {
 	Epics      []tracker.IssueRef // the epic picker's
 	Others     []tracker.Issue    // issues of the project, for linking by key or summary
 	Comments   []Comment
-	DescHTML   string // the description rendered (doc.RenderHTML)
-	DescMarkup string // the description as markup, for editing it
+	DescHTML   string // the description as it is now, rendered (doc.RenderHTML)
 	// Pages are the pages whose head document shows the issue as a chip
 	// (FR-101), live: the wiki touches the issue's topic.
 	Pages    []wiki.PageRef
@@ -217,6 +216,9 @@ func entryText(e tracker.Entry) string {
 	case tracker.EntryDeleted:
 		return "deleted the issue"
 	case tracker.FieldDescription:
+		if e.New != "" {
+			return "changed the description with " + e.New
+		}
 		return "changed the description"
 	case tracker.FieldRank:
 		return "changed the rank"
@@ -240,6 +242,12 @@ func entryText(e tracker.Entry) string {
 		return "cleared the " + label + " (was " + e.Old + ")"
 	}
 	return "changed the " + label + " from " + e.Old + " to " + e.New
+}
+
+// descVersionURL compares the description an issue's version made with
+// the one before (FR-68).
+func descVersionURL(issue string, version int64) string {
+	return "/issues/" + issue + "/description?v=" + strconv.FormatInt(version, 10)
 }
 
 // viewerStyle shows the viewer's own parts of the shared regions: the
@@ -334,7 +342,6 @@ func joinComma(list []string) string { return strings.Join(list, ", ") }
 
 // The hints under the text fields: what the markup reads.
 const (
-	descHint    = "**bold**, _italic_, `code`, [a link](https://…), - lists, [[WEB-12]] for an issue, @ and a person's id to mention them. Ctrl Enter or a click outside saves, Escape cancels."
 	markupHint  = "**bold**, _italic_, `code`, [a link](https://…), - lists, [[WEB-12]] for an issue."
 	commentHint = "**bold**, _italic_, `code`, links, - lists, @ to mention someone, [[WEB-12]] for an issue. Ctrl Enter sends."
 )

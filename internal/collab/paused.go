@@ -1,4 +1,4 @@
-package wiki
+package collab
 
 import (
 	"encoding/json"
@@ -17,19 +17,19 @@ type pausedRefusal struct {
 	Message string `json:"message"`
 }
 
-// PauseEditor marks the tab's editor of the page as paused with msg, and
+// Pause marks the tab's editor of the subject as paused with msg, and
 // touches its view the first time.
-func PauseEditor(tx *writer.Tx, session, tab, page, msg string) error {
+func (k *Kind) Pause(tx *writer.Tx, session, tab, id, msg string) error {
 	b, err := json.Marshal(pausedRefusal{Paused: true, Message: msg})
 	if err != nil {
 		return err
 	}
-	res, err := tx.Exec(`UPDATE page_editors SET refusal = ? WHERE sid = ? AND tab_id = ? AND page_id = ? AND refusal != ?`, string(b), session, tab, page, string(b))
+	res, err := tx.Exec(`UPDATE `+k.cfg.Editors+` SET refusal = ? WHERE sid = ? AND tab_id = ? AND `+k.cfg.Key+` = ? AND refusal != ?`, string(b), session, tab, id, string(b))
 	if err != nil {
 		return err
 	}
 	if n, _ := res.RowsAffected(); n > 0 {
-		tx.Touch(EditorTopic(tab))
+		tx.Touch(k.EditorTopic(tab))
 	}
 	return nil
 }

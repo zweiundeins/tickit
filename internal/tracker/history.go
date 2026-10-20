@@ -1,6 +1,7 @@
 package tracker
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"slices"
@@ -16,8 +17,11 @@ import (
 // Entry is one change of an issue's history (FR-68.1): who changed which
 // field when, from what to what, as a person reads the values (names,
 // keys, "2h 30m"). Field is one of the Field constants, or "created" and
-// "deleted". A description's change has no values: "changed the
-// description". OldRaw and NewRaw are the values as stored: ids, dates.
+// "deleted". A description's change has no values, only the others who
+// edited that version with the actor (New): "changed the description",
+// compared at /issues/<id>/description?v=<Version>; a version of the
+// co-edited description that changed nothing is left out. OldRaw and
+// NewRaw are the values as stored: ids, dates.
 type Entry struct {
 	Version  int64
 	Position int64
@@ -67,7 +71,18 @@ func History(ctx context.Context, q sqlite.Querier, issue string) ([]Entry, erro
 		case SummaryChanged:
 			add(FieldSummary, e.From, e.To)
 		case DescriptionChanged:
-			add(FieldDescription, "", "")
+			if bytes.Equal(canonical(e.To), canonical(s.Description)) {
+				break // a version of the co-edited description that changed nothing
+			}
+			var others []string
+			for _, p := range e.Editors {
+				if p != r.Actor {
+					others = append(others, p)
+					personIDs[p] = true
+				}
+			}
+			add(FieldDescription, "", strings.Join(others, " "))
+			out[len(out)-1].people = others
 		case TypeChanged:
 			add(FieldType, string(e.From), string(e.To))
 		case StatusChanged:
@@ -228,7 +243,7 @@ func (n names) show(p pending, raw string, isNew bool) string {
 		if s, ok := n.sprints[raw]; ok {
 			return s
 		}
-	case FieldWatchers:
+	case FieldWatchers, FieldDescription:
 		var out []string
 		for _, id := range p.people {
 			out = append(out, person(id))

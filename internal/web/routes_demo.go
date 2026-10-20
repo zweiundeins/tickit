@@ -45,3 +45,24 @@ func demoAlert(st demo.Status) string {
 	}
 	return ""
 }
+
+// quiet makes v render nothing while the demo resets: the wipe empties
+// the tables and the seed fills them over several commits, and a frame
+// read in between would show a half-seeded board. The reset renders every
+// view again once it ends (Demo.Reset's MarkAll). The demo's, the tab's and
+// the prefs' views stay out of it: they say that the demo resets.
+func (s *Server) quiet(v live.View) live.View {
+	render := v.Render
+	v.Render = func(ctx context.Context, tx *sql.Tx) (any, error) {
+		q := s.demo.Quiet()
+		if q%2 == 1 {
+			return nil, nil
+		}
+		frame, err := render(ctx, tx)
+		if err != nil || s.demo.Quiet() != q {
+			return nil, err
+		}
+		return frame, nil
+	}
+	return v
+}

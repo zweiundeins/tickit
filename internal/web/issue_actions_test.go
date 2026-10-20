@@ -70,7 +70,6 @@ func TestIssueActionsAccepted(t *testing.T) {
 	v := e.detail(t).Version
 	cases := []struct{ field, body, want string }{
 		{"summary", `,"seen":%d,"value":"A new summary"`, ""},
-		{"description", `,"seen":%d,"value":"Some **bold** text and [[WEB-1]]"`, ""},
 		{"priority", `,"seen":%d,"value":"critical"`, ""},
 		{"status", `,"seen":%d,"value":"inreview"`, ""},
 		{"assignee", `,"seen":%d,"value":"me"`, ""},
@@ -102,9 +101,6 @@ func TestIssueActionsAccepted(t *testing.T) {
 	if d.Summary != "A new summary" || d.Priority != tracker.Critical || d.Status != "inreview" || d.Due != "2026-12-24" ||
 		d.Points == nil || *d.Points != 5 || d.Estimate == nil || *d.Estimate != 150 || len(d.Labels) != 1 || len(d.Children) != 1 || len(d.Links) != 1 {
 		t.Errorf("the issue is %+v", d)
-	}
-	if !strings.Contains(string(d.Description), `"strong"`) || !strings.Contains(string(d.Description), `"issue_chip"`) {
-		t.Errorf("description %s", d.Description)
 	}
 	comments, _ := tracker.Comments(context.Background(), e.DB.R, web.ProbeIssue)
 	if len(comments) != 2 || !strings.Contains(string(comments[1].Body), `"mention"`) {

@@ -60,6 +60,7 @@ type Shell struct {
 	Prefs                  tabs.Prefs
 	Bell                   Bell   // the bell's count and panel (notify, web.Server.bell)
 	Path                   string // the page's path and query, for the way back after a login
+	Refresh                int    // seconds after which the document loads again, 0 for never
 }
 
 // CreateID is the id of the create dialog.

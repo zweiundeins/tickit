@@ -96,7 +96,7 @@ func TestPageDeciders(t *testing.T) {
 func TestDocDeciders(t *testing.T) {
 	created := DocCreated{Epoch: "e1", Doc: json.RawMessage(blank)}
 	eventstest.For(createDocDecider).When(created).Then(t, created)
-	eventstest.For(createDocDecider).Given(created).When(created).ThenError(t, errorString("wiki: the document exists"))
+	eventstest.For(createDocDecider).Given(created).When(created).ThenError(t, errorString("collab: the document exists"))
 	c := DocCommitted{Ref: "r1", Client: "c", Base: 1, Steps: json.RawMessage(`[]`)}
 	eventstest.For(commitDecider).Given(created).When(c).Then(t, c)
 	eventstest.For(commitDecider).When(c).ThenError(t, errStale)
@@ -112,7 +112,7 @@ func TestDocDeciders(t *testing.T) {
 	// A fold from the events carries it along, for the snapshot.
 	step := `[{"stepType":"replace","from":1,"to":1,"slice":{"content":[{"type":"text","text":"Hi"}]}}]`
 	s = evolveDoc(evolveDoc(DocState{}, created), DocCommitted{Ref: "r", Steps: json.RawMessage(step)})
-	if got := string(marshalDoc(s.doc)); !strings.Contains(got, `"text":"Hi"`) {
+	if got := string(marshalDoc(s.Folded())); !strings.Contains(got, `"text":"Hi"`) {
 		t.Errorf("folded document %s", got)
 	}
 }

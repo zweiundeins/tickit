@@ -47,8 +47,26 @@ With `prefers-reduced-motion: reduce` no element on the board has a running tran
 
 With `forced-colors: active` the board, an issue, a page and the issue list were checked by screenshot. Glyphs drawn as masks (types, priorities, status markers, faces, the card's "…", due dates) and page link icons vanished, since the system paints their fill in the canvas colour, and the task list's checkboxes lost their edges with their box shadows. They now keep their own colours or the text colour.
 
+## Firefox and touch
+
+On 20 October 2026 the whole e2e suite ran in Firefox 158.0.1 (Mozilla's linux-x86_64 tarball, headless, over WebDriver BiDi, without the content sandbox, which this machine's lack of user namespaces rules out):
+
+```sh
+LITH_BROWSER=firefox FIREFOX=/path/to/firefox/firefox LITH_FIREFOX_NO_SANDBOX=1 go test ./e2e
+```
+
+Every test that runs without a setting passed, `TestCoEditing` included (5 editors, keystroke to the others p50 63 ms, p95 100 ms), and so did `TestAxe` with `TICKIT_AXE` (no serious or critical finding; the same moderate heading-order note on a page as in Chromium). Firefox's driver had to learn five DevTools commands the tests send: `Input.insertText` (typed as key actions), `Network.getCookies` and `Network.setCookie` (BiDi's storage commands on the page's user context), `Network.setExtraHTTPHeaders` (`network.setExtraHeaders`), and `Emulation.setFocusEmulationEnabled`, which Firefox does not need. Two things are not covered in Firefox:
+
+- `Emulation.setEmulatedMedia` has no BiDi counterpart, so `TestAxe` checks only the light theme in Firefox.
+- `TestBoardTouchDrag` and `TestEditorTouch` skip: touch emulation (a coarse pointer, touch events) is a DevTools command that BiDi lacks.
+
+Touch (NFR-56) is checked in Chromium with DevTools touch emulation, a 2x device and a coarse pointer:
+
+- `TestBoardTouchDrag` (600 by 900 pixels): columns are at least 260 pixels wide in a board that scrolls sideways; a finger on a card's grip lifts it at once and drags it into the next column; the move is stored, so a second browser's board shows it; a finger on the card's title pans and moves nothing. A touch that lands while a view transition of the lanes runs (another viewer's card gliding in) is hit-tested on the board around them and pans instead of dragging, so the test waits for the card to be under the finger first.
+- `TestEditorTouch` (390 by 844 pixels): a tap puts the caret in the page editor, typing and Enter work, the toolbar's "Bulleted list" makes a list, and the Link button's dialog takes an address by taps alone; the server's document has the list and the link.
+
 ## Not checked
 
 - A screen reader. NFR-45.1 asks for a check with one; none ran here.
-- Firefox and WebKit. Every check above ran in Chromium.
+- WebKit (Safari, iOS) and real phones. The checks above ran in Chromium, the e2e suite also in Firefox (above); touch is emulated in Chromium only.
 - Contrast is covered by `TestContrast` in `internal/web` and by axe's colour rules, not by eye.

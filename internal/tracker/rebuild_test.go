@@ -8,12 +8,18 @@ import (
 	"time"
 
 	"github.com/zweiundeins/lith/writer"
+
+	"github.com/zweiundeins/tickit/internal/collab"
 )
 
 // dump is every row of a table, in order, as text.
 func (e *env) dump(table string) string {
 	e.t.Helper()
-	rows, err := e.DB.R.Query(`SELECT * FROM ` + table + ` ORDER BY 1, 2, 3`)
+	sel := "*"
+	if table == "issue_doc" { // a fold moves the checkpoint, and the ref of a head it folded: the head documents are compared instead
+		sel = "issue_id, epoch, version, bytes, blocks, last_at"
+	}
+	rows, err := e.DB.R.Query(`SELECT ` + sel + ` FROM ` + table + ` ORDER BY 1, 2, 3`)
 	if err != nil {
 		e.t.Fatal(err)
 	}
@@ -40,7 +46,7 @@ func (e *env) dump(table string) string {
 	return b.String()
 }
 
-var projectionTables = []string{"projects", "statuses", "components", "sprints", "issues", "issue_labels", "labels", "issue_links", "issue_watchers", "comments"}
+var projectionTables = []string{"projects", "statuses", "components", "sprints", "issues", "issue_labels", "labels", "issue_links", "issue_watchers", "comments", "issue_doc"}
 
 // FR-155.2: rebuilding every read model from the stored events yields the
 // same tables. FR-155.1: every event has its actor, time and op id.
@@ -53,7 +59,14 @@ func TestRebuild(t *testing.T) {
 	e.must(SetType{By: e.by(sunny), Issue: web3, Seen: 1 << 40, Type: Bug})
 	e.must(Move{By: e.by(sunny), Issue: web4, Status: StatusInProgress, After: web1, Seen: 1 << 40})
 	e.must(Move{By: e.by(sunny), Issue: web1, Before: web2, Seen: 1 << 40})
-	e.must(SetDescription{By: e.by(sunny), Issue: web1, Seen: 1 << 40, Description: PlainDoc("Now with words, a < b & c")})
+	e.must(SetDescription{By: e.by(sunny), Issue: web1, Description: PlainDoc("Now with words, a < b & c")})
+	// FR-15: a co-edited description, a version of it, its fold.
+	for i := range collab.Checkpoint + 3 {
+		e.commitDesc(rainy, web2, e.descState(web2).Version, fmt.Sprintf("r%d", i), steps(insert(1, "<&>")))
+	}
+	e.must(CutDescriptions{At: e.now})
+	e.must(&FoldDescriptions{At: e.now.Add(collab.FoldAfter + time.Hour)})
+	e.commitDesc(sunny, web2, e.descState(web2).Version, "after-fold", steps(insert(1, "y")))
 	e.must(SetDue{By: e.by(sunny), Issue: web1, Seen: 1 << 40, Due: "2026-12-24"})
 	e.must(SetPoints{By: e.by(sunny), Issue: web1, Seen: 1 << 40, Points: ptr(8)})
 	e.must(SetEstimate{By: e.by(sunny), Issue: web1, Seen: 1 << 40, Estimate: ptr(60)})
@@ -94,6 +107,8 @@ func TestRebuild(t *testing.T) {
 			t.Errorf("%s is empty: the test covers too little", tb)
 		}
 	}
+	head := e.descHead(web2)
+	collab.ResetCaches()
 	e.must(writer.Func(func(tx *writer.Tx) error {
 		if _, err := tx.Exec(`UPDATE lith_projections SET version = version + 100 WHERE name LIKE 'tracker_%'`); err != nil {
 			return err
@@ -125,9 +140,13 @@ func TestRebuild(t *testing.T) {
 			t.Errorf("%s rebuilt differs:\n%s\nwas\n%s", tb, got, before[tb])
 		}
 	}
+	collab.ResetCaches()
+	if got := e.descHead(web2); got != head {
+		t.Errorf("the description rebuilt %q, was %q", got, head)
+	}
 	var missing int
 	e.View(t, func(tx *sql.Tx) error {
-		return tx.QueryRow(`SELECT count(*) FROM lith_events WHERE stream IN ('project', 'issue', 'comment')
+		return tx.QueryRow(`SELECT count(*) FROM lith_events WHERE stream IN ('project', 'issue', 'comment', 'issuedoc')
 			AND (actor IS NULL OR causation IS NULL OR at = 0)`).Scan(&missing)
 	})
 	if missing != 0 {

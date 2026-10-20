@@ -20,9 +20,11 @@ import (
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/zweiundeins/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/collab"
 	"github.com/zweiundeins/tickit/internal/doc"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tabs"
+	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/views"
 	"github.com/zweiundeins/tickit/internal/wiki"
 )
@@ -241,7 +243,7 @@ func (s *Server) decodeEditor(w http.ResponseWriter, r *http.Request, c class) (
 		return req, people.Person{}, false
 	}
 	actor := people.Actor(r.Context())
-	if err := sse.ReadSignalsLimit(w, r, &req, c.body); err != nil || !validID(req.Tab) || actor.IsZero() || !wiki.ValidID(r.PathValue("id")) {
+	if err := sse.ReadSignalsLimit(w, r, &req, c.body); err != nil || !validID(req.Tab) || actor.IsZero() || !collab.ValidID(r.PathValue("id")) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return req, actor, false
 	}
@@ -256,35 +258,43 @@ func (s *Server) decodeEditor(w http.ResponseWriter, r *http.Request, c class) (
 // which), 422 refused by a rule (the tab's editor row says why), 403 for
 // a reader, 429 over the limit.
 func (s *Server) commit(w http.ResponseWriter, r *http.Request) {
+	s.commitWith(w, r, wiki.PauseEditor, func(by tabs.By, sid, id string, req editorRequest) (writer.ResultCommand, func() time.Duration) {
+		c := &wiki.Commit{By: by, Session: sid, Tab: req.Tab, Page: id, Epoch: req.Epoch, Base: req.Base, Ref: req.Ref, Client: req.Client, Steps: req.Steps}
+		return c, func() time.Duration { return c.Took }
+	})
+}
+
+// commitWith runs the commit that build makes of a commit's payload, for
+// any co-edited document (internal/collab): a page's, an issue's
+// description. took is how long the writer spent on it; pause stops the
+// tab's editor when the demo's guard refuses the commit (MP-14.1).
+func (s *Server) commitWith(w http.ResponseWriter, r *http.Request, pause func(tx *writer.Tx, session, tab, id, msg string) error, build func(by tabs.By, sid, id string, req editorRequest) (cmd writer.ResultCommand, took func() time.Duration)) {
 	req, actor, ok := s.decodeEditor(w, r, classEditBatch)
 	if !ok {
 		return
 	}
-	page := r.PathValue("id")
-	if req.Ref == "" || !validID(req.Ref) || !wiki.ValidClient(req.Client) {
+	if req.Ref == "" || !validID(req.Ref) || !collab.ValidClient(req.Client) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
 	ctx := r.Context()
-	c := &wiki.Commit{
-		By: tabs.By{Actor: actor, Op: req.Ref, At: time.Now()}, Session: edge.SessionID(ctx), Tab: req.Tab, Page: page,
-		Epoch: req.Epoch, Base: req.Base, Ref: req.Ref, Client: req.Client, Steps: req.Steps,
-	}
+	c, took := build(tabs.By{Actor: actor, Op: req.Ref, At: time.Now()}, edge.SessionID(ctx), r.PathValue("id"), req)
 	// The demo's guard: no edits during a reset (503), none from a blocked
 	// guest (403, MP-14.2: the text stays in the browser). A resent commit
-	// applies once by its ref (wiki.Commit), so no op id is kept per commit:
-	// at 100 commits a second they would hold 1.4 GB a day (NFR-43.2).
+	// applies once by its ref (collab.Commit), so no op id is kept per
+	// commit: at 100 commits a second they would hold 1.4 GB a day
+	// (NFR-43.2).
 	var res []byte
-	op := withResult{s.demo.Guard(actor, edge.ClientKey(r), c).(writer.ResultCommand), &res}
+	op := withResult{s.demo.Guard(actor, edge.ClientKey(r), c.(writer.Command)).(writer.ResultCommand), &res}
 	if err := s.w.Do(ctx, op); err != nil {
 		var denial interface{ Denied() bool }
 		if errors.As(err, &denial) && denial.Denied() {
-			// MP-14.1: the tab's editor stops and says why (wiki.PauseEditor).
-			sid, msg := c.Session, "This change was not saved."
+			// MP-14.1: the tab's editor stops and says why (collab.Kind.Pause).
+			sid, id, msg := edge.SessionID(ctx), r.PathValue("id"), "This change was not saved."
 			if d := (*access.Denial)(nil); errors.As(err, &d) {
 				msg = d.Msg
 			}
-			if err := s.w.Do(ctx, writer.Func(func(tx *writer.Tx) error { return wiki.PauseEditor(tx, sid, req.Tab, page, msg) })); err != nil {
+			if err := s.w.Do(ctx, writer.Func(func(tx *writer.Tx) error { return pause(tx, sid, req.Tab, id, msg) })); err != nil {
 				s.log.Debug("pause an editor", "err", err)
 			}
 			http.Error(w, "forbidden", http.StatusForbidden)
@@ -293,15 +303,15 @@ func (s *Server) commit(w http.ResponseWriter, r *http.Request) {
 		s.failAction(w, r, err)
 		return
 	}
-	CommitTimes.Observe(c.Took)
+	CommitTimes.Observe(took())
 	switch {
 	case len(res) == 0:
 		w.WriteHeader(http.StatusNoContent)
-	case wiki.CommitAnswer(res[0]) == wiki.Stale:
+	case collab.Answer(res[0]) == collab.Stale:
 		http.Error(w, "stale", http.StatusConflict)
-	case wiki.CommitAnswer(res[0]) == wiki.Refused:
+	case collab.Answer(res[0]) == collab.Refused:
 		http.Error(w, "refused", http.StatusUnprocessableEntity)
-	case wiki.CommitAnswer(res[0]) == wiki.Readonly:
+	case collab.Answer(res[0]) == collab.Readonly:
 		http.Error(w, "forbidden", http.StatusForbidden)
 	default:
 		w.WriteHeader(http.StatusNoContent)
@@ -357,12 +367,12 @@ func (s *Server) editorView(ctx context.Context, q sqlite.Querier, actor people.
 func editorHost(ctx context.Context, q sqlite.Querier, actor people.Person, page, tab string) (views.EditorHost, error) {
 	host := views.EditorHost{Page: page, Batches: "[]", Chips: "{}", Images: imagesJSON(), State: "ok"}
 	row, err := wiki.Editor(ctx, q, tab, actor.ID)
-	if err != nil || row.Page != page {
+	if err != nil || row.ID != page {
 		host.State = "reset" // the tab's row is gone: a reset, or a sweep
 		return host, nil
 	}
 	host.Client, host.Epoch, host.Base, host.Refusal = row.Client, row.Epoch, row.Ack, row.Refusal
-	paused, isPaused := wiki.Paused(row.Refusal)
+	paused, isPaused := collab.Paused(row.Refusal)
 	if isPaused {
 		host.Refusal = paused
 	}
@@ -419,49 +429,55 @@ func (s *Server) caretsView(ctx context.Context, q sqlite.Querier, actor people.
 		Every:    10 * time.Second, // idle carets hide their names
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			q := querier(ctx, tx)
-			here := map[string]bool{}
-			for _, id := range s.hub.Watchers(key) {
-				_, tab, _ := strings.Cut(id, ".")
-				here[tab] = true
-			}
 			rows, err := wiki.Editors(ctx, q, p.ID)
 			if err != nil {
 				return nil, err
 			}
-			var ids []string
-			for _, r := range rows {
-				ids = append(ids, r.Person)
-			}
-			who, err := people.Lookup(ctx, q, ids...)
-			if err != nil {
-				return nil, err
-			}
-			type caret struct {
-				ID     string `json:"id"`
-				Name   string `json:"name"`
-				Hue    int    `json:"hue"`
-				V      int64  `json:"v"`
-				Anchor int    `json:"anchor"`
-				Head   int    `json:"head"`
-				Idle   bool   `json:"idle"`
-			}
-			list := []caret{}
-			now := time.Now()
-			for _, r := range rows {
-				if !here[r.Tab] {
-					continue
-				}
-				pe := who[r.Person]
-				list = append(list, caret{ID: r.Client, Name: pe.Name, Hue: pe.Hue, V: r.V, Anchor: r.Anchor, Head: r.Head, Idle: now.Sub(r.MovedAt) > 30*time.Second})
-			}
-			b, err := json.Marshal(list)
-			if err != nil {
-				return nil, err
-			}
-			sig, _ := json.Marshal(map[string]string{"_carets": string(b)})
-			return sse.PatchSignals(sig, false), nil
+			return s.caretsSignal(ctx, q, key, rows)
 		},
 	}, nil
+}
+
+// caretsSignal is the frame of a carets view (key): the signal $_carets
+// with the carets of the editing tabs among rows that watch the view.
+func (s *Server) caretsSignal(ctx context.Context, q sqlite.Querier, key string, rows []collab.EditorRow) ([]byte, error) {
+	here := map[string]bool{}
+	for _, id := range s.hub.Watchers(key) {
+		_, tab, _ := strings.Cut(id, ".")
+		here[tab] = true
+	}
+	var ids []string
+	for _, r := range rows {
+		ids = append(ids, r.Person)
+	}
+	who, err := people.Lookup(ctx, q, ids...)
+	if err != nil {
+		return nil, err
+	}
+	type caret struct {
+		ID     string `json:"id"`
+		Name   string `json:"name"`
+		Hue    int    `json:"hue"`
+		V      int64  `json:"v"`
+		Anchor int    `json:"anchor"`
+		Head   int    `json:"head"`
+		Idle   bool   `json:"idle"`
+	}
+	list := []caret{}
+	now := time.Now()
+	for _, r := range rows {
+		if !here[r.Tab] {
+			continue
+		}
+		pe := who[r.Person]
+		list = append(list, caret{ID: r.Client, Name: pe.Name, Hue: pe.Hue, V: r.V, Anchor: r.Anchor, Head: r.Head, Idle: now.Sub(r.MovedAt) > 30*time.Second})
+	}
+	b, err := json.Marshal(list)
+	if err != nil {
+		return nil, err
+	}
+	sig, _ := json.Marshal(map[string]string{"_carets": string(b)})
+	return sse.PatchSignals(sig, false), nil
 }
 
 // titleView brings the editors the page's title as $_wkTitle, which the
@@ -576,9 +592,10 @@ func spaceOf(ctx context.Context, q sqlite.Querier, page string) string {
 	return p.Space
 }
 
-// WikiJobs runs the wiki's background work until ctx ends: every few
-// seconds the versions that are due (CutDue: idle, the last editor gone,
-// every 10 minutes), every minute the fold (NFR-43), every hour the
+// WikiJobs runs the co-edited documents' background work until ctx ends,
+// for pages and issue descriptions alike: every few seconds the versions
+// that are due (CutDue, CutDescriptions: idle, the last editor gone,
+// every 10 minutes), every 10 seconds the fold (NFR-43), every hour the
 // sweep of editing tabs gone for a day. cmd/tickit runs it beside the
 // sweep.
 func (s *Server) WikiJobs(ctx context.Context) {
@@ -602,6 +619,7 @@ func (s *Server) WikiJobs(ctx context.Context) {
 			return
 		case <-cut.C:
 			do(wiki.CutDue{At: time.Now(), Editing: s.Editing})
+			do(tracker.CutDescriptions{At: time.Now(), Editing: s.EditingDescription})
 		case <-fold.C:
 			for range 20 { // at most FoldBatch events a command
 				f := &wiki.Fold{At: time.Now()}
@@ -612,8 +630,18 @@ func (s *Server) WikiJobs(ctx context.Context) {
 				s.metrics.folded.Add(float64(f.Deleted))
 				s.metrics.foldSeconds.Observe(f.Took.Seconds())
 			}
+			for range 20 {
+				f := &tracker.FoldDescriptions{At: time.Now()}
+				do(f)
+				if f.Deleted == 0 {
+					break
+				}
+				s.metrics.folded.Add(float64(f.Deleted))
+				s.metrics.foldSeconds.Observe(f.Took.Seconds())
+			}
 		case <-sweep.C:
 			do(wiki.SweepEditors{At: time.Now()})
+			do(tracker.SweepDescriptionEditors{At: time.Now()})
 		}
 	}
 }

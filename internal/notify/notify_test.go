@@ -216,8 +216,8 @@ func TestMentions(t *testing.T) {
 	sentence := "Could @" + rainy.Name + " look at this?"
 	want(t, e.of(rainy), "X mentioned you in WEB-4: "+sentence)
 	// The same mention again, and more text: nothing new.
-	e.must(tracker.SetDescription{By: e.by(sunny), Issue: issue, Seen: 1 << 40, Description: mentionDoc(rainy)[:0]})
-	e.must(tracker.SetDescription{By: e.by(sunny), Issue: issue, Seen: 1 << 40, Description: mentionDoc(rainy)})
+	e.must(tracker.SetDescription{By: e.by(sunny), Issue: issue, Description: mentionDoc(rainy)[:0]})
+	e.must(tracker.SetDescription{By: e.by(sunny), Issue: issue, Description: mentionDoc(rainy)})
 	want(t, e.of(rainy), "X mentioned you in WEB-4: "+sentence)
 	// A comment that mentions misty and sunny, by sunny.
 	body := doc(text("Hi "+sunny.Name+", could "), mention(misty), text(" look at this? Thanks."))
@@ -238,6 +238,29 @@ func TestMentions(t *testing.T) {
 	}
 	if got := e.of(misty); len(got) != 1 {
 		t.Errorf("misty: %q", got)
+	}
+	// FR-15: a mention typed into the co-edited description tells the
+	// person once, when its version is cut; later versions keep it and
+	// tell nobody.
+	other := e.result(tracker.CreateIssue{By: e.by(sunny), Project: project, Type: tracker.Task, Summary: "Co-edited", Description: doc(text("Notes. "))})["id"]
+	commit := func(ref, steps string) {
+		t.Helper()
+		var h tracker.DescHead
+		e.View(t, func(tx *sql.Tx) (err error) {
+			h, err = tracker.DescriptionHead(context.Background(), tx, other)
+			return err
+		})
+		e.must(&tracker.CommitDescription{By: e.by(rainy), Session: "s-rainy", Tab: "t-rainy", Issue: other, Epoch: h.Epoch, Base: h.Version,
+			Ref: ref, Client: "0123456789ab", Steps: json.RawMessage(steps)})
+	}
+	m, _ := json.Marshal(mention(misty))
+	commit("r1", `[{"stepType":"replace","from":8,"to":8,"slice":{"content":[`+string(m)+`,{"type":"text","text":" please look."}]}}]`)
+	e.must(tracker.CutDescriptions{At: e.now})
+	want(t, e.of(misty)[:1], "X mentioned you in WEB-5: @"+misty.Name+" please look.")
+	commit("r2", `[{"stepType":"replace","from":1,"to":1,"slice":{"content":[{"type":"text","text":"More. "}]}}]`)
+	e.must(tracker.CutDescriptions{At: e.now})
+	if got := e.of(misty); len(got) != 2 {
+		t.Errorf("misty after a second version: %q", got)
 	}
 }
 

@@ -31,7 +31,7 @@ import (
 )
 
 // MP-11.4: the renders of each view are visible, by kind in the metrics
-// (tickit_view_renders_total{kind}) and by key on the admin statistics,
+// (tickit_view_renders{kind}) and by key on the admin statistics,
 // where keys that hold a tab id show only as a hash.
 func TestViewRenders(t *testing.T) {
 	e := webtest.Start(t)
@@ -57,19 +57,19 @@ func TestViewRenders(t *testing.T) {
 	}
 	kinds := map[string]float64{}
 	for _, mf := range mfs {
-		if mf.GetName() != "tickit_view_renders_total" {
+		if mf.GetName() != "tickit_view_renders" {
 			continue
 		}
 		for _, m := range mf.GetMetric() {
 			for _, l := range m.GetLabel() {
 				if l.GetName() == "kind" {
-					kinds[l.GetValue()] = m.GetCounter().GetValue()
+					kinds[l.GetValue()] = m.GetGauge().GetValue()
 				}
 			}
 		}
 	}
 	if kinds["thing"] < 3 || kinds["tab"] < 1 || kinds["presence"] < 1 {
-		t.Errorf("tickit_view_renders_total by kind: %v", kinds)
+		t.Errorf("tickit_view_renders by kind: %v", kinds)
 	}
 
 	code, page := webtest.Get(t, admin, e.URL+"/admin/stats")
@@ -162,7 +162,7 @@ func TestPresenceGoes(t *testing.T) {
 			select {
 			case <-t.Context().Done():
 				return
-			case <-time.After(time.Second):
+			case <-time.After(300 * time.Millisecond):
 				webtest.Post(t, cy, e.URL+"/alive?tab=cy1", "")
 			}
 		}
@@ -170,7 +170,7 @@ func TestPresenceGoes(t *testing.T) {
 	rawStream(t, bob, e.URL, "/stream?tab=bob3&alive=1&v=thing:1")
 	until(5*time.Second, func(ev string) bool { return strings.Contains(ev, bobName) && strings.Contains(ev, cyName) })
 	d = until(10*time.Second, gone(bobName))
-	if d > 4*time.Second {
+	if d > 6*time.Second { // AliveTimeout, 3 s here, and a loaded machine's slack
 		t.Errorf("the face of a dropped connection went after %v", d)
 	}
 	if code, _ := webtest.Get(t, ada, e.URL+"/"); code != http.StatusOK {

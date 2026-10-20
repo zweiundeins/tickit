@@ -1,6 +1,8 @@
 package views
 
 import (
+	"strconv"
+
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/ui"
 )
@@ -18,6 +20,9 @@ templ Layout(s Shell) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<meta name="color-scheme" content={ prefs.ColorScheme() }/>
 			<meta name="robots" content="noindex, nofollow"/>
+			if s.Refresh > 0 {
+				<meta http-equiv="refresh" content={ strconv.Itoa(s.Refresh) }/>
+			}
 			<title>{ documentTitle(s.Title) }</title>
 			if s.Mark != "" {
 				<link rel="icon" type="image/svg+xml" href={ s.Mark }/>
@@ -62,6 +67,7 @@ templ Layout(s Shell) {
 			if !s.Prefs.HideHint {
 				@firstVisitHint()
 			}
+			@ReportDialog()
 			<div class="tk-float">
 				@DemoAlert(s.DemoAlert)
 				@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Icon: "clock", Live: true, Class: "tk-reconnecting", Attrs: templ.Attributes{"id": "reconnecting", "hidden": true, "data-attr:hidden": reconnectHidden}}) {

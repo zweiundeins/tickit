@@ -34,6 +34,8 @@ import (
 //  4. The seed runs, a batch of steps per command (Seed).
 //  5. Actions go through again, and every view renders once more
 //     (MarkAll), so open pages show the seeded state on their next tick.
+//     Until then views render nothing (Quiet) and documents show
+//     MsgResetting, so no page shows the emptied or half-seeded state.
 
 // Kept are the tables a reset keeps: staff accounts with their login
 // sessions and the preferences of every session (people rows of guests go;
@@ -54,10 +56,10 @@ func (d *Demo) Reset(ctx context.Context, by string) error {
 	}
 	defer d.reset.Unlock()
 	start := d.cfg.Now()
-	d.resetting.Store(true)
+	d.hold(true)
 	d.cfg.Changed([]string{Topic})
 	n, err := d.resetNow(ctx, by, start)
-	d.resetting.Store(false)
+	d.hold(false)
 	d.cfg.MarkAll()
 	took := d.cfg.Now().Sub(start)
 	if d.cfg.OnReset != nil {
@@ -286,11 +288,11 @@ func clip(s string, n int) string {
 // must not race visitors.
 func (d *Demo) Hold() (release func()) {
 	d.reset.Lock()
-	d.resetting.Store(true)
+	d.hold(true)
 	d.cfg.Changed([]string{Topic})
 	return func() {
-		d.resetting.Store(false)
+		d.hold(false)
 		d.reset.Unlock()
-		d.cfg.Changed([]string{Topic})
+		d.cfg.MarkAll()
 	}
 }

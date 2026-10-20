@@ -74,6 +74,20 @@ templ NotFound() {
 	</section>
 }
 
+// Resetting is every page while the demo resets (DM-03.4): the document
+// loads again until the seed is in, so no page shows a half-seeded state.
+templ Resetting() {
+	<section class="tk-error" aria-labelledby="error-title">
+		<div class="tk-empty">
+			<div class="tk-empty__art">
+				@ui.IconSized("clock", "xl")
+			</div>
+			<h1 class="tk-empty__title" id="error-title">The demo is resetting</h1>
+			<p class="tk-empty__text">The demo goes back to its seeded state. This page loads again in a moment.</p>
+		</div>
+	</section>
+}
+
 // Gone is the page of something that was deleted.
 templ Gone() {
 	<section class="tk-error" aria-labelledby="error-title">

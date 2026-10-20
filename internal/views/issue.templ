@@ -80,6 +80,10 @@ templ issueFrame(p IssueFrameProps) {
 		<div class="tk-detail tk-issue__detail" { showIf(`$_is.at === 0`)... }>
 			<div class="stack tk-issue__body">
 				@region(p, "issue-desc", "section")
+				@descBody(p)
+				if !p.Panel {
+					@descEditor(p)
+				}
 				<p class="tk-typing" id="issue-typing-description" aria-live="off"></p>
 				@region(p, "issue-related", "section")
 				<div class="tk-issue__tabs">
@@ -252,6 +256,7 @@ templ issueMain(m Issue) {
 				}
 				@ui.MenuItem(ui.MenuItemProps{Label: "Link issue", Icon: "link", Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-link-key')?.focus()"}})
 				@ui.MenuSeparator()
+				@ui.MenuItem(ui.MenuItemProps{Label: "Report issue", Icon: "warning", Attrs: ReportAttrs("issue", m.ID)})
 				@ui.MenuItem(ui.MenuItemProps{Label: "Delete issue", Icon: "trash", Danger: true, Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-delete').showModal()"}})
 			}
 		</div>
@@ -284,43 +289,74 @@ func crumbs(m Issue) []ui.Crumb {
 	return append(out, ui.Crumb{Label: m.Key})
 }
 
+// issueDesc is the description's heading in the issue's view; its text is
+// the view issue-desc:<id> (IssueDescBody), and Edit opens the co-edited
+// editor beside it (FR-15, descEditor).
 templ issueDesc(m Issue) {
 	<section id="issue-desc" class="tk-issue__desc" aria-labelledby="issue-desc-h">
 		<div class="split">
 			<h2 class="tk-eyebrow" id="issue-desc-h">Description</h2>
-			@ui.Button(ui.ButtonProps{Label: "Edit", Icon: "edit", Variant: ui.Ghost, Size: ui.SizeSM, Attrs: merge(locked, pending("description"), showIf(fieldExpr(editHidden, "description")), templ.Attributes{"data-field": "description", "data-src": "issue-desc-markup", "data-act": "edit"})})
+			@ui.Button(ui.ButtonProps{Label: "Edit", Icon: "edit", Variant: ui.Ghost, Size: ui.SizeSM, Attrs: merge(locked, showIf("!$_is.desc"), templ.Attributes{"data-act": "desc-edit", "aria-describedby": "issue-desc-h"})})
 		</div>
-		<pre hidden id="issue-desc-markup">{ m.DescMarkup }</pre>
-		<div class="tk-issue__descview" { showIf(fieldExpr(editHidden, "description"))... }>
-			if m.DescHTML != "" {
-				<div class="prose">
-					@templ.Raw(m.DescHTML)
-				</div>
-			} else {
-				<button type="button" class="tk-issue__empty" data-act="edit" data-field="description" data-src="issue-desc-markup" { locked... }>Add a description</button>
+	</section>
+}
+
+// IssueDescBody is the description as it is now, which every reader of the
+// issue sees change live (MP-03): the view issue-desc:<id>.
+templ IssueDescBody(html string) {
+	<div id={ DescBodyID } class="tk-issue__descview" { showIf("!$_is.desc")... }>
+		if html != "" {
+			<div class="prose">
+				@templ.Raw(html)
+			</div>
+		} else {
+			<button type="button" class="tk-issue__empty" data-act="desc-edit" { locked... }>Add a description</button>
+		}
+	</div>
+}
+
+templ descBody(p IssueFrameProps) {
+	if p.Issue != nil {
+		@IssueDescBody(p.Issue.DescHTML)
+	} else {
+		<div id={ DescBodyID } data-region></div>
+	}
+}
+
+// descEditor holds the description's sb-rich-editor while it is open on
+// the issue's page (FR-15, docs/editor.md): Edit fetches the host into
+// #issue-desc-editor (GET /issues/{id}/description/editor), whose own view
+// brings it the commits; Done closes it. Its keystrokes say "is editing
+// the description" to the others (MP-07).
+templ descEditor(p IssueFrameProps) {
+	<div class="tk-issue__desceditor" data-signals={ descEditorSignals } data-init={ descEditInit } { showIf("$_is.desc")... }>
+		<div class="tk-issue__descbar">
+			<p class="wk-status" role="status" data-attr:data-state="$_editor.status">
+				<span data-show="$_editor.status === 'saving'" style="display: none"><span class="tk-editor__dot" aria-hidden="true"></span> Saving</span>
+				<span data-show="$_editor.status !== 'saving'">
+					@ui.Icon("check")
+					Saved
+				</span>
+			</p>
+			<div class="wk-insert" role="group" aria-label="Insert">
+				@ui.Button(ui.ButtonProps{Label: "Issue", Icon: "issues", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-kind": "issue", "data-label": "Find an issue", "data-on:click": pickOpen}})
+				@ui.Button(ui.ButtonProps{Label: "Mention", Icon: "user", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-kind": "person", "data-label": "Find a person", "data-on:click": pickOpen}})
+				@ui.Button(ui.ButtonProps{Label: "Page link", Icon: "page", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-kind": "page", "data-label": "Find a page by its title", "data-on:click": pickOpen}})
+			</div>
+			@ui.Button(ui.ButtonProps{Label: "Done", Icon: "check", Variant: ui.Primary, Size: ui.SizeSM, Attrs: templ.Attributes{"data-act": "desc-done"}})
+		</div>
+		<div class="wk-stopped" style="display: none" data-show="$_editor.stopped === 'reset' || $_editor.stopped === 'gone' || $_editor.stopped === 'diverged' || $_editor.stopped === 'gap'">
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Title: "Your last changes were not saved", Live: true, Action: ui.Button(ui.ButtonProps{Label: "Copy my text", Icon: "copy", Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": copyEdits}})}) {
+				<p data-show="$_editor.stopped === 'reset'">The demo was reset. Your last changes to the description were not saved.</p>
+				<p data-show="$_editor.stopped === 'gone'" style="display: none">This issue was deleted or hidden. Your last changes to the description were not saved.</p>
+				<p data-show="$_editor.stopped === 'gap'" style="display: none">The description moved on while this tab was away. Copy your text, then reload the page.</p>
+				<p data-show="$_editor.stopped === 'diverged'" style="display: none">The editor lost track of the description. Reload the page; copy your text first.</p>
 			}
 		</div>
-		<div class="tk-issue__editor" data-ignore-morph data-show={ fieldExpr(editShown, "description") } data-editor="description" data-typing="edit">
-			<label class="visually-hidden" for="issue-edit-description">Description</label>
-			<textarea
-				id="issue-edit-description"
-				class="tk-input tk-textarea tk-issue__descinput"
-				data-field="description"
-				data-bind="_is.val"
-				rows="10"
-				aria-describedby="issue-desc-hint"
-				data-keys="edit"
-				data-attr:readonly={ fieldExpr(editReadonly, "description") }
-				data-attr:aria-busy={ fieldExpr(noteBusy, "description") }
-			></textarea>
-			<p class="tk-field__hint" id="issue-desc-hint">{ descHint }</p>
-			<div class="cluster">
-				<button type="button" class="tk-btn tk-btn--sm tk-btn--primary" data-field="description" data-act="save" data-attr:aria-busy={ fieldExpr(noteBusy, "description") }><span class="tk-btn__label">Save</span></button>
-				<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-act="cancel"><span class="tk-btn__label">Cancel</span></button>
-			</div>
-		</div>
-		@issueNote("description")
-	</section>
+		<p class="wk-problem wk-editor-problem" role="alert" data-text="$_editor.problem"></p>
+		<div id={ DescEditorID } class="tk-issue__descmount" data-typing="description"></div>
+	</div>
+	@pickDialog()
 }
 
 templ issueRelated(m Issue) {
@@ -796,6 +832,9 @@ templ historyItem(m Issue, e tracker.Entry) {
 			<p class="tk-feed__meta">
 				@ui.RelativeTime(at(e.At), m.Now)
 				<span class="mono muted">{ "v" + i64(e.Version) }</span>
+				if e.Field == tracker.FieldDescription {
+					<a href={ templ.SafeURL(descVersionURL(m.ID, e.Version)) }>Compare</a>
+				}
 			</p>
 		</div>
 	</li>

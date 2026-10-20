@@ -2,6 +2,8 @@ package web
 
 import (
 	"context"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -28,12 +30,12 @@ type metrics struct {
 	guests       prometheus.GaugeFunc   // guests who acted in the last 24 hours
 	folded       prometheus.Counter     // events the fold deleted (NFR-43)
 	foldSeconds  prometheus.Histogram   // a fold command's time in the writer (NFR-43.3)
-	renders      *renderCounts          // renders by view kind (MP-11.4, renders.go)
+	opened       prometheus.Counter     // streams the hub took (NFR-76.2)
+	closed       prometheus.Counter     // streams that ended after it took them (NFR-76.2)
 }
 
-func newMetrics(db *sqlite.DB, hub *live.Hub) *metrics {
+func newMetrics(db *sqlite.DB) *metrics {
 	m := &metrics{
-		renders: newRenderCounts(hub),
 		limited: prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: namespace, Name: "rate_limited_total",
 			Help: "Requests answered 429, by rate-limit class."}, []string{"class"}),
 		refusals: prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: namespace, Name: "refusals_total",
@@ -54,6 +56,10 @@ func newMetrics(db *sqlite.DB, hub *live.Hub) *metrics {
 			Help: "Page edits the fold folded into snapshots."}),
 		foldSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{Namespace: namespace, Name: "fold_seconds",
 			Help: "How long one fold command held the writer.", Buckets: []float64{0.0005, 0.001, 0.002, 0.003, 0.004, 0.005, 0.0075, 0.01, 0.02, 0.05}}),
+		opened: prometheus.NewCounter(prometheus.CounterOpts{Namespace: namespace, Name: "streams_opened_total",
+			Help: "Streams the hub took and started to send on."}),
+		closed: prometheus.NewCounter(prometheus.CounterOpts{Namespace: namespace, Name: "streams_closed_total",
+			Help: "Streams that ended after the hub took them."}),
 		guests: prometheus.NewGaugeFunc(prometheus.GaugeOpts{Namespace: namespace, Name: "guests_active",
 			Help: "Guests who acted in the last 24 hours."}, func() float64 {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -83,5 +89,86 @@ func (m *metrics) reset(ok bool, took time.Duration) {
 // listener.
 func (s *Server) Collectors() []prometheus.Collector {
 	m := s.metrics
-	return []prometheus.Collector{m.limited, m.refusals, m.logins, m.editBatches, m.editors, m.moderations, m.resets, m.resetSeconds, m.guests, m.folded, m.foldSeconds, m.renders}
+	return []prometheus.Collector{m.limited, m.refusals, m.logins, m.editBatches, m.editors, m.moderations, m.resets, m.resetSeconds, m.guests, m.folded, m.foldSeconds,
+		m.opened, m.closed, newViewsCollector(s.hub)}
+}
+
+// viewsCollector reads the hub's renders by view key (MP-11.4, NFR-76.2)
+// and sums them by the key's kind, the part before its first colon, so
+// that the labels stay few whatever the ids.
+type viewsCollector struct {
+	hub              *live.Hub
+	watched, renders *prometheus.Desc
+}
+
+func newViewsCollector(hub *live.Hub) *viewsCollector {
+	return &viewsCollector{hub: hub,
+		watched: prometheus.NewDesc(namespace+"_views_watched", "Views watched now, by kind.", []string{"kind"}, nil),
+		renders: prometheus.NewDesc(namespace+"_view_renders", "Renders of the views watched now since each was first watched, by kind.", []string{"kind"}, nil),
+	}
+}
+
+func (c *viewsCollector) Describe(ch chan<- *prometheus.Desc) { ch <- c.watched; ch <- c.renders }
+
+func (c *viewsCollector) Collect(ch chan<- prometheus.Metric) {
+	if c.hub == nil {
+		return
+	}
+	watched, renders := map[string]int{}, map[string]int64{}
+	for key, n := range c.hub.Stats().RendersByKey {
+		k := keyKind(key)
+		watched[k]++
+		renders[k] += n
+	}
+	for k, n := range watched {
+		ch <- prometheus.MustNewConstMetric(c.watched, prometheus.GaugeValue, float64(n), k)
+		ch <- prometheus.MustNewConstMetric(c.renders, prometheus.GaugeValue, float64(renders[k]), k)
+	}
+}
+
+// keyKind is the kind of a view's key: "issue" of "issue:<id>", "other"
+// for a key that does not start with a short lower-case word.
+func keyKind(key string) string {
+	k, _, _ := strings.Cut(key, ":")
+	if k == "" || len(k) > 24 || strings.Trim(k, "abcdefghijklmnopqrstuvwxyz-") != "" {
+		return "other"
+	}
+	return k
+}
+
+// countedStream is a stream's ResponseWriter that counts the stream as
+// opened when the hub answers 200, and closed once it ends.
+type countedStream struct {
+	http.ResponseWriter
+	m      *metrics
+	opened bool
+}
+
+func (w *countedStream) WriteHeader(code int) {
+	if code == http.StatusOK && !w.opened {
+		w.opened = true
+		w.m.opened.Inc()
+	}
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *countedStream) Write(p []byte) (int, error) {
+	if !w.opened {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(p)
+}
+
+func (w *countedStream) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+func (w *countedStream) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
+func (w *countedStream) done() {
+	if w.opened {
+		w.m.closed.Inc()
+	}
 }

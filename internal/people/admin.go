@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/zweiundeins/lith/sqlite"
@@ -413,4 +415,63 @@ func ActiveGuests(ctx context.Context, q sqlite.Querier, since time.Time, limit 
 		out = append(out, g)
 	}
 	return out, rows.Err()
+}
+
+// Erasers delete what other packages keep of a person who is erased:
+// their notifications, their saved filters. Each registers from an init
+// function (RegisterEraser).
+var (
+	erasersMu sync.Mutex
+	erasers   []func(tx *writer.Tx, person string) error
+)
+
+// RegisterEraser adds what EraseAccount deletes besides the account.
+func RegisterEraser(f func(tx *writer.Tx, person string) error) {
+	erasersMu.Lock()
+	defer erasersMu.Unlock()
+	erasers = append(erasers, f)
+}
+
+// EraseAccount erases an account by a site admin (NFR-27.1): its row of
+// people and of accounts goes, and with them email, username, full name
+// and password hash; its login sessions and memberships are deleted, and
+// what the erasers keep of it. The events keep the person id alone
+// (NFR-26), so its changes show as by DeletedName from then on. The
+// security log records it by the id. An admin does not erase themselves.
+type EraseAccount struct {
+	Admin   Person
+	Account string
+	At      time.Time
+}
+
+func (c EraseAccount) Apply(tx *writer.Tx) error {
+	if err := requireAdmin(tx, c.Admin); err != nil {
+		return err
+	}
+	if c.Account == c.Admin.ID {
+		return &writer.Refusal{Msg: "You cannot erase your own account."}
+	}
+	if _, _, err := accountOf(tx, c.Account); err != nil {
+		return err
+	}
+	erasersMu.Lock()
+	list := slices.Clone(erasers)
+	erasersMu.Unlock()
+	for _, f := range list {
+		if err := f(tx, c.Account); err != nil {
+			return err
+		}
+	}
+	for _, q := range []string{
+		`DELETE FROM login_sessions WHERE person_id = ?`,
+		`DELETE FROM memberships WHERE person_id = ?`,
+		`DELETE FROM accounts WHERE person_id = ?`,
+		`DELETE FROM people WHERE id = ?`,
+	} {
+		if _, err := tx.Exec(q, c.Account); err != nil {
+			return err
+		}
+	}
+	tx.Touch(Topic, PersonTopic(c.Account), "projects", "spaces") // the members lists
+	return LogSecurity{Kind: EventErased, Outcome: OutcomeOK, Person: c.Account, Actor: c.Admin.ID, At: c.At}.Apply(tx)
 }

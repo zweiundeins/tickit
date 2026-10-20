@@ -93,6 +93,7 @@ type CommentItem struct {
 	wiki.Comment
 	Author  people.Person
 	HTML    string
+	Text    string // the body as plain text, for its author's Edit
 	Replies []CommentItem
 }
 
@@ -120,6 +121,23 @@ type EditorHost struct {
 	// Doc is the document at Base, for the GET only; frames leave the
 	// script empty and the morph keeps it.
 	Doc string
+	// Cmd is where its commits, presence and open go: /cmd/pages/<id>
+	// when empty. Label names its text area: "Page content" when empty.
+	Cmd, Label string
+}
+
+func (h EditorHost) cmd() string {
+	if h.Cmd == "" {
+		return "/cmd/pages/" + h.Page
+	}
+	return h.Cmd
+}
+
+func (h EditorHost) label() string {
+	if h.Label == "" {
+		return "Page content"
+	}
+	return h.Label
 }
 
 // VersionsProps is a page's history (FR-87.2).
@@ -177,7 +195,8 @@ func ownStyle(me people.Person, moderates, edits bool) templ.Component {
 			css += `.wk-edit{display:none}`
 		}
 		if people.ValidID(me.ID) {
-			css += `[data-author="` + me.ID + `"]>.wk-comment__actions .wk-own{display:inline-flex}`
+			css += `[data-author="` + me.ID + `"]>.wk-comment__actions .wk-own{display:inline-flex}` +
+				`[data-author="` + me.ID + `"]>.wk-comment__actions .wk-other{display:none}`
 		}
 		if moderates {
 			css += `.wk-mod{display:inline-flex}`
@@ -195,7 +214,7 @@ func ownStyle(me people.Person, moderates, edits bool) templ.Component {
 var (
 	wikiSignals = `{_wk: {create: {op: '', title: '', template: '', parent: '', msg: ''}, space: {op: '', key: '', name: '', description: '', msg: ''},` +
 		` move: {op: '', target: '', place: 'last', msg: ''}, label: {op: '', name: '', msg: ''}, watch: {op: ''}, trash: {op: '', msg: ''},` +
-		` comment: {op: '', body: '', to: '', toName: '', msg: ''}, cmod: {op: '', msg: ''}, version: {op: '', message: '', msg: ''}, restore: {op: '', msg: ''}}}`
+		` comment: {op: '', body: '', to: '', toName: '', msg: ''}, cmod: {op: '', msg: ''}, cedit: {op: '', id: '', body: '', msg: ''}, version: {op: '', message: '', msg: ''}, restore: {op: '', msg: ''}}}`
 
 	createSpace        = Act("_wk.space.op", "/cmd/spaces/create", "key: $_wk.space.key, name: $_wk.space.name, description: $_wk.space.description")
 	createSpaceSettled = Settle("_wk.space.op", "$_wk.space.msg = o.ok ? '' : o.msg")
@@ -228,6 +247,10 @@ var (
 	replyTo         = `$_wk.comment.to = el.dataset.comment, $_wk.comment.toName = el.dataset.name, document.getElementById('comment-body').focus()`
 	deleteComment   = Ask("Delete this comment? It cannot be brought back.", "Delete", Act("_wk.cmod.op", "/cmd/pages/comment/delete", "comment: el.dataset.comment"))
 	hideComment     = Act("_wk.cmod.op", "/cmd/pages/comment/hide", "comment: el.dataset.comment, hidden: el.dataset.hidden !== 'true'")
+	editComment     = `$_wk.cedit.id = el.dataset.comment, $_wk.cedit.body = el.dataset.body, $_wk.cedit.msg = ''`
+	saveComment     = `$_wk.cedit.body.trim() && ` + Act("_wk.cedit.op", "/cmd/pages/comment/edit", "comment: $_wk.cedit.id, body: $_wk.cedit.body")
+	ceditSettled    = Settle("_wk.cedit.op", "o.ok ? document.getElementById('comment-edit').close() : ($_wk.cedit.msg = o.msg)")
+	ceditFailed     = Failed("_wk.cedit.op")
 	cmodSettled     = Settle("_wk.cmod.op", "$_wk.cmod.msg = o.ok ? '' : o.msg")
 	cmodFailed      = Failed("_wk.cmod.op")
 	saveVersion     = Act("_wk.version.op", "/cmd/pages/save-version", "page: el.dataset.page, message: $_wk.version.message")

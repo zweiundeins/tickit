@@ -123,6 +123,9 @@ templ AdminAccountsTable(a AdminAccounts) {
 									} else if r.Person.ID != a.Me {
 										@ui.MenuItem(ui.MenuItemProps{Label: "Deactivate", Icon: "lock", Danger: true, Attrs: templ.Attributes{"data-account": r.Person.ID, "data-active": "false", "data-on:click": adminActive, "data-on:datastar-fetch": adminFailed}})
 									}
+									if r.Person.ID != a.Me {
+										@ui.MenuItem(ui.MenuItemProps{Label: "Erase…", Icon: "trash", Danger: true, Attrs: templ.Attributes{"data-account": r.Person.ID, "data-on:click": adminErase, "data-on:datastar-fetch": adminFailed}})
+									}
 								}
 							</td>
 						</tr>
@@ -355,6 +358,8 @@ func kindLabel(k string) string {
 		return "Deactivation"
 	case people.EventModeration:
 		return "Moderation"
+	case people.EventErased:
+		return "Account erased"
 	case demo.EventReset:
 		return "Demo reset"
 	}

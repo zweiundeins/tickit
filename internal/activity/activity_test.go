@@ -178,6 +178,15 @@ func TestFeeds(t *testing.T) {
 	if len(mine) != 1 || mine[0].Subject.Label != "WEB-1" {
 		t.Errorf("mine: %+v", mine)
 	}
+
+	// FR-15: a version of a description is an entry; two by one person in
+	// a row are one (FR-69.3).
+	e.must(tracker.SetDescription{By: e.by(rainy), Issue: a, Description: tracker.PlainDoc("Steps")})
+	e.must(tracker.SetDescription{By: e.by(rainy), Issue: a, Description: tracker.PlainDoc("Steps to reproduce")})
+	got, _ = e.feed(func(ctx context.Context, q sqlite.Querier) ([]Entry, bool, error) { return Project(ctx, q, web, 50) })
+	if len(got) != 4 || got[0] != r+" issue_described WEB-1 x2" {
+		t.Errorf("a description's versions: %q", got)
+	}
 }
 
 // FR-69.3: consecutive edits of one page by one person within 10 minutes

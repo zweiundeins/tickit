@@ -85,12 +85,16 @@ func BoardTopic(projectID string) string { return "board:" + projectID }
 
 var (
 	bound atomic.Pointer[events.Store]
-	own   = sync.OnceValue(func() *events.Store { return events.Must(events.New(Parts()...)) })
+	own   func() *events.Store // set in init: the description's Kind calls Store
 )
+
+func init() {
+	own = sync.OnceValue(func() *events.Store { return events.Must(events.New(Parts()...)) })
+}
 
 // Parts are the tracker's projectors, for the app's one event store.
 func Parts() []events.Part {
-	return []events.Part{projectsProjector, issuesProjector, commentsProjector, issueSearchProjector, commentSearchProjector}
+	return []events.Part{projectsProjector, issuesProjector, commentsProjector, issueSearchProjector, commentSearchProjector, descProjector}
 }
 
 // Bind gives the tracker's commands the app's event store, which holds
