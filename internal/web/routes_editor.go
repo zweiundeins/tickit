@@ -179,6 +179,12 @@ func (s *Server) openEditor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	if res.OK {
+		if err := s.w.Do(ctx, writer.Func(func(tx *writer.Tx) error { return wiki.WatchEditor(tx, a.Session, a.Tab, page, time.Now()) })); err != nil {
+			s.failAction(w, r, err)
+			return
+		}
+	}
 	vs, err := s.db.ViewValue(ctx, func(tx *sql.Tx) ([]live.View, error) {
 		return s.resolve(ctx, tx, a.By.Actor, wiki.EditorView(page, a.Tab))
 	})
