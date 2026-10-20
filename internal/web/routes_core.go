@@ -30,7 +30,8 @@ func (s *Server) routesCore() {
 	s.post("POST /cmd/people/rename", s.rename)
 	s.get("GET /privacy", http.HandlerFunc(s.privacy))
 	s.get("GET /robots.txt", http.HandlerFunc(robots))
-	s.get("GET /static/", s.static, s.static.URL("style.css"), "/static/nope.css")
+	s.post("POST /cmd/prefs", s.setPref)
+	s.get("GET /static/", s.static, s.static.URL(Bundle), "/static/nope.css")
 	s.get("GET /", http.HandlerFunc(s.notFound), "/no/such/page")
 }
 
@@ -42,7 +43,7 @@ func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) privacy(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, http.StatusOK, func(context.Context, sqlite.Querier) (Page, error) {
-		return Page{Title: "Privacy", Body: views.Privacy()}, nil
+		return Page{Title: "Privacy", Body: views.Privacy(), Width: "prose"}, nil
 	})
 }
 

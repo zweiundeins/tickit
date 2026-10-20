@@ -8,6 +8,7 @@ package web
 import (
 	"embed"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -22,6 +23,7 @@ import (
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/mbolli/tickit/internal/people"
+	"github.com/mbolli/tickit/internal/ui"
 )
 
 //go:embed static
@@ -50,6 +52,8 @@ type Server struct {
 	store    *events.Store
 	log      *slog.Logger
 	static   *edge.Static
+	files    fs.FS    // the embedded static files, before edge.Static
+	fonts    []string // URLs of the fonts a page preloads
 	sessions edge.Sessions
 	secure   bool
 	ttl      time.Duration
@@ -94,8 +98,19 @@ func New(cfg Config) (*Server, error) {
 		return nil, err
 	}
 	static.Add("lith/"+live.NewestFrame, js)
+	// The one stylesheet of every page and the favicon (docs/design-system.md).
+	css, err := BundleCSS(files, static.URL)
+	if err != nil {
+		return nil, fmt.Errorf("web: the stylesheet bundle: %w", err)
+	}
+	static.Add(Bundle, css)
+	static.Add(Mark, []byte(ui.MarkSVG()))
+	var fonts []string
+	for _, f := range Fonts {
+		fonts = append(fonts, static.URL(f))
+	}
 	s := &Server{
-		db: cfg.DB, w: cfg.W, hub: cfg.Hub, store: cfg.Store, log: cfg.Log, static: static,
+		db: cfg.DB, w: cfg.W, hub: cfg.Hub, store: cfg.Store, log: cfg.Log, static: static, files: files, fonts: fonts,
 		sessions: edge.Sessions{Secure: cfg.Secure},
 		secure:   cfg.Secure,
 		ttl:      cfg.SessionTTL,

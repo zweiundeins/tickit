@@ -41,10 +41,14 @@ func Notice(now time.Time) string {
 
 // Until says when the next reset comes: "next in 5 h", or in minutes
 // within the last hour.
-func Until(now time.Time) string {
+func Until(now time.Time) string { return "next in " + Remaining(now) }
+
+// Remaining is the time to the next reset: "5 h", or in minutes within
+// the last hour ("12 min").
+func Remaining(now time.Time) string {
 	d := NextReset(now).Sub(now)
 	if d < time.Hour {
-		return fmt.Sprintf("next in %d min", int((d+time.Minute-1)/time.Minute))
+		return fmt.Sprintf("%d min", int((d+time.Minute-1)/time.Minute))
 	}
-	return fmt.Sprintf("next in %d h", int((d+30*time.Minute)/time.Hour))
+	return fmt.Sprintf("%d h", int((d+30*time.Minute)/time.Hour))
 }

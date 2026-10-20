@@ -30,11 +30,15 @@ var Stylesheets = []string{
 	"css/prose.css",
 	"css/editor.css",
 	"css/board.css",
+	"css/app.css",
 	"css/utilities.css",
 }
 
 // Bundle is the name the joined stylesheets are served under.
 const Bundle = "css/tickit.css"
+
+// Mark is the favicon, tickit's mark (ui.MarkSVG).
+const Mark = "art/mark.svg"
 
 // Fonts are the font files a page preloads.
 var Fonts = []string{"fonts/jetbrains-mono.woff2", "fonts/pixelify-sans.woff2"}
@@ -114,22 +118,10 @@ func StarbaseScripts(files fs.FS, slugs ...string) ([]string, error) {
 	return out, nil
 }
 
-// designRoutes serves the styleguide at /design. It also adds what every
-// page of the design system loads to the static files: the stylesheet
-// bundle and the mark as the favicon (art/mark.svg). (Until the app's own
-// pages are built, they live here; New is the place for them then.)
+// designRoutes serves the styleguide at /design, with the bundle and the
+// favicon every page loads (New adds them).
 func (s *Server) designRoutes() {
-	files, err := fs.Sub(staticFiles, "static")
-	if err != nil {
-		panic(err)
-	}
-	css, err := BundleCSS(files, s.static.URL)
-	if err != nil {
-		panic("web: the stylesheet bundle: " + err.Error()) // embedded files: a build error
-	}
-	s.static.Add(Bundle, css)
-	s.static.Add("art/mark.svg", []byte(ui.MarkSVG()))
-	scripts, err := StarbaseScripts(files, styleguide.Components...)
+	scripts, err := StarbaseScripts(s.files, styleguide.Components...)
 	if err != nil {
 		panic(err)
 	}
@@ -148,7 +140,7 @@ func (s *Server) design(w http.ResponseWriter, r *http.Request, scripts []string
 		Nonce:     edge.Nonce(r.Context()),
 		CSS:       s.static.URL(Bundle),
 		DesignCSS: s.static.URL("css/design.css"),
-		Mark:      s.static.URL("art/mark.svg"),
+		Mark:      s.static.URL(Mark),
 		Datastar:  datastar,
 		ImportMap: string(im),
 		Now:       time.Now(),
@@ -158,9 +150,7 @@ func (s *Server) design(w http.ResponseWriter, r *http.Request, scripts []string
 			return "/design?" + v.Encode()
 		},
 	}
-	for _, f := range Fonts {
-		p.Fonts = append(p.Fonts, s.static.URL(f))
-	}
+	p.Fonts = s.fonts
 	for _, name := range scripts {
 		p.Scripts = append(p.Scripts, s.static.URL(name))
 	}

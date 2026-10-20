@@ -81,7 +81,8 @@ const problem = `evt.detail.argsRaw.status === '429' ? 'Too many changes at once
 // The rename form of the person menu (FR-121).
 var (
 	rename        = `$_rename.name.trim() && ` + Act("_rename.op", "/cmd/people/rename", "name: $_rename.name")
-	renameSettled = Settle("_rename.op", "$_rename.msg = o.ok ? 'Saved. Pages show it from their next load.' : o.msg")
+	renameSettled = Settle("_rename.op", "$_rename.ok = o.ok, $_rename.msg = o.ok ? 'Saved. Pages show it from their next load.' : o.msg")
+	renameKind    = `$_rename.msg ? ($_rename.ok ? 'ok' : 'refused') : false`
 	renameFailed  = Failed("_rename.op")
 )
 
@@ -95,6 +96,37 @@ const (
 	login        = `$_login.busy || ($_login.busy = true, $_login.problem = '', @post('/cmd/login', {payload: {email: $_login.email, password: $_login.password, next: new URLSearchParams(location.search).get('next') || '/'}}))`
 	loginDone    = `evt.detail.el === el && evt.detail.type === 'finished' && ($_login.busy = false)`
 	loginBusy    = `$_login.busy ? 'true' : false`
+	loginKind    = `$_login.problem ? 'refused' : false`
 	loginFailed  = `evt.detail.el === el && evt.detail.type === 'error' && ($_login.problem = evt.detail.argsRaw.status === '429' ? 'Too many attempts. Wait a minute.' : 'This did not go through. Try again in a moment.')`
 	loginSignals = `{_login: {email: '', password: '', problem: '', busy: false}}`
+)
+
+// The display menu (theme, style, density) posts one preference; the
+// stream brings the session's _prefs back, which applyPrefs puts on <html>
+// and prefPressed on the menu's buttons. Every value names its own
+// preference, so a button's value alone says whether it is pressed.
+var (
+	setPref        = Act("_display.op", "/cmd/prefs", "key: el.dataset.pref, value: el.dataset.value")
+	displaySettled = Settle("_display.op", "o.ok || ($_problem = o.msg)")
+	displayFailed  = Failed("_display.op")
+)
+
+const prefPressed = `[$_prefs.theme, $_prefs.style, $_prefs.density].includes(el.dataset.value) ? 'true' : 'false'`
+
+// applyPrefs, a data-effect, keeps <html> and the color-scheme meta on the
+// session's preferences.
+const applyPrefs = `document.documentElement.dataset.tkTheme = $_prefs.theme; document.documentElement.dataset.tkStyle = $_prefs.style; document.documentElement.dataset.tkDensity = $_prefs.density; document.querySelector('meta[name=color-scheme]').content = $_prefs.theme === 'system' ? 'light dark' : $_prefs.theme`
+
+// Dismissing the demo notice (DM-10.1) and the first-visit hint (DM-11)
+// is a preference; each hides when the stream brings it.
+var (
+	dismissDemo     = Act("_dismiss.op", "/cmd/prefs", "key: 'demo', value: 'hidden'")
+	dismissHint     = Act("_dismiss.op", "/cmd/prefs", "key: 'hint', value: 'hidden'")
+	dismissSettled  = Settle("_dismiss.op", "o.ok || ($_problem = o.msg)")
+	dismissFailed   = Failed("_dismiss.op")
+	dismissBusy     = Busy("_dismiss.op")
+	demoHidden      = `$_prefs.hideDemo`
+	hintHidden      = `$_prefs.hideHint`
+	reconnectHidden = `!$_stale`
+	problemHidden   = `!$_problem`
 )
