@@ -386,6 +386,21 @@ templ issueRelated(m Issue) {
 			@issueNote("link")
 			@issueNote("unlink")
 		</div>
+		<div class="tk-issue__group">
+			<h2 class="tk-eyebrow">Pages that mention this issue</h2>
+			if len(m.Pages) > 0 {
+				<ul class="tk-issue__refs" role="list">
+					for _, pg := range m.Pages {
+						<li>
+							@ui.PageLink(pg.ID, pg.Title, pg.URL(), false)
+							<span class="muted">{ pg.SpaceName }</span>
+						</li>
+					}
+				</ul>
+			} else {
+				<p class="muted">No page shows this issue yet. Type its key in a page to link it there.</p>
+			}
+		</div>
 	</section>
 }
 

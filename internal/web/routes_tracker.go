@@ -25,6 +25,7 @@ import (
 	"github.com/mbolli/tickit/internal/tabs"
 	"github.com/mbolli/tickit/internal/tracker"
 	"github.com/mbolli/tickit/internal/views"
+	"github.com/mbolli/tickit/internal/wiki"
 )
 
 // routesTracker registers projects, workflows, issues, their comments, links and history (FR-01 to FR-38, FR-65 to FR-70).
@@ -273,6 +274,9 @@ func loadIssue(ctx context.Context, q sqlite.Querier, id string, now time.Time) 
 		return views.Issue{}, err
 	}
 	m := views.Issue{Detail: d, Now: now}
+	if m.Pages, err = wiki.PagesMentioningIssue(ctx, q, id); err != nil { // FR-101
+		return m, err
+	}
 	project := d.ProjectID
 	if m.Workflow, err = tracker.ProjectWorkflow(ctx, q, project); err != nil {
 		return m, err

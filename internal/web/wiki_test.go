@@ -341,4 +341,12 @@ func TestChipsLive(t *testing.T) {
 	webtest.Next(t, read, `data-cat="todo">To Do</span>`)
 	e.Do(t, tracker.SetStatus{By: wikiBy(ada, "s1"), Issue: issue, Seen: 1 << 40, Status: tracker.StatusInReview})
 	webtest.Next(t, read, `data-cat="progress">In Review</span>`)
+	// FR-101: the issue lists the page, and stops when its chip goes.
+	if code, html := webtest.Get(t, c, e.URL+"/WEB-1"); code != http.StatusOK || !strings.Contains(html, `data-page="`+page+`"`) {
+		t.Errorf("FR-101.1: the issue page does not list the page: %d", code)
+	}
+	issueView := webtest.Listen(t, c, e.URL+"/stream?tab=itab&v=issue:"+issue, nil)
+	webtest.Next(t, issueView, `Pages that mention this issue`)
+	webtest.Post(t, c, e.URL+"/cmd/pages/"+page+"/commit", fmt.Sprintf(`{"tab":"tab1","epoch":%q,"base":%d,"ref":"c2","client":"0123456789ab","steps":[{"stepType":"replace","from":1,"to":2}]}`, h.Epoch, h.Version+1))
+	webtest.Next(t, issueView, `No page shows this issue yet`)
 }

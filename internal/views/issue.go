@@ -2,6 +2,7 @@ package views
 
 import (
 	"context"
+	"github.com/mbolli/tickit/internal/wiki"
 	"io"
 	"strconv"
 	"strings"
@@ -32,9 +33,12 @@ type Issue struct {
 	Comments   []Comment
 	DescHTML   string // the description rendered (doc.RenderHTML)
 	DescMarkup string // the description as markup, for editing it
-	History    []tracker.Entry
-	Activity   []tracker.ActivityItem
-	Now        time.Time
+	// Pages are the pages whose head document shows the issue as a chip
+	// (FR-101), live: the wiki touches the issue's topic.
+	Pages    []wiki.PageRef
+	History  []tracker.Entry
+	Activity []tracker.ActivityItem
+	Now      time.Time
 }
 
 // Comment is a comment with its body rendered and as markup.
