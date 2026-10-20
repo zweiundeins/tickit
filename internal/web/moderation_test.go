@@ -100,3 +100,55 @@ func TestModerateVersionsAndImages(t *testing.T) {
 		t.Error("the newest version was hidden")
 	}
 }
+
+// DM-08: any visitor reports something with a reason; moderators see the
+// open reports first, and hiding the thing or dismissing settles them.
+func TestReports(t *testing.T) {
+	e := seededEnv(t)
+	e.Account(t, "mo@example.com", "correct horse battery", people.Moderator)
+	mo, g := webtest.Client(t), webtest.Client(t)
+	e.Login(t, mo, "mo@example.com", "correct horse battery")
+	webtest.Get(t, g, e.URL+"/")
+	me := guest(t, e, g)
+	issue := guestIssue(t, e, me, "Buy cheap watches")
+	var page, key, title string
+	if err := e.DB.R.QueryRow(`SELECT p.id, s.key, p.title FROM pages p JOIN spaces s ON s.id = p.space_id WHERE p.home = 0 ORDER BY p.id LIMIT 1`).Scan(&page, &key, &title); err != nil {
+		t.Fatal(err)
+	}
+	if _, html := webtest.Get(t, g, e.URL+wiki.PageURL(key, page, title)); !strings.Contains(html, `data-report-kind="page"`) || !strings.Contains(html, `id="report"`) {
+		t.Error("the page offers no Report")
+	}
+	code, _ := webtest.Post(t, g, e.URL+"/cmd/report", `{"tab":"tab1","op":"r0","kind":"page","id":"`+page+`","reason":"  "}`)
+	if o := outcome(t, e, people.Person{}, "r0"); code != http.StatusNoContent || o.OK || o.Field != "reason" {
+		t.Errorf("a report without a reason: %d %+v", code, o)
+	}
+	for op, body := range map[string]string{
+		"r1": `{"tab":"tab1","op":"r1","kind":"page","id":"` + page + `","reason":"Wrong figures"}`,
+		"r2": `{"tab":"tab1","op":"r2","kind":"issue","id":"` + issue + `","reason":"Spam"}`,
+	} {
+		if code, b := webtest.Post(t, g, e.URL+"/cmd/report", body); code != http.StatusNoContent {
+			t.Fatalf("report %s: %d %s", op, code, b)
+		}
+	}
+	stream := webtest.Listen(t, mo, e.URL+"/stream?tab=mt&v=moderation:", nil)
+	frame := webtest.Next(t, stream, "Open reports")
+	if i, j := strings.Index(frame, "Open reports"), strings.Index(frame, "Newest from visitors"); i < 0 || j < i || !strings.Contains(frame, "Wrong figures") || !strings.Contains(frame, "Spam") {
+		t.Errorf("the open reports do not come first: %d %d", i, j)
+	}
+	if code, _ := webtest.Post(t, mo, e.URL+"/cmd/moderation/act", `{"tab":"mt","op":"m1","action":"hide","kind":"issue","id":"`+issue+`","reason":"spam"}`); code != http.StatusNoContent {
+		t.Fatalf("hide: %d", code)
+	}
+	var report int64
+	e.DB.R.QueryRow(`SELECT id FROM reports WHERE kind = 'page' AND closed_at IS NULL`).Scan(&report)
+	if code, _ := webtest.Post(t, mo, e.URL+"/cmd/moderation/dismiss", `{"tab":"mt","op":"m2","report":`+strconv.FormatInt(report, 10)+`}`); code != http.StatusNoContent {
+		t.Fatalf("dismiss: %d", code)
+	}
+	for outcome, n := range map[string]int{"acted": 1, "dismissed": 1} {
+		if got := rowCount(t, e, `SELECT count(*) FROM reports WHERE outcome = ? AND closed_at IS NOT NULL`, outcome); got != n {
+			t.Errorf("%d reports %s", got, outcome)
+		}
+	}
+	if code, _ := webtest.Post(t, g, e.URL+"/cmd/moderation/dismiss", `{"tab":"tab1","op":"r3","report":1}`); code != http.StatusForbidden {
+		t.Errorf("a guest dismisses a report: %d", code)
+	}
+}

@@ -58,6 +58,9 @@ func init() {
 			return title, err
 		},
 		Newest: newestPages,
+		Scope: func(tx *writer.Tx, id string) (access.Scope, error) {
+			return scopeOf(tx, `SELECT 'space', space_id FROM pages WHERE id = ?`, id)
+		},
 	})
 	// DM-07.1: a version a visitor's edits cut; its id is "<page>.<number>".
 	RegisterModerated(Moderated{
@@ -74,6 +77,10 @@ func init() {
 			return wiki.VersionLabel(tx, page, n)
 		},
 		Newest: newestVersions,
+		Scope: func(tx *writer.Tx, id string) (access.Scope, error) {
+			page, _ := versionID(id)
+			return scopeOf(tx, `SELECT 'space', space_id FROM pages WHERE id = ?`, page)
+		},
 	})
 	// DM-07.1: an image of the library, hidden in every page that shows it.
 	RegisterModerated(Moderated{

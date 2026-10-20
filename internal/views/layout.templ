@@ -55,6 +55,7 @@ templ Layout(s Shell) {
 			if !s.Prefs.HideHint {
 				@firstVisitHint()
 			}
+			@ReportDialog()
 			<div class="tk-float">
 				@DemoAlert(s.DemoAlert)
 				@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Icon: "clock", Live: true, Class: "tk-reconnecting", Attrs: templ.Attributes{"id": "reconnecting", "hidden": true, "data-attr:hidden": reconnectHidden}}) {

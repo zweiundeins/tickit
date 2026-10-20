@@ -178,7 +178,8 @@ func ownStyle(me people.Person, moderates, edits bool) templ.Component {
 			css += `.wk-edit{display:none}`
 		}
 		if people.ValidID(me.ID) {
-			css += `[data-author="` + me.ID + `"]>.wk-comment__actions .wk-own{display:inline-flex}`
+			css += `[data-author="` + me.ID + `"]>.wk-comment__actions .wk-own{display:inline-flex}` +
+				`[data-author="` + me.ID + `"]>.wk-comment__actions .wk-other{display:none}`
 		}
 		if moderates {
 			css += `.wk-mod{display:inline-flex}`

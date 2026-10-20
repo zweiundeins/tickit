@@ -140,6 +140,8 @@ var secCases = []secCase{
 		f.client(wGuest)
 		return "/cmd/moderation/block", map[string]any{"person": f.p[wGuest].ID, "reason": "spam"}
 	}},
+	{name: "moderation/dismiss", pattern: "POST /cmd/moderation/dismiss", need: moderator, guard: true, outcome: true, by: wMod, open: true, req: at("/cmd/moderation/dismiss", "report", "#report")},
+	{name: "report", pattern: "POST /cmd/report", need: read, guard: true, outcome: true, by: wViewer, req: at("/cmd/report", "kind", "issue", "id", "@issue", "reason", "Spam")},
 	{name: "moderation/unblock", pattern: "POST /cmd/moderation/unblock", need: moderator, guard: true, outcome: true, by: wMod, open: true, targets: []string{"person"}, req: func(f *fixture, open bool) (string, map[string]any) {
 		f.client(wBlocked)
 		return "/cmd/moderation/unblock", map[string]any{"person": f.p[wBlocked].ID}
