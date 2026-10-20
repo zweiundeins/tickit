@@ -280,7 +280,8 @@ func (s *Server) failAction(w http.ResponseWriter, r *http.Request, err error) {
 const NotConnected = "This tab is not connected. Reload the page."
 
 // connected reports whether the tab's stream is open, waiting up to
-// Config.StreamWait for it, and answers 409 otherwise. An action that
+// Config.StreamWait for it, and answers 409 otherwise, or 503 once the hub
+// has stopped. An action that
 // stores tab state checks it before its command (lith's live.Hub.HasStream).
 func (s *Server) connected(w http.ResponseWriter, r *http.Request, actor people.Person, tab string) bool {
 	id := streamID(actor, tab)
@@ -300,6 +301,9 @@ func (s *Server) connected(w http.ResponseWriter, r *http.Request, actor people.
 			continue
 		case <-deadline.C:
 		case <-r.Context().Done():
+		case <-s.hub.Done(): // a deploy: no stream comes, and the shutdown waits for this
+			http.Error(w, "The server is restarting. Try again in a moment.", http.StatusServiceUnavailable)
+			return false
 		}
 		http.Error(w, NotConnected, http.StatusConflict)
 		return false

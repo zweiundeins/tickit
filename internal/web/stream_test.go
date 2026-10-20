@@ -371,3 +371,20 @@ func TestActionWaitsForItsStream(t *testing.T) {
 	}
 	webtest.Next(t, events, `"op1":{"ok":true`)
 }
+
+// NFR-42: once the hub stops, as on a deploy, an action waiting for its
+// tab's stream answers 503 at once, which Datastar retries, rather than
+// holding up the shutdown for the wait.
+func TestActionAfterTheHubStops(t *testing.T) {
+	e := webtest.StartWith(t, webtest.Options{StreamWait: 10 * time.Second})
+	c := bare(t)
+	webtest.Get(t, c, e.URL+"/")
+	e.StopStreams()
+	start := time.Now()
+	if code, _ := webtest.Post(t, c, e.URL+"/cmd/people/rename", `{"tab":"tab1","op":"op1","name":"Ada"}`); code != http.StatusServiceUnavailable {
+		t.Errorf("an action after the hub stopped: %d", code)
+	}
+	if took := time.Since(start); took > time.Second {
+		t.Errorf("it answered after %v", took)
+	}
+}
