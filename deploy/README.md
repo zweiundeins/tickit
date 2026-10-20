@@ -10,3 +10,4 @@
 - `observability/`: the metrics target, the blackbox probes, the Alloy file for the journal and the access log, and tickit's Grafana alert rules.
 - `setup-host.sh`: installs the files in `observability/` into the folders the host's Prometheus, Alloy and Grafana load, and with a key, the user CI deploys as. It never restarts tickit.
 - `smoke-test.sh`: runs a built binary and checks its version, probes, metrics, backup and stop (`go tool task smoke`).
+- `security-smoke.sh`: the security headers, the cookie, robots.txt, no debug routes and refused cross-site POSTs, on a built binary (`go tool task security`) or on the running site given its URL (`bash deploy/security-smoke.sh https://tickit.zweiundeins.gmbh`).

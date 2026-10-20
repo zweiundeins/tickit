@@ -25,38 +25,36 @@ The process listens on `127.0.0.1:7105` for Caddy and serves `/metrics` on `127.
 
 ## First install
 
-As root on the host, with the binary from `go tool task build` and a copy of `deploy/` in the current directory.
+As root on the host, with the binary from `go tool task build` and a copy of `deploy/` in the current directory. On libretto this ran on 2026-10-20 (see [The cut-over of 2026-10-20](#the-cut-over-of-2026-10-20)); a new host starts at [Units, settings and the first deploy](#units-settings-and-the-first-deploy).
 
-### Moving the old tickit aside
+### The user
 
-The host ran the previous tickit as the same unit name, from `/opt/tickit`, as the user `tickit`. The rewrite does not read its data. Stop it and keep its folder:
+The unit runs as the system user `tickit`, with its home in the state directory:
 
 ```sh
-systemctl stop tickit
-mv /opt/tickit /opt/tickit-v1
-install -d -m 0755 -o root -g root /opt/tickit
+id tickit || useradd --system --home /var/lib/tickit --shell /usr/sbin/nologin tickit
 usermod -d /var/lib/tickit tickit
+install -d -m 0755 -o root -g root /opt/tickit
 ```
-
-The user `tickit` stays. On a host without it: `useradd --system --home /var/lib/tickit --shell /usr/sbin/nologin tickit`.
 
 ### Units, settings and the first deploy
 
 ```sh
 install -m 0644 tickit.service tickit-backup.service tickit-backup.timer /etc/systemd/system/
-install -D -m 0600 -o root -g root tickit.env.example /etc/tickit/tickit.env
+install -d -m 0700 -o root -g root /etc/tickit
+install -m 0600 -o root -g root tickit.env.example /etc/tickit/tickit.env
 install -m 0755 tickit-deploy /usr/local/bin/
 systemctl daemon-reload
-systemctl enable tickit.service tickit-backup.timer
+systemctl enable tickit.service
+systemctl enable --now tickit-backup.timer
 tickit-deploy ./tickit
-systemctl start tickit-backup.timer
 ```
 
-systemd reads the env file as root before it starts the process, so mode 0600 root:root is enough. `tickit-deploy` creates the database on the first start and runs the migrations.
+systemd reads the env file as root before it starts the process, so mode 0600 root:root is enough. `tickit-deploy` creates the database on the first start and runs the migrations. Until the binary is in place, `systemd-analyze verify` reports `/opt/tickit/tickit is not executable`; that is expected. Without `--now` the timer stays inactive until the next boot, and `systemctl list-timers tickit-backup.timer` lists nothing.
 
 ### The Caddy block
 
-DNS: `tickit.zweiundeins.gmbh` has A and AAAA records pointing at the host since the move of 2026-10-12. Caddy asks for the certificate when it loads the block, so on another host the records come first.
+DNS: `tickit.zweiundeins.gmbh` has an A record pointing at the host (179.237.86.212). Caddy asks for the certificate when it loads the block, so on another host the records come first.
 
 ```sh
 install -m 0644 tickit.caddy /etc/caddy/sites/
@@ -64,7 +62,7 @@ runuser -u caddy -- env HOME=/var/lib/caddy caddy validate --config /etc/caddy/C
 systemctl reload caddy
 ```
 
-`caddy validate` runs as the caddy user: run as root, it creates the access log owned by root and the next reload fails. The block replaces the old one, which compressed the streams and served `/static` and `/uploads` from disk. The new one only proxies: tickit compresses and serves everything itself and sets its own security headers.
+`caddy validate` runs as the caddy user: run as root, it creates the access log owned by root and the next reload fails. The block only proxies: tickit compresses and serves everything itself and sets its own security headers, so the block has no `encode` and no file handlers.
 
 ### Monitoring drop-ins
 
@@ -74,9 +72,24 @@ bash setup-host.sh
 
 `setup-host.sh` installs the four files in `observability/` where the host's Prometheus, Alloy and Grafana load them, each only if that service is installed. It reloads Alloy and puts the old file back if Alloy refuses the new one, reloads Grafana's alert rules through its admin API (or says to restart Grafana when it has no admin password), and never restarts tickit. It also removes the old `/etc/systemd/system/tickit.service.d/listen.conf` once the new unit is installed, since the unit itself keeps tickit on loopback. Run it again after changing a file in `observability/`.
 
-### A restore, once, before the cut-over
+### The demo content and the admin account
 
-Take a copy and restore it as [Restoring a copy](#restoring-a-copy) describes, then check that the site answers (NFR-70). The procedure is then known to work on this host before anybody depends on it.
+A new database stays empty until the first reset. Seed it once, with the server stopped, then create the site admin:
+
+```sh
+systemctl stop tickit
+runuser -u tickit -- /opt/tickit/tickit seed -db /var/lib/tickit/tickit.db
+systemctl start tickit
+(umask 077; tr -dc A-Za-z0-9 </dev/urandom | head -c 32 > /etc/tickit/admin-password)
+runuser -u tickit -- /opt/tickit/tickit account create -db /var/lib/tickit/tickit.db \
+	-email admin@zweiundeins.gmbh -username admin -name 'Site Admin' -role admin < /etc/tickit/admin-password
+```
+
+The seed takes about 0.3 s on libretto. `/etc/tickit/admin-password` is root:root, mode 0600, and the only copy of the admin's password.
+
+### A restore, once
+
+Take a copy and restore it as [Restoring a copy](#restoring-a-copy) describes, then check that the site answers (NFR-70, acceptance 12.11). The procedure is then known to work on this host before anybody depends on it. On libretto this is still to do.
 
 ### Deploys from CI
 
@@ -104,9 +117,16 @@ unset pw
 
 ## Deploying
 
+A new release, from a clean checkout of the commit to ship, on your machine:
+
 ```sh
-tickit-deploy ./tickit       # or: ssh tickit-deploy@<host> < tickit
+go tool task build                          # ./tickit: CGO_ENABLED=0, -trimpath, the version from git describe
+ssh libretto sudo tickit-deploy - < tickit  # or, on the host: tickit-deploy ./tickit
+curl -fsS https://tickit.zweiundeins.gmbh/healthz
+bash deploy/security-smoke.sh https://tickit.zweiundeins.gmbh
 ```
+
+CI deploys the same way as the restricted user: `ssh tickit-deploy@<host> < tickit` ([Deploys from CI](#deploys-from-ci)). A dirty tree builds a version ending in `-dirty`, which `/healthz` then reports.
 
 `tickit-deploy`:
 
@@ -170,6 +190,17 @@ With the database lost, the latest copy brings back the staff accounts and the m
 The demo resets every night at 04:00 Europe/Zurich (DM-03). The app schedules it itself, so the host needs no timer or cron job for it. Ten minutes before, every open page says "The demo resets in 10 minutes. Your changes will be deleted."; while it runs, actions answer 503 and pages say "The demo is resetting". It deletes every visitor's issues, pages, comments, notifications, tab state, events and guests, keeps the staff accounts with their logins, the display preferences of every session, the security log, the moderation log and the blocks, then writes the seed again. It takes well under a second (`benchmarks/RESULTS.md`). The reset counts itself in `tickit_resets_total{outcome}`, both outcomes from 0 on, which the alert rules read, and its duration in `tickit_reset_seconds`; a failed reset is logged at ERROR with its cause, and the admin page's Demo tab lists the last resets.
 
 A site admin resets by hand with "Reset now" on `/admin/demo`. A new database stays empty until the first reset: after the first install and its admin account, log in and use "Reset now". In development, `serve -dev` seeds an empty database at startup, and `tickit seed -db data/tickit.db` seeds a new one (`-force` empties one first, as the reset does, and keeps its staff accounts).
+
+## The cut-over of 2026-10-20
+
+The old demo (Go with an embedded NATS, `/opt/tickit/bin/web` on `*:7105`, five SQLite files in `/opt/tickit/data`) served `tickitdemo.zweiundeins.gmbh` until 2026-10-20. The rewrite imports nothing of it (acceptance 12.13, Q4). On libretto:
+
+1. `systemctl stop tickit` and `systemctl disable tickit`. Its embedded NATS ran inside the same process (a random port, 34221), so stopping the unit ended it; the host's `nats.service` belongs to php-via and stays.
+2. One archive, root:root, mode 0600: `/var/backups/tickit-old-2026-10-20.delete-after-2026-11-19.tar.zst`, with a README beside it. It holds `/opt/tickit` (data, NATS store, binaries, source), `/etc/tickit/env`, the old unit and its `listen.conf`, `tickitdemo.caddy`, `/etc/prometheus/targets/tickitdemo.yml`, `/etc/alloy/tickitdemo.alloy` and the old access logs. Delete both files on or after 2026-11-19.
+3. Removed: `/etc/alloy/tickitdemo.alloy` (then `alloy validate /etc/alloy` and Alloy's reload), `/etc/prometheus/targets/tickitdemo.yml`, `/opt/tickit`, `/etc/tickit/env`, `/var/log/caddy/tickitdemo-access*.log*` and `/var/log/caddy/tickit.log`; `setup-host.sh` removed `tickit.service.d/listen.conf`.
+4. The steps of [First install](#first-install), then `tickitdemo.caddy` out and `tickit.caddy` in before one `caddy validate` and `systemctl reload caddy`.
+
+`tickitdemo.zweiundeins.gmbh` has no site block since: its DNS record still points at the host, and Caddy ends the TLS handshake with an internal error.
 
 ## Metrics, probes, logs and alerts
 
