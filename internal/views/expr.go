@@ -39,6 +39,11 @@ const alive = `$_ping > 0 && @post('/alive?tab=' + $_tab, {requestCancellation: 
 // at once. $_input is when it last reported.
 const inputSeen = `Date.now() - $_input > 60000 && ($_input = Date.now(), @post('/cmd/input', {payload: {tab: $_tab, op: ` + newOp + `}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0}).catch(() => {}))`
 
+// revoked loads the page again when the person may no longer read one of
+// its views (NFR-01.2): the server answers it as it would anyone without
+// the right.
+const revoked = `$_revoked && location.reload()`
+
 // startStream is the stream element's data-init.
 const startStream = `$_beat = Date.now(); ` + openStream
 

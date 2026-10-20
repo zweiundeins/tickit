@@ -38,6 +38,7 @@ templ Layout(s Shell) {
 			<div id={ StreamID } hidden data-init={ startStream } data-effect={ beat } data-on-interval__duration.10s={ watchdog } data-on:datastar-fetch={ streamFailed }></div>
 			<span hidden data-effect={ displaySettled + "; " + dismissSettled }></span>
 			<span hidden data-effect={ alive }></span>
+			<span hidden data-effect={ revoked }></span>
 			<span
 				hidden
 				data-init={ inputSeen }

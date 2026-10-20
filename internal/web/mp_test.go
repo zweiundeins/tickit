@@ -13,7 +13,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/zweiundeins/lith/writer"
 
+	"github.com/zweiundeins/tickit/internal/access"
 	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tabs"
+	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/views"
 	"github.com/zweiundeins/tickit/internal/web"
 	"github.com/zweiundeins/tickit/internal/web/webtest"
@@ -295,4 +298,87 @@ func TestSpaceTreePresence(t *testing.T) {
 			break
 		}
 	}
+}
+
+// NFR-01.2: removed from a closed project, a person's open pages stop
+// showing its issues at once: the issue page's stream is told to load
+// again (and the page then answers 404), and the issue list's frame no
+// longer holds the issue.
+func TestRemovedMemberViews(t *testing.T) {
+	e := webtest.Start(t)
+	ownerID := e.Account(t, "owner@example.com", "correct horse battery", people.NoRole)
+	owner := webtest.Client(t)
+	e.Login(t, owner, "owner@example.com", "correct horse battery")
+	found, err := people.Lookup(t.Context(), e.DB.R, ownerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	by := func(op string) tabs.By { return tabs.By{Actor: found[ownerID], Op: op, At: time.Now()} }
+	project, issue := tracker.NewID(), tracker.NewID()
+	e.Do(t, tracker.CreateProject{By: by("p1"), ID: project, Key: "SEC", Name: "Secret", Open: false})
+	e.Do(t, tracker.CreateIssue{By: by("i1"), ID: issue, Project: project, Type: tracker.Task, Summary: "The secret plan"})
+	bob := webtest.Client(t)
+	me := guest(t, e, bob)
+	webtest.Post(t, bob, e.URL+"/cmd/people/rename", `{"tab":"bob0","op":"r1","name":"Bob Member"}`)
+	e.Do(t, tracker.SetProjectMember{By: by("m1"), Project: project, Person: me.ID, Role: access.Member})
+
+	code, page := webtest.Get(t, bob, e.URL+"/SEC-1")
+	if code != http.StatusOK {
+		t.Fatalf("the member's issue page: %d", code)
+	}
+	issuePage := webtest.Listen(t, bob, e.URL+"/stream?tab=bob1&v=issue:"+issue, nil)
+	webtest.Next(t, issuePage, "The secret plan")
+	_, page = webtest.Get(t, bob, e.URL+"/issues?sort=key")
+	spec := regexp.MustCompile(`list:[A-Za-z0-9_.-]+`).FindString(page)
+	if spec == "" {
+		t.Fatal("no list view in the list's page")
+	}
+	list := webtest.Listen(t, bob, e.URL+"/stream?tab=bob2&v="+spec, nil)
+	webtest.Next(t, list, "The secret plan")
+
+	if code, body := webtest.Post(t, owner, e.URL+"/cmd/projects/member/remove", `{"tab":"own1","op":"x1","project":"SEC","person":"`+me.ID+`"}`); code != http.StatusNoContent {
+		t.Fatalf("remove: %d %s", code, body)
+	}
+	start := time.Now()
+	webtest.Next(t, issuePage, `"_revoked":true`)
+	for {
+		ev := webtest.Next(t, list, `id="issue-list"`)
+		if !strings.Contains(ev, "The secret plan") {
+			break
+		}
+	}
+	if d := time.Since(start); d > 500*time.Millisecond {
+		t.Errorf("the views changed %v after the removal", d)
+	}
+	if code, _ := webtest.Get(t, bob, e.URL+"/SEC-1"); code != http.StatusNotFound {
+		t.Errorf("the issue page loaded again: %d", code)
+	}
+	// The person's other views stay: the issue list's page keeps its stream.
+	if !e.Hub.HasStream(me.ID + ".bob2") {
+		t.Error("the list's stream ended")
+	}
+}
+
+// NFR-01.2: a change of role applies to the person's open pages of the
+// project at once: they load again with what the new role may do, while
+// pages elsewhere keep their streams.
+func TestRoleChangeReloads(t *testing.T) {
+	e := webtest.Start(t)
+	seedProbes(t, e)
+	ownerID := e.Account(t, "owner@example.com", "correct horse battery", people.NoRole)
+	owner := webtest.Client(t)
+	e.Login(t, owner, "owner@example.com", "correct horse battery")
+	e.Do(t, tracker.SetProjectMember{By: byOf(people.Seeded[0], "m0"), Project: probeWeb, Person: ownerID, Role: access.Admin})
+	bobID := e.Account(t, "bob@example.com", "correct horse battery", people.NoRole)
+	bob := webtest.Client(t)
+	e.Login(t, bob, "bob@example.com", "correct horse battery")
+	issuePage := webtest.Listen(t, bob, e.URL+"/stream?tab=bob1&v=issue:"+web.ProbeIssue, nil)
+	webtest.Next(t, issuePage, `id="issue-main"`)
+	elsewhere := webtest.Listen(t, bob, e.URL+"/stream?tab=bob2&v=", nil)
+	webtest.Next(t, elsewhere, `"_outcomes"`)
+	if code, body := webtest.Post(t, owner, e.URL+"/cmd/projects/member", `{"tab":"own1","op":"x1","project":"WEB","person":"`+bobID+`","role":"viewer"}`); code != http.StatusNoContent {
+		t.Fatalf("set role: %d %s", code, body)
+	}
+	webtest.Next(t, issuePage, `"_revoked":true`)
+	webtest.Silent(t, elsewhere, `_revoked`, 200*time.Millisecond)
 }

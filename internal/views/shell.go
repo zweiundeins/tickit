@@ -106,7 +106,7 @@ func jsString(s string) string {
 func signals(s Shell) string {
 	prefs, _ := json.Marshal(s.Prefs.Normal())
 	return "{_tab: " + jsString(s.Tab) + ", _views: " + jsString(strings.Join(s.Views, ",")) + ", _slow: " + slowLink +
-		", _outcomes: {}, _ping: 0, _beat: 0, _input: 0, _stale: false, _goto: '', _problem: '', _prefs: " + string(prefs) +
+		", _outcomes: {}, _ping: 0, _beat: 0, _input: 0, _revoked: false, _stale: false, _goto: '', _problem: '', _prefs: " + string(prefs) +
 		", _display: {op: ''}, _dismiss: {op: ''}, _rename: {op: '', name: '', msg: '', ok: false}}"
 }
 

@@ -19,6 +19,7 @@ import (
 	"github.com/zweiundeins/lith/live"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/sse"
+	"github.com/zweiundeins/lith/writer"
 
 	"github.com/zweiundeins/tickit/internal/access"
 	"github.com/zweiundeins/tickit/internal/people"
@@ -309,8 +310,24 @@ func (s *Server) setMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if id, ok := s.projectID(w, r, req.Project); ok {
-		s.act(w, r, a, tracker.SetProjectMember{By: a.By, Project: id, Person: req.Person, Role: access.Role(req.Role)})
+		s.actMember(w, r, a, id, req.Person, tracker.SetProjectMember{By: a.By, Project: id, Person: req.Person, Role: access.Role(req.Role)})
 	}
+}
+
+// actMember is act for a change of a person's membership, which then
+// applies to the person's open views (NFR-01.2, rescope.go).
+func (s *Server) actMember(w http.ResponseWriter, r *http.Request, a action, project, person string, cmd writer.Command) {
+	res, ok := s.run(w, r, a, cmd)
+	switch {
+	case !ok:
+		return
+	case res.Denied:
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	case res.OK && !res.replayed:
+		s.rescope(r.Context(), person, project)
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) removeMember(w http.ResponseWriter, r *http.Request) {
@@ -323,7 +340,7 @@ func (s *Server) removeMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if id, ok := s.projectID(w, r, req.Project); ok {
-		s.act(w, r, a, tracker.RemoveProjectMember{By: a.By, Project: id, Person: req.Person})
+		s.actMember(w, r, a, id, req.Person, tracker.RemoveProjectMember{By: a.By, Project: id, Person: req.Person})
 	}
 }
 
