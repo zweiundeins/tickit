@@ -51,7 +51,7 @@ templ CreateIssueDialog(p CreateIssueProps) {
 				@ui.Field(fs) {
 					@ui.Input(ui.InputProps{ID: fs.ID, Required: true, MaxLength: tracker.MaxSummary, DescribedBy: fs.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_new.summary", "autofocus": true, "data-attr:readonly": "$_new.op !== ''"}})
 				}
-				{{ fd := ui.FieldProps{ID: "create-description", Label: "Description", Optional: true, Hint: descHint, ErrorAttrs: createError("description")} }}
+				{{ fd := ui.FieldProps{ID: "create-description", Label: "Description", Optional: true, Hint: markupHint, ErrorAttrs: createError("description")} }}
 				@ui.Field(fd) {
 					@ui.Textarea(ui.TextareaProps{ID: fd.ID, Rows: 4, DescribedBy: fd.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_new.description", "data-attr:readonly": "$_new.op !== ''"}})
 				}

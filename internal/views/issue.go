@@ -331,5 +331,6 @@ func joinComma(list []string) string { return strings.Join(list, ", ") }
 // The hints under the text fields: what the markup reads.
 const (
 	descHint    = "**bold**, _italic_, `code`, [a link](https://…), - lists, [[WEB-12]] for an issue, @ and a person's id to mention them. Ctrl Enter or a click outside saves, Escape cancels."
+	markupHint  = "**bold**, _italic_, `code`, [a link](https://…), - lists, [[WEB-12]] for an issue, @ and a person's id to mention them."
 	commentHint = "**bold**, _italic_, `code`, links, - lists, @ to mention someone, [[WEB-12]] for an issue. Ctrl Enter sends."
 )

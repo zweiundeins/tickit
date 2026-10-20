@@ -216,7 +216,7 @@ func CreateIssueDialog(p CreateIssueProps) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				fd := ui.FieldProps{ID: "create-description", Label: "Description", Optional: true, Hint: descHint, ErrorAttrs: createError("description")}
+				fd := ui.FieldProps{ID: "create-description", Label: "Description", Optional: true, Hint: markupHint, ErrorAttrs: createError("description")}
 				templ_7745c5c3_Var9 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 					templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 					templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)

@@ -178,17 +178,29 @@
 
 		& li {
 			display: flex;
-			flex-wrap: wrap;
 			align-items: center;
 			gap: var(--tk-space-2);
 			min-inline-size: 0;
+
+			& .issue-chip {
+				min-inline-size: 0;
+			}
+
+			& > .tk-tip:last-child {
+				margin-inline-start: auto;
+			}
 		}
 	}
 
 	.tk-issue__wording {
+		flex: none;
 		color: var(--tk-text-2);
 		font-size: var(--tk-text-sm);
 		min-inline-size: 7rem;
+
+		@container page (width < 30rem) {
+			min-inline-size: 0;
+		}
 	}
 
 	.tk-issue__addrow {
