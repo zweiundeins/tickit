@@ -29,9 +29,11 @@
 // # Reads
 //
 // Queries take a sqlite.Querier (a GET's transaction, a render's, a
-// command's) and read the projections: ProjectByKey, Projects, IssueByKey,
-// Issue, Board, Backlog, Search, Comments, Labels, Assignable,
-// EpicChildren, History, Activity and StateAt.
+// command's) and read the projections: ProjectByKey, ProjectByID,
+// Projects, Readable, Statuses, Components, Sprints, IssueByKey,
+// IssueDetail, Watchers, EpicChildren, Epics, Board, Backlog, Search,
+// Comments, Labels, Assignable, SavedFilters; History, Activity and
+// StateAt read an issue's own stream.
 package tracker
 
 import (
@@ -180,14 +182,6 @@ func eventMeta[K events.Key, E any](ctx context.Context, q sqlite.Querier, id ev
 		return r.Meta, nil
 	}
 	return events.Meta{}, nil
-}
-
-// querier returns a render's querier when ctx carries one, else q.
-func querier(ctx context.Context, q sqlite.Querier) sqlite.Querier {
-	if wq, ok := sqlite.QuerierFrom(ctx); ok {
-		return wq
-	}
-	return q
 }
 
 func millis(t time.Time) int64 { return t.UnixMilli() }
