@@ -171,8 +171,8 @@ func TestNewestFrame(t *testing.T) {
 	}
 	js, _ := io.ReadAll(res.Body)
 	res.Body.Close()
-	written, _ := fs.ReadFile(live.Scripts, live.NewestFrame)
-	if res.StatusCode != http.StatusOK || !strings.Contains(res.Header.Get("Cache-Control"), "immutable") || len(js) >= len(written) {
+	written, _ := fs.ReadFile(live.Scripts, live.NewestFrame) // the plugin's dist build, already minified
+	if res.StatusCode != http.StatusOK || !strings.Contains(res.Header.Get("Cache-Control"), "immutable") || len(js) > len(written) {
 		t.Errorf("%s: %d, %s, %d bytes of %d", m[3], res.StatusCode, res.Header.Get("Cache-Control"), len(js), len(written))
 	}
 }
