@@ -75,6 +75,16 @@ func SpaceByID(ctx context.Context, q sqlite.Querier, id string) (Space, error) 
 	return s, err
 }
 
+// SpaceName is a space's name, without the counts of SpaceByID.
+func SpaceName(ctx context.Context, q sqlite.Querier, id string) (string, error) {
+	var name string
+	err := q.QueryRowContext(ctx, `SELECT name FROM spaces WHERE id = ?`, id).Scan(&name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", notFound("space", id)
+	}
+	return name, err
+}
+
 // Page is a page as pages show it.
 type Page struct {
 	ID, Space, Parent, Rank, Title string

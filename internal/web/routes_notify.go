@@ -151,13 +151,14 @@ func (s *Server) notifySeen(w http.ResponseWriter, r *http.Request) {
 func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 	me := people.Actor(r.Context())
 	pages := feedPages(r.URL.Query().Get("activity"))
+	seq := s.hub.Seq() // before the transaction: the commits the cache may count as read
 	s.render(w, r, http.StatusOK, func(ctx context.Context, q sqlite.Querier) (Page, error) {
 		readable, err := activity.Readable(ctx, q, me)
 		if err != nil {
 			return Page{}, err
 		}
 		now := time.Now()
-		work, err := s.work(ctx, q, me, readable, now)
+		work, err := s.work(ctx, q, me, readable, now, seq)
 		if err != nil {
 			return Page{}, err
 		}
@@ -183,8 +184,9 @@ func feedPages(v string) int {
 	return min(n, maxFeedPages)
 }
 
-// work reads a person's part of the home page.
-func (s *Server) work(ctx context.Context, q sqlite.Querier, me people.Person, readable []access.Scope, now time.Time) (views.Work, error) {
+// work reads a person's part of the home page; seq is what the projects'
+// cache may count as read (projectsCache.get).
+func (s *Server) work(ctx context.Context, q sqlite.Querier, me people.Person, readable []access.Scope, now time.Time, seq uint64) (views.Work, error) {
 	w := views.Work{Me: me, Now: now}
 	var projects []string
 	for _, sc := range readable {
@@ -204,7 +206,7 @@ func (s *Server) work(ctx context.Context, q sqlite.Querier, me people.Person, r
 	if w.Recent, err = activity.Mine(ctx, q, me.ID, activity.In(readable), 8); err != nil {
 		return w, err
 	}
-	if w.Projects, err = tracker.Projects(ctx, q, projects); err != nil {
+	if w.Projects, err = s.projects.get(ctx, q, projects, seq); err != nil {
 		return w, err
 	}
 	for _, sc := range readable {
@@ -219,9 +221,9 @@ func (s *Server) work(ctx context.Context, q sqlite.Querier, me people.Person, r
 			continue
 		}
 		name := info.Key
-		switch sp, err := wiki.SpaceByID(ctx, q, sc.ID); {
+		switch n, err := wiki.SpaceName(ctx, q, sc.ID); {
 		case err == nil:
-			name = sp.Name
+			name = n
 		case !errors.Is(err, access.ErrNotFound):
 			return w, err
 		}
@@ -255,7 +257,7 @@ func (s *Server) homeView(ctx context.Context, q sqlite.Querier, actor people.Pe
 			if err != nil {
 				return nil, err
 			}
-			w, err := s.work(ctx, q, actor, readable, time.Now())
+			w, err := s.work(ctx, q, actor, readable, time.Now(), live.Seq(ctx))
 			if err != nil {
 				return nil, err
 			}

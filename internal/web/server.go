@@ -71,12 +71,13 @@ type Server struct {
 	ttl      time.Duration
 	wait     time.Duration // Config.StreamWait
 
-	limits  *limits         // the rate limits of actions (DM-04)
-	signIn  *edge.Limiter   // logins and logouts per address (NFR-09.1)
-	streams *streamLimits   // streams opened per address (NFR-41)
-	pacing  *paceLimits     // /pace and /ack (pace.go)
-	lockout *people.Lockout // failed logins per email and address (NFR-09.2)
-	metrics *metrics
+	limits   *limits         // the rate limits of actions (DM-04)
+	signIn   *edge.Limiter   // logins and logouts per address (NFR-09.1)
+	streams  *streamLimits   // streams opened per address (NFR-41)
+	pacing   *paceLimits     // /pace and /ack (pace.go)
+	lockout  *people.Lockout // failed logins per email and address (NFR-09.2)
+	metrics  *metrics
+	projects *projectsCache // the home page's projects and open counts
 
 	mux     *http.ServeMux
 	probes  []string // a URL of every GET route, for the test that GET never writes (NFR-06)
@@ -141,6 +142,7 @@ func New(cfg Config) (*Server, error) {
 		pacing:   newPaceLimits(),
 		lockout:  people.NewLockout(),
 		metrics:  newMetrics(cfg.DB),
+		projects: newProjectsCache(cfg.Hub),
 		mux:      http.NewServeMux(),
 		views:    newViewRegistry(),
 	}
