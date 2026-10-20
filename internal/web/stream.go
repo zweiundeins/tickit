@@ -239,7 +239,9 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		go s.endWithLogin(ctx, stop, sid, actor)
 		r = r.WithContext(ctx)
 	}
-	if err := s.hub.Serve(w, r, spec); err != nil {
+	cw := &countedStream{ResponseWriter: w, m: s.metrics}
+	defer cw.done()
+	if err := s.hub.Serve(cw, r, spec); err != nil {
 		s.log.Debug("stream ended", "err", err)
 	}
 }
