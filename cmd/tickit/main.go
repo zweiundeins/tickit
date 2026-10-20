@@ -168,6 +168,7 @@ func serve(args []string) error {
 	ready.Add("writer", running(&writerUp)) // never the writer itself: a probe must not queue behind it
 	ready.Add("hub", running(&hubUp))
 	ready.Add("events", running(&runnerUp))
+	ready.Add("static", site.Static().Warmed) // until then, a file not compressed yet waits for it
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", edge.Health(buildVersion()))
 	mux.Handle("GET /readyz", ready)

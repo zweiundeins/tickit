@@ -198,24 +198,31 @@ func (s *Server) Actions() []string { return slices.Clone(s.actions) }
 
 // Handler returns the routes behind the edge: the session, the actor,
 // the CSRF check, the security headers, compression, recovery and the log
-// of requests. /healthz and /readyz stay outside it (cmd/tickit).
+// of requests. The static files skip the session and the actor: their
+// answers are public and immutable, and a cookie on one would go to
+// everyone a shared cache gives it to. /healthz and /readyz stay outside
+// it (cmd/tickit).
 func (s *Server) Handler() http.Handler {
-	actor := people.Middleware(s.db, s.log)(s.mux)
-	h := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/static/") {
-			s.mux.ServeHTTP(w, r) // no actor needed: nothing to read
-			return
-		}
-		actor.ServeHTTP(w, r)
-	}))
+	h := people.Middleware(s.db, s.log)(s.mux)
 	h = s.sessions.Handler(h) // inside CSRF: a refused request gets no cookie
 	h = edge.CSRF{Datastar: []string{"POST /cmd/", "POST /pace", "POST /ack"}}.Handler(h)
 	h = edge.SecurityHeaders{CSP: edge.DefaultCSP(), HSTS: s.secure}.Handler(h)
 	h = noIndex(h)
 	h = edge.Compress(h)
 	h = edge.Recover(s.log, h)
-	return edge.LogRequests(s.log, h)
+	h = edge.LogRequests(s.log, h)
+
+	static := noIndex(edge.SecurityHeaders{CSP: edge.DefaultCSP(), HSTS: s.secure}.Handler(s.static))
+	static = edge.LogRequests(s.log, edge.Recover(s.log, static))
+	mux := http.NewServeMux()
+	mux.Handle("GET /static/", static) // precompressed by edge.Static
+	mux.Handle("/", h)
+	return mux
 }
+
+// Static is the static files, for cmd/tickit's readiness check
+// (edge.Static.Warmed).
+func (s *Server) Static() *edge.Static { return s.static }
 
 // noIndex keeps search engines out of what visitors write (DM-09.1).
 func noIndex(next http.Handler) http.Handler {

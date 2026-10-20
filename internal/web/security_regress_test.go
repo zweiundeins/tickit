@@ -436,3 +436,25 @@ func TestOpIDReplayAcrossActions(t *testing.T) {
 		t.Error("a retry ran again")
 	}
 }
+
+// A static file goes out without a session cookie, since a shared cache
+// would give it to everyone, with the security headers still on; a page
+// sets one.
+func TestStaticWithoutSession(t *testing.T) {
+	e := webtest.Start(t)
+	_, page := webtest.Get(t, webtest.Client(t), e.URL+"/")
+	css := regexp.MustCompile(`href="(/static/[^"]+\.css)"`).FindStringSubmatch(page)
+	if css == nil {
+		t.Fatal("no stylesheet on the page")
+	}
+	for url, cookie := range map[string]bool{css[1]: false, "/": true} {
+		res, err := http.Get(e.URL + url)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if got := res.Header.Get("Set-Cookie") != ""; res.StatusCode != http.StatusOK || got != cookie || res.Header.Get("Content-Security-Policy") == "" {
+			t.Errorf("%s: %d, a cookie %v (want %v), CSP %q", url, res.StatusCode, got, cookie, res.Header.Get("Content-Security-Policy"))
+		}
+	}
+}
