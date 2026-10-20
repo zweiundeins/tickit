@@ -1,0 +1,2225 @@
+/* The components of internal/ui. Each reads semantic tokens only.
+ *
+ * 8-bit corners: an element (or its ::before plate) is clipped to a
+ * 12-point polygon that cuts each corner by --_n, a step of
+ * calc(Npx * var(--tk-notch)); with the smooth style --tk-notch is 0, the
+ * polygon is the box, and the radius takes over. Buttons and cards draw
+ * their plate on ::before, so focus rings, tooltips and the pending pixel
+ * stay outside the clip. */
+@layer components {
+	:where(
+		.tk-btn::before,
+		.tk-input,
+		.tk-select > select,
+		.tk-lozenge,
+		.tk-label,
+		.tk-count,
+		.tk-points,
+		.tk-kbd,
+		.tk-av,
+		.tk-notice,
+		.tk-check__box,
+		.tk-radios--segmented .tk-radio__text,
+		.tk-card::before,
+		.tk-lane::before,
+		.tk-search,
+		.tk-sidenav__key,
+		.tk-demo__badge,
+		.tk-panel-box
+	) {
+		clip-path: polygon(var(--_n) 0, calc(100% - var(--_n)) 0, calc(100% - var(--_n)) var(--_n), 100% var(--_n), 100% calc(100% - var(--_n)), calc(100% - var(--_n)) calc(100% - var(--_n)), calc(100% - var(--_n)) 100%, var(--_n) 100%, var(--_n) calc(100% - var(--_n)), 0 calc(100% - var(--_n)), 0 var(--_n), var(--_n) var(--_n));
+	}
+
+	/* ── Small parts ───────────────────────────────────────────────── */
+	.tk-icon {
+		flex: none;
+		inline-size: 1rem;
+		block-size: 1rem;
+	}
+
+	.tk-icon--lg {
+		inline-size: 2rem;
+		block-size: 2rem;
+	}
+
+	.tk-icon--xl {
+		inline-size: 4rem;
+		block-size: 4rem;
+	}
+
+	.tk-icon__2 {
+		opacity: 0.45;
+	}
+
+	/* The 11px mono label over groups, table heads and cells of a strip. */
+	.tk-eyebrow {
+		color: var(--tk-text-muted);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+		font-weight: var(--tk-weight-medium);
+		letter-spacing: var(--tk-tracking-caps);
+		line-height: 1.3;
+		text-transform: uppercase;
+	}
+
+	.tk-count {
+		--_n: calc(1px * var(--tk-notch));
+		display: inline-grid;
+		place-items: center;
+		min-inline-size: 1.25rem;
+		block-size: 1.125rem;
+		padding-inline: 0.3rem;
+		border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-2);
+		color: var(--tk-text-2);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+		line-height: 1;
+	}
+
+	.tk-kbd {
+		--_n: calc(1px * var(--tk-notch));
+		display: inline-grid;
+		place-items: center;
+		min-inline-size: 1.25rem;
+		block-size: 1.25rem;
+		padding-inline: 0.3rem;
+		border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-2);
+		box-shadow: inset 0 -2px 0 var(--tk-border), inset 0 0 0 1px var(--tk-border);
+		color: var(--tk-text-2);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+		line-height: 1;
+	}
+
+	.tk-keys {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+		color: var(--tk-text-muted);
+		font-size: var(--tk-text-2xs);
+	}
+
+	.tk-time {
+		color: var(--tk-text-muted);
+		white-space: nowrap;
+	}
+
+	.tk-skip {
+		position: absolute;
+		inset-block-start: var(--tk-space-2);
+		inset-inline-start: var(--tk-space-2);
+		z-index: calc(var(--tk-z-sticky) + 1);
+		padding: var(--tk-space-2) var(--tk-space-3);
+		background: var(--tk-accent);
+		color: var(--tk-on-accent);
+		font-weight: var(--tk-weight-semibold);
+		translate: 0 -200%;
+
+		&:focus-visible {
+			translate: 0 0;
+		}
+	}
+
+	/* ── Tooltips: the inverted bubble above its anchor. ──────────── */
+	.tk-tip {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		vertical-align: middle;
+
+		&:focus-visible {
+			outline-offset: 2px;
+		}
+	}
+
+	.tk-tip__bubble {
+		position: absolute;
+		inset-block-end: calc(100% + 6px);
+		inset-inline-start: 50%;
+		z-index: var(--tk-z-tooltip);
+		inline-size: max-content;
+		max-inline-size: 16rem;
+		padding: var(--tk-space-1) var(--tk-space-2);
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		background: var(--tk-tip-bg);
+		color: var(--tk-tip-text);
+		box-shadow: var(--tk-shadow-2);
+		font-family: var(--tk-font-ui);
+		font-size: var(--tk-text-xs);
+		font-weight: var(--tk-weight-medium);
+		line-height: 1.4;
+		letter-spacing: normal;
+		text-align: start;
+		text-transform: none;
+		white-space: normal;
+		pointer-events: none;
+		opacity: 0;
+		visibility: hidden;
+		translate: -50% 0.25rem;
+		transition: opacity var(--tk-dur-2) var(--tk-ease-glide), translate var(--tk-dur-2) var(--tk-ease-glide), visibility var(--tk-dur-2);
+
+		/* A pixel arrow. */
+		&::after {
+			content: "";
+			position: absolute;
+			inset-block-start: 100%;
+			inset-inline-start: calc(50% - 4px);
+			inline-size: 8px;
+			block-size: 4px;
+			background: inherit;
+			clip-path: polygon(0 0, 100% 0, 75% 50%, 62.5% 100%, 37.5% 100%, 25% 50%);
+		}
+	}
+
+	.tk-tip:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble {
+		opacity: 1;
+		visibility: visible;
+		translate: -50% 0;
+		transition-delay: 300ms;
+	}
+
+	.tk-tip:has(:focus-visible) > .tk-tip__bubble,
+	.tk-tip:focus-visible > .tk-tip__bubble {
+		transition-delay: 0ms;
+	}
+
+	/* Tips at the inline end of a bar open towards the start. */
+	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head) > .tk-tip > .tk-tip__bubble,
+	.tk-tip--end > .tk-tip__bubble {
+		inset-inline: auto 0;
+		translate: 0 0.25rem;
+
+		&::after {
+			inset-inline-start: auto;
+			inset-inline-end: 8px;
+		}
+	}
+
+	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head) > .tk-tip:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble,
+	.tk-tip--end:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble {
+		translate: 0 0;
+	}
+
+	/* Tips in the header and in a layer's head open downwards. */
+	:is(.tk-header, .tk-dialog__head, .tk-panel__head) .tk-tip__bubble {
+		inset-block: calc(100% + 6px) auto;
+
+		&::after {
+			inset-block: auto 100%;
+			rotate: 180deg;
+		}
+	}
+
+	/* Escape hushes every tooltip (WCAG 1.4.13). */
+	:root.tk-hush .tk-tip__bubble {
+		opacity: 0 !important;
+		visibility: hidden !important;
+	}
+
+	/* ── Buttons ───────────────────────────────────────────────────── */
+	.tk-btn {
+		--_bg: var(--tk-surface-2);
+		--_fg: var(--tk-text-1);
+		--_edge: var(--tk-border-strong);
+		--_n: calc(2px * var(--tk-notch));
+		--_h: var(--tk-control-md);
+		position: relative;
+		isolation: isolate;
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		gap: var(--tk-space-1_5);
+		min-block-size: var(--_h);
+		padding: 0 var(--tk-space-3);
+		border: 0;
+		background: none;
+		color: var(--_fg);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-xs);
+		font-weight: var(--tk-weight-semibold);
+		line-height: 1.2;
+		letter-spacing: 0.01em;
+		text-decoration: none;
+		white-space: nowrap;
+		cursor: pointer;
+		user-select: none;
+		transition: color var(--tk-dur-1) var(--tk-ease-snap), translate var(--tk-dur-1) var(--tk-ease-snap);
+
+		/* The plate: fill and a 1px edge, notched. */
+		&::before {
+			content: "";
+			position: absolute;
+			inset: 0;
+			z-index: -1;
+			border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+			background: var(--_bg);
+			box-shadow: inset 0 0 0 1px var(--_edge);
+			transition: background-color var(--tk-dur-1) var(--tk-ease-snap), box-shadow var(--tk-dur-1) var(--tk-ease-snap);
+		}
+
+		&:hover {
+			--_bg: var(--tk-surface-hover);
+			--_edge: var(--tk-text-muted);
+		}
+
+		&:active {
+			translate: 0 1px;
+		}
+
+		&:focus-visible {
+			outline-offset: 2px;
+		}
+
+		&:disabled,
+		&[aria-disabled="true"] {
+			opacity: 0.45;
+			cursor: not-allowed;
+			translate: none;
+		}
+
+		& .tk-icon {
+			inline-size: 1rem;
+			block-size: 1rem;
+		}
+	}
+
+	.tk-btn--sm {
+		--_h: var(--tk-control-sm);
+		padding-inline: var(--tk-space-2);
+		gap: var(--tk-space-1);
+	}
+
+	.tk-btn--lg {
+		--_h: var(--tk-control-lg);
+		padding-inline: var(--tk-space-5);
+		font-size: var(--tk-text-sm);
+	}
+
+	.tk-btn--icon {
+		inline-size: var(--_h);
+		padding: 0;
+	}
+
+	/* The accent button. On hover a band of light sweeps across it. */
+	.tk-btn--primary {
+		--_bg: var(--tk-accent);
+		--_fg: var(--tk-on-accent);
+		--_edge: var(--tk-accent-edge);
+
+		&::before {
+			background-image: linear-gradient(105deg, transparent calc(var(--tk-sweep) - 18%), oklch(100% 0 0 / 0.36) var(--tk-sweep), transparent calc(var(--tk-sweep) + 18%));
+		}
+
+		&:hover {
+			--_bg: var(--tk-accent-strong);
+			--_edge: var(--tk-accent-edge);
+
+			&::before {
+				animation: tk-sweep 900ms var(--tk-ease-glide);
+			}
+		}
+	}
+
+	@keyframes tk-sweep {
+		from {
+			--tk-sweep: -20%;
+		}
+
+		to {
+			--tk-sweep: 120%;
+		}
+	}
+
+	.tk-btn--ghost {
+		--_bg: transparent;
+		--_edge: transparent;
+		--_fg: var(--tk-text-2);
+
+		&:hover {
+			--_bg: var(--tk-surface-hover);
+			--_edge: transparent;
+			--_fg: var(--tk-text-1);
+		}
+
+		&[aria-pressed="true"],
+		&[aria-expanded="true"] {
+			--_bg: var(--tk-accent-subtle);
+			--_fg: var(--tk-accent-text);
+		}
+	}
+
+	.tk-btn--danger {
+		--_bg: var(--tk-danger);
+		--_fg: var(--tk-on-danger);
+		--_edge: var(--tk-danger);
+
+		&:hover {
+			--_bg: color-mix(in oklch, var(--tk-danger) 88%, var(--tk-text-1));
+			--_edge: var(--tk-danger);
+		}
+	}
+
+	.tk-btn__kbd {
+		margin-inline-start: var(--tk-space-1);
+		background: color-mix(in oklch, var(--_fg) 12%, transparent);
+		box-shadow: none;
+		color: inherit;
+	}
+
+	/* Waiting for the stream (MP-09.1): faded, clicks ignored, a pixel
+	 * walking around the label. */
+	.tk-btn[aria-busy="true"] {
+		cursor: progress;
+		pointer-events: none;
+
+		& > * {
+			opacity: 0.6;
+		}
+
+		&::after {
+			content: "";
+			flex: none;
+			inline-size: 5px;
+			block-size: 5px;
+			background: currentColor;
+			animation: tk-busy 0.8s steps(1, end) infinite;
+		}
+	}
+
+	@keyframes tk-busy {
+		0% {
+			translate: 0 -3px;
+		}
+
+		25% {
+			translate: 3px 0;
+		}
+
+		50% {
+			translate: 0 3px;
+		}
+
+		75% {
+			translate: -3px 0;
+		}
+	}
+
+	/* ── Fields ────────────────────────────────────────────────────── */
+	.tk-field {
+		display: grid;
+		gap: var(--tk-space-1);
+		align-content: start;
+		min-inline-size: 0;
+	}
+
+	.tk-field__label {
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-xs);
+		font-weight: var(--tk-weight-semibold);
+		transition: color var(--tk-dur-1) var(--tk-ease-snap);
+
+		.tk-field:has(:focus-visible) > & {
+			color: var(--tk-accent-text);
+		}
+
+		.tk-field[data-invalid] > &,
+		.tk-field:has(:user-invalid) > & {
+			color: var(--tk-danger);
+		}
+	}
+
+	.tk-field__req {
+		margin-inline-start: 0.15em;
+		color: var(--tk-danger);
+	}
+
+	.tk-field__opt {
+		margin-inline-start: 0.35em;
+		color: var(--tk-text-muted);
+		font-weight: var(--tk-weight-regular);
+	}
+
+	.tk-field__hint {
+		color: var(--tk-text-muted);
+		font-size: var(--tk-text-xs);
+	}
+
+	.tk-field__error {
+		display: flex;
+		align-items: start;
+		gap: var(--tk-space-1);
+		color: var(--tk-danger);
+		font-size: var(--tk-text-xs);
+		font-weight: var(--tk-weight-medium);
+
+		&:empty {
+			margin-block-start: calc(-1 * var(--tk-space-1));
+		}
+
+		& .tk-icon {
+			margin-block-start: 1px;
+			inline-size: 0.875rem;
+			block-size: 0.875rem;
+		}
+	}
+
+	.tk-input,
+	.tk-select > select {
+		--_n: calc(2px * var(--tk-notch));
+		--_h: var(--tk-control-md);
+		inline-size: 100%;
+		min-block-size: var(--_h);
+		padding: var(--tk-space-1) var(--tk-space-2_5);
+		border: 1px solid var(--tk-control-border);
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-inset);
+		color: var(--tk-text-1);
+		font-size: var(--tk-text-md);
+		line-height: 1.4;
+		transition: border-color var(--tk-dur-1) var(--tk-ease-snap), background-color var(--tk-dur-1) var(--tk-ease-snap);
+
+		&::placeholder {
+			color: var(--tk-text-muted);
+		}
+
+		&:hover {
+			border-color: var(--tk-text-muted);
+		}
+
+		&:focus-visible {
+			border-color: var(--tk-accent-edge);
+			outline: 2px solid var(--tk-focus);
+			outline-offset: -4px;
+		}
+
+		/* Sent, waiting for its outcome (MP-09.1): the person's input
+		 * stays, dashed. */
+		&[readonly] {
+			border-style: dashed;
+			color: var(--tk-text-2);
+		}
+
+		&[aria-invalid="true"],
+		&:user-invalid {
+			border-color: var(--tk-danger);
+		}
+
+		&:disabled {
+			opacity: 0.55;
+			cursor: not-allowed;
+		}
+	}
+
+	.tk-input--sm,
+	.tk-select--sm > select {
+		--_h: var(--tk-control-sm);
+		font-size: var(--tk-text-sm);
+	}
+
+	.tk-input--lg,
+	.tk-select--lg > select {
+		--_h: var(--tk-control-lg);
+		font-size: var(--tk-text-lg);
+	}
+
+	.tk-textarea {
+		min-block-size: 5.5rem;
+		padding-block: var(--tk-space-2);
+		resize: vertical;
+		field-sizing: content;
+		line-height: 1.5;
+	}
+
+	.tk-input-wrap {
+		position: relative;
+		display: block;
+
+		& > .tk-icon {
+			position: absolute;
+			inset-block-start: calc(50% - 0.5rem);
+			inset-inline-start: var(--tk-space-2);
+			z-index: 1;
+			color: var(--tk-text-muted);
+			pointer-events: none;
+		}
+
+		& > .tk-input {
+			padding-inline-start: calc(var(--tk-space-2) + 1.375rem);
+		}
+	}
+
+	.tk-select {
+		position: relative;
+		display: block;
+
+		& > select {
+			appearance: none;
+			padding-inline-end: 2rem;
+			cursor: pointer;
+		}
+
+		& > .tk-icon {
+			position: absolute;
+			inset-block-start: calc(50% - 0.5rem);
+			inset-inline-end: var(--tk-space-2);
+			z-index: 1;
+			color: var(--tk-text-muted);
+			pointer-events: none;
+		}
+	}
+
+	/* Checkboxes and radios: pixel boxes. */
+	.tk-check,
+	.tk-radio {
+		display: inline-flex;
+		align-items: start;
+		gap: var(--tk-space-2);
+		color: var(--tk-text-1);
+		cursor: pointer;
+
+		& small {
+			display: block;
+			color: var(--tk-text-muted);
+		}
+	}
+
+	.tk-check__box,
+	.tk-radio__input {
+		--_n: calc(2px * var(--tk-notch));
+		flex: none;
+		appearance: none;
+		display: grid;
+		place-items: center;
+		inline-size: 1rem;
+		block-size: 1rem;
+		margin: 0.125rem 0 0;
+		border: 0;
+		border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-inset);
+		box-shadow: inset 0 0 0 1px var(--tk-control-border);
+		cursor: pointer;
+
+		&:hover {
+			box-shadow: inset 0 0 0 1px var(--tk-text-2);
+		}
+
+		&:focus-visible {
+			outline-offset: 2px;
+		}
+
+		&:checked,
+		&:indeterminate {
+			background: var(--tk-accent);
+			box-shadow: inset 0 0 0 1px var(--tk-accent-edge);
+		}
+
+		/* The tick, a pixel path in the on-accent colour. */
+		&:checked::after {
+			content: "";
+			inline-size: 10px;
+			block-size: 8px;
+			background: var(--tk-on-accent);
+			clip-path: polygon(0 50%, 20% 50%, 20% 62.5%, 40% 62.5%, 40% 75%, 60% 75%, 60% 50%, 70% 50%, 70% 25%, 80% 25%, 80% 0, 100% 0, 100% 25%, 90% 25%, 90% 50%, 80% 50%, 80% 75%, 70% 75%, 70% 100%, 30% 100%, 30% 87.5%, 10% 87.5%, 10% 75%, 0 75%);
+		}
+
+		&:indeterminate::after {
+			content: "";
+			inline-size: 8px;
+			block-size: 2px;
+			background: var(--tk-on-accent);
+		}
+
+		&:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+	}
+
+	.tk-radio__input {
+		border-radius: 50%;
+		clip-path: none;
+
+		&:checked {
+			background: var(--tk-surface-inset);
+			box-shadow: inset 0 0 0 1px var(--tk-accent-edge), inset 0 0 0 4px var(--tk-accent);
+		}
+
+		&:checked::after {
+			content: none;
+		}
+	}
+
+	.tk-radios {
+		display: grid;
+		gap: var(--tk-space-1_5);
+	}
+
+	.tk-radios__options {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-2) var(--tk-space-4);
+	}
+
+	.tk-radio__text {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-1_5);
+	}
+
+	/* Segmented: a row of buttons, the chosen one raised. */
+	.tk-radios--segmented {
+		& .tk-radios__options {
+			gap: 2px;
+			padding: 2px;
+			inline-size: fit-content;
+			max-inline-size: 100%;
+			border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+			background: var(--tk-surface-inset);
+			box-shadow: inset 0 0 0 1px var(--tk-border);
+		}
+
+		& .tk-radio {
+			position: relative;
+		}
+
+		& .tk-radio__input {
+			position: absolute;
+			inset: 0;
+			inline-size: 100%;
+			block-size: 100%;
+			margin: 0;
+			opacity: 0;
+		}
+
+		& .tk-radio__text {
+			--_n: calc(2px * var(--tk-notch));
+			min-block-size: calc(var(--tk-control-md) - 4px);
+			padding: 0 var(--tk-space-2_5);
+			border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+			color: var(--tk-text-2);
+			font-size: var(--tk-text-sm);
+			font-weight: var(--tk-weight-medium);
+			white-space: nowrap;
+		}
+
+		& .tk-radio:hover .tk-radio__text {
+			color: var(--tk-text-1);
+			background: var(--tk-surface-hover);
+		}
+
+		& .tk-radio__input:checked + .tk-radio__text {
+			background: var(--tk-surface-1);
+			box-shadow: inset 0 -2px 0 var(--tk-accent), var(--tk-shadow-1);
+			color: var(--tk-text-1);
+		}
+
+		& .tk-radio__input:focus-visible + .tk-radio__text {
+			outline: 2px solid var(--tk-focus);
+			outline-offset: -2px;
+		}
+	}
+
+	/* Toggles: a pixel switch. */
+	.tk-toggle {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-2);
+		cursor: pointer;
+	}
+
+	.tk-toggle__input {
+		position: absolute;
+		opacity: 0;
+		inline-size: 1px;
+		block-size: 1px;
+	}
+
+	.tk-toggle__track {
+		--_n: calc(2px * var(--tk-notch));
+		position: relative;
+		flex: none;
+		inline-size: 2rem;
+		block-size: 1.125rem;
+		border-radius: calc(999px * (1 - var(--tk-notch)) + 0px);
+		background: var(--tk-surface-inset);
+		box-shadow: inset 0 0 0 1px var(--tk-control-border);
+		transition: background-color var(--tk-dur-1) var(--tk-ease-snap);
+
+		&::after {
+			content: "";
+			position: absolute;
+			inset-block-start: 3px;
+			inset-inline-start: 3px;
+			inline-size: 0.75rem;
+			block-size: 0.75rem;
+			border-radius: calc(999px * (1 - var(--tk-notch)) + 0px);
+			background: var(--tk-text-muted);
+			transition: translate var(--tk-dur-2) var(--tk-ease-snap), background-color var(--tk-dur-1);
+		}
+
+		.tk-toggle__input:checked + & {
+			background: var(--tk-accent);
+			box-shadow: inset 0 0 0 1px var(--tk-accent-edge);
+
+			&::after {
+				background: var(--tk-on-accent);
+				translate: 0.875rem 0;
+			}
+		}
+
+		.tk-toggle__input:focus-visible + & {
+			outline: 2px solid var(--tk-focus);
+			outline-offset: 2px;
+		}
+
+		.tk-toggle__input:disabled + & {
+			opacity: 0.5;
+		}
+	}
+
+	/* Starbase's pickers take the field's width. */
+	.tk-picker,
+	.tk-date {
+		display: block;
+		inline-size: 100%;
+	}
+
+	/* ── Menus: popovers anchored to their button. ────────────────── */
+	.tk-menu {
+		--_s: var(--tk-frame-step);
+		position: fixed;
+		position-area: block-end span-inline-end;
+		position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+		inset: auto;
+		margin: var(--tk-space-1) 0;
+		min-inline-size: 13rem;
+		max-inline-size: min(22rem, calc(100vw - 2rem));
+		max-block-size: min(32rem, calc(100dvh - var(--tk-header-height) - 2rem));
+		overflow-y: auto;
+		padding: var(--tk-space-1);
+		border: 0;
+		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-overlay);
+		color: var(--tk-text-1);
+		/* A pixel frame: four copies of the box, a step out, the corners
+		 * left open. Then the overlay's shadow. */
+		box-shadow:
+			0 calc(-1 * var(--_s)) 0 0 var(--tk-border-strong),
+			0 var(--_s) 0 0 var(--tk-border-strong),
+			calc(-1 * var(--_s)) 0 0 0 var(--tk-border-strong),
+			var(--_s) 0 0 0 var(--tk-border-strong),
+			var(--tk-shadow-overlay);
+		opacity: 0;
+		translate: 0 -0.35rem;
+		transition: opacity var(--tk-dur-2) var(--tk-ease-glide), translate var(--tk-dur-2) var(--tk-ease-glide), display var(--tk-dur-2) allow-discrete, overlay var(--tk-dur-2) allow-discrete;
+
+		&:popover-open {
+			opacity: 1;
+			translate: 0 0;
+
+			@starting-style {
+				opacity: 0;
+				translate: 0 -0.35rem;
+			}
+		}
+
+		[data-tk-style="smooth"] & {
+			box-shadow: 0 0 0 1px var(--tk-border), var(--tk-shadow-overlay);
+		}
+	}
+
+	.tk-menu--end {
+		position-area: block-end span-inline-start;
+	}
+
+	.tk-menu__item {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-2);
+		inline-size: 100%;
+		min-block-size: 2rem;
+		padding: var(--tk-space-1) var(--tk-space-2);
+		border: 0;
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		background: none;
+		color: var(--tk-text-1);
+		font-size: var(--tk-text-sm);
+		text-align: start;
+		text-decoration: none;
+
+		& > .tk-icon,
+		& > .tk-cat {
+			color: var(--tk-text-muted);
+		}
+
+		&:hover,
+		&:focus-visible {
+			background: var(--tk-surface-hover);
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--tk-focus);
+			outline-offset: -2px;
+		}
+
+		&[aria-current="true"],
+		&[aria-pressed="true"] {
+			color: var(--tk-accent-text);
+		}
+
+		&:disabled {
+			color: var(--tk-text-muted);
+			cursor: not-allowed;
+			background: none;
+		}
+	}
+
+	.tk-menu__item--danger {
+		color: var(--tk-danger);
+
+		& > .tk-icon {
+			color: currentColor;
+		}
+	}
+
+	.tk-menu__label {
+		flex: 1;
+		min-inline-size: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.tk-menu__hint {
+		color: var(--tk-text-muted);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+	}
+
+	.tk-menu__check {
+		inline-size: 1rem;
+		color: var(--tk-accent-text);
+	}
+
+	.tk-menu__sep {
+		margin: var(--tk-space-1) calc(-1 * var(--tk-space-1));
+	}
+
+	.tk-menu__label-group {
+		padding: var(--tk-space-2) var(--tk-space-2) var(--tk-space-1);
+	}
+
+	/* sb-dropdown's trigger, as a ghost button. */
+	.tk-actions::part(trigger) {
+		min-block-size: var(--tk-control-md);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-xs);
+		font-weight: var(--tk-weight-semibold);
+	}
+
+	.tk-actions--icon::part(trigger) {
+		inline-size: var(--tk-control-md);
+		padding: 0;
+		border-color: transparent;
+		background: transparent;
+		justify-content: center;
+	}
+
+	.tk-actions__trigger {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-1_5);
+	}
+
+	/* ── Dialogs and panels: native <dialog>, in the top layer. ──── */
+	.tk-dialog,
+	.tk-panel {
+		--_s: var(--tk-frame-step);
+		padding: 0;
+		border: 0;
+		background: var(--tk-surface-overlay);
+		color: var(--tk-text-1);
+
+		&::backdrop {
+			background: var(--tk-scrim);
+			backdrop-filter: blur(2px);
+		}
+	}
+
+	.tk-dialog {
+		inline-size: min(var(--_w, 32rem), calc(100vw - 2rem));
+		max-block-size: calc(100dvh - 2rem);
+		margin: auto;
+		border-radius: calc(var(--tk-radius-lg) * (1 - var(--tk-notch)));
+		box-shadow:
+			0 calc(-1 * var(--_s)) 0 0 var(--tk-border-strong),
+			0 var(--_s) 0 0 var(--tk-border-strong),
+			calc(-1 * var(--_s)) 0 0 0 var(--tk-border-strong),
+			var(--_s) 0 0 0 var(--tk-border-strong),
+			var(--tk-shadow-overlay);
+		opacity: 0;
+		scale: 0.97;
+		transition: opacity var(--tk-dur-2) var(--tk-ease-zoom), scale var(--tk-dur-2) var(--tk-ease-zoom), display var(--tk-dur-2) allow-discrete, overlay var(--tk-dur-2) allow-discrete;
+
+		&[open] {
+			display: flex;
+			flex-direction: column;
+			opacity: 1;
+			scale: 1;
+
+			@starting-style {
+				opacity: 0;
+				scale: 0.97;
+			}
+		}
+
+		[data-tk-style="smooth"] & {
+			box-shadow: 0 0 0 1px var(--tk-border), var(--tk-shadow-overlay);
+		}
+	}
+
+	.tk-dialog--sm {
+		--_w: 24rem;
+	}
+
+	.tk-dialog--lg {
+		--_w: 48rem;
+	}
+
+	.tk-dialog__head,
+	.tk-panel__head {
+		display: flex;
+		align-items: start;
+		gap: var(--tk-space-3);
+		padding: var(--tk-space-4) var(--tk-space-4) var(--tk-space-3) var(--tk-space-5);
+		border-block-end: 1px solid var(--tk-border-subtle);
+
+		& > div:first-child {
+			flex: 1;
+			min-inline-size: 0;
+		}
+
+		& > .tk-tip:last-child {
+			margin-inline-start: auto;
+		}
+	}
+
+	.tk-dialog__title,
+	.tk-panel__title {
+		font-size: var(--tk-text-xl);
+	}
+
+	.tk-dialog__desc {
+		margin-block-start: var(--tk-space-1);
+		color: var(--tk-text-2);
+	}
+
+	.tk-dialog__body,
+	.tk-panel__body {
+		display: grid;
+		gap: var(--tk-space-4);
+		align-content: start;
+		padding: var(--tk-space-5);
+		overflow-y: auto;
+		overscroll-behavior: contain;
+	}
+
+	.tk-dialog__foot,
+	.tk-panel__foot {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		gap: var(--tk-space-2);
+		padding: var(--tk-space-3) var(--tk-space-5);
+		border-block-start: 1px solid var(--tk-border-subtle);
+		background: var(--tk-surface-2);
+	}
+
+	/* A side panel: a sheet along the inline end, full height. */
+	.tk-panel {
+		position: fixed;
+		inset-block: 0;
+		inset-inline: auto 0;
+		inline-size: min(var(--tk-panel-width), 100vw);
+		max-inline-size: 100vw;
+		block-size: 100dvh;
+		max-block-size: 100dvh;
+		margin: 0;
+		box-shadow: calc(-1 * var(--_s)) 0 0 0 var(--tk-border-strong), var(--tk-shadow-overlay);
+		translate: 100% 0;
+		transition: translate var(--tk-dur-3) var(--tk-ease-glide), display var(--tk-dur-3) allow-discrete, overlay var(--tk-dur-3) allow-discrete;
+
+		&[open] {
+			display: flex;
+			flex-direction: column;
+			translate: 0 0;
+
+			@starting-style {
+				translate: 100% 0;
+			}
+		}
+
+		&::backdrop {
+			background: color-mix(in oklch, var(--tk-scrim) 60%, transparent);
+			backdrop-filter: none;
+		}
+	}
+
+	.tk-panel--start {
+		inset-inline: 0 auto;
+		inline-size: min(20rem, 88vw);
+		box-shadow: var(--_s) 0 0 0 var(--tk-border-strong), var(--tk-shadow-overlay);
+		translate: -100% 0;
+
+		&[open] {
+			@starting-style {
+				translate: -100% 0;
+			}
+		}
+	}
+
+	.tk-panel__head {
+		align-items: center;
+		padding-inline: var(--tk-space-4);
+	}
+
+	.tk-panel__lead {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-2);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-xs);
+		color: var(--tk-text-2);
+	}
+
+	.tk-panel__title {
+		flex: 1;
+		min-inline-size: 0;
+		font-size: var(--tk-text-lg);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.tk-panel__actions {
+		display: flex;
+		gap: var(--tk-space-1);
+	}
+
+	/* The panel's body is a page of its own: what it holds lays out by
+	 * the panel's width (an issue's fields stack under its text). */
+	.tk-panel__body {
+		container: page / inline-size;
+		flex: 1;
+	}
+
+	/* ── Tabs ──────────────────────────────────────────────────────── */
+	sb-tabs.tk-tabs {
+		display: block;
+	}
+
+	.tk-tabs__panel {
+		padding-block-start: var(--tk-space-4);
+	}
+
+	.tk-tabnav {
+		display: flex;
+		gap: var(--tk-space-1);
+		overflow-x: auto;
+		border-block-end: 1px solid var(--tk-border-subtle);
+		scrollbar-width: none;
+
+		& a {
+			position: relative;
+			display: inline-flex;
+			align-items: center;
+			gap: var(--tk-space-1_5);
+			padding: var(--tk-space-2) var(--tk-space-3);
+			color: var(--tk-text-2);
+			font-family: var(--tk-font-mono);
+			font-size: var(--tk-text-xs);
+			font-weight: var(--tk-weight-semibold);
+			text-decoration: none;
+			white-space: nowrap;
+
+			&::after {
+				content: "";
+				position: absolute;
+				inset-inline: var(--tk-space-2);
+				inset-block-end: -1px;
+				block-size: 3px;
+				background: var(--tk-accent);
+				scale: 0 1;
+				transition: scale var(--tk-dur-3) var(--tk-ease-glide);
+			}
+
+			&:hover {
+				color: var(--tk-text-1);
+			}
+
+			&[aria-current="page"] {
+				color: var(--tk-text-1);
+
+				&::after {
+					scale: 1 1;
+				}
+			}
+
+			&:focus-visible {
+				outline-offset: -2px;
+			}
+		}
+	}
+
+	/* ── Breadcrumbs ───────────────────────────────────────────────── */
+	.tk-crumbs ol {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-1);
+		padding: 0;
+		list-style: none;
+		color: var(--tk-text-muted);
+		font-size: var(--tk-text-sm);
+	}
+
+	.tk-crumbs li {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-1);
+		min-inline-size: 0;
+
+		& + li::before {
+			content: "";
+			inline-size: 4px;
+			block-size: 8px;
+			background: var(--tk-border-strong);
+			clip-path: polygon(0 0, 50% 0, 50% 25%, 100% 25%, 100% 75%, 50% 75%, 50% 100%, 0 100%);
+		}
+
+		& a,
+		& [aria-current] {
+			display: inline-flex;
+			align-items: center;
+			gap: var(--tk-space-1);
+		}
+
+		& a {
+			color: var(--tk-text-2);
+			text-decoration: none;
+
+			&:hover {
+				color: var(--tk-text-1);
+				text-decoration: underline;
+			}
+		}
+
+		& [aria-current] {
+			color: var(--tk-text-1);
+			font-weight: var(--tk-weight-medium);
+		}
+	}
+
+	/* ── Pagination ────────────────────────────────────────────────── */
+	.tk-pages {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--tk-space-2) var(--tk-space-4);
+		padding-block: var(--tk-space-3);
+	}
+
+	.tk-pages__count {
+		color: var(--tk-text-muted);
+		font-size: var(--tk-text-sm);
+	}
+
+	.tk-pages__list {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		padding: 0;
+		list-style: none;
+	}
+
+	.tk-pages__page {
+		display: inline-grid;
+		place-items: center;
+		min-inline-size: var(--tk-control-sm);
+		block-size: var(--tk-control-sm);
+		padding-inline: var(--tk-space-1);
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		color: var(--tk-text-2);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-xs);
+		text-decoration: none;
+
+		&:hover {
+			background: var(--tk-surface-hover);
+			color: var(--tk-text-1);
+		}
+
+		&[aria-current="page"] {
+			background: var(--tk-accent-subtle);
+			box-shadow: inset 0 -2px 0 var(--tk-accent);
+			color: var(--tk-accent-text);
+			font-weight: var(--tk-weight-bold);
+		}
+	}
+
+	.tk-pages__gap {
+		padding-inline: var(--tk-space-1);
+		color: var(--tk-text-muted);
+	}
+
+	/* ── Tree ──────────────────────────────────────────────────────── */
+	.tk-tree,
+	.tk-tree [role="group"] {
+		display: grid;
+		gap: 1px;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.tk-tree [role="group"] {
+		margin-inline-start: 0.6875rem;
+		padding-inline-start: 0.5rem;
+		border-inline-start: 1px solid var(--tk-border-subtle);
+	}
+
+	.tk-tree__item {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-1);
+		min-block-size: var(--tk-row-height);
+		padding: var(--tk-space-0_5) var(--tk-space-2) var(--tk-space-0_5) 0;
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+		text-decoration: none;
+
+		& > .tk-icon {
+			color: var(--tk-text-muted);
+		}
+
+		&:hover {
+			background: var(--tk-surface-hover);
+			color: var(--tk-text-1);
+		}
+
+		&:focus-visible {
+			outline-offset: -2px;
+		}
+
+		&[aria-current="page"] {
+			background: var(--tk-accent-subtle);
+			color: var(--tk-accent-text);
+			font-weight: var(--tk-weight-semibold);
+
+			& > .tk-icon {
+				color: currentColor;
+			}
+
+			&::before {
+				content: "";
+				position: absolute;
+				inset-block: 4px;
+				inset-inline-start: -2px;
+				inline-size: 3px;
+				background: var(--tk-accent);
+			}
+		}
+
+		&[aria-expanded="false"] + [role="group"] {
+			display: none;
+		}
+
+		&[aria-expanded="true"] .tk-tree__twisty .tk-icon {
+			rotate: 90deg;
+		}
+	}
+
+	.tk-tree__twisty {
+		display: grid;
+		place-items: center;
+		flex: none;
+		inline-size: 1.375rem;
+		block-size: 1.375rem;
+		border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+		color: var(--tk-text-muted);
+
+		& .tk-icon {
+			transition: rotate var(--tk-dur-2) var(--tk-ease-snap);
+		}
+
+		&:hover:has(.tk-icon) {
+			background: var(--tk-border-subtle);
+			color: var(--tk-text-1);
+		}
+	}
+
+	.tk-tree__label {
+		flex: 1;
+		min-inline-size: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.tk-tree__meta {
+		color: var(--tk-text-muted);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+		font-weight: var(--tk-weight-regular);
+	}
+
+	/* ── Tables: plain tables, 2rem rows. ──────────────────────────── */
+	.tk-table-wrap {
+		overflow-x: auto;
+		border: 1px solid var(--tk-border-subtle);
+		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-1);
+
+		&:focus-visible {
+			outline-offset: 2px;
+		}
+	}
+
+	.tk-table .tk-check__box {
+		margin: 0;
+	}
+
+	.tk-table {
+		inline-size: 100%;
+		font-size: var(--tk-text-sm);
+
+		& caption {
+			padding: var(--tk-space-2) var(--tk-space-3);
+			color: var(--tk-text-2);
+			font-weight: var(--tk-weight-semibold);
+			text-align: start;
+		}
+
+		& th,
+		& td {
+			block-size: var(--tk-row-height);
+			padding: var(--tk-space-1) var(--tk-space-3);
+			border-block-end: 1px solid var(--tk-border-subtle);
+			text-align: start;
+			vertical-align: middle;
+			white-space: nowrap;
+		}
+
+		& thead th {
+			background: var(--tk-surface-2);
+			color: var(--tk-text-muted);
+			font-family: var(--tk-font-mono);
+			font-size: var(--tk-text-2xs);
+			font-weight: var(--tk-weight-medium);
+			letter-spacing: var(--tk-tracking-caps);
+			text-transform: uppercase;
+		}
+
+		& tbody tr {
+			transition: background-color var(--tk-dur-1) var(--tk-ease-snap);
+
+			&:hover {
+				background: var(--tk-surface-hover);
+			}
+
+			&:last-child > * {
+				border-block-end: 0;
+			}
+
+			/* Selected rows: a wash and a bar on the start edge. */
+			&[aria-selected="true"] {
+				background: var(--tk-surface-selected);
+				box-shadow: inset 3px 0 0 var(--tk-accent);
+			}
+		}
+
+		& .tk-num {
+			text-align: end;
+		}
+
+		/* The column that may grow and cut its text. */
+		& .tk-grow {
+			inline-size: 100%;
+			max-inline-size: 0;
+			overflow: hidden;
+			text-overflow: ellipsis;
+
+			& a {
+				color: var(--tk-text-1);
+				text-decoration: none;
+
+				&:hover {
+					text-decoration: underline;
+				}
+			}
+		}
+
+		& .tk-key {
+			color: var(--tk-text-2);
+			font-family: var(--tk-font-mono);
+			font-size: var(--tk-text-xs);
+		}
+
+		& .tk-cell {
+			display: flex;
+			align-items: center;
+			gap: var(--tk-space-1_5);
+		}
+	}
+
+	.tk-table--sticky thead th {
+		position: sticky;
+		inset-block-start: 0;
+		z-index: var(--tk-z-raised);
+	}
+
+	.tk-sort {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-1);
+		margin-inline: calc(-1 * var(--tk-space-1));
+		padding: var(--tk-space-0_5) var(--tk-space-1);
+		border: 0;
+		border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+		background: none;
+		color: inherit;
+		font: inherit;
+		letter-spacing: inherit;
+		text-transform: inherit;
+
+		& .tk-icon {
+			inline-size: 0.875rem;
+			block-size: 0.875rem;
+			opacity: 0.5;
+		}
+
+		&:hover {
+			color: var(--tk-text-1);
+			background: var(--tk-surface-hover);
+		}
+
+		[aria-sort] > & {
+			color: var(--tk-accent-text);
+
+			& .tk-icon {
+				opacity: 1;
+			}
+		}
+	}
+
+	/* ── Faces ─────────────────────────────────────────────────────── */
+	.tk-av {
+		--_n: calc(2px * var(--tk-notch));
+		--_s: 1.5rem;
+		position: relative;
+		display: inline-grid;
+		place-items: center;
+		flex: none;
+		inline-size: var(--_s);
+		block-size: var(--_s);
+		padding: calc(var(--_s) / 8);
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		background: var(--tk-hue-tile);
+		box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--tk-hue-text) 40%, transparent);
+		color: var(--tk-hue-text);
+		vertical-align: middle;
+
+		& img {
+			position: absolute;
+			inset: 0;
+			inline-size: 100%;
+			block-size: 100%;
+			object-fit: cover;
+		}
+
+		&[data-state="away"] {
+			opacity: 0.45;
+		}
+
+		&[data-state="deactivated"] {
+			filter: grayscale(1);
+			opacity: 0.6;
+		}
+	}
+
+	.tk-av--xs {
+		--_s: 1rem;
+		--_n: calc(1px * var(--tk-notch));
+		padding: 0;
+	}
+
+	.tk-av--md {
+		--_s: 2rem;
+	}
+
+	.tk-av--lg {
+		--_s: 3rem;
+		--_n: calc(3px * var(--tk-notch));
+	}
+
+	.tk-face {
+		inline-size: 100%;
+		block-size: 100%;
+		fill: currentColor;
+	}
+
+	/* The viewer's own face: an accent ring, drawn on the item. */
+	.tk-presence {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-1_5);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.tk-presence__item {
+		position: relative;
+		transition: scale var(--tk-dur-3) var(--tk-ease-glide), opacity var(--tk-dur-3) var(--tk-ease-glide);
+
+		@starting-style {
+			scale: 0.4;
+			opacity: 0;
+		}
+
+		/* The viewer's own face: an accent ring on its anchor (the face's
+		 * clip-path would cut an outline drawn on the face). */
+		&:has(.tk-av[data-you]) > .tk-tip {
+			outline: 2px solid var(--tk-accent);
+			outline-offset: 2px;
+		}
+
+		& > .tk-tip {
+			border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		}
+	}
+
+	.tk-presence__editing {
+		position: absolute;
+		inset-block-end: -4px;
+		inset-inline-end: -4px;
+		display: grid;
+		place-items: center;
+		inline-size: 0.875rem;
+		block-size: 0.875rem;
+		background: var(--tk-accent);
+		color: var(--tk-on-accent);
+		box-shadow: 0 0 0 2px var(--tk-bg);
+
+		& .tk-icon {
+			inline-size: 0.625rem;
+			block-size: 0.625rem;
+		}
+	}
+
+	.tk-presence__more {
+		display: inline-grid;
+		place-items: center;
+		min-inline-size: 2rem;
+		block-size: 2rem;
+		padding-inline: var(--tk-space-1);
+		background: var(--tk-surface-2);
+		box-shadow: inset 0 0 0 1px var(--tk-border);
+		color: var(--tk-text-2);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-xs);
+		font-weight: var(--tk-weight-semibold);
+	}
+
+	.tk-byline {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-1) var(--tk-space-1_5);
+		color: var(--tk-text-muted);
+		font-size: var(--tk-text-sm);
+	}
+
+	.tk-byline__name {
+		color: var(--tk-text-1);
+		font-weight: var(--tk-weight-semibold);
+		text-decoration: none;
+	}
+
+	/* ── Issue types, priorities, statuses ─────────────────────────── */
+	.tk-type {
+		flex: none;
+		inline-size: 1rem;
+		block-size: 1rem;
+	}
+
+	.tk-type__tile {
+		fill: var(--tk-hue-fill);
+	}
+
+	.tk-type__glyph {
+		fill: var(--tk-hue-on);
+	}
+
+	.tk-prio {
+		flex: none;
+		inline-size: 1rem;
+		block-size: 1rem;
+		color: var(--tk-hue-text);
+	}
+
+	.tk-typed {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-1_5);
+		white-space: nowrap;
+	}
+
+	/* A lozenge: the status name in mono caps, its category's marker. */
+	.tk-lozenge {
+		--_n: calc(2px * var(--tk-notch));
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3125rem;
+		block-size: 1.25rem;
+		padding-inline: 0.375rem 0.4375rem;
+		border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+		background: var(--tk-hue-wash);
+		color: var(--tk-hue-text);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+		font-weight: var(--tk-weight-semibold);
+		letter-spacing: 0.04em;
+		line-height: 1;
+		text-transform: uppercase;
+		white-space: nowrap;
+		vertical-align: middle;
+	}
+
+	.tk-cat {
+		flex: none;
+		inline-size: 10px;
+		block-size: 10px;
+		color: var(--tk-hue-text);
+	}
+
+	.tk-lane__head .tk-cat,
+	.tk-menu__item .tk-cat {
+		color: var(--tk-text-muted);
+	}
+
+	/* A label: a link with a pixel of its hue. */
+	.tk-label {
+		--_n: calc(2px * var(--tk-notch));
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3125rem;
+		block-size: 1.25rem;
+		padding-inline: 0.375rem;
+		border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-2);
+		box-shadow: inset 0 0 0 1px var(--tk-border-subtle);
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-xs);
+		line-height: 1;
+		text-decoration: none;
+		white-space: nowrap;
+
+		&::before {
+			content: "";
+			flex: none;
+			inline-size: 6px;
+			block-size: 6px;
+			background: var(--tk-hue-fill);
+		}
+
+		&:is(a):hover {
+			background: var(--tk-surface-hover);
+			color: var(--tk-text-1);
+		}
+	}
+
+	.tk-points {
+		--_n: calc(1px * var(--tk-notch));
+		display: inline-grid;
+		place-items: center;
+		min-inline-size: 1.25rem;
+		block-size: 1.125rem;
+		padding-inline: 0.25rem;
+		border-radius: 999px;
+		background: var(--tk-surface-2);
+		color: var(--tk-text-2);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+		font-weight: var(--tk-weight-semibold);
+		line-height: 1;
+	}
+
+	.tk-due {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		color: var(--tk-text-muted);
+		font-size: var(--tk-text-xs);
+		white-space: nowrap;
+
+		& .tk-icon {
+			inline-size: 0.875rem;
+			block-size: 0.875rem;
+		}
+
+		&[data-overdue] {
+			color: var(--tk-danger);
+			font-weight: var(--tk-weight-semibold);
+		}
+	}
+
+	/* ── Notices, outcomes, toasts ─────────────────────────────────── */
+	.tk-notice {
+		--_n: calc(2px * var(--tk-notch));
+		--_tone: var(--tk-text-2);
+		--_wash: var(--tk-surface-2);
+		display: flex;
+		align-items: start;
+		gap: var(--tk-space-3);
+		padding: var(--tk-space-3) var(--tk-space-4);
+		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+		background: linear-gradient(var(--_wash), var(--_wash)), var(--tk-surface-1);
+		box-shadow: inset 3px 0 0 var(--_tone), inset 0 0 0 1px color-mix(in oklch, var(--_tone) 28%, transparent);
+		color: var(--tk-text-1);
+		font-size: var(--tk-text-md);
+		flex-wrap: wrap;
+
+		& > .tk-icon {
+			margin-block-start: 0.125rem;
+			color: var(--_tone);
+		}
+
+		& > .tk-notice__body + .tk-notice__action {
+			margin-inline-start: auto;
+		}
+	}
+
+	.tk-notice--info {
+		--_tone: var(--tk-info);
+		--_wash: var(--tk-info-subtle);
+	}
+
+	.tk-notice--ok {
+		--_tone: var(--tk-ok);
+		--_wash: var(--tk-ok-subtle);
+	}
+
+	.tk-notice--warn {
+		--_tone: var(--tk-warn);
+		--_wash: var(--tk-warn-subtle);
+	}
+
+	.tk-notice--danger {
+		--_tone: var(--tk-danger);
+		--_wash: var(--tk-danger-subtle);
+	}
+
+	.tk-notice__body {
+		display: grid;
+		flex: 1 1 12rem;
+		gap: var(--tk-space-1);
+		min-inline-size: 0;
+	}
+
+	.tk-notice__title {
+		font-weight: var(--tk-weight-semibold);
+	}
+
+	.tk-notice__action {
+		display: flex;
+		align-self: center;
+		gap: var(--tk-space-2);
+	}
+
+	/* The line beside a control: what became of its action. */
+	.tk-outcome {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-1_5);
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+
+		&:empty {
+			display: block;
+			min-block-size: 0;
+		}
+
+		& > .tk-icon {
+			flex: none;
+			inline-size: 0.875rem;
+			block-size: 0.875rem;
+		}
+
+		& > span:not(.tk-tip) {
+			flex: 1 1 8rem;
+			min-inline-size: 0;
+		}
+
+		&[data-kind="refused"],
+		&[data-kind="failed"] {
+			color: var(--tk-danger);
+			font-weight: var(--tk-weight-medium);
+		}
+
+		&[data-kind="ok"] {
+			color: var(--tk-ok);
+		}
+
+		& .tk-btn {
+			margin-inline-start: var(--tk-space-1);
+		}
+	}
+
+	sb-toast.tk-toasts {
+		--sb-toast-width: 22rem;
+	}
+
+	sb-toast.tk-toasts[placement="inline"] {
+		display: block;
+	}
+
+	/* ── Skeletons: stepped bars that blink, never slide. ──────────── */
+	.tk-skeleton {
+		display: grid;
+		gap: var(--tk-space-2);
+	}
+
+	.tk-skeleton__bar {
+		block-size: 0.75rem;
+		background: var(--tk-surface-2);
+		animation: tk-blink 1.6s steps(2, jump-none) infinite;
+
+		&[data-n="1"] {
+			inline-size: 86%;
+			animation-delay: 0.2s;
+		}
+
+		&[data-n="2"] {
+			inline-size: 64%;
+			animation-delay: 0.4s;
+		}
+
+		&[data-n="3"] {
+			inline-size: 78%;
+			animation-delay: 0.6s;
+		}
+	}
+
+	.tk-skeleton--card .tk-skeleton__bar:first-child {
+		block-size: 4.5rem;
+	}
+
+	.tk-skeleton--row {
+		grid-template-columns: 1rem 4rem 1fr 5rem;
+		align-items: center;
+
+		& .tk-skeleton__bar {
+			inline-size: auto;
+		}
+	}
+
+	@keyframes tk-blink {
+		from {
+			opacity: 1;
+		}
+
+		to {
+			opacity: 0.5;
+		}
+	}
+
+	/* ── Empty states ──────────────────────────────────────────────── */
+	.tk-empty {
+		display: grid;
+		justify-items: center;
+		gap: var(--tk-space-3);
+		padding: var(--tk-space-10) var(--tk-space-6);
+		border: 1px dashed var(--tk-border-strong);
+		border-radius: calc(var(--tk-radius-lg) * (1 - var(--tk-notch)));
+		text-align: center;
+	}
+
+	.tk-empty__art {
+		--_s: calc(var(--tk-frame-step) * 2);
+		display: grid;
+		place-items: center;
+		margin: var(--_s) var(--_s) var(--tk-space-2);
+		padding: var(--tk-space-4);
+		background:
+			linear-gradient(color-mix(in oklch, var(--tk-border) 55%, transparent) 1px, transparent 1px) 0 0 / 8px 8px,
+			linear-gradient(90deg, color-mix(in oklch, var(--tk-border) 55%, transparent) 1px, transparent 1px) 0 0 / 8px 8px,
+			var(--tk-surface-inset);
+		color: var(--tk-accent-text);
+		box-shadow:
+			0 calc(-1 * var(--_s)) 0 0 var(--tk-border-strong),
+			0 var(--_s) 0 0 var(--tk-border-strong),
+			calc(-1 * var(--_s)) 0 0 0 var(--tk-border-strong),
+			var(--_s) 0 0 0 var(--tk-border-strong);
+	}
+
+	.tk-empty__title {
+		font-family: var(--tk-font-display);
+		font-size: var(--tk-text-2xl);
+		font-weight: 600;
+		letter-spacing: 0.02em;
+	}
+
+	.tk-empty__text {
+		max-inline-size: 30rem;
+		color: var(--tk-text-2);
+	}
+
+	/* ── Dashboards ────────────────────────────────────────────────── */
+	.tk-stats {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+		gap: 1px;
+		margin: 0;
+		overflow: hidden;
+		border: 1px solid var(--tk-border-subtle);
+		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+		background: var(--tk-border-subtle);
+	}
+
+	.tk-stat {
+		--_tone: var(--tk-text-1);
+		display: grid;
+		align-content: start;
+		gap: var(--tk-space-1);
+		padding: var(--tk-space-3) var(--tk-space-4);
+		background: var(--tk-surface-1);
+
+		& dd {
+			margin: 0;
+		}
+	}
+
+	.tk-stat--danger {
+		--_tone: var(--tk-danger);
+	}
+
+	.tk-stat--ok {
+		--_tone: var(--tk-ok);
+	}
+
+	.tk-stat--warn {
+		--_tone: var(--tk-warn);
+	}
+
+	.tk-stat__value {
+		color: var(--_tone);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-3xl);
+		font-weight: var(--tk-weight-bold);
+		font-variant-numeric: tabular-nums;
+		line-height: 1.1;
+
+		& a {
+			color: inherit;
+			text-decoration: none;
+
+			&:hover {
+				text-decoration: underline;
+			}
+		}
+	}
+
+	.tk-stat__note {
+		color: var(--tk-text-muted);
+		font-size: var(--tk-text-xs);
+	}
+
+	/* Progress: twenty pixel cells and the words. */
+	.tk-progress {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-2);
+		min-inline-size: 0;
+	}
+
+	.tk-progress__bar {
+		display: grid;
+		grid-template-columns: repeat(20, minmax(0, 1fr));
+		gap: 2px;
+		flex: 1;
+		max-inline-size: 16rem;
+		block-size: 0.5rem;
+
+		& > span {
+			background: var(--tk-surface-2);
+			box-shadow: inset 0 0 0 1px var(--tk-border-subtle);
+		}
+
+		& > span[data-full] {
+			background: var(--tk-ok);
+			box-shadow: none;
+		}
+	}
+
+	.tk-progress__text {
+		color: var(--tk-text-muted);
+		font-size: var(--tk-text-xs);
+		white-space: nowrap;
+	}
+
+	/* ── Feeds: notifications, activity. ───────────────────────────── */
+	.tk-feed {
+		display: grid;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.tk-feed__item {
+		position: relative;
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		gap: var(--tk-space-2_5);
+		padding: var(--tk-space-2_5) var(--tk-space-3);
+		border-block-end: 1px solid var(--tk-border-subtle);
+
+		&:last-child {
+			border-block-end: 0;
+		}
+
+		&[data-unread] {
+			background: linear-gradient(90deg, var(--tk-accent-subtle), transparent 70%);
+
+			&::before {
+				content: "";
+				position: absolute;
+				inset-block-start: 1.125rem;
+				inset-inline-start: 0.25rem;
+				inline-size: 4px;
+				block-size: 4px;
+				background: var(--tk-accent);
+			}
+		}
+	}
+
+	.tk-feed__text {
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+
+		& b,
+		& strong {
+			color: var(--tk-text-1);
+		}
+	}
+
+	.tk-feed__meta {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-2);
+		margin-block-start: 0.125rem;
+		font-size: var(--tk-text-xs);
+
+		& a {
+			color: inherit;
+			text-decoration: none;
+
+			&:hover {
+				text-decoration: underline;
+			}
+		}
+	}
+
+	.tk-feed__unread {
+		color: var(--tk-accent-text);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+		font-weight: var(--tk-weight-semibold);
+		letter-spacing: var(--tk-tracking-caps);
+		text-transform: uppercase;
+	}
+
+	/* A panel on a page: a box whose title is an eyebrow. */
+	.tk-box {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--tk-space-3);
+		align-content: start;
+		padding: var(--tk-space-4);
+		border: 1px solid var(--tk-border-subtle);
+		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-1);
+
+		& > header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: var(--tk-space-2);
+		}
+	}
+
+	/* Fields shown as label and value (an issue's side). */
+	.tk-props {
+		display: grid;
+		grid-template-columns: 7rem minmax(0, 1fr);
+		gap: var(--tk-space-2) var(--tk-space-3);
+		align-items: center;
+		margin: 0;
+
+		& dt {
+			color: var(--tk-text-muted);
+			font-size: var(--tk-text-xs);
+		}
+
+		& dd {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: var(--tk-space-1_5);
+			min-inline-size: 0;
+			margin: 0;
+			font-size: var(--tk-text-md);
+		}
+	}
+
+	@media (forced-colors: active) {
+		.tk-btn::before,
+		.tk-card::before,
+		.tk-lane::before {
+			border: 1px solid ButtonText;
+		}
+
+		.tk-type__tile {
+			fill: CanvasText;
+		}
+
+		.tk-type__glyph {
+			fill: Canvas;
+		}
+
+		.tk-lozenge,
+		.tk-label,
+		.tk-count {
+			border: 1px solid CanvasText;
+		}
+
+		.tk-check__box:checked,
+		.tk-toggle__input:checked + .tk-toggle__track {
+			background: Highlight;
+		}
+
+		.tk-tree__item[aria-current="page"],
+		.tk-table tbody tr[aria-selected="true"] {
+			outline: 2px solid Highlight;
+			outline-offset: -2px;
+		}
+	}
+}

@@ -1,0 +1,446 @@
+/* Rich text: pages, descriptions, comments, versions. The elements are
+ * exactly those of docs/editor.md ("HTML of a document"): the Go renderer
+ * and the editor's toDOM write the same, so this file styles reading and
+ * editing alike (the editor mounts in <div class="pm-mount prose">).
+ * Headings of levels 1 to 3 are h2 to h4; the page title is the h1. */
+@layer components {
+	.prose {
+		color: var(--tk-text-1);
+		font-size: var(--tk-text-lg);
+		line-height: var(--tk-leading-prose);
+		overflow-wrap: break-word;
+
+		& > * + * {
+			margin-block-start: 0.85em;
+		}
+
+		& :is(h2, h3, h4) {
+			color: var(--tk-text-1);
+			font-weight: var(--tk-weight-heading);
+			line-height: var(--tk-leading-snug);
+			scroll-margin-block-start: calc(var(--tk-header-height) + var(--tk-space-4));
+		}
+
+		& h2 {
+			margin-block-start: 1.75em;
+			font-size: var(--tk-text-2xl);
+		}
+
+		& h3 {
+			margin-block-start: 1.5em;
+			font-size: var(--tk-text-xl);
+		}
+
+		& h4 {
+			margin-block-start: 1.35em;
+			font-size: var(--tk-text-lg);
+		}
+
+		& > :first-child {
+			margin-block-start: 0;
+		}
+
+		& :is(h2, h3, h4) + * {
+			margin-block-start: 0.5em;
+		}
+
+		& strong {
+			font-weight: var(--tk-weight-heading);
+		}
+
+		& s {
+			color: var(--tk-text-2);
+			text-decoration-thickness: 1.5px;
+		}
+
+		/* Links: the host shows on hover (the renderer puts it in title). */
+		& a:not(.issue-chip, .mention, .page-link) {
+			position: relative;
+			color: var(--tk-accent-text);
+			text-decoration-color: color-mix(in oklch, currentColor 45%, transparent);
+
+			&[title]:hover::after {
+				content: attr(title);
+				position: absolute;
+				inset-block-end: calc(100% + 4px);
+				inset-inline-start: 0;
+				z-index: var(--tk-z-tooltip);
+				padding: 0.125rem 0.375rem;
+				background: var(--tk-tip-bg);
+				color: var(--tk-tip-text);
+				font-family: var(--tk-font-mono);
+				font-size: var(--tk-text-2xs);
+				line-height: 1.5;
+				white-space: nowrap;
+				pointer-events: none;
+			}
+		}
+
+		/* A link whose href the renderer refused: text, marked. */
+		& .link-unsafe {
+			color: var(--tk-text-2);
+			text-decoration: underline dashed var(--tk-text-muted);
+			text-underline-offset: 0.22em;
+			cursor: not-allowed;
+		}
+
+		& :is(ul, ol) {
+			padding-inline-start: 1.5em;
+
+			& li + li {
+				margin-block-start: 0.3em;
+			}
+
+			& li > :is(ul, ol) {
+				margin-block-start: 0.3em;
+			}
+		}
+
+		& ul > li::marker {
+			color: var(--tk-accent-text);
+			content: "\25AA\00A0\00A0";
+		}
+
+		& ol > li::marker {
+			color: var(--tk-text-muted);
+			font-family: var(--tk-font-mono);
+			font-size: 0.85em;
+		}
+
+		/* Task lists: the checkbox, then the item's content. */
+		& ul.task-list {
+			padding-inline-start: 0.125em;
+			list-style: none;
+
+			& > li.task-item::marker {
+				content: none;
+			}
+		}
+
+		& li.task-item {
+			display: flex;
+			align-items: start;
+			gap: 0.55em;
+
+			& > input[type="checkbox"] {
+				flex: none;
+				appearance: none;
+				display: grid;
+				place-items: center;
+				inline-size: 1em;
+				block-size: 1em;
+				margin: 0.32em 0 0;
+				background: var(--tk-surface-inset);
+				box-shadow: inset 0 0 0 1px var(--tk-control-border);
+				clip-path: polygon(calc(2px * var(--tk-notch)) 0, calc(100% - 2px * var(--tk-notch)) 0, 100% calc(2px * var(--tk-notch)), 100% calc(100% - 2px * var(--tk-notch)), calc(100% - 2px * var(--tk-notch)) 100%, calc(2px * var(--tk-notch)) 100%, 0 calc(100% - 2px * var(--tk-notch)), 0 calc(2px * var(--tk-notch)));
+				border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+
+				&:checked {
+					background: var(--tk-ok);
+					box-shadow: none;
+
+					&::after {
+						content: "";
+						inline-size: 0.6em;
+						block-size: 0.5em;
+						background: var(--tk-bg);
+						clip-path: polygon(0 50%, 20% 50%, 20% 62.5%, 40% 62.5%, 40% 75%, 60% 75%, 60% 50%, 70% 50%, 70% 25%, 80% 25%, 80% 0, 100% 0, 100% 25%, 90% 25%, 90% 50%, 80% 50%, 80% 75%, 70% 75%, 70% 100%, 30% 100%, 30% 87.5%, 10% 87.5%, 10% 75%, 0 75%);
+					}
+				}
+
+				&:not(:disabled) {
+					cursor: pointer;
+				}
+			}
+
+			& > div {
+				flex: 1;
+				min-inline-size: 0;
+			}
+
+			&[data-checked="true"] > div {
+				color: var(--tk-text-muted);
+				text-decoration: line-through;
+				text-decoration-color: color-mix(in oklch, currentColor 60%, transparent);
+			}
+		}
+
+		& blockquote {
+			padding: 0.5em 1em;
+			border-inline-start: 3px solid var(--tk-accent);
+			background: var(--tk-accent-subtle);
+			color: var(--tk-text-1);
+
+			& > * + * {
+				margin-block-start: 0.6em;
+			}
+		}
+
+		& :not(pre) > code {
+			padding: 0.08em 0.36em;
+			border-radius: 3px;
+			background: var(--tk-code-bg);
+			box-shadow: inset 0 0 0 1px var(--tk-border-subtle);
+			color: var(--tk-code-text);
+			font-size: 0.86em;
+		}
+
+		/* Code blocks: the language in a tab on the top edge. */
+		& pre {
+			position: relative;
+			overflow-x: auto;
+			padding: 1em 1.1em;
+			border: 1px solid var(--tk-border-subtle);
+			border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+			background: var(--tk-code-bg);
+			color: var(--tk-code-text);
+			font-size: 0.82em;
+			line-height: 1.6;
+			tab-size: 4;
+
+			& code {
+				font-size: inherit;
+			}
+		}
+
+		& pre[data-language] {
+			padding-block-start: 2.1em;
+
+			&::before {
+				content: attr(data-language);
+				position: absolute;
+				inset-block-start: 0;
+				inset-inline-start: 0;
+				padding: 0.2em 0.65em;
+				border-end-end-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+				background: var(--tk-surface-2);
+				color: var(--tk-text-muted);
+				font-family: var(--tk-font-mono);
+				font-size: var(--tk-text-2xs);
+				letter-spacing: var(--tk-tracking-caps);
+				text-transform: uppercase;
+			}
+		}
+
+		/* Tables with a header row; wide ones scroll. */
+		& table {
+			display: block;
+			inline-size: max-content;
+			max-inline-size: 100%;
+			overflow-x: auto;
+			border: 1px solid var(--tk-border-subtle);
+			border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+			font-size: var(--tk-text-md);
+			line-height: 1.5;
+		}
+
+		& :is(th, td) {
+			min-inline-size: 6rem;
+			padding: 0.45em 0.8em;
+			border-block-end: 1px solid var(--tk-border-subtle);
+			border-inline-end: 1px solid var(--tk-border-subtle);
+			text-align: start;
+			vertical-align: top;
+
+			&:last-child {
+				border-inline-end: 0;
+			}
+
+			& > p + p {
+				margin-block-start: 0.4em;
+			}
+		}
+
+		& tr:last-child > * {
+			border-block-end: 0;
+		}
+
+		& th {
+			background: var(--tk-surface-2);
+			font-weight: var(--tk-weight-semibold);
+		}
+
+		& hr {
+			margin-block: 2em;
+			border: 0;
+			block-size: 4px;
+			background: repeating-linear-gradient(90deg, var(--tk-border-strong) 0 4px, transparent 4px 10px);
+		}
+
+		& figure.doc-image {
+			margin-inline: 0;
+
+			& img {
+				max-inline-size: 100%;
+				block-size: auto;
+				border: 1px solid var(--tk-border-subtle);
+				border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+			}
+		}
+
+		/* Version compare (FR-88): words and colour, never colour alone. */
+		& ins.diff-ins {
+			background: var(--tk-ok-subtle);
+			color: inherit;
+			text-decoration: underline 2px var(--tk-ok);
+			text-underline-offset: 0.18em;
+		}
+
+		& del.diff-del {
+			background: var(--tk-danger-subtle);
+			color: var(--tk-text-2);
+			text-decoration: line-through 2px var(--tk-danger);
+		}
+
+		& :is(ins.diff-ins, del.diff-del)::before {
+			position: absolute;
+			inline-size: 1px;
+			block-size: 1px;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
+		}
+
+		& ins.diff-ins::before {
+			content: "added: ";
+		}
+
+		& del.diff-del::before {
+			content: "removed: ";
+		}
+	}
+
+	/* Comments: smaller text, tighter rhythm. */
+	.prose--small {
+		font-size: var(--tk-text-md);
+		line-height: 1.6;
+
+		& h2 {
+			font-size: var(--tk-text-xl);
+		}
+
+		& h3 {
+			font-size: var(--tk-text-lg);
+		}
+
+		& h4 {
+			font-size: var(--tk-text-md);
+		}
+	}
+
+	/* ── Inline references: the same elements in documents and in the
+	 * UI (ui.IssueChip, ui.Mention, ui.PageLink). ─────────────────── */
+	.issue-chip {
+		--_n: calc(2px * var(--tk-notch));
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		min-inline-size: 0;
+		max-inline-size: 100%;
+		padding: 0.0625rem 0.3125rem 0.0625rem 0.25rem;
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-2);
+		box-shadow: inset 0 0 0 1px var(--tk-border);
+		color: var(--tk-text-1);
+		font-family: var(--tk-font-ui);
+		font-size: 0.875em;
+		line-height: 1.5;
+		text-decoration: none;
+		vertical-align: baseline;
+		clip-path: polygon(var(--_n) 0, calc(100% - var(--_n)) 0, calc(100% - var(--_n)) var(--_n), 100% var(--_n), 100% calc(100% - var(--_n)), calc(100% - var(--_n)) calc(100% - var(--_n)), calc(100% - var(--_n)) 100%, var(--_n) 100%, var(--_n) calc(100% - var(--_n)), 0 calc(100% - var(--_n)), 0 var(--_n), var(--_n) var(--_n));
+		transition: background-color var(--tk-dur-1) var(--tk-ease-snap);
+
+		&:hover {
+			background: var(--tk-surface-hover);
+		}
+
+		&:focus-visible {
+			outline-offset: -2px;
+		}
+
+		& .tk-type {
+			inline-size: 1em;
+			block-size: 1em;
+			align-self: center;
+		}
+
+		& .tk-lozenge {
+			block-size: 1.15rem;
+		}
+
+		&[data-state] {
+			background: transparent;
+			box-shadow: inset 0 0 0 1px var(--tk-border);
+			color: var(--tk-text-muted);
+
+			& .tk-type__tile {
+				fill: var(--tk-text-muted);
+			}
+		}
+
+		&[data-state="deleted"] .issue-chip__key {
+			text-decoration: line-through;
+		}
+	}
+
+	.issue-chip__key {
+		flex: none;
+		color: var(--tk-text-2);
+		font-family: var(--tk-font-mono);
+		font-size: 0.86em;
+		font-weight: var(--tk-weight-semibold);
+	}
+
+	.issue-chip__summary {
+		min-inline-size: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.issue-chip[data-state] .issue-chip__summary {
+		font-style: italic;
+	}
+
+	.mention {
+		padding: 0 0.25em;
+		border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+		background: var(--tk-accent-subtle);
+		color: var(--tk-accent-text);
+		font-weight: var(--tk-weight-semibold);
+		text-decoration: none;
+		white-space: nowrap;
+
+		&:hover {
+			text-decoration: underline;
+		}
+	}
+
+	.page-link {
+		color: var(--tk-accent-text);
+		font-weight: var(--tk-weight-medium);
+		text-decoration: none;
+
+		/* A page glyph before the title, a small pixel sheet. */
+		&::before {
+			content: "";
+			display: inline-block;
+			inline-size: 0.6em;
+			block-size: 0.75em;
+			margin-inline-end: 0.3em;
+			background: currentColor;
+			opacity: 0.7;
+			clip-path: polygon(0 0, 66% 0, 66% 17%, 83% 17%, 83% 33%, 100% 33%, 100% 100%, 0 100%, 0 0, 17% 17%, 17% 83%, 83% 83%, 83% 50%, 50% 50%, 50% 17%, 17% 17%);
+			vertical-align: -0.05em;
+		}
+
+		&:is(a):hover {
+			text-decoration: underline;
+		}
+
+		&[data-state="gone"] {
+			color: var(--tk-text-muted);
+			font-style: italic;
+		}
+	}
+}

@@ -1,0 +1,526 @@
+/* Boards: lanes side by side that scroll sideways, at least 260px each
+ * (NFR-56), cards with every part of FR-40.2, and the states of a move:
+ * dragged (a hole), picked from the keyboard (raised), pending (faded, the
+ * pixel walking), refused (a pixel shake and the reason), landed (a glow
+ * that cools). A feature sets data-state on .tk-card and data-target on
+ * the lane a drag is over. */
+@layer components {
+	.tk-board {
+		container: board / inline-size;
+		margin-inline: calc(-1 * var(--_gutter, 0px));
+		padding: var(--tk-space-1) var(--_gutter, 0px) var(--tk-space-4);
+		overflow-x: auto;
+		overscroll-behavior-x: contain;
+		scroll-snap-type: x proximity;
+		scroll-padding-inline: var(--_gutter, 0px);
+
+		&:focus-visible {
+			outline-offset: -2px;
+		}
+	}
+
+	.tk-board__lanes {
+		display: grid;
+		grid-auto-flow: column;
+		grid-auto-columns: minmax(var(--tk-lane-min), var(--tk-lane-width));
+		gap: var(--tk-space-3);
+		align-items: start;
+		inline-size: max-content;
+	}
+
+	/* A lane: a sunken column with a pixel grid, the drop target. */
+	.tk-lane {
+		--_n: calc(3px * var(--tk-notch));
+		position: relative;
+		isolation: isolate;
+		display: grid;
+		grid-template-rows: auto 1fr;
+		min-block-size: 16rem;
+		scroll-snap-align: start;
+
+		&::before {
+			content: "";
+			position: absolute;
+			inset: 0;
+			z-index: -1;
+			border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+			background:
+				linear-gradient(color-mix(in oklch, var(--tk-border-subtle) 70%, transparent) 1px, transparent 1px) 0 0 / 16px 16px,
+				linear-gradient(90deg, color-mix(in oklch, var(--tk-border-subtle) 70%, transparent) 1px, transparent 1px) 0 0 / 16px 16px,
+				var(--tk-surface-inset);
+			box-shadow: inset 0 0 0 1px var(--tk-border-subtle);
+			transition: box-shadow var(--tk-dur-2) var(--tk-ease-glide), background-color var(--tk-dur-2);
+		}
+
+		&[data-target]::before {
+			box-shadow: inset 0 0 0 1px var(--tk-accent-edge), 0 0 22px -6px var(--tk-glow);
+			background-color: color-mix(in oklch, var(--tk-accent) 8%, var(--tk-surface-inset));
+		}
+
+		&[data-over]::before {
+			box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--tk-danger) 55%, transparent);
+		}
+	}
+
+	.tk-lane__head {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-1_5);
+		min-block-size: 2.5rem;
+		padding: var(--tk-space-1) var(--tk-space-1) var(--tk-space-1) var(--tk-space-3);
+
+		& .tk-count {
+			background: var(--tk-surface-1);
+		}
+	}
+
+	.tk-lane__name {
+		min-inline-size: 0;
+		overflow: hidden;
+		color: var(--tk-text-2);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+		font-weight: var(--tk-weight-semibold);
+		letter-spacing: var(--tk-tracking-caps);
+		text-overflow: ellipsis;
+		text-transform: uppercase;
+		white-space: nowrap;
+	}
+
+	.tk-lane__wip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		color: var(--tk-text-muted);
+		font-size: var(--tk-text-2xs);
+		white-space: nowrap;
+
+		.tk-lane[data-over] & {
+			color: var(--tk-danger);
+			font-weight: var(--tk-weight-semibold);
+		}
+
+		& .tk-icon {
+			inline-size: 0.75rem;
+			block-size: 0.75rem;
+		}
+	}
+
+	.tk-lane__add {
+		margin-inline-start: auto;
+	}
+
+	.tk-lane__head .tk-tip:has(.tk-lane__add) {
+		margin-inline-start: auto;
+	}
+
+	.tk-lane__cards {
+		display: grid;
+		align-content: start;
+		gap: var(--tk-space-2);
+		margin: 0;
+		padding: 0 var(--tk-space-2) var(--tk-space-2);
+		list-style: none;
+	}
+
+	.tk-slot {
+		display: grid;
+		align-content: start;
+		gap: var(--tk-space-1);
+		view-transition-class: tk-card;
+	}
+
+	.tk-slot__note {
+		padding: var(--tk-space-1) var(--tk-space-2);
+		font-size: var(--tk-text-xs);
+		line-height: 1.35;
+	}
+
+	/* ── A card ────────────────────────────────────────────────────── */
+	.tk-card {
+		--_n: calc(3px * var(--tk-notch));
+		--_edge: var(--tk-border-strong);
+		position: relative;
+		isolation: isolate;
+		display: grid;
+		align-content: start;
+		gap: var(--tk-space-1_5);
+		padding: var(--tk-space-2) var(--tk-space-2_5) var(--tk-space-2) calc(var(--tk-space-2_5) + 3px);
+		color: var(--tk-text-1);
+		cursor: grab;
+		touch-action: manipulation;
+		transition: translate var(--tk-dur-1) var(--tk-ease-snap), opacity var(--tk-dur-2) var(--tk-ease-glide);
+
+		/* The plate: the surface, a 1px edge, and a 3px start edge in the
+		 * epic's hue (grey without an epic). */
+		&::before {
+			content: "";
+			position: absolute;
+			inset: 0;
+			z-index: -1;
+			border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+			background:
+				radial-gradient(120% 140% at 0% 0%, color-mix(in oklch, var(--tk-accent) calc(var(--tk-landed) * 32%), transparent), transparent 70%),
+				var(--tk-surface-1);
+			box-shadow:
+				inset 3px 0 0 var(--_edge),
+				inset 0 0 0 1px color-mix(in oklch, var(--tk-accent-edge) calc(var(--tk-landed) * 100%), var(--tk-border));
+			transition: background-color var(--tk-dur-1) var(--tk-ease-snap), box-shadow var(--tk-dur-1) var(--tk-ease-snap);
+		}
+
+		&[data-hue] {
+			--_edge: var(--tk-hue-edge);
+		}
+
+		&:hover::before {
+			background-color: var(--tk-surface-hover);
+			box-shadow: inset 3px 0 0 var(--_edge), inset 0 0 0 1px var(--tk-border-strong);
+		}
+
+		&:has(:focus-visible)::before {
+			box-shadow: inset 3px 0 0 var(--_edge), inset 0 0 0 1px var(--tk-accent-edge);
+		}
+	}
+
+	.tk-card__top {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-1_5);
+		min-block-size: 1.25rem;
+	}
+
+	.tk-card__key {
+		color: var(--tk-text-2);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+		font-weight: var(--tk-weight-semibold);
+		letter-spacing: 0.02em;
+	}
+
+	.tk-card__parent {
+		color: var(--tk-text-muted);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+
+		&::before {
+			content: "\2191\00A0";
+		}
+	}
+
+	/* The "…": above the card's link, shown on hover and focus, always on
+	 * touch screens. */
+	.tk-card__menu {
+		position: relative;
+		z-index: 1;
+		display: grid;
+		place-items: center;
+		inline-size: 1.5rem;
+		block-size: 1.25rem;
+		margin-inline-start: auto;
+		margin-block: -0.125rem;
+		padding: 0;
+		border: 0;
+		border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+		background: transparent;
+		color: var(--tk-text-muted);
+		opacity: 0;
+		transition: opacity var(--tk-dur-1) var(--tk-ease-snap), background-color var(--tk-dur-1);
+
+		.tk-card:is(:hover, :focus-within) &,
+		&[aria-expanded="true"] {
+			opacity: 1;
+		}
+
+		&:hover {
+			background: var(--tk-surface-2);
+			color: var(--tk-text-1);
+		}
+
+		@media (pointer: coarse) {
+			opacity: 1;
+		}
+	}
+
+	/* The summary links the whole card: its ::after covers it. */
+	.tk-card__title {
+		display: -webkit-box;
+		overflow: hidden;
+		font-size: var(--tk-text-sm);
+		font-weight: var(--tk-weight-medium);
+		line-height: 1.38;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		hyphens: auto;
+
+		& a {
+			color: inherit;
+			text-decoration: none;
+
+			&::after {
+				content: "";
+				position: absolute;
+				inset: 0;
+			}
+
+			&:focus-visible {
+				outline: none;
+			}
+
+			&:focus-visible::after {
+				outline: 2px solid var(--tk-focus);
+				outline-offset: -4px;
+			}
+		}
+	}
+
+	.tk-card__epic {
+		inline-size: fit-content;
+		max-inline-size: 100%;
+		overflow: hidden;
+		padding: 0 0.3125rem;
+		background: var(--tk-hue-wash);
+		color: var(--tk-hue-text);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+		font-weight: var(--tk-weight-semibold);
+		line-height: 1.125rem;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.tk-card__meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-1) var(--tk-space-1_5);
+		min-block-size: 1.125rem;
+
+		& > .tk-tip,
+		& > .tk-points,
+		& > .tk-due {
+			position: relative;
+			z-index: 1;
+		}
+	}
+
+	.tk-card__labels {
+		display: inline-flex;
+		flex-wrap: wrap;
+		gap: 3px;
+		min-inline-size: 0;
+
+		& .tk-label {
+			block-size: 1.125rem;
+			padding-inline: 0.3125rem;
+			font-size: var(--tk-text-2xs);
+		}
+	}
+
+	.tk-card__who {
+		position: relative;
+		z-index: 1;
+		margin-inline-start: auto;
+	}
+
+	.tk-card__nobody {
+		display: block;
+		inline-size: 1rem;
+		block-size: 1rem;
+		border: 1px dashed var(--tk-border-strong);
+		border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+	}
+
+	/* The grip: two columns of pixels. On a touch screen it is the
+	 * handle that drags; the rest of the card scrolls the board. */
+	.tk-card__grip {
+		position: absolute;
+		inset-block: var(--tk-space-2);
+		inset-inline-start: 4px;
+		inline-size: 4px;
+		background: radial-gradient(circle, var(--tk-text-muted) 0.9px, transparent 1px) 0 0 / 4px 4px;
+		opacity: 0;
+		transition: opacity var(--tk-dur-1) var(--tk-ease-snap);
+
+		.tk-card:hover > & {
+			opacity: 0.6;
+		}
+
+		@media (pointer: coarse) {
+			z-index: 1;
+			inset-inline-start: 0;
+			inline-size: 14px;
+			background-position: 5px 0;
+			background-origin: content-box;
+			opacity: 0.6;
+			touch-action: none;
+		}
+	}
+
+	/* ── The states of a move ──────────────────────────────────────── */
+	/* In the pointer's hand: the card leaves a dashed hole. */
+	.tk-card[data-state="dragged"] {
+		opacity: 0.4;
+
+		&::before {
+			background: transparent;
+			box-shadow: inset 0 0 0 2px color-mix(in oklch, var(--tk-accent) 70%, transparent);
+		}
+	}
+
+	[data-tk-style="pixel"] .tk-card[data-state="dragged"]::before {
+		background: repeating-linear-gradient(135deg, var(--tk-accent-subtle) 0 4px, transparent 4px 8px);
+	}
+
+	/* Picked up from the keyboard: it rises with a glow. */
+	.tk-card[data-state="picked"] {
+		translate: 0 -3px;
+		filter: drop-shadow(0 10px 14px var(--tk-glow));
+
+		&::before {
+			box-shadow: inset 3px 0 0 var(--_edge), inset 0 0 0 2px var(--tk-accent-edge);
+		}
+	}
+
+	/* Waiting for the frame (MP-04.2): faded, the pending pixel walking
+	 * in its corner. */
+	.tk-card[data-state="pending"] {
+		cursor: progress;
+
+		& > :not(.tk-card__grip) {
+			opacity: 0.55;
+		}
+
+		&::before {
+			box-shadow: inset 3px 0 0 var(--_edge), inset 0 0 0 1px var(--tk-accent-edge);
+		}
+
+		&::after {
+			content: "";
+			position: absolute;
+			inset-block-start: 9px;
+			inset-inline-end: 11px;
+			inline-size: 5px;
+			block-size: 5px;
+			background: var(--tk-accent);
+			animation: tk-card-busy 0.8s steps(1, end) infinite;
+		}
+	}
+
+	/* Refused (FR-41.3): a shake in pixel steps; the reason shows under
+	 * the card. */
+	.tk-card[data-state="refused"] {
+		animation: tk-nudge var(--tk-dur-4) var(--tk-ease-snap);
+
+		&::before {
+			box-shadow: inset 3px 0 0 var(--tk-danger), inset 0 0 0 1px var(--tk-danger);
+		}
+	}
+
+	/* Landed from someone's move: the glow cools over 1.8s. */
+	.tk-card[data-state="landed"] {
+		animation: tk-landed 1.8s var(--tk-ease-glide) both;
+	}
+
+	@keyframes tk-landed {
+		from {
+			--tk-landed: 1;
+		}
+
+		to {
+			--tk-landed: 0;
+		}
+	}
+
+	@keyframes tk-nudge {
+		0%,
+		100% {
+			translate: 0 0;
+		}
+
+		20%,
+		60% {
+			translate: -4px 0;
+		}
+
+		40%,
+		80% {
+			translate: 4px 0;
+		}
+	}
+
+	@keyframes tk-card-busy {
+		0% {
+			translate: 0 0;
+		}
+
+		25% {
+			translate: -5px 0;
+		}
+
+		50% {
+			translate: -5px 5px;
+		}
+
+		75% {
+			translate: 0 5px;
+		}
+	}
+
+	/* Where the card would land: a bar of light with pixel end caps. */
+	.tk-drop {
+		position: relative;
+		block-size: 4px;
+		margin-block: -3px;
+		background: var(--tk-accent);
+		box-shadow: 0 0 12px var(--tk-glow);
+
+		&::before,
+		&::after {
+			content: "";
+			position: absolute;
+			inset-block-start: -3px;
+			inline-size: 4px;
+			block-size: 10px;
+			background: inherit;
+		}
+
+		&::before {
+			inset-inline-start: 0;
+		}
+
+		&::after {
+			inset-inline-end: 0;
+		}
+	}
+
+	/* The board's strip above the lanes: who is here, quick filters. */
+	.tk-boardbar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--tk-space-3);
+		margin-block-end: var(--tk-space-3);
+	}
+
+	/* Others' moves glide in a scoped view transition (MP-04.1). */
+	::view-transition-group(.tk-card) {
+		animation-duration: var(--tk-dur-5);
+		animation-timing-function: var(--tk-ease-glide);
+	}
+
+	@media (forced-colors: active) {
+		.tk-lane[data-target] {
+			outline: 2px solid Highlight;
+		}
+
+		.tk-drop {
+			background: Highlight;
+		}
+
+		.tk-card[data-state="refused"]::before {
+			border: 2px solid Mark;
+		}
+	}
+}

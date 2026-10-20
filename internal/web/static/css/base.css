@@ -1,0 +1,210 @@
+/* The reset, then elements before any class: type, links, focus,
+ * selection, code, forced colours and reduced motion. */
+@layer reset {
+	*,
+	*::before,
+	*::after {
+		box-sizing: border-box;
+	}
+
+	* {
+		margin: 0;
+	}
+
+	html {
+		-webkit-text-size-adjust: none;
+		text-size-adjust: none;
+		interpolate-size: allow-keywords;
+	}
+
+	body {
+		min-block-size: 100dvh;
+		-webkit-font-smoothing: antialiased;
+	}
+
+	img,
+	picture,
+	video,
+	canvas,
+	svg {
+		display: block;
+		max-inline-size: 100%;
+	}
+
+	input,
+	button,
+	textarea,
+	select {
+		font: inherit;
+		color: inherit;
+		letter-spacing: inherit;
+	}
+
+	button {
+		cursor: pointer;
+	}
+
+	p,
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		overflow-wrap: break-word;
+	}
+
+	ul[role="list"],
+	ol[role="list"] {
+		list-style: none;
+		padding: 0;
+	}
+
+	fieldset {
+		min-inline-size: 0;
+		padding: 0;
+		border: 0;
+	}
+
+	legend {
+		padding: 0;
+	}
+
+	table {
+		border-collapse: collapse;
+	}
+
+	[hidden] {
+		display: none !important;
+	}
+
+	/* Reduced motion: nothing moves, nothing loops. */
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
+			scroll-behavior: auto !important;
+		}
+	}
+}
+
+@layer base {
+	html {
+		background: var(--tk-bg);
+		color: var(--tk-text-1);
+		accent-color: var(--tk-accent);
+		scrollbar-color: var(--tk-border-strong) transparent;
+		scroll-padding-block-start: calc(var(--tk-header-height) + var(--tk-space-4));
+	}
+
+	body {
+		background: var(--tk-bg);
+		font-family: var(--tk-font-ui);
+		font-size: var(--tk-text-md);
+		line-height: var(--tk-leading-ui);
+	}
+
+	h1,
+	h2,
+	h3,
+	h4 {
+		color: var(--tk-text-1);
+		font-weight: var(--tk-weight-heading);
+		line-height: var(--tk-leading-snug);
+		text-wrap: balance;
+	}
+
+	h1 {
+		font-size: var(--tk-text-2xl);
+	}
+
+	h2 {
+		font-size: var(--tk-text-xl);
+	}
+
+	h3 {
+		font-size: var(--tk-text-lg);
+	}
+
+	h4 {
+		font-size: var(--tk-text-md);
+	}
+
+	p,
+	li,
+	dd,
+	figcaption {
+		text-wrap: pretty;
+	}
+
+	a {
+		color: var(--tk-accent-text);
+		text-decoration-color: color-mix(in oklch, currentColor 40%, transparent);
+		text-decoration-thickness: 1px;
+		text-underline-offset: 0.22em;
+		transition: color var(--tk-dur-1) var(--tk-ease-snap), text-decoration-color var(--tk-dur-1) var(--tk-ease-snap);
+
+		&:hover {
+			text-decoration-color: currentColor;
+		}
+	}
+
+	/* Focus is always visible: a 2px ring in the focus colour. Notched
+	 * controls draw it inside (their clip-path cuts what is outside). */
+	:focus-visible {
+		outline: 2px solid var(--tk-focus);
+		outline-offset: 2px;
+	}
+
+	:focus:not(:focus-visible) {
+		outline: none;
+	}
+
+	::selection {
+		background: var(--tk-selection);
+		color: var(--tk-text-1);
+	}
+
+	code,
+	kbd,
+	samp,
+	pre {
+		font-family: var(--tk-font-mono);
+		font-size: 0.88em;
+		font-variant-ligatures: none;
+	}
+
+	hr {
+		border: 0;
+		border-block-start: 1px solid var(--tk-border-subtle);
+	}
+
+	img {
+		block-size: auto;
+	}
+
+	small {
+		font-size: var(--tk-text-xs);
+	}
+
+	strong,
+	b {
+		font-weight: var(--tk-weight-semibold);
+	}
+
+	/* Numbers line up. */
+	td,
+	.tk-count,
+	time {
+		font-variant-numeric: tabular-nums;
+	}
+
+	@media (forced-colors: active) {
+		:focus-visible {
+			outline-color: Highlight;
+		}
+	}
+}

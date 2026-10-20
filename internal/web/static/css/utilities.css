@@ -1,0 +1,47 @@
+/* Utilities: the last layer, one job each. */
+@layer utilities {
+	.visually-hidden {
+		position: absolute !important;
+		inline-size: 1px !important;
+		block-size: 1px !important;
+		overflow: hidden !important;
+		clip-path: inset(50%) !important;
+		white-space: nowrap !important;
+	}
+
+	/* An 8-bit frame drawn outside the box: --tk-frame-step thick, in
+	 * --frame (the strong border by default), the corners left open. */
+	.pixel-frame {
+		--_s: var(--tk-frame-step);
+		--_c: var(--frame, var(--tk-border-strong));
+		box-shadow:
+			0 calc(-1 * var(--_s)) 0 0 var(--_c),
+			0 var(--_s) 0 0 var(--_c),
+			calc(-1 * var(--_s)) 0 0 0 var(--_c),
+			var(--_s) 0 0 0 var(--_c);
+	}
+
+	.muted {
+		color: var(--tk-text-muted);
+	}
+
+	.mono {
+		font-family: var(--tk-font-mono);
+	}
+
+	.display {
+		font-family: var(--tk-font-display);
+		letter-spacing: 0.02em;
+	}
+
+	.nowrap {
+		white-space: nowrap;
+	}
+
+	.truncate {
+		min-inline-size: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}
