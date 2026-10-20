@@ -1,0 +1,117 @@
+package ui
+
+import (
+	"strconv"
+	"time"
+)
+
+// Charts for dashboards (FR-60), by the dataviz conventions of the design
+// system: thin marks on a recessive axis, values as text beside them, the
+// series named in a legend and told apart by shape as well as hue (the
+// second series is hatched), and the numbers in a table, so colour is
+// never alone (NFR-50). Sizes come from data attributes with a rule per
+// step (data-w, data-h: 0 to 20), never from style=.
+
+// CountBar is one row of CountBars: a status, its category and count.
+type CountBar struct {
+	Label    string
+	Category StatusCategory
+	Count    int
+	Href     string // the issues it counts, if any
+}
+
+// CountBars is a count per status as a table whose rows carry a bar: the
+// status's marker and name, the bar (decorative) and the number.
+templ CountBars(caption string, rows []CountBar) {
+	{{ top := 0 }}
+	for _, r := range rows {
+		{{ top = max(top, r.Count) }}
+	}
+	<table class="tk-bars">
+		<caption class="visually-hidden">{ caption }</caption>
+		<thead class="visually-hidden">
+			<tr><th scope="col">Status</th><th scope="col">Share</th><th scope="col">Issues</th></tr>
+		</thead>
+		<tbody>
+			for _, r := range rows {
+				<tr>
+					<th scope="row">
+						<span class="tk-lozenge" data-cat={ r.Category.attr() }>
+							@raw(catSVG(r.Category))
+							{ r.Label }
+						</span>
+					</th>
+					<td class="tk-bars__track" aria-hidden="true">
+						<span class="tk-bars__bar" data-cat={ r.Category.attr() } data-w={ strconv.Itoa(steps(r.Count, top)) }></span>
+					</td>
+					<td class="tk-num">
+						if r.Href != "" {
+							<a href={ templ.SafeURL(r.Href) }>{ strconv.Itoa(r.Count) }</a>
+						} else {
+							{ strconv.Itoa(r.Count) }
+						}
+					</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}
+
+// steps is n of top in 20 steps; a count above 0 shows at least one.
+func steps(n, top int) int {
+	if n <= 0 || top <= 0 {
+		return 0
+	}
+	return max(1, min(20, (n*20+top/2)/top))
+}
+
+// DayPair is a day of DayChart: how many issues were created and resolved.
+type DayPair struct {
+	Day      time.Time
+	Created  int
+	Resolved int
+}
+
+// DayChart is created against resolved per day: a pair of columns per
+// day on one axis, created plain and resolved hatched, with a legend, the
+// day's numbers on hover and focus, and the same numbers as a table.
+templ DayChart(caption string, days []DayPair) {
+	{{ top, created, resolved := 0, 0, 0 }}
+	for _, d := range days {
+		{{ top, created, resolved = max(top, d.Created, d.Resolved), created + d.Created, resolved + d.Resolved }}
+	}
+	<figure class="tk-days">
+		<ul class="tk-days__legend" aria-hidden="true">
+			<li><span class="tk-days__key" data-series="created" data-hue="11"></span>Created { strconv.Itoa(created) }</li>
+			<li><span class="tk-days__key" data-series="resolved" data-cat="done"></span>Resolved { strconv.Itoa(resolved) }</li>
+		</ul>
+		<div class="tk-days__plot" role="img" aria-label={ caption + ": " + strconv.Itoa(created) + " created, " + strconv.Itoa(resolved) + " resolved. The table below has each day." }>
+			for i, d := range days {
+				<div class="tk-days__day" title={ dayTitle(d) }>
+					<span class="tk-days__bar" data-series="created" data-hue="11" data-h={ strconv.Itoa(steps(d.Created, top)) }></span>
+					<span class="tk-days__bar" data-series="resolved" data-cat="done" data-h={ strconv.Itoa(steps(d.Resolved, top)) }></span>
+					if i == 0 || i == len(days)-1 || i%7 == 0 {
+						<span class="tk-days__tick">{ d.Day.Format("2 Jan") }</span>
+					}
+				</div>
+			}
+		</div>
+		<figcaption class="visually-hidden">{ caption }</figcaption>
+		<details class="tk-days__table">
+			<summary>Show as a table</summary>
+			<table class="tk-table">
+				<caption class="visually-hidden">{ caption }</caption>
+				<thead><tr><th scope="col">Day</th><th scope="col" class="tk-num">Created</th><th scope="col" class="tk-num">Resolved</th></tr></thead>
+				<tbody>
+					for _, d := range days {
+						<tr><th scope="row">{ d.Day.Format("Mon 2 Jan") }</th><td class="tk-num">{ strconv.Itoa(d.Created) }</td><td class="tk-num">{ strconv.Itoa(d.Resolved) }</td></tr>
+					}
+				</tbody>
+			</table>
+		</details>
+	</figure>
+}
+
+func dayTitle(d DayPair) string {
+	return d.Day.Format("Mon 2 Jan") + ": " + strconv.Itoa(d.Created) + " created, " + strconv.Itoa(d.Resolved) + " resolved"
+}

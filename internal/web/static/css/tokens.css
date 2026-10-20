@@ -283,6 +283,9 @@
 		--tk-hue-wash: light-dark(oklch(52% 0.14 var(--h) / 0.12), oklch(76% 0.12 var(--h) / 0.14));
 		--tk-hue-edge: light-dark(oklch(58% 0.14 var(--h)), oklch(72% 0.12 var(--h)));
 		--tk-hue-tile: light-dark(oklch(94% 0.035 var(--h)), oklch(28% 0.04 var(--h)));
+		/* A chart's mark (ui.CountBars, ui.DayChart): inside the lightness
+		 * band of the dataviz checks in both themes, 3:1 on the surface. */
+		--tk-hue-chart: light-dark(oklch(52% 0.14 var(--h)), oklch(65% 0.12 var(--h)));
 	}
 
 	/* Sixteen hues for faces, carets and epics: data-hue="0" to "15".
@@ -324,5 +327,6 @@
 		--tk-hue-wash: var(--tk-surface-2);
 		--tk-hue-edge: var(--tk-border-strong);
 		--tk-hue-tile: var(--tk-surface-2);
+		--tk-hue-chart: var(--tk-text-muted);
 	}
 }

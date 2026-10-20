@@ -78,6 +78,7 @@ type Server struct {
 	lockout  *people.Lockout // failed logins per email and address (NFR-09.2)
 	metrics  *metrics
 	projects *projectsCache // the home page's projects and open counts
+	counts   *countsCache   // the dashboards' counts by status and day
 
 	mux     *http.ServeMux
 	probes  []string // a URL of every GET route, for the test that GET never writes (NFR-06)
@@ -143,6 +144,7 @@ func New(cfg Config) (*Server, error) {
 		lockout:  people.NewLockout(),
 		metrics:  newMetrics(cfg.DB),
 		projects: newProjectsCache(cfg.Hub),
+		counts:   newCountsCache(cfg.Hub),
 		mux:      http.NewServeMux(),
 		views:    newViewRegistry(),
 	}
@@ -169,6 +171,7 @@ func (s *Server) register() {
 	s.routesEditor()
 	s.routesNotify()
 	s.routesPeople()
+	s.routesDashboards()
 	s.routesAdmin()
 	s.routesModeration()
 	s.routesDemo()

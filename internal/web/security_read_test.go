@@ -38,6 +38,7 @@ func TestEveryGetReadOnly(t *testing.T) {
 			"/issues?project="+scope.key, "/issues.csv?project="+scope.key, "/search?q=plan&space="+scope.space, "/search/suggest?q=the",
 			"/wiki/pick?kind=issue&q="+scope.key, "/wiki/pick?kind=page&q=plan", "/wiki/pick?kind=person&q=the")
 	}
+	urls = append(urls, "/dashboards/"+f.id("dashboard", false), "/people/"+f.p[wOwner].ID)
 	urls = append(urls, "/filters", "/admin", "/admin/guests", "/admin/stats", "/admin/security", "/admin/demo", "/account", "/moderation", "/labels/urgent")
 
 	// The views pages name, as the people who may read them.

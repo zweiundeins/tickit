@@ -1,0 +1,229 @@
+/* Dashboards (FR-60): the list, the grid of gadgets, and the charts of
+ * internal/ui/charts.templ (CountBars, DayChart). Bar sizes are steps of
+ * 5 % set by data-w and data-h. */
+@layer components {
+	/* ── Charts ────────────────────────────────────────────────────── */
+	.tk-bars {
+		inline-size: 100%;
+		border-collapse: collapse;
+		font-size: var(--tk-text-sm);
+
+		& th {
+			padding-block: var(--tk-space-1);
+			padding-inline-end: var(--tk-space-2);
+			font-weight: var(--tk-weight-regular);
+			text-align: start;
+			white-space: nowrap;
+		}
+
+		& td {
+			padding-block: var(--tk-space-1);
+		}
+
+		& .tk-num {
+			inline-size: 3rem;
+			padding-inline-start: var(--tk-space-2);
+			font-family: var(--tk-font-mono);
+			font-variant-numeric: tabular-nums;
+			text-align: end;
+		}
+	}
+
+	.tk-bars__track {
+		inline-size: 100%;
+		box-shadow: inset 0 -1px 0 var(--tk-border-subtle);
+	}
+
+	.tk-bars__bar {
+		display: block;
+		block-size: 0.625rem;
+		min-inline-size: 0;
+		border-radius: 0 calc(4px * (1 - var(--tk-notch))) calc(4px * (1 - var(--tk-notch))) 0;
+		background: var(--tk-hue-chart);
+	}
+
+	.tk-bars__bar[data-w="0"] { inline-size: 0%; }
+	.tk-bars__bar[data-w="1"] { inline-size: 5%; }
+	.tk-bars__bar[data-w="2"] { inline-size: 10%; }
+	.tk-bars__bar[data-w="3"] { inline-size: 15%; }
+	.tk-bars__bar[data-w="4"] { inline-size: 20%; }
+	.tk-bars__bar[data-w="5"] { inline-size: 25%; }
+	.tk-bars__bar[data-w="6"] { inline-size: 30%; }
+	.tk-bars__bar[data-w="7"] { inline-size: 35%; }
+	.tk-bars__bar[data-w="8"] { inline-size: 40%; }
+	.tk-bars__bar[data-w="9"] { inline-size: 45%; }
+	.tk-bars__bar[data-w="10"] { inline-size: 50%; }
+	.tk-bars__bar[data-w="11"] { inline-size: 55%; }
+	.tk-bars__bar[data-w="12"] { inline-size: 60%; }
+	.tk-bars__bar[data-w="13"] { inline-size: 65%; }
+	.tk-bars__bar[data-w="14"] { inline-size: 70%; }
+	.tk-bars__bar[data-w="15"] { inline-size: 75%; }
+	.tk-bars__bar[data-w="16"] { inline-size: 80%; }
+	.tk-bars__bar[data-w="17"] { inline-size: 85%; }
+	.tk-bars__bar[data-w="18"] { inline-size: 90%; }
+	.tk-bars__bar[data-w="19"] { inline-size: 95%; }
+	.tk-bars__bar[data-w="20"] { inline-size: 100%; }
+
+	.tk-days {
+		display: grid;
+		gap: var(--tk-space-2);
+		margin: 0;
+	}
+
+	.tk-days__legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-1) var(--tk-space-4);
+		margin: 0;
+		padding: 0;
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-xs);
+		list-style: none;
+
+		& li {
+			display: inline-flex;
+			align-items: center;
+			gap: var(--tk-space-1_5);
+		}
+	}
+
+	.tk-days__key {
+		inline-size: 0.75rem;
+		block-size: 0.75rem;
+		background: var(--tk-hue-chart);
+	}
+
+	/* The second series is hatched: told apart by texture too. */
+	:is(.tk-days__key, .tk-days__bar)[data-series="resolved"] {
+		background:
+			repeating-linear-gradient(135deg, transparent 0 2px, var(--tk-surface-1) 2px 3px),
+			var(--tk-hue-chart);
+	}
+
+	.tk-days__plot {
+		display: grid;
+		grid-auto-columns: minmax(0, 1fr);
+		grid-auto-flow: column;
+		gap: 2px;
+		block-size: 8rem;
+		padding-block-end: 1.25rem;
+		box-shadow: inset 0 -1px 0 var(--tk-border);
+	}
+
+	.tk-days__day {
+		position: relative;
+		display: flex;
+		align-items: end;
+		justify-content: center;
+		gap: 1px;
+		min-inline-size: 0;
+
+		&:hover {
+			background: var(--tk-surface-hover);
+		}
+	}
+
+	.tk-days__bar {
+		flex: 1 1 0;
+		max-inline-size: 0.625rem;
+		min-block-size: 0;
+		border-radius: calc(4px * (1 - var(--tk-notch))) calc(4px * (1 - var(--tk-notch))) 0 0;
+		background: var(--tk-hue-chart);
+	}
+
+	.tk-days__bar[data-h="0"] { block-size: 0%; }
+	.tk-days__bar[data-h="1"] { block-size: 5%; }
+	.tk-days__bar[data-h="2"] { block-size: 10%; }
+	.tk-days__bar[data-h="3"] { block-size: 15%; }
+	.tk-days__bar[data-h="4"] { block-size: 20%; }
+	.tk-days__bar[data-h="5"] { block-size: 25%; }
+	.tk-days__bar[data-h="6"] { block-size: 30%; }
+	.tk-days__bar[data-h="7"] { block-size: 35%; }
+	.tk-days__bar[data-h="8"] { block-size: 40%; }
+	.tk-days__bar[data-h="9"] { block-size: 45%; }
+	.tk-days__bar[data-h="10"] { block-size: 50%; }
+	.tk-days__bar[data-h="11"] { block-size: 55%; }
+	.tk-days__bar[data-h="12"] { block-size: 60%; }
+	.tk-days__bar[data-h="13"] { block-size: 65%; }
+	.tk-days__bar[data-h="14"] { block-size: 70%; }
+	.tk-days__bar[data-h="15"] { block-size: 75%; }
+	.tk-days__bar[data-h="16"] { block-size: 80%; }
+	.tk-days__bar[data-h="17"] { block-size: 85%; }
+	.tk-days__bar[data-h="18"] { block-size: 90%; }
+	.tk-days__bar[data-h="19"] { block-size: 95%; }
+	.tk-days__bar[data-h="20"] { block-size: 100%; }
+
+	.tk-days__tick {
+		position: absolute;
+		inset-block-start: calc(100% + 0.25rem);
+		color: var(--tk-text-muted);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+		white-space: nowrap;
+	}
+
+	.tk-days__day:last-child .tk-days__tick {
+		inset-inline-end: 0;
+	}
+
+	.tk-days__day:first-child .tk-days__tick {
+		inset-inline-start: 0;
+	}
+
+	.tk-days__table summary {
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-xs);
+		cursor: pointer;
+	}
+
+	/* ── Dashboards ────────────────────────────────────────────────── */
+	.tk-dashes__new {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-2);
+		align-items: end;
+
+		& .tk-field {
+			flex: 1 1 16rem;
+			max-inline-size: 24rem;
+		}
+	}
+
+	.tk-dash__bar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-2);
+		align-items: end;
+		margin-block-end: var(--tk-space-4);
+		padding: var(--tk-space-3);
+		border: 1px dashed var(--tk-border);
+		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+	}
+
+	.tk-dash__grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+		gap: var(--tk-space-4);
+		align-items: start;
+	}
+
+	.tk-gadget {
+		min-inline-size: 0;
+
+		& > header h2 {
+			margin: 0;
+		}
+	}
+
+	/* A gadget's owner controls: the document's style shows them to the
+	 * dashboard's owner alone (views.dashStyle). */
+	.tk-gadget__own {
+		display: none;
+		gap: var(--tk-space-0_5);
+	}
+
+	.tk-gadget__note {
+		color: var(--tk-text-muted);
+		font-size: var(--tk-text-xs);
+	}
+}

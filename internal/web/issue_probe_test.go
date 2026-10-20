@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zweiundeins/tickit/internal/dashboards"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/tracker"
@@ -41,6 +42,14 @@ func seedProbes(t *testing.T, e *webtest.Env) {
 	e.Do(t, tracker.AddComment{By: by(), Issue: web.ProbeIssue, Body: tracker.PlainDoc("A comment.")})
 	e.Do(t, tracker.DeleteIssue{By: by(), Issue: probeGone})
 	e.Do(t, tracker.MoveToProject{By: by(), Issue: probeMoved, Project: probeApp})
+	// A dashboard with a gadget of every kind (FR-60).
+	e.Do(t, tracker.SaveFilter{By: by(), ID: "01920000-0000-7000-8000-0000000000f1", Name: "Mine", Filter: tracker.Filter{Assignees: []string{tracker.Me}}})
+	e.Do(t, dashboards.Create{By: by(), ID: web.ProbeDashboard, Name: "Probe"})
+	for _, g := range []dashboards.AddGadget{{Kind: dashboards.Filter, SavedFilter: "01920000-0000-7000-8000-0000000000f1"}, {Kind: dashboards.Status, Project: probeWeb},
+		{Kind: dashboards.Assigned}, {Kind: dashboards.Activity}, {Kind: dashboards.Created, Project: probeWeb}} {
+		g.By, g.Dashboard = by(), web.ProbeDashboard
+		e.Do(t, g)
+	}
 }
 
 func byOf(p people.Person, op string) tabs.By {

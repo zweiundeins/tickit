@@ -223,6 +223,7 @@ func Seed(ctx context.Context, w *writer.Writer, c *seed.Content, run time.Time,
 		steps = append(steps, more...)
 	}
 	slices.SortStableFunc(steps, func(a, b Step) int { return cmp.Or(a.At.Compare(b.At), cmp.Compare(a.Phase, b.Phase)) })
+	steps = append(steps, r.dashboardSteps(steps[len(steps)-1].At)...)
 	moves, err := r.rankSteps(steps[len(steps)-1].At)
 	if err != nil {
 		return n, err

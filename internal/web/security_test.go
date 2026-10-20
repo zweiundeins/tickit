@@ -215,6 +215,13 @@ var secCases = []secCase{
 	{name: "filters/delete", pattern: "POST /cmd/filters/delete", need: ownThing, guard: true, outcome: true, by: wMember, req: at("/cmd/filters/delete", "filter", "@filter")},
 	{name: "filters/star", pattern: "POST /cmd/filters/star", need: self, guard: true, outcome: true, by: wViewer, req: at("/cmd/filters/star", "filter", "@filter", "star", true)},
 
+	{name: "dashboards/create", pattern: "POST /cmd/dashboards/create", need: self, guard: true, outcome: true, by: wViewer, req: at("/cmd/dashboards/create", "name", "Mine too")},
+	{name: "dashboards/rename", pattern: "POST /cmd/dashboards/rename", need: ownThing, guard: true, outcome: true, by: wMember, req: at("/cmd/dashboards/rename", "dashboard", "@dashboard", "name", "Renamed")},
+	{name: "dashboards/gadget", pattern: "POST /cmd/dashboards/gadget", need: ownThing, guard: true, outcome: true, by: wMember, req: at("/cmd/dashboards/gadget", "dashboard", "@dashboard", "kind", "activity")},
+	{name: "dashboards/gadget/move", pattern: "POST /cmd/dashboards/gadget/move", need: ownThing, guard: true, outcome: true, by: wMember, req: at("/cmd/dashboards/gadget/move", "dashboard", "@dashboard", "gadget", "@gadget2", "earlier", true)},
+	{name: "dashboards/gadget/remove", pattern: "POST /cmd/dashboards/gadget/remove", need: ownThing, guard: true, outcome: true, by: wMember, req: at("/cmd/dashboards/gadget/remove", "dashboard", "@dashboard", "gadget", "@gadget")},
+	{name: "dashboards/delete", pattern: "POST /cmd/dashboards/delete", need: ownThing, guard: true, outcome: true, by: wMember, req: at("/cmd/dashboards/delete", "dashboard", "@dashboard")},
+
 	{name: "admin/create", pattern: "POST /cmd/admin/create", need: siteAdmin, guard: true, outcome: true, by: wRoot, req: at("/cmd/admin/create", "email", "new@example.com", "username", "newbie", "name", "New", "role", "none", "password", "a first password")},
 	{name: "admin/role", pattern: "POST /cmd/admin/role", need: siteAdmin, guard: true, outcome: true, by: wRoot, targets: []string{"account"}, req: at("/cmd/admin/role", "account", "@victim", "role", "moderator")},
 	{name: "admin/active", pattern: "POST /cmd/admin/active", need: siteAdmin, guard: true, outcome: true, by: wRoot, targets: []string{"account"}, req: at("/cmd/admin/active", "account", "@victim", "active", false)},
