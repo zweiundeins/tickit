@@ -626,7 +626,7 @@ func Progress(done, total int, label string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if i < cells {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, " data-on")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, " data-full")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -29,7 +29,9 @@ templ Avatar(p AvatarProps) {
 		data-hue={ strconv.Itoa(f.Hue) }
 		if p.Deactivated {
 			data-state="deactivated"
-		} else if p.Away {
+		}
+		else
+		if p.Away {
 			data-state="away"
 		}
 		if p.You {

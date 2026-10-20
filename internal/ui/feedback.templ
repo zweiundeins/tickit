@@ -1,5 +1,7 @@
 package ui
 
+import "encoding/json"
+
 // NoticeProps is a message in the page: a banner, an alert in a form.
 type NoticeProps struct {
 	Tone  Tone
@@ -125,8 +127,29 @@ type Toast struct {
 	Text  string `json:"text"`
 	// Tone is info, ok, warn or danger.
 	Tone Tone `json:"variant,omitempty"`
-	// Duration in ms before it goes; 0 is the region's default, -1 stays.
-	Duration int `json:"duration,omitempty"`
+	// Duration in ms before it goes; 0 is the region's default.
+	Duration int `json:"-"`
+	// Sticky stays until the person dismisses it.
+	Sticky bool `json:"-"`
+}
+
+// MarshalJSON is sb-toast's shape: duration 0 means it stays.
+func (t Toast) MarshalJSON() ([]byte, error) {
+	type wire struct {
+		ID       string `json:"id"`
+		Title    string `json:"title,omitempty"`
+		Text     string `json:"text"`
+		Tone     Tone   `json:"variant,omitempty"`
+		Duration *int   `json:"duration,omitempty"`
+	}
+	w := wire{ID: t.ID, Title: t.Title, Text: t.Text, Tone: t.Tone}
+	if t.Sticky {
+		zero := 0
+		w.Duration = &zero
+	} else if t.Duration > 0 {
+		w.Duration = &t.Duration
+	}
+	return json.Marshal(w)
 }
 
 // ToastsProps is the page's toast region: Starbase's sb-toast, which the

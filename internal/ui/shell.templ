@@ -69,7 +69,9 @@ templ Shell(p ShellProps) {
 		class={ classes("tk-app", p.Class) }
 		if p.Sidebar != nil && p.Collapsed {
 			data-sidebar="collapsed"
-		} else if p.Sidebar != nil {
+		}
+		else
+		if p.Sidebar != nil {
 			data-sidebar="open"
 		}
 		data-preserve-attr="data-sidebar"

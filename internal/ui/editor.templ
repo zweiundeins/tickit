@@ -4,9 +4,9 @@ import "strconv"
 
 // ToolButton is a button of the editor's toolbar.
 type ToolButton struct {
-	Name  string // what it does: "Bold"
-	Icon  string
-	Keys  string // its shortcut, for the tooltip: "Ctrl B"
+	Name string // what it does: "Bold"
+	Icon string
+	Keys string // its shortcut, for the tooltip: "Ctrl B"
 	// Pressed is the mark's or block's state at the caret (aria-pressed,
 	// NFR-49.1); nil for buttons that act once (Undo).
 	Pressed *bool
