@@ -1,0 +1,322 @@
+[
+  {
+    "id": "architecture-overview",
+    "title": "Architecture overview",
+    "alt": "Boxes and arrows: the web shop and the app reach summit through the edge; summit uses PostgreSQL and cairn; porter talks to the warehouse and the mail relay; Paygrove sends webhooks.",
+    "width": 960,
+    "height": 560,
+    "kind": "diagram"
+  },
+  {
+    "id": "checkout-sequence",
+    "title": "Checkout sequence",
+    "alt": "Sequence diagram of a payment between the customer, the web shop, summit and Paygrove, ending with the payment webhook.",
+    "width": 960,
+    "height": 600,
+    "kind": "diagram"
+  },
+  {
+    "id": "stock-sync-flow",
+    "title": "Stock sync with its guard",
+    "alt": "Flow from the warehouse's stock file through porter and a new guard into PostgreSQL and cairn; a failed guard stops the sync and pages on-call.",
+    "width": 960,
+    "height": 440,
+    "kind": "diagram"
+  },
+  {
+    "id": "data-model",
+    "title": "Core data model",
+    "alt": "Entity diagram of products, variants, stock levels, customers, orders and order lines with their relations.",
+    "width": 960,
+    "height": 560,
+    "kind": "diagram"
+  },
+  {
+    "id": "deploy-pipeline",
+    "title": "Deploy pipeline",
+    "alt": "Seven steps from a merge to production: test, build, staging, smoke tests, a canary at 10 percent, then everyone.",
+    "width": 960,
+    "height": 360,
+    "kind": "diagram"
+  },
+  {
+    "id": "incident-response",
+    "title": "Incident response",
+    "alt": "Flowchart: an alert, acknowledgement, a decision whether customers are affected, then an incident with updates and a fix, and a postmortem.",
+    "width": 960,
+    "height": 580,
+    "kind": "diagram"
+  },
+  {
+    "id": "search-indexing",
+    "title": "Search indexing",
+    "alt": "summit writes changes to an outbox; the cairn indexer reads it and updates the index that the shop and the app query.",
+    "width": 960,
+    "height": 420,
+    "kind": "diagram"
+  },
+  {
+    "id": "app-release-train",
+    "title": "App release train",
+    "alt": "A two-week timeline: features on main, branch cut and beta, store review, then a staged rollout.",
+    "width": 960,
+    "height": 400,
+    "kind": "diagram"
+  },
+  {
+    "id": "team-map",
+    "title": "Team map",
+    "alt": "Six pixel avatars grouped into product, engineering, and quality and support, with names and roles.",
+    "width": 960,
+    "height": 500,
+    "kind": "diagram"
+  },
+  {
+    "id": "roadmap-board",
+    "title": "Roadmap board",
+    "alt": "Three columns, now, next and later, with the projects planned in each.",
+    "width": 960,
+    "height": 540,
+    "kind": "diagram"
+  },
+  {
+    "id": "chart-checkout-conversion",
+    "title": "Checkout conversion chart",
+    "alt": "Bar chart of weekly checkout conversion: the three-step checkout stays near 2.8 percent, the one-page checkout climbs from 3.1 to 3.6 percent.",
+    "width": 800,
+    "height": 450,
+    "kind": "diagram"
+  },
+  {
+    "id": "chart-api-latency",
+    "title": "API latency chart",
+    "alt": "Line chart of p50 and p95 latency over 30 days, with a spike during the stock sync incident and a drop after search moved to cairn.",
+    "width": 800,
+    "height": 450,
+    "kind": "diagram"
+  },
+  {
+    "id": "chart-crash-free",
+    "title": "Crash-free sessions chart",
+    "alt": "Bar chart of crash-free sessions per app version; the first 3.0 beta dips to 98.2 percent.",
+    "width": 800,
+    "height": 450,
+    "kind": "diagram"
+  },
+  {
+    "id": "chart-returns",
+    "title": "Return reasons chart",
+    "alt": "Horizontal bars of return reasons; too small and too big together cause more than half of all returns.",
+    "width": 800,
+    "height": 450,
+    "kind": "diagram"
+  },
+  {
+    "id": "shop-home",
+    "title": "Web shop home page",
+    "alt": "The shop's home page with a mountain banner for the First Snow Sale and four new products.",
+    "width": 1000,
+    "height": 680,
+    "kind": "screenshot"
+  },
+  {
+    "id": "product-page",
+    "title": "Product page",
+    "alt": "The product page of the Firn 30 backpack with colours, back lengths and an add to cart button.",
+    "width": 1000,
+    "height": 640,
+    "kind": "screenshot"
+  },
+  {
+    "id": "checkout-one-page",
+    "title": "One-page checkout",
+    "alt": "The one-page checkout: address, delivery and payment on the left, the order summary with a voucher and the pay button on the right.",
+    "width": 1000,
+    "height": 700,
+    "kind": "screenshot"
+  },
+  {
+    "id": "cart-drawer",
+    "title": "Cart drawer",
+    "alt": "The cart drawer open over a category page, with two items, a free delivery hint and the checkout button.",
+    "width": 1000,
+    "height": 640,
+    "kind": "screenshot"
+  },
+  {
+    "id": "search-results",
+    "title": "Search results",
+    "alt": "Search results for rain jacket with filters for category, size and colour.",
+    "width": 1000,
+    "height": 680,
+    "kind": "screenshot"
+  },
+  {
+    "id": "size-guide",
+    "title": "Size guide dialog",
+    "alt": "A size guide dialog for hiking boots: a table of EU, UK and US sizes with foot lengths, size 42 highlighted.",
+    "width": 1000,
+    "height": 640,
+    "kind": "screenshot"
+  },
+  {
+    "id": "error-page",
+    "title": "Error page",
+    "alt": "The shop's error page: pixel mountains in fog and the words Lost in the fog.",
+    "width": 1000,
+    "height": 600,
+    "kind": "screenshot"
+  },
+  {
+    "id": "app-home",
+    "title": "App home screen",
+    "alt": "The app's home screen with the sale banner, the next trip's pack list progress and products back in stock.",
+    "width": 400,
+    "height": 780,
+    "kind": "screenshot"
+  },
+  {
+    "id": "app-pack-list",
+    "title": "App pack list",
+    "alt": "A pack list in the app for a three-day hut trip, grouped into clothing, gear and extras, with two missing items.",
+    "width": 400,
+    "height": 780,
+    "kind": "screenshot"
+  },
+  {
+    "id": "app-order-tracking",
+    "title": "App order tracking",
+    "alt": "Order tracking in the app: placed, packed, handed to the carrier, out for delivery, and delivered still to come.",
+    "width": 400,
+    "height": 780,
+    "kind": "screenshot"
+  },
+  {
+    "id": "back-office-orders",
+    "title": "Back office orders",
+    "alt": "The back office list of today's orders with totals and coloured status badges.",
+    "width": 1000,
+    "height": 620,
+    "kind": "screenshot"
+  },
+  {
+    "id": "ops-dashboard",
+    "title": "Operations dashboard",
+    "alt": "A dark dashboard for summit with request rate, latency, error rate, stock sync status and recent alerts.",
+    "width": 1000,
+    "height": 620,
+    "kind": "screenshot"
+  },
+  {
+    "id": "order-email",
+    "title": "Shipping email",
+    "alt": "The shipping confirmation email with a mountain banner, a tracking button and the order's items.",
+    "width": 800,
+    "height": 720,
+    "kind": "screenshot"
+  },
+  {
+    "id": "alpenglow-peaks",
+    "title": "Alpenglow on the peaks",
+    "alt": "Pixel art of snowy peaks glowing pink at dawn above a dark ridge with fir trees.",
+    "width": 800,
+    "height": 500,
+    "kind": "photo"
+  },
+  {
+    "id": "mountain-hut",
+    "title": "Mountain hut",
+    "alt": "Pixel art of a wooden hut with red shutters on a stone base, smoke from the chimney, a meadow path and peaks behind.",
+    "width": 800,
+    "height": 500,
+    "kind": "photo"
+  },
+  {
+    "id": "trail-signpost",
+    "title": "Trail signpost",
+    "alt": "Pixel art of a yellow hiking signpost with three arrows on a summer meadow.",
+    "width": 800,
+    "height": 500,
+    "kind": "photo"
+  },
+  {
+    "id": "lake-reflection",
+    "title": "Mountain lake",
+    "alt": "Pixel art of peaks and a forest mirrored in a still mountain lake.",
+    "width": 800,
+    "height": 500,
+    "kind": "photo"
+  },
+  {
+    "id": "tent-at-night",
+    "title": "Tent at night",
+    "alt": "Pixel art of a lit tent under a starry sky with a crescent moon and dark mountains.",
+    "width": 800,
+    "height": 500,
+    "kind": "photo"
+  },
+  {
+    "id": "hiking-boots",
+    "title": "Hiking boots",
+    "alt": "Pixel art product photo of a pair of brown leather hiking boots with yellow laces.",
+    "width": 800,
+    "height": 500,
+    "kind": "photo"
+  },
+  {
+    "id": "backpack",
+    "title": "Firn 30 backpack",
+    "alt": "Pixel art product photo of a teal day pack with a front pocket and black straps.",
+    "width": 800,
+    "height": 500,
+    "kind": "photo"
+  },
+  {
+    "id": "glacier",
+    "title": "Rope team on a glacier",
+    "alt": "Pixel art of three climbers roped together crossing a glacier with crevasses below peaks.",
+    "width": 800,
+    "height": 500,
+    "kind": "photo"
+  },
+  {
+    "id": "cable-car",
+    "title": "Cable car",
+    "alt": "Pixel art of a red cable car cabin above a forested valley.",
+    "width": 800,
+    "height": 500,
+    "kind": "photo"
+  },
+  {
+    "id": "cows-meadow",
+    "title": "Cows on an alpine meadow",
+    "alt": "Pixel art of brown and white cows with bells on a flowery meadow behind a fence.",
+    "width": 800,
+    "height": 500,
+    "kind": "photo"
+  },
+  {
+    "id": "rain-jacket",
+    "title": "Nebel rain shell",
+    "alt": "Pixel art product photo of a rust-coloured rain jacket on a hanger.",
+    "width": 800,
+    "height": 500,
+    "kind": "photo"
+  },
+  {
+    "id": "campfire",
+    "title": "Campfire at dusk",
+    "alt": "Pixel art of a campfire with logs and sparks at dusk, a mug beside it.",
+    "width": 800,
+    "height": 500,
+    "kind": "photo"
+  },
+  {
+    "id": "warehouse",
+    "title": "Warehouse aisle",
+    "alt": "Pixel art of the warehouse: blue shelves full of cardboard boxes and a teal crate on a pallet truck.",
+    "width": 800,
+    "height": 500,
+    "kind": "photo"
+  }
+]
