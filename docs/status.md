@@ -24,12 +24,12 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0. 
 | Non-functional: Security | 16 | 1 | 0 | 3 | 0 | 0 |
 | Non-functional: Privacy | 4 | 2 | 0 | 0 | 1 | 0 |
 | Non-functional: Performance and realtime | 4 | 4 | 0 | 1 | 1 | 0 |
-| Non-functional: Accessibility | 4 | 1 | 0 | 1 | 1 | 0 |
+| Non-functional: Accessibility | 5 | 0 | 0 | 1 | 1 | 0 |
 | Non-functional: Browsers | 0 | 1 | 0 | 0 | 1 | 0 |
 | Non-functional: Deployment on the shared host | 8 | 0 | 0 | 0 | 0 | 0 |
 | Non-functional: Backups | 1 | 1 | 0 | 0 | 1 | 0 |
 | Non-functional: Observability | 2 | 1 | 0 | 0 | 1 | 0 |
-| **All** | **92** | **17** | **0** | **33** | **17** | **1** |
+| **All** | **93** | **16** | **0** | **33** | **17** | **1** |
 
 ## Projects
 
@@ -260,8 +260,8 @@ No Must or Should requirements.
 
 | ID | Title | Priority | Status | Tests | Note |
 | --- | --- | --- | --- | --- | --- |
-| NFR-45 | WCAG 2.2 AA | Should | partly | internal/web/contrast_test.go: TestContrast | No axe run and no recorded keyboard and screen-reader check of the listed pages exist in the repository. |
-| NFR-46 | Zoom | Must | partly | internal/web/stream_test.go: TestZoom; internal/web/prefs_test.go: TestEveryPage; e2e/demo_test.go: TestDemoShots (Chromium); e2e/notify_test.go: TestNotifyShots (Chromium) | Zoom is allowed on every page, but no test checks a width of 320 CSS pixels: the shot tests check 375 and run only with TICKIT_SHOTS set. |
+| NFR-45 | WCAG 2.2 AA | Should | partly | e2e/a11y_test.go: TestAxe (Chromium, TICKIT_AXE); internal/web/contrast_test.go: TestContrast | axe finds no serious or critical issue on the pages of NFR-45 in both themes and a keyboard walk is recorded (docs/accessibility.md); no screen reader check was run (NFR-45.1). |
+| NFR-46 | Zoom | Must | done | e2e/a11y_test.go: TestNarrowPages (Chromium); internal/web/stream_test.go: TestZoom; internal/web/prefs_test.go: TestEveryPage | Eight pages at 320 CSS pixels with no sideways scroll; zoom is allowed on every page. |
 | NFR-47 | Keyboard | Must | done | e2e/board_test.go: TestBoardKeyboardMove (Chromium); e2e/list_test.go: TestListTypingAndHistory (Chromium); e2e/list_test.go: TestListPanel (Chromium); e2e/notify_test.go: TestBellLive (Chromium) | Tree pattern, dialogs and panels are built (internal/ui/expr.go, overlays.templ), but no test drives the page tree keys or checks that focus returns. |
 | NFR-48 | Live updates and assistive technology | Must | done | e2e/notify_test.go: TestBellLive (Chromium); e2e/issue_test.go: TestIssueEditInPlace (Chromium) |  |
 | NFR-49 | Accessible editor | Should | done | editor/test/run.mjs: "toolbar: named buttons, aria-pressed, one tab stop, Alt+F10 and arrows (NFR-49, NFR-47)" (Chromium); editor/test/run.mjs: "remote carets: bar and name in the person's hue, at their place, hidden from screen readers (MP-06)" (Chromium); editor/test/run.mjs: "toDOM writes docs/editor.md's HTML of a document" (Chromium) | Node tests with puppeteer-core (npm test in editor/), not go test. |
@@ -273,7 +273,7 @@ No Must or Should requirements.
 | ID | Title | Priority | Status | Tests | Note |
 | --- | --- | --- | --- | --- | --- |
 | NFR-55 | Supported browsers | Must | partly | internal/web/action_test.go: TestCrossSite; e2e tests (Chromium, Firefox with LITH_BROWSER=firefox) | The browser tests run in Chromium and optionally Firefox only; nothing runs Safari, iOS, Android or Edge, and the brotli fallback for old Safari has no test here. |
-| NFR-56 | Small screens and touch | Should | partly | e2e/board_shots_test.go: TestBoardShots (Chromium) | 260-pixel lanes and touch drag by the grip are built; no test checks 320 pixels, a touch drag, or the editor on touch. |
+| NFR-56 | Small screens and touch | Should | partly | e2e/board_shots_test.go: TestBoardShots (Chromium) | 260-pixel lanes and touch drag by the grip are built, and TestNarrowPages (e2e/a11y_test.go) checks 320 pixels; no test checks a touch drag, or the editor on touch. |
 
 ## Non-functional: Deployment on the shared host
 
@@ -318,7 +318,6 @@ The Must requirements that are partly done, most important first. No Must requir
 - MP-02 Presence: "away" (MP-02.4) is never set, a space's page tree has no presence row, and no test covers a face going within 60 s of a lost connection.
 - MP-11 One render per shared view: renders per view key are not shown in the metrics or the admin statistics (MP-11.4).
 - MP-03 Live updates everywhere: there are no dashboards to update, and no test checks that a frame keeps the scroll position (MP-03.3).
-- NFR-46 Zoom: no test checks the 320 CSS pixel width; the screenshot tests use 375 pixels and run only with TICKIT_SHOTS.
 - NFR-55 Supported browsers: tests run in Chromium and optionally Firefox; nothing runs Safari, iOS, Android or Edge.
 - FR-137 Header and navigation: the Dashboards link points to `/dashboards`, which answers 404.
 - NFR-76 Metrics: the mapping of the grouping document's metrics onto tickit's (NFR-76.2) is not written down.

@@ -61,7 +61,7 @@ The role is `none`, `moderator` or `admin`. Without `TICKIT_PASSWORD`, the passw
 | `migrations/` | the SQL migrations, applied at startup |
 | `deploy/` | systemd units, the Caddy block, the deploy script, backups, monitoring |
 | `benchmarks/RESULTS.md` | measured numbers with date, machine and command |
-| `docs/` | requirements, status, architecture, the editor, security, the design system, deploying |
+| `docs/` | requirements, status, architecture, the editor, security, accessibility, the design system, deploying |
 
 ## Read on
 
@@ -70,6 +70,7 @@ The role is `none`, `moderator` or `admin`. Without `TICKIT_PASSWORD`, the passw
 - [docs/architecture.md](docs/architecture.md): how the code is cut.
 - [docs/editor.md](docs/editor.md): how co-editing works.
 - [docs/security.md](docs/security.md): the threat model, the controls and their tests.
+- [docs/accessibility.md](docs/accessibility.md): the accessibility checks (axe with `TICKIT_AXE`, 320 pixels, a keyboard walk) and what is open.
 - [docs/design-system.md](docs/design-system.md): tokens and components.
 - [docs/deploy.md](docs/deploy.md) and [deploy/README.md](deploy/README.md): the host, deploys, backups and monitoring.
 - [benchmarks/RESULTS.md](benchmarks/RESULTS.md): the measured numbers.
