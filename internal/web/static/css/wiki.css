@@ -1,0 +1,466 @@
+/* The wiki: spaces, a page in view and in the editor, its comments, the
+ * history, the trash and the editor's pickers. Built on the design
+ * system's tokens; the document itself is prose.css. */
+@layer components {
+	/* ── A page ────────────────────────────────────────────────────── */
+	.wk-page {
+		display: grid;
+		gap: var(--tk-space-4);
+		max-inline-size: var(--tk-prose-max);
+		min-inline-size: 0;
+	}
+
+	.wk-page__top {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: var(--tk-space-3);
+	}
+
+	.wk-head {
+		display: grid;
+		gap: var(--tk-space-2);
+		flex: 1 1 20rem;
+		min-inline-size: 0;
+	}
+
+	.wk-title {
+		font-size: var(--tk-text-3xl);
+		line-height: 1.2;
+		overflow-wrap: anywhere;
+	}
+
+	.wk-meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-2) var(--tk-space-4);
+		padding-block-end: var(--tk-space-3);
+		border-block-end: 1px solid var(--tk-border-subtle);
+	}
+
+	.wk-byline {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-2);
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+
+		& > span {
+			display: inline-flex;
+			flex-wrap: wrap;
+			align-items: baseline;
+			gap: 0 var(--tk-space-1);
+		}
+	}
+
+	.wk-byline__name {
+		color: var(--tk-text-1);
+		font-weight: 600;
+	}
+
+	.wk-sep {
+		color: var(--tk-text-muted);
+	}
+
+	.wk-labels {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-1);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.wk-label {
+		display: inline-flex;
+		align-items: center;
+	}
+
+	.wk-label__x {
+		display: inline-grid;
+		place-items: center;
+		inline-size: 1.25rem;
+		block-size: 1.25rem;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: var(--tk-text-muted);
+
+		&:hover {
+			color: var(--tk-danger);
+		}
+
+		& svg {
+			inline-size: 0.75rem;
+			block-size: 0.75rem;
+		}
+	}
+
+	.wk-actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-2);
+	}
+
+	.wk-addlabel {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-2);
+		inline-size: 12rem;
+	}
+
+	.wk-problem {
+		color: var(--tk-danger);
+		font-size: var(--tk-text-sm);
+
+		&:empty {
+			display: none;
+		}
+	}
+
+	.wk-body {
+		min-block-size: 4rem;
+	}
+
+	.wk-section-title {
+		font-size: var(--tk-text-lg);
+		margin-block: var(--tk-space-4) var(--tk-space-2);
+	}
+
+	/* Linked issues and pages that link here (FR-80.1, FR-103.2). */
+	.wk-refs {
+		display: grid;
+		gap: var(--tk-space-3);
+
+		&:empty {
+			display: none;
+		}
+	}
+
+	.wk-refs__group {
+		display: grid;
+		gap: var(--tk-space-2);
+		padding-block-start: var(--tk-space-3);
+		border-block-start: 1px solid var(--tk-border-subtle);
+	}
+
+	.wk-chips,
+	.wk-linked {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-2) var(--tk-space-3);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.wk-linked {
+		flex-direction: column;
+
+		& li {
+			display: flex;
+			gap: var(--tk-space-2);
+			align-items: baseline;
+		}
+	}
+
+	/* ── Comments (FR-90) ──────────────────────────────────────────── */
+	.wk-comments {
+		display: grid;
+		gap: var(--tk-space-3);
+		padding-block-start: var(--tk-space-4);
+		border-block-start: 1px solid var(--tk-border-subtle);
+	}
+
+	.wk-thread,
+	.wk-replies {
+		display: grid;
+		gap: var(--tk-space-4);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.wk-replies {
+		gap: var(--tk-space-3);
+		margin-block-start: var(--tk-space-3);
+		padding-inline-start: var(--tk-space-6);
+		border-inline-start: 2px solid var(--tk-border-subtle);
+	}
+
+	.wk-comment {
+		display: grid;
+		gap: var(--tk-space-1);
+	}
+
+	.wk-comment__head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-2);
+		font-size: var(--tk-text-sm);
+		color: var(--tk-text-2);
+
+		& b {
+			color: var(--tk-text-1);
+		}
+	}
+
+	.wk-comment__body {
+		font-size: var(--tk-text-md);
+		padding-inline-start: calc(1.5rem + var(--tk-space-2));
+	}
+
+	.wk-comment__gone {
+		padding-inline-start: calc(1.5rem + var(--tk-space-2));
+		font-style: italic;
+	}
+
+	.wk-comment__actions {
+		display: flex;
+		gap: var(--tk-space-1);
+		padding-inline-start: calc(1.5rem + var(--tk-space-1));
+	}
+
+	.wk-comment-form {
+		display: grid;
+		gap: var(--tk-space-2);
+		justify-items: start;
+
+		& .tk-field {
+			inline-size: 100%;
+		}
+	}
+
+	.wk-replying {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-2);
+		font-size: var(--tk-text-sm);
+		color: var(--tk-text-2);
+	}
+
+	/* ── The tree in the sidebar ───────────────────────────────────── */
+	.wk-tree {
+		display: grid;
+		gap: var(--tk-space-2);
+	}
+
+	/* ── Spaces (FR-75) ────────────────────────────────────────────── */
+	.wk-spacelist {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+		gap: var(--tk-space-4);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.wk-spacecard {
+		display: grid;
+		align-content: start;
+		gap: var(--tk-space-2);
+		padding: var(--tk-space-4);
+		border: 1px solid var(--tk-border);
+		background: var(--tk-surface-1);
+
+		&:hover {
+			border-color: var(--tk-border-strong);
+		}
+
+		&[data-archived] {
+			opacity: 0.7;
+		}
+	}
+
+	.wk-spacecard__link {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-3);
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.wk-spacecard__text {
+		display: grid;
+	}
+
+	.wk-spacecard__name {
+		font-weight: 600;
+		font-size: var(--tk-text-lg);
+	}
+
+	.wk-spacecard__key {
+		font-size: var(--tk-text-2xs);
+		color: var(--tk-text-muted);
+	}
+
+	.wk-spacecard__desc {
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+	}
+
+	.wk-spacecard__meta {
+		font-size: var(--tk-text-xs);
+	}
+
+	/* ── History, versions, trash ──────────────────────────────────── */
+	.wk-history,
+	.wk-trash {
+		display: grid;
+		gap: var(--tk-space-4);
+		min-inline-size: 0;
+	}
+
+	.wk-versions {
+		display: grid;
+		gap: var(--tk-space-3);
+		justify-items: start;
+		overflow-x: auto;
+
+		& table {
+			inline-size: 100%;
+		}
+	}
+
+	.wk-editors {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-1) var(--tk-space-3);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+
+		& li {
+			display: inline-flex;
+			align-items: center;
+			gap: var(--tk-space-1);
+		}
+	}
+
+	.wk-row-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-2);
+	}
+
+	/* ── The editor (FR-86) ────────────────────────────────────────── */
+	.wk-editing {
+		max-inline-size: var(--tk-prose-max);
+	}
+
+	.wk-editbar {
+		position: sticky;
+		inset-block-start: var(--tk-header-height);
+		z-index: var(--tk-z-sticky);
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--tk-space-2);
+		padding-block: var(--tk-space-2);
+		background: var(--tk-bg);
+		border-block-end: 1px solid var(--tk-border-subtle);
+	}
+
+	.wk-status {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-1);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-xs);
+		color: var(--tk-text-2);
+
+		& > span {
+			display: inline-flex;
+			align-items: center;
+			gap: var(--tk-space-1);
+		}
+	}
+
+	.wk-titlefield {
+		display: grid;
+		gap: var(--tk-space-1);
+	}
+
+	.wk-titleinput {
+		inline-size: 100%;
+		padding: var(--tk-space-1) 0;
+		border: 0;
+		border-block-end: 1px solid transparent;
+		background: transparent;
+		color: var(--tk-text-1);
+		font: inherit;
+		font-size: var(--tk-text-3xl);
+		font-weight: 700;
+		line-height: 1.2;
+
+		&:hover {
+			border-block-end-color: var(--tk-border);
+		}
+
+		&:focus-visible {
+			outline: none;
+			border-block-end-color: var(--tk-accent);
+		}
+	}
+
+	.wk-insert {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-1);
+	}
+
+	.wk-editor {
+		display: block;
+		min-inline-size: 0;
+	}
+
+	.wk-editor .pm-mount {
+		min-block-size: 20rem;
+		padding: var(--tk-space-4) var(--tk-space-1);
+	}
+
+	.wk-stopped {
+		display: grid;
+	}
+
+	/* The pickers of issues, people and pages. */
+	.wk-pick {
+		display: grid;
+		gap: 2px;
+		max-block-size: 18rem;
+		overflow-y: auto;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.wk-pick__item {
+		display: flex;
+		inline-size: 100%;
+		justify-content: space-between;
+		gap: var(--tk-space-3);
+		padding: var(--tk-space-2);
+		border: 0;
+		background: transparent;
+		color: var(--tk-text-1);
+		text-align: start;
+		font: inherit;
+
+		&:hover,
+		&:focus-visible {
+			background: var(--tk-surface-hover);
+		}
+	}
+
+	.wk-pick__meta {
+		font-size: var(--tk-text-xs);
+		text-align: end;
+	}
+}

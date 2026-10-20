@@ -1,0 +1,302 @@
+package views
+
+import (
+	"time"
+
+	"github.com/mbolli/tickit/internal/ui"
+	"github.com/mbolli/tickit/internal/wiki"
+)
+
+// WikiPage is a page in view (FR-80): the shared regions (head, body,
+// references, comments) that the stream patches, the presence row with
+// its editors marked, and the actions of the viewer.
+templ WikiPage(p PageProps) {
+	@ownStyle(p.Me, p.CanAdmin, p.CanEdit)
+	<article class="wk-page" data-signals={ wikiSignals } data-page={ p.Page.ID }>
+		<div class="wk-page__top">
+			@PageHeadRegion(p.Head)
+			@ui.PresenceRow(ui.PresenceProps{ID: PagePresenceID(p.Page.ID), Label: "People on this page", Shared: true})
+		</div>
+		if p.Page.State == wiki.Trashed {
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Title: "This page is in the trash", Action: trashNoticeAction(p)}) {
+				<p>Readers see it until the space's admin deletes it for good.</p>
+			}
+		}
+		@pageActions(p)
+		@PageBodyRegion(p.Body)
+		@PageRefsRegion(p.Refs)
+		<section class="wk-comments" aria-labelledby="comments-title">
+			<h2 class="wk-section-title" id="comments-title">Comments</h2>
+			@CommentsRegion(p.Comments, p.Now)
+			<p class="wk-problem" role="status" data-text="$_wk.cmod.msg" data-effect={ cmodSettled }></p>
+			@commentForm(p)
+		</section>
+		@createPageDialog(p.Space.ID, p.Templates)
+		if p.CanEdit && !p.Page.Home {
+			@moveDialog(p)
+		}
+	</article>
+}
+
+templ trashNoticeAction(p PageProps) {
+	if p.CanAdmin {
+		@ui.Button(ui.ButtonProps{Label: "Restore", Icon: "restore", Size: ui.SizeSM, Attrs: templ.Attributes{"data-page": p.Page.ID, "data-on:click": restoreTrashed, "data-effect": trashSettled, "data-attr:aria-busy": Busy("_wk.trash.op")}})
+	}
+}
+
+// PageHeadRegion is the page's shared head: breadcrumbs, title, labels
+// and byline (FR-80.1).
+templ PageHeadRegion(h PageHead) {
+	<header id={ PageHeadID } class="wk-head">
+		@ui.Breadcrumbs(h.Crumbs)
+		<h1 class="wk-title">{ h.Title }</h1>
+		<div class="wk-meta">
+			<p class="wk-byline">
+				@ui.Avatar(ui.AvatarProps{Person: UIPerson(h.Editor), Size: ui.SizeSM, Decorative: true})
+				<span>
+					<span class="wk-byline__name">{ h.Editor.Name }</span>
+					edited
+					@ui.RelativeTime(h.Edited, h.Now)
+					<span class="wk-sep" aria-hidden="true">·</span>
+					created by { h.Creator.Name }
+					@ui.RelativeTime(h.Created, h.Now)
+					<span class="wk-sep" aria-hidden="true">·</span>
+					<a href={ templ.SafeURL(h.History) }>Version { itoa(h.Versions) }</a>
+				</span>
+			</p>
+			if len(h.Labels) > 0 {
+				<ul class="wk-labels" role="list" aria-label="Labels">
+					for _, l := range h.Labels {
+						<li class="wk-label">
+							@ui.Label(l, "/labels/"+l)
+							<button class="wk-label__x wk-edit" type="button" data-label={ l } data-on:click={ removeLabel } aria-label={ "Remove the label " + l }>
+								@ui.Icon("close")
+							</button>
+						</li>
+					}
+				</ul>
+			}
+		</div>
+	</header>
+}
+
+// pageActions are what the viewer may do with the page; none is shared.
+templ pageActions(p PageProps) {
+	<div class="wk-actions" data-page={ p.Page.ID }>
+		if p.CanEdit && p.Page.State == wiki.Current {
+			@ui.Button(ui.ButtonProps{Label: "Edit", Icon: "edit", Variant: ui.Primary, Size: ui.SizeSM, Href: wiki.EditURL(p.Space.Key, p.Page.ID), Shortcut: "E"})
+			@ui.Button(ui.ButtonProps{Label: "Create child page", Icon: "plus", Size: ui.SizeSM, Command: "show-modal", CommandFor: "create-page", Attrs: templ.Attributes{"data-parent": p.Page.ID, "data-on:click": childOf}})
+		}
+		@ui.Button(ui.ButtonProps{Label: "Watch", Icon: "watch", Size: ui.SizeSM, Pressed: boolText(p.Watching), Attrs: templ.Attributes{"data-page": p.Page.ID, "data-watch": "", "data-on:click": watchPage, "data-effect": watchSettled, "data-attr:aria-busy": Busy("_wk.watch.op")}})
+		@ui.Button(ui.ButtonProps{Label: "History", Icon: "history", Size: ui.SizeSM, Variant: ui.Ghost, Href: p.Head.History})
+		if p.CanEdit && p.Page.State == wiki.Current {
+			<form class="wk-addlabel" data-page={ p.Page.ID } data-on:submit__prevent={ addLabel } data-effect={ labelSettled } data-on:datastar-fetch={ labelFailed }>
+				<label class="visually-hidden" for="label-name">Add a label</label>
+				@ui.Input(ui.InputProps{ID: "label-name", Placeholder: "Add a label", Size: ui.SizeSM, MaxLength: 50, Icon: "tag", Attrs: templ.Attributes{"data-bind": "_wk.label.name", "data-attr:readonly": Pending("_wk.label.op")}})
+				<span class="wk-problem" role="status" data-text="$_wk.label.msg"></span>
+			</form>
+		}
+		if p.CanEdit && !p.Page.Home && p.Page.State == wiki.Current {
+			@ui.Button(ui.ButtonProps{Label: "Move", Icon: "drag", Size: ui.SizeSM, Variant: ui.Ghost, Command: "show-modal", CommandFor: "move"})
+		}
+		if p.CanTrash && !p.Page.Home && p.Page.State == wiki.Current {
+			@ui.Button(ui.ButtonProps{Label: "Move to trash", Icon: "trash", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-page": p.Page.ID, "data-on:click": trashPage, "data-effect": trashSettled, "data-on:datastar-fetch": trashFailed, "data-attr:aria-busy": Busy("_wk.trash.op")}})
+		}
+		<span class="wk-problem" role="status" data-text="$_wk.trash.msg"></span>
+	</div>
+}
+
+func boolText(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}
+
+// PageBodyRegion is the document as readers see it (FR-80.3, Q18): the
+// shared reader view patches it with every commit.
+templ PageBodyRegion(html string) {
+	<div id={ PageBodyID } class="prose wk-body">
+		@templ.Raw(html)
+	</div>
+}
+
+// PageRefsRegion lists the issues the page shows and the pages that link
+// to it.
+templ PageRefsRegion(r PageRefs) {
+	<aside id={ PageRefsID } class="wk-refs" aria-label="Links">
+		if len(r.Issues) > 0 {
+			<div class="wk-refs__group">
+				<h2 class="tk-eyebrow">Linked issues</h2>
+				<ul class="wk-chips" role="list">
+					for _, c := range r.Issues {
+						<li>
+							@ui.IssueChip(c)
+						</li>
+					}
+				</ul>
+			</div>
+		}
+		if len(r.LinkedFrom) > 0 {
+			<div class="wk-refs__group">
+				<h2 class="tk-eyebrow">Linked from</h2>
+				<ul class="wk-linked" role="list">
+					for _, l := range r.LinkedFrom {
+						<li>
+							@ui.PageLink(l.ID, l.Title, l.URL(), false)
+							<span class="muted">{ l.SpaceName }</span>
+						</li>
+					}
+				</ul>
+			</div>
+		}
+	</aside>
+}
+
+// CommentsRegion is the page's comments with their replies (FR-90).
+templ CommentsRegion(list []CommentItem, now time.Time) {
+	<ol id={ CommentsID } class="wk-thread" role="list">
+		for _, c := range list {
+			<li class="wk-comment" data-author={ c.Author.ID }>
+				@commentBody(c, now, true)
+				if len(c.Replies) > 0 {
+					<ol class="wk-replies" role="list">
+						for _, r := range c.Replies {
+							<li class="wk-comment" data-author={ r.Author.ID }>
+								@commentBody(r, now, false)
+							</li>
+						}
+					</ol>
+				}
+			</li>
+		}
+		if len(list) == 0 {
+			<li class="wk-empty muted">No comments yet.</li>
+		}
+	</ol>
+}
+
+templ commentBody(c CommentItem, now time.Time, top bool) {
+	<div class="wk-comment__head">
+		@ui.Avatar(ui.AvatarProps{Person: UIPerson(c.Author), Size: ui.SizeSM, Decorative: true})
+		<b>{ c.Author.Name }</b>
+		@ui.RelativeTime(c.CreatedAt, now)
+		if !c.EditedAt.IsZero() && !c.Deleted {
+			<span class="muted">edited</span>
+		}
+	</div>
+	switch {
+		case c.Deleted:
+			<p class="wk-comment__gone muted">Comment deleted.</p>
+		case c.Hidden:
+			<p class="wk-comment__gone muted">A moderator hid this comment.</p>
+		default:
+			<div class="prose wk-comment__body">
+				@templ.Raw(c.HTML)
+			</div>
+	}
+	if !c.Deleted {
+		<div class="wk-comment__actions">
+			if top {
+				<button class="tk-btn tk-btn--ghost tk-btn--sm" type="button" data-comment={ c.ID } data-name={ c.Author.Name } data-on:click={ replyTo }>Reply</button>
+			}
+			<button class="tk-btn tk-btn--ghost tk-btn--sm wk-own" type="button" data-comment={ c.ID } data-on:click={ deleteComment } data-on:datastar-fetch={ cmodFailed }>Delete</button>
+			<button class="tk-btn tk-btn--ghost tk-btn--sm wk-mod" type="button" data-comment={ c.ID } data-hidden={ boolText(c.Hidden) } data-on:click={ hideComment } data-on:datastar-fetch={ cmodFailed }>
+				if c.Hidden {
+					Show
+				} else {
+					Hide
+				}
+			</button>
+		</div>
+	}
+}
+
+// commentForm writes a comment, or a reply to the comment chosen with
+// Reply; it sits outside the regions the stream morphs.
+templ commentForm(p PageProps) {
+	<form class="wk-comment-form" data-page={ p.Page.ID } data-on:submit__prevent={ addComment } data-effect={ commentSettled } data-on:datastar-fetch={ commentFailed }>
+		<p class="wk-replying" style="display: none" data-show="$_wk.comment.to !== ''">
+			Replying to <b data-text="$_wk.comment.toName"></b>
+			<button class="tk-btn tk-btn--ghost tk-btn--sm" type="button" data-on:click="$_wk.comment.to = ''">Cancel</button>
+		</p>
+		{{ f := ui.FieldProps{ID: "comment-body", Label: "Add a comment", HideLabel: true, ErrorAttrs: templ.Attributes{"data-text": "$_wk.comment.msg"}} }}
+		@ui.Field(f) {
+			@ui.Textarea(ui.TextareaProps{ID: f.ID, Placeholder: "Add a comment", Rows: 3, MaxLength: 10000, DescribedBy: f.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_wk.comment.body", "data-attr:readonly": Pending("_wk.comment.op")}})
+		}
+		@ui.Button(ui.ButtonProps{Label: "Comment", Type: "submit", Size: ui.SizeSM, Variant: ui.Primary, Attrs: templ.Attributes{"data-attr:aria-busy": Busy("_wk.comment.op")}})
+	</form>
+}
+
+// createPageDialog creates a page in the space, blank or from a template
+// (FR-81, FR-92); the parent comes from the button that opened it.
+templ createPageDialog(space string, templates []wiki.Template) {
+	@ui.Dialog(ui.DialogProps{ID: "create-page", Title: "Create a page", Footer: createPageFooter()}) {
+		<form id="create-page-form" class="stack" data-space={ space } data-on:submit__prevent={ createPage } data-effect={ createPageSettled } data-on:datastar-fetch={ createPageFailed }>
+			{{ f := ui.FieldProps{ID: "create-title", Label: "Title", Required: true, ErrorAttrs: templ.Attributes{"data-text": "$_wk.create.msg"}} }}
+			@ui.Field(f) {
+				@ui.Input(ui.InputProps{ID: f.ID, Required: true, MaxLength: 255, Autocomplete: "off", DescribedBy: f.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_wk.create.title", "data-attr:readonly": Pending("_wk.create.op")}})
+			}
+			{{ t := ui.FieldProps{ID: "create-template", Label: "Start from"} }}
+			@ui.Field(t) {
+				@ui.Select(ui.SelectProps{ID: t.ID, Options: templateOptions(templates), Attrs: templ.Attributes{"data-bind": "_wk.create.template"}})
+			}
+		</form>
+	}
+}
+
+templ createPageFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Command: "close", CommandFor: "create-page"})
+	@ui.Button(ui.ButtonProps{Label: "Create", Variant: ui.Primary, Type: "submit", Attrs: templ.Attributes{"form": "create-page-form", "data-attr:aria-busy": Busy("_wk.create.op")}})
+}
+
+func templateOptions(list []wiki.Template) []ui.Option {
+	opts := []ui.Option{{Value: "", Label: "A blank page", Selected: true}}
+	for _, t := range list {
+		opts = append(opts, ui.Option{Value: t.Name, Label: t.Name})
+	}
+	return opts
+}
+
+// moveDialog moves the page under another one, in this space or another
+// (FR-79.1): its child pages come along.
+templ moveDialog(p PageProps) {
+	@ui.Dialog(ui.DialogProps{ID: "move", Title: "Move " + p.Page.Title, Description: "Its child pages move with it.", Footer: moveFooter()}) {
+		<form id="move-form" class="stack" data-page={ p.Page.ID } data-on:submit__prevent={ movePage } data-effect={ movePageSettled } data-on:datastar-fetch={ movePageFailed }>
+			{{ f := ui.FieldProps{ID: "move-target", Label: "Under", ErrorAttrs: templ.Attributes{"data-text": "$_wk.move.msg"}} }}
+			@ui.Field(f) {
+				<select id={ f.ID } class="tk-select" data-bind="_wk.move.target" aria-describedby={ f.DescribedBy() }>
+					for _, t := range p.Targets {
+						<option value={ t.Value } data-depth={ itoa(t.Depth) }>{ indent(t.Depth) + t.Label }</option>
+					}
+				</select>
+			}
+			{{ pl := ui.FieldProps{ID: "move-place", Label: "Place"} }}
+			@ui.Field(pl) {
+				@ui.Select(ui.SelectProps{ID: pl.ID, Options: []ui.Option{{Value: "last", Label: "Last among its new siblings", Selected: true}, {Value: "first", Label: "First"}}, Attrs: templ.Attributes{"data-bind": "_wk.move.place"}})
+			}
+		</form>
+	}
+}
+
+func indent(depth int) string {
+	s := ""
+	for range depth {
+		s += "   "
+	}
+	return s
+}
+
+templ moveFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Command: "close", CommandFor: "move"})
+	@ui.Button(ui.ButtonProps{Label: "Move", Variant: ui.Primary, Type: "submit", Attrs: templ.Attributes{"form": "move-form", "data-attr:aria-busy": Busy("_wk.move.op")}})
+}
+
+// PageTree is the space's tree beside the page (FR-78): the current page
+// highlighted and its ancestors open; a person opens and closes nodes in
+// the page, which frames keep (ui.Tree, data-preserve-attr).
+templ PageTree(label string, items []ui.TreeItem) {
+	<nav id={ TreeID } class="wk-tree" aria-label={ label }>
+		@ui.Tree(ui.TreeProps{Label: label, Items: items})
+	</nav>
+}

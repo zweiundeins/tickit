@@ -14,8 +14,9 @@ import (
 	"github.com/mbolli/tickit/internal/tabs"
 )
 
-// Client is a tab as other editors see it: the first 12 hex digits of
-// SHA-256 of its id, so tab ids stay private (docs/editor.md).
+// Client is a tab as other editors see it, made from its id: the first
+// 12 hex digits of SHA-256 (docs/editor.md). The editor's page picks a
+// random one instead (its GET knows no tab id); both keep tab ids private.
 func Client(tab string) string {
 	h := sha256.Sum256([]byte(tab))
 	return hex.EncodeToString(h[:6])
@@ -34,13 +35,27 @@ type OpenEditor struct {
 	Session, Tab string
 	Page         string
 	Base         int64
+	Client       string // the tab as others see it: 12 hex digits the page chose
+}
+
+// ValidClient reports whether s is a client id: 12 lower-case hex digits.
+func ValidClient(s string) bool {
+	if len(s) != 12 {
+		return false
+	}
+	for _, c := range []byte(s) {
+		if !('0' <= c && c <= '9' || 'a' <= c && c <= 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func (c OpenEditor) Validate() error {
 	if err := checkBy(c.By); err != nil {
 		return err
 	}
-	if c.Session == "" || c.Tab == "" || !ValidID(c.Page) || c.Base < 0 {
+	if c.Session == "" || c.Tab == "" || !ValidID(c.Page) || c.Base < 0 || !ValidClient(c.Client) {
 		return errors.New("wiki: a malformed editor")
 	}
 	return nil
@@ -59,9 +74,9 @@ func (c OpenEditor) Apply(tx *writer.Tx) error {
 	if _, err := tx.Exec(`INSERT INTO page_editors (sid, tab_id, page_id, person_id, client, epoch, ack, v, moved_at, seen_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (sid, tab_id) DO UPDATE SET page_id = excluded.page_id, person_id = excluded.person_id, epoch = excluded.epoch,
-			ack = CASE WHEN page_editors.page_id = excluded.page_id AND page_editors.epoch = excluded.epoch THEN max(page_editors.ack, excluded.ack) ELSE excluded.ack END,
+			client = excluded.client, ack = CASE WHEN page_editors.page_id = excluded.page_id AND page_editors.epoch = excluded.epoch THEN max(page_editors.ack, excluded.ack) ELSE excluded.ack END,
 			v = excluded.v, refusal = '', seen_at = excluded.seen_at`,
-		c.Session, c.Tab, c.Page, c.By.Actor.ID, Client(c.Tab), ds.Epoch, base, base, now, now); err != nil {
+		c.Session, c.Tab, c.Page, c.By.Actor.ID, c.Client, ds.Epoch, base, base, now, now); err != nil {
 		return err
 	}
 	tx.Touch(EditorTopic(c.Tab), CaretsTopic(c.Page))

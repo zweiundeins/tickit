@@ -1,0 +1,355 @@
+package views
+
+import (
+	"time"
+
+	"github.com/mbolli/tickit/internal/ui"
+	"github.com/mbolli/tickit/internal/wiki"
+)
+
+// Spaces is the list of every space with a dialog that creates one
+// (FR-75.1, FR-76).
+templ Spaces(p SpacesProps) {
+	<div class="wk-spaces" data-signals={ wikiSignals }>
+		<div class="tk-pagehead">
+			<h1>Spaces</h1>
+			if p.CanCreate {
+				@ui.Button(ui.ButtonProps{Label: "Create space", Icon: "plus", Variant: ui.Primary, Command: "show-modal", CommandFor: "create-space"})
+			}
+		</div>
+		@SpacesRegion(p.Spaces, p.Now)
+		if p.CanCreate {
+			@createSpaceDialog()
+		}
+	</div>
+}
+
+// SpacesRegion is the shared list of spaces.
+templ SpacesRegion(list []wiki.Space, now time.Time) {
+	<ul id={ SpacesID } class="wk-spacelist" role="list">
+		for _, s := range list {
+			<li
+				class="wk-spacecard"
+				if s.Archived {
+					data-archived
+				}
+			>
+				<a class="wk-spacecard__link" href={ templ.SafeURL("/spaces/" + s.Key) }>
+					<span class="tk-sidenav__key" data-hue={ itoa(ui.HueOf(s.Key)) } aria-hidden="true">{ s.Key[:1] }</span>
+					<span class="wk-spacecard__text">
+						<span class="wk-spacecard__name">{ s.Name }</span>
+						<span class="wk-spacecard__key mono">{ s.Key }</span>
+					</span>
+				</a>
+				if s.Description != "" {
+					<p class="wk-spacecard__desc">{ s.Description }</p>
+				}
+				<p class="wk-spacecard__meta muted">
+					{ pages(s.Pages) }
+					if s.Archived {
+						<span class="wk-sep" aria-hidden="true">·</span> archived
+					}
+				</p>
+			</li>
+		}
+		if len(list) == 0 {
+			<li>
+				@ui.EmptyState(ui.EmptyProps{Icon: "spaces", Title: "No spaces yet", Text: "A space holds a tree of pages. Create the first one."})
+			</li>
+		}
+	</ul>
+}
+
+func pages(n int) string {
+	if n == 1 {
+		return "1 page"
+	}
+	return itoa(n) + " pages"
+}
+
+templ createSpaceDialog() {
+	@ui.Dialog(ui.DialogProps{ID: "create-space", Title: "Create a space", Description: "You become its admin. It gets a home page.", Footer: createSpaceFooter()}) {
+		<form id="create-space-form" class="stack" data-on:submit__prevent={ createSpace } data-effect={ createSpaceSettled } data-on:datastar-fetch={ createSpaceFailed }>
+			{{ n := ui.FieldProps{ID: "space-name", Label: "Name", Required: true} }}
+			@ui.Field(n) {
+				@ui.Input(ui.InputProps{ID: n.ID, Required: true, MaxLength: 100, Autocomplete: "off", Attrs: templ.Attributes{"data-bind": "_wk.space.name", "data-attr:readonly": Pending("_wk.space.op")}})
+			}
+			{{ k := ui.FieldProps{ID: "space-key", Label: "Key", Hint: "2 to 10 letters A to Z, unique. Addresses use it.", Required: true, ErrorAttrs: templ.Attributes{"data-text": "$_wk.space.msg"}} }}
+			@ui.Field(k) {
+				@ui.Input(ui.InputProps{ID: k.ID, Required: true, MaxLength: 10, Autocomplete: "off", DescribedBy: k.DescribedBy(), Class: "mono", Attrs: templ.Attributes{"data-bind": "_wk.space.key", "data-on:input": "$_wk.space.key = $_wk.space.key.toUpperCase().replace(/[^A-Z]/g, '')", "data-attr:readonly": Pending("_wk.space.op")}})
+			}
+			{{ d := ui.FieldProps{ID: "space-description", Label: "Description", Optional: true} }}
+			@ui.Field(d) {
+				@ui.Textarea(ui.TextareaProps{ID: d.ID, Rows: 3, MaxLength: 2000, Attrs: templ.Attributes{"data-bind": "_wk.space.description", "data-attr:readonly": Pending("_wk.space.op")}})
+			}
+		</form>
+	}
+}
+
+templ createSpaceFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Command: "close", CommandFor: "create-space"})
+	@ui.Button(ui.ButtonProps{Label: "Create space", Variant: ui.Primary, Type: "submit", Attrs: templ.Attributes{"form": "create-space-form", "data-attr:aria-busy": Busy("_wk.space.op")}})
+}
+
+// Trash is a space's trash (FR-94.2).
+templ Trash(p TrashProps) {
+	<div class="wk-trash" data-signals={ wikiSignals }>
+		<div class="tk-pagehead">
+			<h1>Trash</h1>
+		</div>
+		<p class="muted">Pages moved to the trash, the latest first. The space's admin restores a page to its old place or deletes it for good.</p>
+		<p class="wk-problem" role="status" data-text="$_wk.trash.msg" data-effect={ trashSettled }></p>
+		@TrashRegion(p)
+	</div>
+}
+
+// TrashRegion is the shared list of a space's trashed pages.
+templ TrashRegion(p TrashProps) {
+	<div id={ TrashListID }>
+		if len(p.Pages) == 0 {
+			@ui.EmptyState(ui.EmptyProps{Icon: "trash", Title: "The trash is empty", Text: "Pages moved to the trash show here."})
+		} else {
+			<table class="tk-table">
+				<thead>
+					<tr><th scope="col">Page</th><th scope="col">Trashed by</th><th scope="col">When</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
+				</thead>
+				<tbody>
+					for _, t := range p.Pages {
+						<tr>
+							<td><a href={ templ.SafeURL(wiki.PageURL(p.Space.Key, t.ID, t.Title)) }>{ t.Title }</a></td>
+							<td>
+								@ui.Byline(ui.BylineProps{Person: UIPerson(t.By)})
+							</td>
+							<td>
+								@ui.RelativeTime(t.TrashedAt, p.Now)
+							</td>
+							<td class="wk-row-actions">
+								if p.CanAdmin {
+									@ui.Button(ui.ButtonProps{Label: "Restore", Icon: "restore", Size: ui.SizeSM, Attrs: templ.Attributes{"data-page": t.ID, "data-on:click": restoreTrashed, "data-on:datastar-fetch": trashFailed}})
+									@ui.Button(ui.ButtonProps{Label: "Delete for good", Icon: "trash", Size: ui.SizeSM, Variant: ui.Danger, Attrs: templ.Attributes{"data-page": t.ID, "data-on:click": deleteTrashed, "data-on:datastar-fetch": trashFailed}})
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		}
+	</div>
+}
+
+// History lists a page's versions (FR-87.2) and compares two (FR-88).
+templ History(p VersionsProps) {
+	<div class="wk-history" data-signals={ wikiSignals } data-page={ p.Page.ID }>
+		<div class="wk-page__top">
+			@ui.Breadcrumbs(append(p.Head.Crumbs[:len(p.Head.Crumbs):len(p.Head.Crumbs)], ui.Crumb{Label: "History"}))
+		</div>
+		<div class="tk-pagehead">
+			<h1>History of { p.Page.Title }</h1>
+			if p.CanEdit && p.Page.State == wiki.Current {
+				@ui.Button(ui.ButtonProps{Label: "Save version", Icon: "history", Size: ui.SizeSM, Command: "show-modal", CommandFor: "save-version"})
+			}
+		</div>
+		<p class="wk-problem" role="status" data-text="$_wk.version.msg"></p>
+		@HistoryRegion(p)
+		if p.CanEdit && p.Page.State == wiki.Current {
+			@saveVersionDialog(p.Page.ID)
+		}
+	</div>
+}
+
+// HistoryRegion is the shared list of versions, the newest first.
+templ HistoryRegion(p VersionsProps) {
+	<form id={ HistoryID } class="wk-versions" data-signals={ compareSignals(p.Versions) } data-base={ "/spaces/" + p.Space.Key + "/pages/" + p.Page.ID + "/compare" } data-on:submit__prevent={ compareVersions }>
+		<table class="tk-table">
+			<thead>
+				<tr>
+					<th scope="col">Version</th>
+					<th scope="col">Editors</th>
+					<th scope="col">When</th>
+					<th scope="col">Message</th>
+					<th scope="col"><span class="visually-hidden">Compare from</span>From</th>
+					<th scope="col"><span class="visually-hidden">Compare to</span>To</th>
+				</tr>
+			</thead>
+			<tbody>
+				for i, v := range p.Versions {
+					<tr>
+						<td>
+							<a href={ templ.SafeURL(v.URL) }>Version { itoa(v.Number) }</a>
+							if i == 0 {
+								<span class="tk-lozenge" data-cat="done">current</span>
+							}
+						</td>
+						<td>
+							<ul class="wk-editors" role="list">
+								for _, e := range v.Editors {
+									<li>
+										@ui.Avatar(ui.AvatarProps{Person: UIPerson(e), Size: ui.SizeXS, Decorative: true})
+										{ e.Name }
+									</li>
+								}
+							</ul>
+						</td>
+						<td>
+							@ui.RelativeTime(v.At, p.Now)
+						</td>
+						<td>{ versionMessage(v) }</td>
+						<td><input type="radio" name="from" value={ itoa(v.Number) } aria-label={ "Compare from version " + itoa(v.Number) } data-bind="_wk.cmp.from"/></td>
+						<td><input type="radio" name="to" value={ itoa(v.Number) } aria-label={ "Compare to version " + itoa(v.Number) } data-bind="_wk.cmp.to"/></td>
+					</tr>
+				}
+			</tbody>
+		</table>
+		if len(p.Versions) > 1 {
+			@ui.Button(ui.ButtonProps{Label: "Compare", Icon: "filter", Type: "submit", Size: ui.SizeSM})
+		}
+	</form>
+}
+
+func compareSignals(vs []VersionItem) string {
+	from, to := "1", "1"
+	if len(vs) > 0 {
+		to = itoa(vs[0].Number)
+	}
+	if len(vs) > 1 {
+		from = itoa(vs[1].Number)
+	}
+	return "{_wk: {cmp: {from: '" + from + "', to: '" + to + "'}}}"
+}
+
+func versionMessage(v VersionItem) string {
+	if v.Message != "" {
+		return v.Message
+	}
+	switch v.Reason {
+	case "created":
+		return "Created"
+	case "seed":
+		return ""
+	}
+	return ""
+}
+
+templ saveVersionDialog(page string) {
+	@ui.Dialog(ui.DialogProps{ID: "save-version", Title: "Save a version", Description: "Versions are also saved a minute after the last edit.", Footer: saveVersionFooter()}) {
+		<form id="save-version-form" class="stack" data-page={ page } data-on:submit__prevent={ saveVersion } data-effect={ versionSettled } data-on:datastar-fetch={ versionFailed }>
+			{{ f := ui.FieldProps{ID: "version-message", Label: "Message", Optional: true, ErrorAttrs: templ.Attributes{"data-text": "$_wk.version.msg"}} }}
+			@ui.Field(f) {
+				@ui.Input(ui.InputProps{ID: f.ID, MaxLength: 200, Autocomplete: "off", Placeholder: "What changed", DescribedBy: f.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_wk.version.message", "data-attr:readonly": Pending("_wk.version.op")}})
+			}
+		</form>
+	}
+}
+
+templ saveVersionFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Command: "close", CommandFor: "save-version"})
+	@ui.Button(ui.ButtonProps{Label: "Save version", Variant: ui.Primary, Type: "submit", Attrs: templ.Attributes{"form": "save-version-form", "data-attr:aria-busy": Busy("_wk.version.op")}})
+}
+
+// OldVersion is a version read-only (FR-87.3), or the comparison of two
+// (FR-88): added text underlined, removed text struck out.
+templ OldVersion(p VersionProps) {
+	<article class="wk-page" data-signals={ wikiSignals } data-page={ p.Page.ID }>
+		<div class="wk-page__top">
+			@ui.Breadcrumbs(append(p.Head.Crumbs[:len(p.Head.Crumbs):len(p.Head.Crumbs)], ui.Crumb{Label: "History", Href: p.Head.History}, ui.Crumb{Label: versionCrumb(p)}))
+		</div>
+		if p.Compare {
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneInfo, Title: "Version " + itoa(p.From) + " compared with version " + itoa(p.To), Action: ui.Button(ui.ButtonProps{Label: "Back to the history", Size: ui.SizeSM, Href: p.Head.History})}) {
+				<p>{ diffSummary(p) } <ins class="diff-ins">Added text</ins> is underlined, <del class="diff-del">removed text</del> struck out.</p>
+			}
+			<h1 class="wk-title">{ p.Version.Title }</h1>
+		} else {
+			if p.Version.Number == p.Newest {
+				@ui.Notice(ui.NoticeProps{Tone: ui.ToneInfo, Title: "This is the current version", Action: ui.Button(ui.ButtonProps{Label: "Open the page", Size: ui.SizeSM, Href: p.URL})}) {
+					<p>Version { itoa(p.Version.Number) }, saved by { editorNames(p.Version) }.</p>
+				}
+			} else {
+				@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Title: "This is an old version", Action: oldVersionActions(p)}) {
+					<p>Version { itoa(p.Version.Number) } of { itoa(p.Newest) }, saved by { editorNames(p.Version) }. <a href={ templ.SafeURL(p.URL) }>Go to the current version</a></p>
+				}
+			}
+			<h1 class="wk-title">{ p.Version.Title }</h1>
+			<p class="wk-byline muted">
+				Saved
+				@ui.RelativeTime(p.Version.At, p.Now)
+				if p.Version.Message != "" {
+					<span class="wk-sep" aria-hidden="true">·</span> { p.Version.Message }
+				}
+			</p>
+		}
+		<p class="wk-problem" role="status" data-text="$_wk.restore.msg"></p>
+		<div class="prose wk-body">
+			@templ.Raw(p.HTML)
+		</div>
+	</article>
+}
+
+templ oldVersionActions(p VersionProps) {
+	if p.CanEdit && p.Page.State == wiki.Current {
+		@ui.Button(ui.ButtonProps{Label: "Restore this version", Icon: "restore", Size: ui.SizeSM, Attrs: templ.Attributes{"data-page": p.Page.ID, "data-number": itoa(p.Version.Number), "data-back": p.URL, "data-on:click": restoreVersion, "data-effect": restoreSettled, "data-on:datastar-fetch": restoreFailed, "data-attr:aria-busy": Busy("_wk.restore.op")}})
+	}
+}
+
+func versionCrumb(p VersionProps) string {
+	if p.Compare {
+		return "Version " + itoa(p.From) + " and " + itoa(p.To)
+	}
+	return "Version " + itoa(p.Version.Number)
+}
+
+func editorNames(v VersionItem) string {
+	s := ""
+	for i, e := range v.Editors {
+		switch {
+		case i == 0:
+		case i == len(v.Editors)-1:
+			s += " and "
+		default:
+			s += ", "
+		}
+		s += e.Name
+	}
+	if s == "" {
+		return "nobody"
+	}
+	return s
+}
+
+func diffSummary(p VersionProps) string {
+	if p.Inserted == 0 && p.Deleted == 0 {
+		return "The two versions hold the same document."
+	}
+	return itoa(p.Inserted) + " added, " + itoa(p.Deleted) + " removed."
+}
+
+// LabelPage lists the pages and issues with a label (FR-93).
+templ LabelPage(label string, list []wiki.Page, issues []ui.IssueChipProps) {
+	<div class="wk-labelpage">
+		<div class="tk-pagehead">
+			<h1>Label <span class="mono">{ label }</span></h1>
+		</div>
+		<h2 class="wk-section-title">Pages</h2>
+		if len(list) == 0 {
+			<p class="muted">No page has this label.</p>
+		}
+		<ul class="wk-linked" role="list">
+			for _, p := range list {
+				<li>
+					@ui.PageLink(p.ID, p.Title, wiki.PageURL(p.SpaceKey, p.ID, p.Title), false)
+					<span class="muted">{ p.SpaceName }</span>
+				</li>
+			}
+		</ul>
+		<h2 class="wk-section-title">Issues</h2>
+		if len(issues) == 0 {
+			<p class="muted">No issue has this label.</p>
+		}
+		<ul class="wk-chips" role="list">
+			for _, c := range issues {
+				<li>
+					@ui.IssueChip(c)
+				</li>
+			}
+		</ul>
+	</div>
+}

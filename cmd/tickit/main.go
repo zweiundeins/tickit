@@ -209,6 +209,7 @@ func serve(args []string) error {
 	}()
 	var jobs sync.WaitGroup
 	jobs.Go(func() { sweep(ctx, w, log) })
+	jobs.Go(func() { site.WikiJobs(ctx) })
 
 	var metricsSrv *http.Server
 	if metricsLn != nil {

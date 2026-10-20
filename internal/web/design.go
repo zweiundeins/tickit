@@ -31,6 +31,7 @@ var Stylesheets = []string{
 	"css/editor.css",
 	"css/board.css",
 	"css/app.css",
+	"css/wiki.css",
 	"css/utilities.css",
 }
 

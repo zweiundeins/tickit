@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/sqlite"
@@ -332,6 +333,9 @@ type Commit struct {
 	Client       string
 	Steps        json.RawMessage
 
+	// Took is how long the writer spent on it, for the measurements.
+	Took time.Duration
+
 	steps []doc.Step
 	bad   error
 }
@@ -363,6 +367,8 @@ func (c *Commit) Apply(tx *writer.Tx) error {
 }
 
 func (c *Commit) ApplyResult(tx *writer.Tx) ([]byte, error) {
+	start := time.Now()
+	defer func() { c.Took = time.Since(start) }()
 	var refusal string
 	err := tx.Savepoint(func(tx *writer.Tx) error {
 		var err error
@@ -464,4 +470,44 @@ func (c *Commit) apply(tx *writer.Tx) (string, error) {
 	page, epoch, rec := c.Page, ds.Epoch, commitRec{Ref: c.Ref, Client: c.Client, Base: c.Base, Steps: applied, Raw: raw}
 	tx.AfterCommit(func() { commits.put(commitKey{page, epoch, v}, rec) })
 	return "", nil
+}
+
+// Batch is a commit as an editor's frame carries it (docs/editor.md).
+type Batch struct {
+	V      int64           `json:"v"`
+	Ref    string          `json:"ref"`
+	Client string          `json:"client"`
+	Steps  json.RawMessage `json:"steps"`
+}
+
+// MaxBatches is how many commits a frame carries at most.
+const MaxBatches = 500
+
+// Batches are a page's commits after version after, up to head and at
+// most MaxBatches, for an editor's frame. ok is false when the commits
+// right after it were folded away: the editor starts again ("gap").
+func Batches(ctx context.Context, q sqlite.Querier, page, epoch string, after, head int64) (list []Batch, ok bool, err error) {
+	if after >= head {
+		return nil, true, nil
+	}
+	upto := min(head, after+MaxBatches)
+	recs, first, err := loadCommits(ctx, q, page, epoch, after, upto, true)
+	if err != nil {
+		return nil, false, err
+	}
+	if first != after+1 {
+		return nil, false, nil
+	}
+	list = make([]Batch, 0, len(recs))
+	for i, c := range recs {
+		if c.Snapshot != nil {
+			return nil, false, nil
+		}
+		raw := c.Raw
+		if len(raw) == 0 {
+			raw = json.RawMessage(`[]`)
+		}
+		list = append(list, Batch{V: after + 1 + int64(i), Ref: c.Ref, Client: c.Client, Steps: raw})
+	}
+	return list, true, nil
 }

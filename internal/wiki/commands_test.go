@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/mbolli/tickit/internal/access"
+	"github.com/mbolli/tickit/internal/demo/seed"
 	"github.com/mbolli/tickit/internal/tracker"
 )
 
@@ -243,7 +245,7 @@ func TestCommits(t *testing.T) {
 		t.Errorf("version %d", v)
 	}
 	// 422: a rule refuses, and the editor's row says why.
-	e.must(OpenEditor{By: e.by(sunny), Session: "sid-" + sunny.ID, Tab: "tab-" + sunny.ID, Page: p, Base: 5})
+	e.must(OpenEditor{By: e.by(sunny), Session: "sid-" + sunny.ID, Tab: "tab-" + sunny.ID, Page: p, Base: 5, Client: Client("tab-" + sunny.ID)})
 	bad := steps(`{"stepType":"replace","from":1,"to":1,"slice":{"content":[{"type":"issue_chip","attrs":{"key":"lowercase-1"}}]}}`)
 	if a := e.commit(sunny, p, 5, "s3", bad); a != Refused {
 		t.Errorf("a bad chip: %c", a)
@@ -440,5 +442,32 @@ func TestChips(t *testing.T) {
 	})
 	if len(refs) != 0 {
 		t.Errorf("FR-101.2: the page still listed %+v", refs)
+	}
+}
+
+// DM-02.2: the seed's spaces and pages go in with their versions.
+func TestSeed(t *testing.T) {
+	e := newEnv(t)
+	c, err := seed.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmds, err := SeedCommands(c, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	for _, cmd := range cmds {
+		e.must(cmd)
+	}
+	t.Logf("%d commands in %v", len(cmds), time.Since(start))
+	if n := e.row(`SELECT count(*) FROM pages WHERE state = 'current'`); n != strconv.Itoa(len(c.Pages)) {
+		t.Errorf("%s pages, the seed has %d", n, len(c.Pages))
+	}
+	if n := e.row(`SELECT count(*) FROM page_versions v JOIN pages p ON p.id = v.page_id WHERE v.number >= 3`); n == "0" {
+		t.Error("no page with three versions")
+	}
+	if n := e.row(`SELECT count(*) FROM page_links`); n == "0" {
+		t.Error("no page links")
 	}
 }

@@ -1,0 +1,181 @@
+package views
+
+import (
+	"github.com/mbolli/tickit/internal/ui"
+	"github.com/mbolli/tickit/internal/wiki"
+)
+
+// The editor's wiring (editor/README.md, "Wiring the page"): commits go
+// out as the payload, never as signals, with requestCancellation
+// 'disabled' so that the next post does not abort them, and no retry by
+// Datastar, so that the component decides when to resend.
+const (
+	editorSignals = `{_editor: {status: 'saved', stopped: '', unsaved: 0, problem: ''}, _carets: '[]', _wkTitle: '',` +
+		` _title: {value: '', focus: false, op: '', msg: ''}, _pick: {kind: '', q: '', label: ''}}`
+	editorCommit = `@post('/cmd/pages/' + evt.detail.page + '/commit', {payload: {...evt.detail, tab: $_tab, client: el.getAttribute('client')}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0})` +
+		`.then(() => el.posted(evt.detail.ref, true), () => el.posted(evt.detail.ref, false))`
+	editorPresence = `@post('/cmd/pages/' + evt.detail.page + '/presence', {payload: {...evt.detail, tab: $_tab}, retry: 'never', retryMaxCount: 0}).catch(() => {})`
+	editorStatus   = `$_editor.status = evt.detail.status, $_editor.unsaved = evt.detail.unsaved, evt.detail.status === 'saved' && ($_editor.problem = '')`
+	editorStopped  = `$_editor.stopped = evt.detail.state, $_editor.unsaved = evt.detail.unsaved`
+	// editorFetch says at the editor why a commit did not go through
+	// (MP-14.1); the component resends it by itself after a rate limit.
+	editorFetch = `evt.detail.el === el && evt.detail.type === 'error' && ['403', '429', '500', '502', '503'].includes(evt.detail.argsRaw.status) && ($_editor.problem = ` +
+		`evt.detail.argsRaw.status === '429' ? 'Too many changes at once. Your edits are kept here and go out in a moment.' : ` +
+		`evt.detail.argsRaw.status === '403' ? 'Your changes are not accepted here. They stay in this tab only.' : 'The server is restarting. Your edits are kept here and go out when it is back.')`
+	// editorOpen registers the tab as an editor of the page, from the
+	// version the page rendered (docs/editor.md).
+	editorOpen = `@post('/cmd/pages/' + el.getAttribute('page') + '/open', {payload: {tab: $_tab, op: ` + newOp + `, base: +el.getAttribute('base'), client: el.getAttribute('client')}, retry: 'error', retryMaxCount: 10})`
+	// copyEdits puts the editor's text on the clipboard (MP-13.1).
+	copyEdits = `document.getElementById('editor').copy()`
+
+	titleInput   = `$_title.focus = true`
+	titleBlur    = `$_title.focus = false`
+	titleRename  = `$_title.value.trim() && ` + `$_title.op === '' && ($_title.op = ` + newOp + `, @post('/cmd/pages/rename', {payload: {tab: $_tab, op: $_title.op, page: el.dataset.page, title: $_title.value}}))`
+	titleSettled = `$_title.op !== '' && $_outcomes[$_title.op] && ((o => ($_title.msg = o.ok ? '' : o.msg))($_outcomes[$_title.op]), $_title.op = '')`
+	// titleSync takes another editor's rename while the person is not in
+	// the field (FR-86.2: a refused title stays as typed).
+	titleSync = `$_wkTitle && !$_title.focus && $_title.msg === '' && ($_title.value = $_wkTitle)`
+
+	pickOpen   = `$_pick.kind = el.dataset.kind, $_pick.label = el.dataset.label, $_pick.q = '', document.getElementById('pick').showModal(), ` + pickSearch
+	pickSearch = `@get('/wiki/pick?kind=' + $_pick.kind + '&q=' + encodeURIComponent($_pick.q))`
+	pickInsert = `((ed) => el.dataset.kind === 'page' ? ed.insertPageLink(el.dataset.id) : el.dataset.kind === 'person' ? ed.insertMention(el.dataset.id, el.dataset.label) : ed.insertChip(el.dataset.id))` +
+		`(document.getElementById('editor')), document.getElementById('pick').close(), document.getElementById('editor').focus()`
+)
+
+// EditorPage is a page in the editor (FR-86): the title, the host of
+// sb-rich-editor with the document at Base in its script, the pickers
+// for issues, people and pages, the status and the stopped states.
+templ EditorPage(p EditorProps) {
+	<article class="wk-page wk-editing" data-signals={ wikiSignals } data-page={ p.Page.ID }>
+		<div data-signals={ editorSignals } data-effect={ titleSync }></div>
+		<div class="wk-page__top">
+			@ui.Breadcrumbs(p.Head.Crumbs)
+			@ui.PresenceRow(ui.PresenceProps{ID: PagePresenceID(p.Page.ID), Label: "People on this page", Shared: true})
+		</div>
+		<div class="wk-editbar">
+			<p class="wk-status" role="status" data-attr:data-state="$_editor.status">
+				<span data-show="$_editor.status === 'saving'" style="display: none"><span class="tk-editor__dot" aria-hidden="true"></span> Saving</span>
+				<span data-show="$_editor.status !== 'saving'">
+					@ui.Icon("check")
+					Saved
+				</span>
+			</p>
+			<div class="cluster">
+				@ui.Button(ui.ButtonProps{Label: "Save version", Icon: "history", Size: ui.SizeSM, Command: "show-modal", CommandFor: "save-version"})
+				@ui.Button(ui.ButtonProps{Label: "Done", Icon: "check", Variant: ui.Primary, Size: ui.SizeSM, Href: p.URL})
+			</div>
+		</div>
+		<div class="wk-titlefield">
+			<label class="visually-hidden" for="page-title">Title</label>
+			<input
+				id="page-title"
+				class="wk-titleinput"
+				value={ p.Page.Title }
+				maxlength="255"
+				autocomplete="off"
+				data-page={ p.Page.ID }
+				data-bind="_title.value"
+				data-on:focus={ titleInput }
+				data-on:blur={ titleBlur }
+				data-on:input__debounce.700ms={ titleRename }
+				data-effect={ titleSettled }
+				aria-describedby="page-title-error"
+				if p.Page.Version <= 3 && p.Page.Versions <= 1 {
+					autofocus
+				}
+			/>
+			<p id="page-title-error" class="wk-problem" role="status" data-text="$_title.msg"></p>
+		</div>
+		<div class="wk-stopped" style="display: none" data-show="$_editor.stopped === 'reset' || $_editor.stopped === 'gone' || $_editor.stopped === 'diverged'">
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Title: "Your last changes were not saved", Live: true, Action: ui.Button(ui.ButtonProps{Label: "Copy my text", Icon: "copy", Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": copyEdits}})}) {
+				<p data-show="$_editor.stopped === 'reset'">This page was reset. Your last changes were not saved.</p>
+				<p data-show="$_editor.stopped === 'gone'" style="display: none">This page was moved to the trash or deleted. Your last changes were not saved.</p>
+				<p data-show="$_editor.stopped === 'diverged'" style="display: none">The editor lost track of the page. Reload it; copy your text first.</p>
+			}
+		</div>
+		<div class="wk-stopped" style="display: none" data-show="$_editor.stopped === 'gap'">
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Title: "This tab fell too far behind", Live: true, Action: ui.Button(ui.ButtonProps{Label: "Copy my text", Icon: "copy", Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": copyEdits}})}) {
+				<p>The page moved on while this tab was away. Copy your text, then reload the page.</p>
+			}
+		</div>
+		<p class="wk-problem wk-editor-problem" role="alert" data-text="$_editor.problem"></p>
+		<div class="wk-insert" role="group" aria-label="Insert">
+			<span class="tk-eyebrow">Insert</span>
+			@ui.Button(ui.ButtonProps{Label: "Issue", Icon: "issues", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-kind": "issue", "data-label": "Find an issue", "data-on:click": pickOpen}})
+			@ui.Button(ui.ButtonProps{Label: "Mention", Icon: "user", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-kind": "person", "data-label": "Find a person", "data-on:click": pickOpen}})
+			@ui.Button(ui.ButtonProps{Label: "Page link", Icon: "page", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-kind": "page", "data-label": "Find a page by its title", "data-on:click": pickOpen}})
+		</div>
+		@EditorHostEl(p.Host)
+		@pickDialog()
+		@saveVersionDialog(p.Page.ID)
+		<p class="wk-problem" role="status" data-text="$_wk.version.msg"></p>
+	</article>
+}
+
+// EditorHostEl is the sb-rich-editor element (docs/editor.md, "Editor
+// frame"). carets come from the page's shared carets view through
+// $_carets, which data-preserve-attr keeps through the tab's frames.
+templ EditorHostEl(h EditorHost) {
+	<sb-rich-editor
+		id={ EditorID }
+		class="wk-editor"
+		page={ h.Page }
+		epoch={ h.Epoch }
+		client={ h.Client }
+		base={ i64(h.Base) }
+		head={ i64(h.Head) }
+		batches={ h.Batches }
+		chips={ h.Chips }
+		state={ h.State }
+		refusal={ h.Refusal }
+		images={ h.Images }
+		label="Page content"
+		if h.Readonly {
+			readonly
+		}
+		data-preserve-attr="carets"
+		data-attr:carets="$_carets"
+		data-init={ editorOpen }
+		data-on:sb-commit={ editorCommit }
+		data-on:sb-presence={ editorPresence }
+		data-on:sb-status={ editorStatus }
+		data-on:sb-stopped={ editorStopped }
+		data-on:datastar-fetch={ editorFetch }
+	>
+		@templ.Raw(`<script type="application/json" data-ignore-morph>` + h.Doc + `</script>`)
+		<div class="pm-mount prose" data-ignore-morph data-ignore></div>
+	</sb-rich-editor>
+}
+
+// pickDialog finds an issue, a person or a page to insert (FR-100.1,
+// FR-67, FR-103.1); the results come from GET /wiki/pick.
+templ pickDialog() {
+	@ui.Dialog(ui.DialogProps{ID: "pick", Title: "Insert", Size: ui.SizeSM, Dismissible: true}) {
+		<form class="stack" data-on:submit__prevent="evt.preventDefault()">
+			<label class="tk-field__label" for="pick-q" data-text="$_pick.label">Find</label>
+			@ui.Input(ui.InputProps{ID: "pick-q", Type: "search", Autocomplete: "off", Icon: "search", Attrs: templ.Attributes{"data-bind": "_pick.q", "data-on:input__debounce.150ms": pickSearch, "autofocus": ""}})
+			@PickResults(nil)
+		</form>
+	}
+}
+
+// PickResults is the list of a picker's results.
+templ PickResults(list []PickItem) {
+	<ul id={ PickID } class="wk-pick" role="list">
+		for _, it := range list {
+			<li>
+				<button type="button" class="wk-pick__item" data-kind={ it.Kind } data-id={ it.ID } data-label={ it.Label } data-on:click={ pickInsert }>
+					<span class="wk-pick__label">{ it.Label }</span>
+					if it.Meta != "" {
+						<span class="wk-pick__meta muted">{ it.Meta }</span>
+					}
+				</button>
+			</li>
+		}
+		if len(list) == 0 {
+			<li class="muted">Type to search.</li>
+		}
+	</ul>
+}
+
+var _ = wiki.Current

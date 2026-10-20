@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -472,6 +473,24 @@ func (templateResolver) Image(id string) bool         { return ImageExists(id) }
 // a slug, which only reads well (titles change: the id finds the page).
 func PageURL(spaceKey, id, title string) string {
 	return "/spaces/" + spaceKey + "/pages/" + id + "/" + Slug(title)
+}
+
+// EditURL is the address of a page's editor.
+func EditURL(spaceKey, id string) string { return "/spaces/" + spaceKey + "/pages/" + id + "/edit" }
+
+// HistoryURL is the address of a page's history (FR-87.2).
+func HistoryURL(spaceKey, id string) string {
+	return "/spaces/" + spaceKey + "/pages/" + id + "/history"
+}
+
+// VersionURL is the address of a version of a page (FR-87.3).
+func VersionURL(spaceKey, id string, n int) string {
+	return "/spaces/" + spaceKey + "/pages/" + id + "/versions/" + strconv.Itoa(n)
+}
+
+// CompareURL is the address of the comparison of two versions (FR-88).
+func CompareURL(spaceKey, id string, from, to int) string {
+	return "/spaces/" + spaceKey + "/pages/" + id + "/compare?from=" + strconv.Itoa(from) + "&to=" + strconv.Itoa(to)
 }
 
 // reserved slugs would name a page's other addresses.
