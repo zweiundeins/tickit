@@ -119,7 +119,7 @@ Each takes a props struct; zero values are the defaults. The calls below are tem
 }
 ```
 
-The header holds the brand, Projects, Spaces, Filters and Dashboards with the current one marked, `Admin` links for those who may use them, search with its Ctrl K hint (the shortcut works on every page), Create, the bell (a button with `aria-expanded` and a polite live region `#tk-unread` for the count), the display menu and the person's menu (FR-137). Below 48rem the links and the sidebar move into a panel that the menu button opens. The shell hides tooltips on Escape. `DisplayProps` takes `Href` (links) or `Attrs` (buttons that post a preference).
+The header holds the brand, Projects, Spaces, Filters and Dashboards with the current one marked, `Admin` links for those who may use them, search with its Ctrl K hint (the shortcut works on every page), Create, the bell (a button with `aria-expanded` and a polite live region `#tk-unread` for the count), the display menu and the person's menu (FR-137). Below 48rem the links and the sidebar move into a panel that the menu button opens; below 30rem the search is an icon button that opens the field over the header, which closes when the focus leaves it or on Escape. The shell hides tooltips on Escape. `DisplayProps` takes `Href` (links) or `Attrs` (buttons that post a preference).
 
 ### Buttons and fields
 
@@ -239,6 +239,15 @@ A board of many cards uses `ui.BoardCard` instead, in a Board with Class `tk-boa
 ```
 
 The conflict of MP-08.3 is a danger `Notice` beside the field with the retry as its action; the person's value stays in the field. `Outcome` is a polite live region (a failure is an alert). `Toasts` is for news from elsewhere, never for the outcome of the person's own action. `RelativeTime` writes English text and the absolute date, time and zone in its title (NFR-51); the zone is `t`'s location. Its text is the server's at render time.
+
+### Charts
+
+```templ
+@ui.CountBars("Website by status", []ui.CountBar{{Label: "In Review", Category: ui.InProgress, Count: 5, Href: href}})
+@ui.DayChart("Created and resolved per day", days) // []ui.DayPair{{Day, Created, Resolved}}
+```
+
+Dashboards' gadgets (FR-60). `CountBars` is a table whose rows carry a bar: the status's marker and name, the bar (decorative, `aria-hidden`) and the count as text, so a screen reader reads a table and colour is never alone. `DayChart` is two series on one axis, created plain and resolved hatched (texture as well as hue), with a legend that names them, each day's numbers in its tooltip, and the same numbers in a table under "Show as a table". Marks read `--tk-hue-chart`, a hue's step inside the dataviz checks' lightness band in both themes (validated with the dataviz skill's `validate_palette.js`: created is `data-hue="11"`, resolved `data-cat="done"`); sizes are steps of 5 % from `data-w` and `data-h`, never `style=`.
 
 ### Editor
 
