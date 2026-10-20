@@ -4,6 +4,7 @@
 	/* ── The bell's panel ──────────────────────────────────────────── */
 	.tk-notif {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		grid-template-rows: auto minmax(0, 1fr) auto;
 		max-block-size: inherit;
 	}

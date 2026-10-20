@@ -364,8 +364,12 @@
 			align-self: center;
 		}
 
+		/* Status and summary both give way on a narrow line; neither
+		 * goes below a few letters. */
 		& .tk-lozenge {
-			flex: none;
+			flex: 0 1 auto;
+			min-inline-size: 2.5rem;
+			overflow: hidden;
 			block-size: 1.15rem;
 		}
 
@@ -393,7 +397,7 @@
 	}
 
 	.issue-chip__summary {
-		min-inline-size: 0;
+		min-inline-size: min(4rem, 30%);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;

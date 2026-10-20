@@ -21,6 +21,7 @@
 
 	.wk-head {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 		flex: 1 1 20rem;
 		min-inline-size: 0;
@@ -179,6 +180,7 @@
 	/* ── Comments (FR-90) ──────────────────────────────────────────── */
 	.wk-comments {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
 		padding-block-start: var(--tk-space-4);
 		border-block-start: 1px solid var(--tk-border-subtle);
@@ -187,6 +189,7 @@
 	.wk-thread,
 	.wk-replies {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-4);
 		margin: 0;
 		padding: 0;
@@ -202,6 +205,7 @@
 
 	.wk-comment {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-1);
 	}
 
@@ -236,6 +240,7 @@
 
 	.wk-comment-form {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 		justify-items: start;
 

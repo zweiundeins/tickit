@@ -188,7 +188,7 @@
 	}
 
 	/* Tips at the inline end of a bar open towards the start. */
-	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head, .tk-presence__item) > .tk-tip > .tk-tip__bubble,
+	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head, .tk-presence__item, .tk-issue__refs li) > .tk-tip > .tk-tip__bubble,
 	.tk-tip--end > .tk-tip__bubble {
 		inset-inline: auto 0;
 		translate: 0 0.25rem;
@@ -199,7 +199,7 @@
 		}
 	}
 
-	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head, .tk-presence__item) > .tk-tip:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble,
+	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head, .tk-presence__item, .tk-issue__refs li) > .tk-tip:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble,
 	.tk-tip--end:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble {
 		translate: 0 0;
 	}
@@ -1022,6 +1022,7 @@
 	.tk-dialog__body,
 	.tk-panel__body {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-4);
 		align-content: start;
 		padding: var(--tk-space-5);
@@ -1852,6 +1853,7 @@
 
 	.tk-notice__body {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		flex: 1 1 12rem;
 		gap: var(--tk-space-1);
 		min-inline-size: 0;
@@ -2105,6 +2107,7 @@
 	/* ── Feeds: notifications, activity. ───────────────────────────── */
 	.tk-feed {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		margin: 0;
 		padding: 0;
 		list-style: none;

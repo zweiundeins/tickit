@@ -4,6 +4,7 @@
 @layer components {
 	.tk-issue {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-4);
 		min-inline-size: 0;
 	}
@@ -17,6 +18,7 @@
 
 	.tk-issue__main {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 		min-inline-size: 0;
 	}
@@ -61,6 +63,7 @@
 
 	.tk-issue__editor {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 	}
 
@@ -86,6 +89,7 @@
 
 	.tk-issue__note {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-1);
 		grid-column: 1 / -1;
 		min-inline-size: 0;
@@ -106,6 +110,7 @@
 
 	.tk-issue__desc {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 
 		& .prose {
@@ -166,11 +171,13 @@
 
 	.tk-issue__group {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 	}
 
 	.tk-issue__refs {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-1);
 		margin: 0;
 		padding: 0;
@@ -317,6 +324,7 @@
 	/* Tabs: Comments, History, Activity (FR-68). */
 	.tk-issue__tabs {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
 	}
 
@@ -351,6 +359,7 @@
 
 	.tk-issue__panel {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
 
 		&[hidden] {
@@ -378,6 +387,7 @@
 
 	.tk-comment__main {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-1);
 		min-inline-size: 0;
 	}
@@ -403,11 +413,13 @@
 
 	.tk-comment__edit {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 	}
 
 	.tk-issue__commentform {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-2);
 		position: relative;
 	}
@@ -488,6 +500,7 @@
 
 	.tk-issue__asof {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
 
 		&[hidden] {
@@ -497,6 +510,7 @@
 
 	.tk-issue__asofbody {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
 	}
 
@@ -527,6 +541,7 @@
 	/* The create dialog's form (FR-10). */
 	.tk-issue__form {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-4);
 	}
 
