@@ -79,6 +79,9 @@ func TestRebuild(t *testing.T) {
 	e.must(StartSprint{By: e.by(sunny), Project: e.web, Sprint: e.sprint, End: "2026-10-30"})
 	e.must(CompleteSprint{By: e.by(sunny), Project: e.web, Sprint: e.sprint, MoveTo: sp2})
 	e.must(DeleteIssue{By: e.by(admin), Issue: sub})
+	e.must(HideIssue{By: e.by(moderator), Issue: web3, Hidden: true, Reason: "spam"}) // DM-07.1
+	e.must(HideIssue{By: e.by(moderator), Issue: web2, Hidden: true})
+	e.must(HideIssue{By: e.by(moderator), Issue: web2, Hidden: false})
 	e.must(MoveToProject{By: e.by(sunny), Issue: web4, Project: e.app, Status: StatusSelected})
 	name, desc := "Web shop", "The storefront"
 	e.must(EditProject{By: e.by(admin), Project: e.web, Name: &name, Description: &desc})

@@ -241,6 +241,7 @@ type Link struct {
 type IssueState struct {
 	Exists      bool             `json:"exists"`
 	Deleted     bool             `json:"deleted,omitempty"`
+	Hidden      bool             `json:"hidden,omitempty"` // by a moderator (moderation.go)
 	Project     string           `json:"project"`
 	Key         string           `json:"key"`
 	Number      int64            `json:"number"`
@@ -361,6 +362,10 @@ func evolveIssue(s IssueState, e IssueEvent) IssueState {
 		})
 	case IssueDeleted:
 		s.Deleted = true
+	case IssueHidden:
+		s.Hidden = true
+	case IssueUnhidden:
+		s.Hidden = false
 	case ProjectChanged:
 		s.Project, s.Key, s.Number = e.Project, e.Key, e.Number
 		s.Keys = append(slices.Clone(s.Keys), e.Key)
