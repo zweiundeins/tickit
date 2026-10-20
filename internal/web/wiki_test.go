@@ -369,7 +369,7 @@ func TestPageCommentEdit(t *testing.T) {
 	}
 	read := webtest.Listen(t, o, e.URL+"/stream?tab=rtab&v=page:"+page, nil)
 	webtest.Next(t, read, "First words")
-	if _, html := webtest.Get(t, c, e.URL+wiki.PageURL("ENG", page, "Notes")); !strings.Contains(html, `data-text="First words"`) || !strings.Contains(html, `id="comment-edit"`) {
+	if _, html := webtest.Get(t, c, e.URL+wiki.PageURL("ENG", page, "Notes")); !strings.Contains(html, `data-body="First words"`) || !strings.Contains(html, `id="comment-edit"`) {
 		t.Error("the page offers no Edit for a comment")
 	}
 	if code, _ := act(t, e, o, "/cmd/pages/comment/edit", "tabo", map[string]any{"comment": id, "body": "Not mine"}); code != http.StatusForbidden {

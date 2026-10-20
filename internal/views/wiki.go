@@ -229,7 +229,7 @@ var (
 	replyTo         = `$_wk.comment.to = el.dataset.comment, $_wk.comment.toName = el.dataset.name, document.getElementById('comment-body').focus()`
 	deleteComment   = Ask("Delete this comment? It cannot be brought back.", "Delete", Act("_wk.cmod.op", "/cmd/pages/comment/delete", "comment: el.dataset.comment"))
 	hideComment     = Act("_wk.cmod.op", "/cmd/pages/comment/hide", "comment: el.dataset.comment, hidden: el.dataset.hidden !== 'true'")
-	editComment     = `$_wk.cedit.id = el.dataset.comment, $_wk.cedit.body = el.dataset.text, $_wk.cedit.msg = ''`
+	editComment     = `$_wk.cedit.id = el.dataset.comment, $_wk.cedit.body = el.dataset.body, $_wk.cedit.msg = ''`
 	saveComment     = `$_wk.cedit.body.trim() && ` + Act("_wk.cedit.op", "/cmd/pages/comment/edit", "comment: $_wk.cedit.id, body: $_wk.cedit.body")
 	ceditSettled    = Settle("_wk.cedit.op", "o.ok ? document.getElementById('comment-edit').close() : ($_wk.cedit.msg = o.msg)")
 	ceditFailed     = Failed("_wk.cedit.op")
