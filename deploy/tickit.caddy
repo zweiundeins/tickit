@@ -11,7 +11,21 @@ tickit.zweiundeins.gmbh {
 			roll_keep 5
 			roll_keep_for 720h
 		}
-		format json
+		# A tab id lets whoever has it pace or end that tab's stream: the
+		# log keeps a hash of it.
+		format filter {
+			wrap json
+			fields {
+				request>uri query {
+					hash tab
+				}
+			}
+		}
+	}
+
+	# The largest body tickit takes is an edit batch of 256 KiB.
+	request_body {
+		max_size 1MB
 	}
 
 	reverse_proxy 127.0.0.1:7105 {
