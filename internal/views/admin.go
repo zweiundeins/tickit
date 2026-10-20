@@ -185,7 +185,6 @@ func lastLogin(t, now time.Time) string {
 	return ui.Ago(t, now)
 }
 
-
 // thousands writes n with a comma between thousands: "1,000".
 func thousands(n int) string {
 	s := strconv.Itoa(n)
