@@ -479,3 +479,56 @@ func (c *FoldDescriptions) Apply(tx *writer.Tx) error {
 type SweepDescriptionEditors struct{ At time.Time }
 
 func (c SweepDescriptionEditors) Apply(tx *writer.Tx) error { return descDocs.SweepEditors(tx, c.At) }
+
+// DescVersion is a version of an issue's description (FR-68): who made
+// it and when, who edited it, and the document before it (nil for the
+// first, the issue's creation) and after.
+type DescVersion struct {
+	Actor         string
+	At            time.Time
+	Editors       []string
+	Before, After doc.Doc
+}
+
+// DescriptionVersion reads the version of an issue's description that
+// the issue's version v made: its creation or an issue.description_changed.
+// Any other version answers access.ErrNotFound.
+func DescriptionVersion(ctx context.Context, q sqlite.Querier, issue string, v int64) (DescVersion, error) {
+	var out DescVersion
+	var prev json.RawMessage
+	found := false
+	parse := func(raw json.RawMessage) doc.Doc {
+		if collab.IsBlank(raw) {
+			raw = json.RawMessage(collab.Blank)
+		}
+		d, err := doc.ParseDoc(raw)
+		if err != nil {
+			d, _ = doc.ParseDoc(json.RawMessage(collab.Blank))
+		}
+		return d
+	}
+	for r, err := range events.Load(ctx, Store(), q, IssueStream.ID(issue), 0) {
+		if err != nil {
+			return out, err
+		}
+		if r.Version > v {
+			break
+		}
+		switch e := r.Data.(type) {
+		case IssueCreated:
+			if r.Version == v {
+				out, found = DescVersion{Actor: r.Actor, At: r.At, Editors: []string{r.Actor}, After: parse(e.Description)}, true
+			}
+			prev = e.Description
+		case DescriptionChanged:
+			if r.Version == v {
+				out, found = DescVersion{Actor: r.Actor, At: r.At, Editors: e.Editors, Before: parse(prev), After: parse(e.To)}, true
+			}
+			prev = e.To
+		}
+	}
+	if !found {
+		return out, notFound("description version", issue)
+	}
+	return out, nil
+}

@@ -8,13 +8,15 @@ import (
 // The editor's wiring (editor/README.md, "Wiring the page"): commits go
 // out as the payload, never as signals, with requestCancellation
 // 'disabled' so that the next post does not abort them, and no retry by
-// Datastar, so that the component decides when to resend.
+// Datastar, so that the component decides when to resend. The host's
+// data-cmd says where: /cmd/pages/<id> for a page, /cmd/issues/<id>/
+// description for an issue's description (an id the server made).
 const (
 	editorSignals = `{_editor: {status: 'saved', stopped: '', unsaved: 0, problem: ''}, _carets: '[]', _wkTitle: '',` +
 		` _title: {focus: false, op: '', msg: ''}, _pick: {kind: '', q: '', label: ''}}`
-	editorCommit = `@post('/cmd/pages/' + evt.detail.page + '/commit', {payload: {...evt.detail, tab: $_tab, client: el.getAttribute('client')}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0})` +
+	editorCommit = `@post(el.dataset.cmd + '/commit', {payload: {...evt.detail, tab: $_tab, client: el.getAttribute('client')}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0})` +
 		`.then(() => el.posted(evt.detail.ref, true), () => el.posted(evt.detail.ref, false))`
-	editorPresence = `@post('/cmd/pages/' + evt.detail.page + '/presence', {payload: {...evt.detail, tab: $_tab}, retry: 'never', retryMaxCount: 0}).catch(() => {})`
+	editorPresence = `@post(el.dataset.cmd + '/presence', {payload: {...evt.detail, tab: $_tab}, retry: 'never', retryMaxCount: 0}).catch(() => {})`
 	editorStatus   = `$_editor.status = evt.detail.status, $_editor.unsaved = evt.detail.unsaved, evt.detail.status === 'saved' && ($_editor.problem = '')`
 	editorStopped  = `$_editor.stopped = evt.detail.state, $_editor.unsaved = evt.detail.unsaved`
 	// editorFetch says at the editor why a commit did not go through
@@ -25,7 +27,7 @@ const (
 		`document.querySelector('#` + DemoAlertID + `[data-resetting]') ? 'The demo is resetting, and the page comes back as seeded. Copy your edits to keep them.' : 'The server is restarting. Your edits are kept here and go out when it is back.')`
 	// editorOpen registers the tab as an editor of the page, from the
 	// version the page rendered (docs/editor.md).
-	editorOpen = `@post('/cmd/pages/' + el.getAttribute('page') + '/open', {payload: {tab: $_tab, op: ` + newOp + `, base: +el.getAttribute('base'), client: el.getAttribute('client')}, retry: 'error', retryMaxCount: 10})`
+	editorOpen = `@post(el.dataset.cmd + '/open', {payload: {tab: $_tab, op: ` + newOp + `, base: +el.getAttribute('base'), client: el.getAttribute('client')}, retry: 'error', retryMaxCount: 10})`
 	// copyEdits puts the editor's text on the clipboard (MP-13.1).
 	copyEdits = `document.getElementById('editor').copy()`
 
@@ -131,7 +133,8 @@ templ EditorHostEl(h EditorHost) {
 		state={ h.State }
 		refusal={ h.Refusal }
 		images={ h.Images }
-		label="Page content"
+		label={ h.label() }
+		data-cmd={ h.cmd() }
 		if h.Readonly {
 			readonly
 		}

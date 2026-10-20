@@ -1,0 +1,82 @@
+package views
+
+import (
+	"time"
+
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/ui"
+)
+
+// DescEditorMount is where the description's editor goes on the issue's
+// page, with its host: the answer of GET /issues/{id}/description/editor.
+// The host's data-init opens the editor (docs/editor.md).
+templ DescEditorMount(h EditorHost) {
+	<div id={ DescEditorID } class="tk-issue__descmount" data-typing="description">
+		@EditorHostEl(h)
+	</div>
+}
+
+// DescVersionProps is a version of an issue's description (FR-68): the
+// issue's version that made it, who and when, and its document compared
+// with the one before, or the first description as it was written.
+type DescVersionProps struct {
+	Key, Summary      string
+	Version           int64
+	At, Now           time.Time
+	Actor             people.Person
+	Others            []people.Person // who edited it besides
+	First             bool
+	HTML              string
+	Inserted, Deleted int
+}
+
+// DescVersion shows a version of an issue's description, compared with
+// the one before: the history's Compare.
+templ DescVersion(p DescVersionProps) {
+	<article class="stack tk-descversion">
+		@ui.Breadcrumbs([]ui.Crumb{{Label: p.Key, Href: issueHref(p.Key)}, {Label: "Description, version " + i64(p.Version)}})
+		<h1 class="tk-issue__title">{ p.Key } { p.Summary }</h1>
+		@ui.Notice(ui.NoticeProps{Tone: ui.ToneInfo, Title: descVersionTitle(p), Action: ui.Button(ui.ButtonProps{Label: "Back to the issue", Size: ui.SizeSM, Href: issueHref(p.Key)})}) {
+			<p>
+				{ descVersionBy(p) }
+				@ui.RelativeTime(p.At, p.Now)
+				{ "." }
+				if !p.First {
+					{ " " + descDiffSummary(p) } <ins class="diff-ins">Added text</ins> is underlined, <del class="diff-del">removed text</del> struck out.
+				}
+			</p>
+		}
+		<div class="prose">
+			@templ.Raw(p.HTML)
+		</div>
+	</article>
+}
+
+func descVersionTitle(p DescVersionProps) string {
+	if p.First {
+		return "The description as " + p.Key + " was created"
+	}
+	return "The description at version " + i64(p.Version) + ", compared with the one before"
+}
+
+func descVersionBy(p DescVersionProps) string {
+	s := p.Actor.Name
+	for i, o := range p.Others {
+		if i == len(p.Others)-1 {
+			s += " and " + o.Name
+		} else {
+			s += ", " + o.Name
+		}
+	}
+	if p.First {
+		return "Written by " + s
+	}
+	return "Edited by " + s
+}
+
+func descDiffSummary(p DescVersionProps) string {
+	if p.Inserted == 0 && p.Deleted == 0 {
+		return "Nothing changed."
+	}
+	return itoa(p.Inserted) + " added, " + itoa(p.Deleted) + " removed."
+}

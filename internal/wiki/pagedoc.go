@@ -129,6 +129,9 @@ func (c *Commit) Validate() error {
 	if err := checkBy(c.By); err != nil {
 		return err
 	}
+	if !ValidID(c.Page) {
+		return errors.New("wiki: a malformed commit")
+	}
 	by, page := c.By, c.Page
 	c.c = &collab.Commit{Kind: pageDocs, By: c.By, Session: c.Session, Tab: c.Tab, ID: c.Page, Epoch: c.Epoch, Base: c.Base,
 		Ref: c.Ref, Client: c.Client, Steps: c.Steps,

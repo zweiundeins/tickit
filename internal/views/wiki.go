@@ -120,6 +120,23 @@ type EditorHost struct {
 	// Doc is the document at Base, for the GET only; frames leave the
 	// script empty and the morph keeps it.
 	Doc string
+	// Cmd is where its commits, presence and open go: /cmd/pages/<id>
+	// when empty. Label names its text area: "Page content" when empty.
+	Cmd, Label string
+}
+
+func (h EditorHost) cmd() string {
+	if h.Cmd == "" {
+		return "/cmd/pages/" + h.Page
+	}
+	return h.Cmd
+}
+
+func (h EditorHost) label() string {
+	if h.Label == "" {
+		return "Page content"
+	}
+	return h.Label
 }
 
 // VersionsProps is a page's history (FR-87.2).

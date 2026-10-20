@@ -123,7 +123,8 @@ func (s *Server) issuePage(w http.ResponseWriter, r *http.Request) {
 			Title:   m.Key + " " + m.Summary,
 			Nav:     "projects",
 			Project: m.ProjectID,
-			Views:   []string{"issue:" + m.ID, "issue-typing:" + m.ID},
+			Views:   []string{"issue:" + m.ID, "issue-desc:" + m.ID, "issue-typing:" + m.ID},
+			Scripts: []string{"editor/sb-rich-editor.min.js"},
 			Body: views.IssuePage(views.IssueFrameProps{
 				Issue: &m, ID: m.ID, Key: m.Key, Me: actor.ID,
 				ReadOnly: !edit || m.Project.Archived || !m.Deleted.IsZero(), Moderates: hide,
@@ -327,7 +328,7 @@ func loadIssue(ctx context.Context, q sqlite.Querier, id string, now time.Time) 
 		return m, err
 	}
 	res := &docResolver{ctx: ctx, q: q, people: m.People}
-	if m.DescHTML, m.DescMarkup, err = renderDoc(d.Description, res); err != nil {
+	if m.DescHTML, err = descHTML(ctx, q, id, d.Description, res); err != nil {
 		return m, err
 	}
 	for _, c := range comments {
@@ -540,12 +541,6 @@ func (s *Server) issueCommand(ctx context.Context, a action, id, field string, r
 	switch field {
 	case "summary":
 		return also{tracker.SetSummary{By: by, Issue: id, Seen: req.Seen, Summary: v}, stop(tracker.TypingSummary)}, nil
-	case "description":
-		body, err := s.parseText(ctx, v, markup.Text)
-		if err != nil {
-			return refuse(tracker.FieldDescription, textProblem(err)), nil
-		}
-		return also{tracker.SetDescription{By: by, Issue: id, Description: body}, stop(tracker.TypingDescription)}, nil
 	case "type":
 		return tracker.SetType{By: by, Issue: id, Seen: req.Seen, Type: tracker.IssueType(v)}, nil
 	case "status":
