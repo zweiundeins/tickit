@@ -258,7 +258,7 @@ func TestFollowsChanges(t *testing.T) {
 	e := newEnv(t)
 	far := int64(1 << 40)
 	e.Do(t, tracker.SetSummary{By: e.by(e.ada), Issue: e.ids["APP-1"], Seen: far, Summary: "Quokka ranking"})
-	e.Do(t, tracker.SetDescription{By: e.by(e.ada), Issue: e.ids["WEB-1"], Seen: far, Description: tracker.PlainDoc("now about wombats")})
+	e.Do(t, tracker.SetDescription{By: e.by(e.ada), Issue: e.ids["WEB-1"], Description: tracker.PlainDoc("now about wombats")})
 	if got := names(e.query("quokka")); !slices.Equal(got, []string{"APP-1"}) {
 		t.Errorf("renamed: %v", got)
 	}

@@ -545,7 +545,7 @@ func (s *Server) issueCommand(ctx context.Context, a action, id, field string, r
 		if err != nil {
 			return refuse(tracker.FieldDescription, textProblem(err)), nil
 		}
-		return also{tracker.SetDescription{By: by, Issue: id, Seen: req.Seen, Description: body}, stop(tracker.TypingDescription)}, nil
+		return also{tracker.SetDescription{By: by, Issue: id, Description: body}, stop(tracker.TypingDescription)}, nil
 	case "type":
 		return tracker.SetType{By: by, Issue: id, Seen: req.Seen, Type: tracker.IssueType(v)}, nil
 	case "status":

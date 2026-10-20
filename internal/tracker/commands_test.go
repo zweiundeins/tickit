@@ -180,10 +180,11 @@ func TestFieldConflicts(t *testing.T) {
 	if got := refusal(t, err); got != rainy.Name+` changed the summary to "Fix the login on Safari" 4 seconds ago. Your "Mine" was not saved.` {
 		t.Errorf("the summary's conflict: %q", got)
 	}
-	e.must(SetDescription{By: e.by(rainy), Issue: id, Seen: v, Description: PlainDoc("One")})
-	err = e.do(SetDescription{By: e.by(sunny), Issue: id, Seen: v, Description: PlainDoc("Two")})
-	if got := refusal(t, err); got != rainy.Name+" changed the description 1 second ago. Your changes were not saved." {
-		t.Errorf("the description's conflict: %q", got)
+	// FR-15.2: a description is co-edited, never refused as a conflict.
+	e.must(SetDescription{By: e.by(rainy), Issue: id, Description: PlainDoc("One")})
+	e.must(SetDescription{By: e.by(sunny), Issue: id, Description: PlainDoc("Two")})
+	if got := DocText(e.state(id).Description); got != "Two" {
+		t.Errorf("the description %q", got)
 	}
 	e.must(Assign{By: e.by(rainy), Issue: id, Seen: v, Assignee: "s-priya"})
 	err = e.do(Assign{By: e.by(sunny), Issue: id, Seen: v, Assignee: sunny.ID})

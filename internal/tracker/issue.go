@@ -46,11 +46,16 @@ type (
 		From string `json:"from"`
 		To   string `json:"to"`
 	}
-	// DescriptionChanged holds the new description and the people it
-	// mentions for the first time, whom notifications tell once (FR-67.3).
+	// DescriptionChanged is a version of the description (FR-15,
+	// description.go): the document, the people it mentions for the
+	// first time, whom notifications tell once (FR-67.3), the version of
+	// the description's own stream it was cut at, and who edited it
+	// since the version before.
 	DescriptionChanged struct {
 		To       json.RawMessage `json:"to,omitempty"`
 		Mentions []string        `json:"mentions_added,omitempty"`
+		Upto     int64           `json:"upto,omitempty"`
+		Editors  []string        `json:"editors,omitempty"`
 	}
 	TypeChanged struct {
 		From IssueType `json:"from"`
@@ -250,6 +255,7 @@ type IssueState struct {
 	Summary     string           `json:"summary"`
 	Description json.RawMessage  `json:"description,omitempty"`
 	Mentioned   []string         `json:"mentioned,omitempty"` // everyone its description ever mentioned
+	DescUpto    int64            `json:"desc_upto,omitempty"` // the description's stream version its last version holds
 	Status      string           `json:"status"`
 	Category    Category         `json:"category"`
 	Priority    Priority         `json:"priority"`
@@ -271,7 +277,7 @@ type IssueState struct {
 }
 
 // issueFold is the version of evolveIssue and IssueState.
-const issueFold = 1
+const issueFold = 2
 
 func (s *IssueState) changed(field string) {
 	m := maps.Clone(s.Changed)
@@ -291,12 +297,13 @@ func evolveIssue(s IssueState, e IssueEvent) IssueState {
 			Status: e.Status, Category: e.Category, Priority: e.Priority, Assignee: e.Assignee, Reporter: e.Reporter,
 			Parent: e.Parent, Labels: e.Labels, Components: e.Components, Due: e.Due, Points: e.Points,
 			Estimate: e.Estimate, Remaining: e.Remaining, Rank: e.Rank, Sprint: e.Sprint, Watchers: e.Watchers,
-			Version: s.Version}
+			DescUpto: 1, Version: s.Version}
 	case SummaryChanged:
 		s.Summary = e.To
 		s.changed(FieldSummary)
 	case DescriptionChanged:
 		s.Description = e.To
+		s.DescUpto = max(s.DescUpto, e.Upto)
 		s.Mentioned = slices.Clone(s.Mentioned)
 		for _, m := range e.Mentions {
 			if !slices.Contains(s.Mentioned, m) {

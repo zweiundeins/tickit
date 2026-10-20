@@ -143,7 +143,7 @@ var issuesProjector = events.NewProjector(IssueStream, "tracker_issues", issuesV
 	}),
 	events.Handle(DescriptionChangedType, func(tx *writer.Tx, r events.Record[string, DescriptionChanged]) error {
 		info, _ := readDoc(r.Data.To)
-		return set(tx, r.ID, r.Version, millis(r.At), `description = ?, description_text = ?`, nullDoc(r.Data.To), info.Text)
+		return set(tx, r.ID, r.Version, millis(r.At), `description = ?, description_text = ?, desc_upto = max(desc_upto, ?)`, nullDoc(r.Data.To), info.Text, r.Data.Upto)
 	}),
 	events.Handle(TypeChangedType, func(tx *writer.Tx, r events.Record[string, TypeChanged]) error {
 		if err := set(tx, r.ID, r.Version, millis(r.At), `type = ?`, string(r.Data.To)); err != nil {
