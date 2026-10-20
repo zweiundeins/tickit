@@ -4,6 +4,7 @@
 //	tickit [serve] [flags]       run the server (the default)
 //	tickit backup [flags]        copy the database while the server runs, and keep the newest copies
 //	tickit account create [flags] make a staff account; the password comes from TICKIT_PASSWORD or stdin
+//	tickit migrations-pending [flags] print how many migrations the database has not had yet
 //	tickit --version             print the version
 //
 // Every flag can also come from the environment: -db from TICKIT_DB, -addr
@@ -67,8 +68,10 @@ func main() {
 		err = backup(args)
 	case "account":
 		err = account(args)
+	case "migrations-pending":
+		err = migrationsPending(args, os.Stdout)
 	default:
-		err = fmt.Errorf("unknown command %q: serve, backup or account", cmd)
+		err = fmt.Errorf("unknown command %q: serve, backup, account or migrations-pending", cmd)
 	}
 	if err != nil {
 		slog.Error(cmd, "err", err)
@@ -302,12 +305,13 @@ func sweep(ctx context.Context, w *writer.Writer, log *slog.Logger) {
 }
 
 // backup writes a consistent copy of the database (VACUUM INTO, safe while
-// the server runs) and deletes the oldest copies beyond -keep.
+// the server runs), checks it, and deletes the oldest copies beyond -keep.
+// A copy that fails the check is kept as .bad, and no copy is deleted.
 func backup(args []string) error {
 	f := flags("backup")
 	dbPath := f.String("db", "data/tickit.db", "the SQLite database")
 	dir := f.String("backups", "data/backups", "the directory of the copies")
-	keep := f.Int("keep", 28, "how many copies to keep")
+	keep := f.Int("keep", 30, "how many copies to keep")
 	if err := parse(f, args); err != nil {
 		return err
 	}
@@ -329,6 +333,9 @@ func backup(args []string) error {
 	to := filepath.Join(*dir, "tickit-"+time.Now().UTC().Format("20060102T150405Z")+".db")
 	if err := db.Backup(ctx, to); err != nil {
 		return err
+	}
+	if err := checkCopy(ctx, to); err != nil {
+		return errors.Join(fmt.Errorf("backup %s: %w", to, err), os.Rename(to, to+".bad"))
 	}
 	copies, err := filepath.Glob(filepath.Join(*dir, "tickit-*.db"))
 	if err != nil {
