@@ -23,6 +23,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"iter"
 	"slices"
 	"strings"
 	"time"
@@ -255,6 +257,12 @@ func Space(ctx context.Context, q sqlite.Querier, space string, limit int) ([]En
 // "recently edited by you" on the home page (FR-59.1), from the same end
 // of the log, of every event type the sources know of or not.
 func Mine(ctx context.Context, q sqlite.Querier, person string, keep func(access.Scope) bool, limit int) ([]Entry, error) {
+	// A person without a row never acted (tabs.Act makes it): most guests
+	// on the home page, which renders this on every commit.
+	var acted int
+	if err := q.QueryRowContext(ctx, `SELECT count(*) FROM people WHERE id = ?`, person).Scan(&acted); err != nil || acted == 0 {
+		return nil, err
+	}
 	upto, err := head(ctx, q)
 	if err != nil {
 		return nil, err
@@ -266,12 +274,9 @@ func Mine(ctx context.Context, q sqlite.Querier, person string, keep func(access
 		after := max(0, upto-size)
 		var issues []string
 		at := map[string]Entry{}
-		for ev, err := range events.SinceUntil(ctx, q, after, upto) {
+		for ev, err := range byActor(ctx, q, person, after, upto) {
 			if err != nil {
 				return nil, err
-			}
-			if ev.Meta.Actor != person {
-				continue
 			}
 			id, kind := subjectOf(ev)
 			if id == "" || seen[id] {
@@ -310,6 +315,38 @@ func Mine(ctx context.Context, q sqlite.Querier, person string, keep func(access
 		size = min(size*2, 8192)
 	}
 	return out, nil
+}
+
+// byActor are the events of one actor in (after, upto], as
+// events.SinceUntil reads them. The filter runs in SQLite, so the rows of
+// other actors never reach Go: the home page renders it for every viewer
+// on every commit, and a window of a busy log holds thousands of rows.
+func byActor(ctx context.Context, q sqlite.Querier, actor string, after, upto int64) iter.Seq2[events.Raw, error] {
+	return func(yield func(events.Raw, error) bool) {
+		rows, err := q.QueryContext(ctx, `SELECT position, version, type, data, at, coalesce(correlation, ''), coalesce(causation, ''), stream, stream_id
+			FROM lith_events WHERE position > ? AND position <= ? AND actor = ? ORDER BY position`, after, upto, actor)
+		if err != nil {
+			yield(events.Raw{}, err)
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			ev := events.Raw{Meta: events.Meta{Actor: actor}}
+			var at int64
+			var data string
+			if err := rows.Scan(&ev.Position, &ev.Version, &ev.Type, &data, &at, &ev.Correlation, &ev.Causation, &ev.Stream, &ev.ID); err != nil {
+				yield(events.Raw{}, err)
+				return
+			}
+			ev.Data, ev.At = json.RawMessage(data), time.UnixMilli(at)
+			if !yield(ev, nil) {
+				return
+			}
+		}
+		if err := rows.Err(); err != nil {
+			yield(events.Raw{}, err)
+		}
+	}
 }
 
 // subjectOfs name the subject of an event of a stream kind, by kind:

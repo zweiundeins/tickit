@@ -367,6 +367,17 @@ const filterWhere = ` WHERE i.deleted_at IS NULL
 	AND (?16 = '' OR instr(i.search, ?16) > 0 OR EXISTS (SELECT 1 FROM comments c
 		WHERE c.subject_id = i.id AND c.deleted_at IS NULL AND c.hidden_at IS NULL AND instr(c.search, ?16) > 0))`
 
+// byAssignee repeats filterWhere's assignee term on its own, and
+// issueFromByAssignee reads issues by issues_assignee: "assigned to me",
+// which the home page renders for every viewer on every change, then reads
+// a person's issues, not every issue of the readable projects, which the
+// planner prefers by its statistics.
+const (
+	byAssignee          = ` AND i.assignee IN (SELECT value FROM json_each(?7))`
+	issueFromByAssignee = ` FROM issues i INDEXED BY issues_assignee JOIN projects p ON p.id = i.project_id
+	LEFT JOIN statuses s ON s.project_id = i.project_id AND s.id = i.status`
+)
+
 func jsonList(v []string) string {
 	if len(v) == 0 {
 		return "[]"
@@ -422,7 +433,11 @@ func Search(ctx context.Context, q sqlite.Querier, query Query) (Results, error)
 	f := query.Filter.Normalize(query.Me)
 	args := filterArgs(query.Readable, f)
 	var res Results
-	if err := q.QueryRowContext(ctx, `SELECT count(*)`+issueFrom+filterWhere+` AND ?17 = ?17`, args...).Scan(&res.Total); err != nil {
+	from, where := issueFrom, filterWhere
+	if len(f.Assignees) > 0 {
+		from, where = issueFromByAssignee, filterWhere+byAssignee
+	}
+	if err := q.QueryRowContext(ctx, `SELECT count(*)`+from+where+` AND ?17 = ?17`, args...).Scan(&res.Total); err != nil {
 		return res, err
 	}
 	res.Pages = max(1, (res.Total+PageSize-1)/PageSize)
@@ -431,7 +446,7 @@ func Search(ctx context.Context, q sqlite.Querier, query Query) (Results, error)
 	if query.Sort.By == SortAssignee || query.Sort.By == SortReporter {
 		joins = ` LEFT JOIN people pa ON pa.id = i.assignee LEFT JOIN people pr ON pr.id = i.reporter`
 	}
-	rows, err := q.QueryContext(ctx, `SELECT `+issueColumns+issueFrom+joins+filterWhere+query.Sort.orderBy()+` LIMIT 25 OFFSET ?18`,
+	rows, err := q.QueryContext(ctx, `SELECT `+issueColumns+from+joins+where+query.Sort.orderBy()+` LIMIT 25 OFFSET ?18`,
 		append(args, (res.Page-1)*PageSize)...)
 	if err != nil {
 		return res, err
