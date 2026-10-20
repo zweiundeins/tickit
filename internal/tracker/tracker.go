@@ -86,7 +86,7 @@ var (
 
 // Parts are the tracker's projectors, for the app's one event store.
 func Parts() []events.Part {
-	return []events.Part{projectsProjector, issuesProjector, commentsProjector}
+	return []events.Part{projectsProjector, issuesProjector, commentsProjector, issueSearchProjector, commentSearchProjector}
 }
 
 // Bind gives the tracker's commands the app's event store, which holds
