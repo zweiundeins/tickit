@@ -163,6 +163,7 @@ const (
 	EventPassword       = "password_changed"
 	EventDeactivated    = "deactivated"
 	EventModeration     = "moderation"
+	EventErased         = "erased"
 
 	OutcomeOK       = "ok"
 	OutcomeWrong    = "wrong_password" // or an unknown email: then Person is empty

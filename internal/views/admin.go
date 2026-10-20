@@ -211,6 +211,7 @@ var (
 	adminCreate    = Act("_admin.op", "/cmd/admin/create", "email: $_admin.email, username: $_admin.username, name: $_admin.name, role: $_admin.role, password: $_admin.password")
 	adminRole      = Act("_admin.op", "/cmd/admin/role", "account: el.dataset.account, role: el.dataset.role")
 	adminActive    = Act("_admin.op", "/cmd/admin/active", "account: el.dataset.account, active: el.dataset.active === 'true'")
+	adminErase     = Ask("Erase this account? Its email, username, name and sessions are deleted for good, and what it did shows as by \"Deleted person\".", "Erase", Act("_admin.op", "/cmd/admin/erase", "account: el.dataset.account"))
 	adminReset     = Ask("Reset the demo now? Every visitor's changes are deleted, and every open page shows the fresh demo.", "Reset now", Act("_admin.op", "/cmd/admin/reset", ""))
 	modSignals     = `{_mod: {op: '', ok: false, msg: '', reason: ''}}`
 	modSettled     = Settle("_mod.op", "$_mod.ok = o.ok, $_mod.msg = o.ok ? 'Done.' : o.msg")

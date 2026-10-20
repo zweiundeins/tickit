@@ -211,6 +211,7 @@ var secCases = []secCase{
 	{name: "admin/create", pattern: "POST /cmd/admin/create", need: siteAdmin, guard: true, outcome: true, by: wRoot, req: at("/cmd/admin/create", "email", "new@example.com", "username", "newbie", "name", "New", "role", "none", "password", "a first password")},
 	{name: "admin/role", pattern: "POST /cmd/admin/role", need: siteAdmin, guard: true, outcome: true, by: wRoot, targets: []string{"account"}, req: at("/cmd/admin/role", "account", "@victim", "role", "moderator")},
 	{name: "admin/active", pattern: "POST /cmd/admin/active", need: siteAdmin, guard: true, outcome: true, by: wRoot, targets: []string{"account"}, req: at("/cmd/admin/active", "account", "@victim", "active", false)},
+	{name: "admin/erase", pattern: "POST /cmd/admin/erase", need: siteAdmin, guard: true, outcome: true, by: wRoot, targets: []string{"account"}, req: at("/cmd/admin/erase", "account", "@victim")},
 	{name: "admin/reset", pattern: "POST /cmd/admin/reset", need: siteAdmin, guard: true, outcome: true, reseeds: true, by: wRoot, req: at("/cmd/admin/reset")},
 	{name: "account/password", pattern: "POST /cmd/account/password", need: account, guard: true, outcome: true, mustOK: true, by: wViewer, req: at("/cmd/account/password", "current", fixturePassword, "password", "a new password here")},
 	{name: "account/end-session", pattern: "POST /cmd/account/end-session", need: account, guard: true, outcome: true, by: wViewer, req: at("/cmd/account/end-session", "session", "@session"),

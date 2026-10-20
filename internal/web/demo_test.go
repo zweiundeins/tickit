@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/zweiundeins/lith/writer"
 
 	"github.com/zweiundeins/tickit/internal/demo"
 	"github.com/zweiundeins/tickit/internal/people"
@@ -420,5 +421,67 @@ func TestAccounts(t *testing.T) {
 	}
 	if code, page := webtest.Get(t, admin, e.URL+"/admin/security?kind=role_changed"); code != http.StatusOK || !strings.Contains(page, "Role changed") {
 		t.Errorf("the security log page: %d", code)
+	}
+}
+
+// NFR-27.1: a site admin erases an account: email, username, name and
+// password go, its sessions end, its changes show as by "Deleted person"
+// while the events keep its id alone (NFR-26), and the security log
+// records it (FR-156).
+func TestEraseAccount(t *testing.T) {
+	e := seededEnv(t)
+	ada := e.Account(t, "ada@example.com", "correct horse battery", people.Admin)
+	bob := e.Account(t, "bob@example.com", "bob's long password", people.Moderator)
+	admin, b := webtest.Client(t), webtest.Client(t)
+	e.Login(t, admin, "ada@example.com", "correct horse battery")
+	e.Login(t, b, "bob@example.com", "bob's long password")
+	e.Do(t, writer.Func(func(tx *writer.Tx) error {
+		_, err := tx.Exec(`UPDATE people SET display_name = 'Bob Erasable' WHERE id = ?`, bob)
+		tx.Touch(people.Topic)
+		return err
+	}))
+	issue := guestIssue(t, e, people.Person{ID: bob, Kind: people.Account, Name: "Bob Erasable"}, "Written by Bob")
+	var key string
+	e.DB.R.QueryRow(`SELECT key FROM issues WHERE id = ?`, issue).Scan(&key)
+	if _, page := webtest.Get(t, admin, e.URL+"/"+key); !strings.Contains(page, "Bob Erasable") {
+		t.Fatal("the issue does not name its reporter")
+	}
+
+	webtest.Post(t, admin, e.URL+"/cmd/admin/erase", `{"tab":"tab1","op":"x0","account":"`+ada+`"}`)
+	if o := outcome(t, e, people.Person{ID: ada, Kind: people.Account}, "x0"); o.OK {
+		t.Error("an admin erased their own account")
+	}
+	if code, body := webtest.Post(t, admin, e.URL+"/cmd/admin/erase", `{"tab":"tab1","op":"x1","account":"`+bob+`"}`); code != http.StatusNoContent {
+		t.Fatalf("erase: %d %s", code, body)
+	}
+	if o := outcome(t, e, people.Person{ID: ada, Kind: people.Account}, "x1"); !o.OK {
+		t.Fatalf("erase: %+v", o)
+	}
+	for _, q := range []string{
+		`SELECT count(*) FROM accounts WHERE person_id = ?1 OR email = 'bob@example.com'`,
+		`SELECT count(*) FROM people WHERE id = ?1`,
+		`SELECT count(*) FROM login_sessions WHERE person_id = ?1`,
+		`SELECT count(*) FROM memberships WHERE person_id = ?1`,
+		`SELECT count(*) FROM notifications WHERE recipient = ?1`,
+		`SELECT count(*) FROM lith_events WHERE data LIKE '%bob@example.com%' OR data LIKE '%Bob Erasable%'`,
+	} {
+		if n := rowCount(t, e, q, bob); n != 0 {
+			t.Errorf("%s: %d after the erase", q, n)
+		}
+	}
+	if n := rowCount(t, e, `SELECT count(*) FROM lith_events WHERE actor = ?`, bob); n == 0 {
+		t.Error("the erased account's events are gone, not kept by its id")
+	}
+	if n := rowCount(t, e, `SELECT count(*) FROM security_log WHERE kind = 'erased' AND person_id = ? AND actor_id = ?`, bob, ada); n != 1 {
+		t.Errorf("%d erasures in the security log", n)
+	}
+	if _, page := webtest.Get(t, admin, e.URL+"/"+key); strings.Contains(page, "Bob Erasable") || !strings.Contains(page, people.DeletedName) {
+		t.Error("the issue still names the erased account")
+	}
+	if _, page := webtest.Get(t, admin, e.URL+"/admin/security"); !strings.Contains(page, "Account erased") {
+		t.Error("the security log page does not show the erasure")
+	}
+	if code, _ := webtest.Get(t, b, e.URL+"/moderation"); code != http.StatusForbidden {
+		t.Errorf("the erased account's session still works: %d", code)
 	}
 }
