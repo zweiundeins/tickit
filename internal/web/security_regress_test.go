@@ -1,13 +1,16 @@
 package web_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/mbolli/tickit/internal/people"
 	"github.com/mbolli/tickit/internal/web/webtest"
 )
 
@@ -64,4 +67,51 @@ func TestCommitBeyondHead(t *testing.T) {
 	if code >= 500 || code < 400 {
 		t.Errorf("a commit beyond the head: %d %s", code, body)
 	}
+}
+
+// FR-141.1: an account with a first password to change reads no view and
+// changes nothing until it does: not by the stream, a watch, the list's
+// view, a commit or a caret.
+func TestMustChangeEverywhere(t *testing.T) {
+	e := webtest.Start(t)
+	e.Account(t, "ada@example.com", "correct horse battery", people.Admin)
+	admin := webtest.Client(t)
+	e.Login(t, admin, "ada@example.com", "correct horse battery")
+	if code, body := webtest.Post(t, admin, e.URL+"/cmd/admin/create", `{"tab":"tab1","op":"c1","email":"bea@example.com","username":"bea","name":"Bea","role":"moderator","password":"first password"}`); code != http.StatusNoContent {
+		t.Fatalf("create: %d %s", code, body)
+	}
+	bea := webtest.Client(t)
+	e.Login(t, bea, "bea@example.com", "first password")
+	if code := status(t, bea, e.URL+"/stream?tab=tab1&v=moderation:"); code != http.StatusForbidden {
+		t.Errorf("a stream of the moderation page: %d", code)
+	}
+	page := "0192d000-0000-7000-8000-000000000001"
+	for path, body := range map[string]string{
+		"/cmd/watch":                       `{"tab":"tab1","view":"moderation:"}`,
+		"/cmd/unwatch":                     `{"tab":"tab1","view":"moderation:"}`,
+		"/cmd/list/view":                   `{"tab":"tab1","view":"","query":"assignee=me"}`,
+		"/cmd/pages/" + page + "/commit":   `{"tab":"tab1","epoch":"e1","base":1,"ref":"r1","client":"0123456789ab","steps":[]}`,
+		"/cmd/pages/" + page + "/presence": `{"tab":"tab1","epoch":"e1","ack":1,"v":1,"anchor":1,"head":1,"seq":1}`,
+	} {
+		if code, _ := webtest.Post(t, bea, e.URL+path, body); code != http.StatusForbidden {
+			t.Errorf("%s with a first password: %d", path, code)
+		}
+	}
+	// The account's page keeps its stream, with the views every page has.
+	events := webtest.Listen(t, bea, e.URL+"/stream?tab=tab1&v=", nil)
+	webtest.Next(t, events, `"_outcomes"`)
+}
+
+// status is the status of a GET, which a stream answers at once.
+func status(t *testing.T, c *http.Client, url string) int {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+	res, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	return res.StatusCode
 }

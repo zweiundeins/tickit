@@ -224,6 +224,9 @@ func (s *Server) decodeEditor(w http.ResponseWriter, r *http.Request, c class) (
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return req, actor, false
 	}
+	if mustChange(w, actor) {
+		return req, actor, false
+	}
 	return req, actor, true
 }
 

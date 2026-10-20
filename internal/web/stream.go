@@ -6,8 +6,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -51,6 +53,9 @@ type ViewRegistry struct{ kinds map[string]viewKind }
 // Views is the registry of view kinds: for areas, and for tests that
 // register a kind before they open a stream.
 func (s *Server) Views() *ViewRegistry { return s.views }
+
+// Kinds are the registered kinds of views, sorted.
+func (vr *ViewRegistry) Kinds() []string { return slices.Sorted(maps.Keys(vr.kinds)) }
 
 func newViewRegistry() *ViewRegistry { return &ViewRegistry{kinds: map[string]viewKind{}} }
 
@@ -179,6 +184,9 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
+	if len(specs) > 0 && mustChange(w, actor) { // FR-141.1: the account's page alone, which has no views
+		return
+	}
 	var list []live.View
 	err = s.db.View(ctx, func(tx *sql.Tx) error {
 		for _, spec := range specs {
@@ -193,6 +201,9 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		for _, watched := range st.Watched { // a side panel open before a reconnect
+			if actor.MustChange {
+				break
+			}
 			vs, err := s.resolve(ctx, tx, actor, watched.View)
 			if err != nil {
 				s.log.Debug("a watched view is gone", "view", watched.View, "err", err)
@@ -311,6 +322,9 @@ func (s *Server) decodeWatch(w http.ResponseWriter, r *http.Request) (watchReque
 	}
 	if err := sse.ReadSignalsLimit(w, r, &req, classView.body); err != nil || !validID(req.Tab) || people.Actor(r.Context()).IsZero() {
 		http.Error(w, "bad request", http.StatusBadRequest)
+		return req, false
+	}
+	if mustChange(w, people.Actor(r.Context())) {
 		return req, false
 	}
 	specs, err := parseViews(req.View)

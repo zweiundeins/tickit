@@ -141,11 +141,19 @@ func (s *Server) decode(w http.ResponseWriter, r *http.Request, c class, v paylo
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return action{}, false
 	}
-	if actor.MustChange { // FR-141.1: the first password first
-		http.Error(w, "Change your password first.", http.StatusForbidden)
+	if mustChange(w, actor) {
 		return action{}, false
 	}
 	return action{Session: edge.SessionID(r.Context()), Tab: p.Tab, By: tabs.By{Actor: actor, Op: p.Op, At: time.Now()}, Addr: edge.ClientKey(r)}, true
+}
+
+// mustChange answers 403 for an account that must change its first
+// password before anything else (FR-141.1), and then reports true.
+func mustChange(w http.ResponseWriter, actor people.Person) bool {
+	if actor.MustChange {
+		http.Error(w, "Change your password first.", http.StatusForbidden)
+	}
+	return actor.MustChange
 }
 
 // run runs cmd as action a in tabs.Act, once per op id: a retry gets the
