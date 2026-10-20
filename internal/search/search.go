@@ -23,7 +23,7 @@
 // Search matches every word of the text, the last one as a prefix while
 // someone types, in the key, title and body of issues and pages and in
 // the comments on them. An exact issue key or page title comes first,
-// then title and key matches, then matches in the body or a comment, each
+// then title and key matches, then matches in the body, then in a comment, each
 // tier by bm25. A hit carries a snippet of its body or comment with the
 // matched words marked (Part), for the page to escape.
 package search

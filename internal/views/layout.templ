@@ -80,6 +80,9 @@ func header(s Shell) ui.HeaderProps {
 		Nav:           ui.MainNav(s.Nav),
 		Admin:         admin,
 		Query:         s.Query,
+		// The search box's typeahead (rw/list: views/search.go).
+		SearchAttrs:   SearchBoxAttrs(),
+		SearchSuggest: SearchSuggestSlot(),
 		CreateFor:     CreateID,
 		Unread:        s.Unread,
 		Notifications: notificationsPlaceholder(),

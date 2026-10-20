@@ -171,7 +171,8 @@ func Search(ctx context.Context, q sqlite.Querier, query Query) (Results, error)
 		if err := rows.Err(); err != nil {
 			return res, err
 		}
-		// Comments lead to their subject, as a body match.
+		// Comments lead to their subject, below its own body's matches:
+		// their scores come from another table.
 		rows, err = q.QueryContext(ctx, `SELECT `+docColumns+`, c.n, bm25(search_comments_fts, 0.0, 0.0, 1.0)
 			FROM search_comments_fts JOIN search_comments c ON c.n = search_comments_fts.rowid
 			JOIN `+t+` d ON d.id = c.scope
@@ -181,7 +182,7 @@ func Search(ctx context.Context, q sqlite.Querier, query Query) (Results, error)
 			return res, err
 		}
 		for rows.Next() {
-			h := Hit{Kind: k, tier: 2}
+			h := Hit{Kind: k, tier: 3}
 			if err := h.scan(rows, &h.commentN, &h.score); err != nil {
 				rows.Close()
 				return res, err

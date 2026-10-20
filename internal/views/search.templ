@@ -1,0 +1,298 @@
+package views
+
+import (
+	"github.com/mbolli/tickit/internal/search"
+	"github.com/mbolli/tickit/internal/ui"
+)
+
+// SearchBody is the results page (FR-57.2): the text, the kinds with their
+// counts, the filters by project, space, label and person, the results.
+templ SearchBody(p SearchPage) {
+	{{ prm := p.Results.Params }}
+	<div class="search-page">
+		<div class="tk-pagehead">
+			<h1>Search</h1>
+		</div>
+		<form class="search-form" role="search" action="/search" method="get" aria-label="Search issues and pages">
+			<label class="visually-hidden" for="search-q">Search issues and pages</label>
+			@ui.Input(ui.InputProps{ID: "search-q", Name: "q", Type: "search", Icon: "search", Value: prm.Q, Placeholder: "Search issues and pages", MaxLength: search.MaxText, Autocomplete: "off"})
+			if prm.Kind != "" {
+				<input type="hidden" name="kind" value={ prm.Kind }/>
+			}
+			for _, x := range prm.Projects {
+				<input type="hidden" name="project" value={ x }/>
+			}
+			for _, x := range prm.Spaces {
+				<input type="hidden" name="space" value={ x }/>
+			}
+			for _, x := range prm.Labels {
+				<input type="hidden" name="label" value={ x }/>
+			}
+			for _, x := range prm.People {
+				<input type="hidden" name="person" value={ x }/>
+			}
+			@ui.Button(ui.ButtonProps{Label: "Search", Type: "submit", Variant: ui.Primary})
+		</form>
+		<div class="search-layout">
+			<aside class="search-facets" aria-label="Filters">
+				@searchFacets(p)
+			</aside>
+			<div>
+				@SearchResultsRegion(p.Results)
+			</div>
+		</div>
+	</div>
+}
+
+// searchFacets are links that narrow the results: by kind, project,
+// space, label and person; a chosen one links to its removal.
+templ searchFacets(p SearchPage) {
+	{{ prm := p.Results.Params }}
+	{{ counts := p.Results.Results.Counts }}
+	<nav class="tk-tabnav" aria-label="Kinds">
+		<ul class="search-kinds">
+			@facetLink("All", "", prm.Kind == "", prm.Href(func(x *SearchParams) { x.Kind, x.Page = "", 1 }))
+			@facetLink("Issues", countText(counts[search.Issue]), prm.Kind == "issue", prm.Href(func(x *SearchParams) { x.Kind, x.Page = "issue", 1 }))
+			@facetLink("Pages", countText(counts[search.Page]), prm.Kind == "page", prm.Href(func(x *SearchParams) { x.Kind, x.Page = "page", 1 }))
+		</ul>
+	</nav>
+	if len(p.Projects) > 0 && prm.Kind != "page" {
+		@facetGroup("Project") {
+			for _, pr := range p.Projects {
+				@facetToggle(pr.Name, prm, "project", pr.Key)
+			}
+		}
+	}
+	if len(p.Spaces) > 0 && prm.Kind != "issue" {
+		@facetGroup("Space") {
+			for _, sp := range p.Spaces {
+				@facetToggle(sp, prm, "space", sp)
+			}
+		}
+	}
+	if len(p.Labels) > 0 {
+		@facetGroup("Label") {
+			for _, l := range p.Labels {
+				@facetToggle(l, prm, "label", l)
+			}
+		}
+	}
+	if len(p.People) > 0 {
+		@facetGroup("Person") {
+			for _, id := range p.People {
+				@facetToggle(p.Names[id].Name, prm, "person", id)
+			}
+		}
+	}
+}
+
+templ facetLink(label, count string, current bool, href string) {
+	<li>
+		<a
+			class="tk-btn tk-btn--sm tk-btn--ghost"
+			href={ templ.SafeURL(href) }
+			if current {
+				aria-current="page"
+			}
+		>
+			{ label }
+			if count != "" {
+				<span class="tk-count">{ count }</span>
+			}
+		</a>
+	</li>
+}
+
+templ facetGroup(label string) {
+	<section class="stack">
+		<h2 class="tk-eyebrow">{ label }</h2>
+		<ul class="search-facet-list">
+			{ children... }
+		</ul>
+	</section>
+}
+
+// facetToggle links to the results with a value of a filter added, or
+// taken off when it is chosen.
+templ facetToggle(label string, p SearchParams, name, value string) {
+	{{ on := facetOn(p, name, value) }}
+	<li>
+		<a
+			class="search-facet"
+			href={ templ.SafeURL(facetHref(p, name, value)) }
+			if on {
+				aria-current="true"
+			}
+		>
+			<span class="tk-menu__check">
+				if on {
+					@ui.Icon("check")
+				}
+			</span>
+			{ label }
+		</a>
+	</li>
+}
+
+// SearchResultsRegion is the results' shared view.
+templ SearchResultsRegion(r SearchResults) {
+	<div id={ SearchResultsID } class="list-region">
+		if r.Params.Q == "" {
+			@ui.EmptyState(ui.EmptyProps{Icon: "search", Title: "Search issues and pages", Text: "Type a word, a phrase or an issue key such as WEB-12."})
+		} else if r.Results.Total == 0 {
+			@ui.EmptyState(ui.EmptyProps{Icon: "search", Title: "Nothing found", Text: "No issue or page matches every word. Try fewer words, or other filters."})
+		} else {
+			<p class="list-count">{ hitCount(r.Results.Total) }</p>
+			<ol class="search-hits">
+				for _, h := range r.Results.Hits {
+					@searchHit(r, h)
+				}
+			</ol>
+			@ui.Pagination(ui.PaginationProps{Page: min(max(r.Params.Page, 1), r.pages()), Pages: r.pages(), Total: r.Results.Total, Noun: "results", Href: r.PageHref})
+		}
+	</div>
+}
+
+templ searchHit(r SearchResults, h search.Hit) {
+	<li class="search-hit">
+		if h.Kind == search.Issue {
+			{{ i, ok := r.Issues[h.ID] }}
+			if ok {
+				@ui.TypeIcon(ui.IssueType(i.Type))
+			} else {
+				@ui.Icon("issues")
+			}
+			<p class="search-hit__title">
+				<span class="search-hit__key">{ h.Key }</span>
+				<a href={ templ.SafeURL(h.Href) }>{ h.Title }</a>
+			</p>
+			@snippet(h)
+			if ok {
+				<p class="search-hit__meta">
+					@ui.StatusLozenge(i.StatusName, Category(i.Category))
+					@ui.PriorityLabel(ui.Priority(i.Priority))
+					<span>{ i.ProjectName }</span>
+					<span>Updated</span>
+					@ui.RelativeTime(i.Updated.UTC(), r.Now)
+				</p>
+			}
+		} else {
+			@ui.Icon("page")
+			<p class="search-hit__title">
+				<a href={ templ.SafeURL(h.Href) }>{ h.Title }</a>
+				if h.Place != "" {
+					<span class="search-hit__place">{ h.Place }</span>
+				}
+			</p>
+			@snippet(h)
+		}
+	</li>
+}
+
+// snippet is a hit's snippet with its matched words marked; templ escapes
+// every part (FR-57.2).
+templ snippet(h search.Hit) {
+	if len(h.Snippet) > 0 {
+		<p class="search-hit__snippet">
+			if h.ViaComment != "" {
+				<span class="muted">In a comment: </span>
+			}
+			for _, part := range h.Snippet {
+				if part.Hit {
+					<mark>{ part.Text }</mark>
+				} else {
+					{ part.Text }
+				}
+			}
+		</p>
+	}
+}
+
+// SearchSuggestSlot is the typeahead's empty panel, for the header's
+// search form (FR-57.1).
+templ SearchSuggestSlot() {
+	<div id={ SearchSuggestID } class="search-suggest" data-on:keydown={ suggestNav }></div>
+	<p id={ SearchSuggestID + "-count" } class="visually-hidden" aria-live="polite"></p>
+}
+
+// SearchSuggest is the typeahead's panel: the first issues and pages,
+// and the way to every result.
+templ SearchSuggest(s Suggestions) {
+	<div id={ SearchSuggestID } class="search-suggest" data-on:keydown={ suggestNav }>
+		if len(s.Issues) > 0 {
+			<p class="tk-eyebrow search-suggest__label" id="search-suggest-issues">Issues</p>
+			<ul class="search-suggest__group" aria-labelledby="search-suggest-issues">
+				for _, h := range s.Issues {
+					<li>
+						<a class="search-suggest__item" href={ templ.SafeURL(h.Href) }>
+							<span class="search-hit__key">{ h.Key }</span>
+							<span>{ h.Title }</span>
+						</a>
+					</li>
+				}
+			</ul>
+		}
+		if len(s.Pages) > 0 {
+			<p class="tk-eyebrow search-suggest__label" id="search-suggest-pages">Pages</p>
+			<ul class="search-suggest__group" aria-labelledby="search-suggest-pages">
+				for _, h := range s.Pages {
+					<li>
+						<a class="search-suggest__item" href={ templ.SafeURL(h.Href) }>
+							@ui.Icon("page")
+							<span>{ h.Title }</span>
+						</a>
+					</li>
+				}
+			</ul>
+		}
+		if len(s.Issues)+len(s.Pages) == 0 {
+			<p class="search-suggest__label muted">No issues or pages match</p>
+		}
+		<a class="search-suggest__all" href={ templ.SafeURL(s.allHref()) }>Every result for “{ s.Q }”</a>
+	</div>
+	<p id={ SearchSuggestID + "-count" } class="visually-hidden" aria-live="polite">{ s.count() }</p>
+}
+
+func facetOn(p SearchParams, name, value string) bool {
+	return checked(facetList(&p, name), value)
+}
+
+func facetList(p *SearchParams, name string) []string {
+	switch name {
+	case "project":
+		return p.Projects
+	case "space":
+		return p.Spaces
+	case "label":
+		return p.Labels
+	}
+	return p.People
+}
+
+func facetHref(p SearchParams, name, value string) string {
+	return p.Href(func(x *SearchParams) {
+		x.Page = 1
+		var list []string
+		on := false
+		for _, v := range facetList(x, name) {
+			if v == value {
+				on = true
+				continue
+			}
+			list = append(list, v)
+		}
+		if !on {
+			list = append(list, value)
+		}
+		switch name {
+		case "project":
+			x.Projects = list
+		case "space":
+			x.Spaces = list
+		case "label":
+			x.Labels = list
+		default:
+			x.People = list
+		}
+	})
+}

@@ -413,9 +413,12 @@ func header(s Shell) ui.HeaderProps {
 		admin = append(admin, ui.NavItem{Label: "Admin", Href: "/admin", Icon: "settings", Current: s.Nav == "admin"})
 	}
 	return ui.HeaderProps{
-		Nav:           ui.MainNav(s.Nav),
-		Admin:         admin,
-		Query:         s.Query,
+		Nav:   ui.MainNav(s.Nav),
+		Admin: admin,
+		Query: s.Query,
+		// The search box's typeahead (rw/list: views/search.go).
+		SearchAttrs:   SearchBoxAttrs(),
+		SearchSuggest: SearchSuggestSlot(),
 		CreateFor:     CreateID,
 		Unread:        s.Unread,
 		Notifications: notificationsPlaceholder(),
@@ -570,7 +573,7 @@ func personMenu(s Shell) templ.Component {
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.ResolveAttributeValue(rename)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/layout.templ`, Line: 135, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/layout.templ`, Line: 138, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var25)
 		if templ_7745c5c3_Err != nil {
@@ -583,7 +586,7 @@ func personMenu(s Shell) templ.Component {
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.ResolveAttributeValue(renameFailed)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/layout.templ`, Line: 135, Col: 98}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/layout.templ`, Line: 138, Col: 98}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var26)
 		if templ_7745c5c3_Err != nil {
@@ -596,7 +599,7 @@ func personMenu(s Shell) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue(renameSettled)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/layout.templ`, Line: 135, Col: 128}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/layout.templ`, Line: 138, Col: 128}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
 		if templ_7745c5c3_Err != nil {
