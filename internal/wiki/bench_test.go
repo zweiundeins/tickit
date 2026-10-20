@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/zweiundeins/tickit/internal/collab"
 )
 
 // NFR-43.3: one fold command, FoldBatch commits of a page of about
@@ -30,8 +32,7 @@ func TestFoldTime(t *testing.T) {
 		took = append(took, c.Took)
 	}
 	e.must(CutVersion{By: e.by(sunny), Page: p})
-	docs.reset()
-	commits.reset()
+	collab.ResetCaches()
 	for range 3 {
 		f := &Fold{At: e.now.Add(time.Hour)}
 		start := time.Now()

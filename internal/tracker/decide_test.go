@@ -182,10 +182,28 @@ func ed(field, value string, seen int64) edit {
 	return edit{Field: field, Text: value, Seen: seen, wf: DefaultWorkflow(), sprints: webState().Sprints}
 }
 
-func TestEditIssue(t *testing.T) {
-	s := eventstest.For(editDecider).Given(story)
+// FR-15, FR-112: a version of a co-edited description is cut once per
+// version of its document, and tells only the people it mentions first.
+func TestCutDescription(t *testing.T) {
 	doc := PlainDoc("Steps to reproduce")
 	mention := json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"personId":"s-priya"}}]}]}`)
+	s := eventstest.For(cutDescDecider).Given(story)
+	cut := DescriptionChanged{To: doc, Upto: 4, Editors: []string{sunny.ID, rainy.ID}}
+	s.When(cut).Then(t, cut)
+	s.When(DescriptionChanged{To: mention, Upto: 2}).Then(t, DescriptionChanged{To: mention, Upto: 2, Mentions: []string{"s-priya"}},
+		WatchersAdded{People: []string{"s-priya"}}) // FR-27.2
+	s.When(DescriptionChanged{To: doc, Upto: 1}).Then(t) // the version the issue was created with
+	again := eventstest.For(cutDescDecider).Given(story, DescriptionChanged{To: mention, Upto: 2, Mentions: []string{"s-priya"}}, WatchersAdded{People: []string{"s-priya"}})
+	again.When(DescriptionChanged{To: doc, Upto: 2}).Then(t)
+	again.When(DescriptionChanged{To: mention, Upto: 3}).Then(t, DescriptionChanged{To: mention, Upto: 3}) // FR-67.3: mentioned before
+	if st := again.State(); st.DescUpto != 2 {
+		t.Errorf("DescUpto %d", st.DescUpto)
+	}
+	eventstest.For(cutDescDecider).Given(story, IssueDeleted{}).When(cut).ThenError(t, errDeleted)
+}
+
+func TestEditIssue(t *testing.T) {
+	s := eventstest.For(editDecider).Given(story)
 	for _, x := range []struct {
 		name string
 		c    edit
@@ -193,10 +211,6 @@ func TestEditIssue(t *testing.T) {
 	}{
 		{"summary", ed(FieldSummary, " Fix logins ", 1), []IssueEvent{SummaryChanged{From: "Fix the login", To: "Fix logins"}}},
 		{"same summary", ed(FieldSummary, "Fix the login ", 1), nil}, // FR-14.3
-		{"description", edit{Field: FieldDescription, Doc: doc, Seen: 1}, []IssueEvent{DescriptionChanged{To: doc}}},
-		{"mention", edit{Field: FieldDescription, Doc: mention, Seen: 1}, []IssueEvent{DescriptionChanged{To: mention, Mentions: []string{"s-priya"}},
-			WatchersAdded{People: []string{"s-priya"}}}}, // FR-27.2
-		{"no description", edit{Field: FieldDescription, Doc: json.RawMessage(`null`), Seen: 1}, nil},
 		{"type", ed(FieldType, "bug", 1), []IssueEvent{TypeChanged{From: Story, To: Bug}}},
 		{"status", ed(FieldStatus, StatusInReview, 1), []IssueEvent{StatusChanged{From: StatusToDo, To: StatusInReview, Category: InProgress}}},
 		{"same status", ed(FieldStatus, StatusToDo, 1), nil},
@@ -220,7 +234,6 @@ func TestEditIssue(t *testing.T) {
 		err  error
 	}{
 		{"summary", ed(FieldSummary, "", 1), refuse(FieldSummary, "A summary has 1 to 255 characters.")}, // FR-14.2
-		{"description", edit{Field: FieldDescription, Doc: json.RawMessage(`[1]`), Seen: 1}, refuse(FieldDescription, "The description is not a document.")},
 		{"type", ed(FieldType, "chore", 1), refuse(FieldType, "Pick one of Epic, Story, Task, Bug and Subtask.")},
 		{"epic with children", edit{Field: FieldType, Text: "task", Seen: 1, children: 4}, nil},
 		{"story with subtasks to epic", edit{Field: FieldType, Text: "epic", Seen: 1, children: 4}, refuse(FieldType, "Move the 4 child issues first.")}, // FR-19.2

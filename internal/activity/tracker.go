@@ -13,10 +13,11 @@ import (
 	"github.com/zweiundeins/tickit/internal/tracker"
 )
 
-// The tracker's part of the feeds: issues created, moved and commented on.
+// The tracker's part of the feeds: issues created, moved, commented on,
+// and their descriptions edited (each version, FR-15).
 
 func init() {
-	addSource(tracker.IssueStream.Kind(), []string{tracker.IssueCreatedType.Name(), tracker.StatusChangedType.Name(), tracker.MovedType.Name()}, issueEntries)
+	addSource(tracker.IssueStream.Kind(), []string{tracker.IssueCreatedType.Name(), tracker.StatusChangedType.Name(), tracker.MovedType.Name(), tracker.DescriptionChangedType.Name()}, issueEntries)
 	addSource(tracker.CommentStream.Kind(), []string{tracker.CommentAddedType.Name()}, commentEntries)
 	commentSubjects[tracker.SubjectIssue] = issueSubjects
 	subjectOfs[tracker.IssueStream.Kind()] = func(ev events.Raw) (string, string) {
@@ -57,6 +58,8 @@ func issueEntries(ctx context.Context, q sqlite.Querier, evs []events.Raw) ([]En
 				continue
 			}
 			entry.Action, entry.Status = IssueMoved, e.Status
+		case tracker.DescriptionChanged:
+			entry.Action = IssueDescribed
 		default:
 			continue
 		}

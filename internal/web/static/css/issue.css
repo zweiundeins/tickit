@@ -118,10 +118,33 @@
 		}
 	}
 
-	.tk-issue__descinput {
-		min-block-size: 12rem;
-		font-family: var(--tk-font-mono);
-		font-size: var(--tk-text-sm);
+	/* The co-edited description (FR-15): the page editor's host in place,
+	 * with its status, the insert buttons and Done above it. */
+	.tk-issue__desceditor {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--tk-space-2);
+
+		&[hidden] {
+			display: none;
+		}
+	}
+
+	.tk-issue__descbar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--tk-space-2);
+	}
+
+	.tk-issue__descmount {
+		min-inline-size: 0;
+
+		& .wk-editor .pm-mount {
+			min-block-size: 12rem;
+			padding: var(--tk-space-3) var(--tk-space-2);
+		}
 	}
 
 	.tk-issue__empty,

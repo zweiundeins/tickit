@@ -50,6 +50,7 @@ func (s *Server) routesAdmin() {
 	s.post("POST /cmd/admin/create", s.adminCreate)
 	s.post("POST /cmd/admin/role", s.adminRole)
 	s.post("POST /cmd/admin/active", s.adminActive)
+	s.post("POST /cmd/admin/erase", s.adminErase)
 	s.post("POST /cmd/admin/reset", s.adminReset)
 	s.post("POST /cmd/account/password", s.changePassword)
 	s.post("POST /cmd/account/end-session", s.endSession)
@@ -411,6 +412,23 @@ func (s *Server) adminActive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.actStaff(w, r, a, people.SetActive{Admin: a.By.Actor, Account: req.Account, Active: req.Active, At: a.By.At}) {
+		s.dropStaffViews(req.Account)
+	}
+}
+
+// adminErase erases an account (NFR-27.1): its personal fields and
+// sessions go, and its changes show as by "Deleted person". Its open
+// streams end within LoginCheck, as after a deactivation.
+func (s *Server) adminErase(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Payload
+		Account string `json:"account"`
+	}
+	a, ok := s.decode(w, r, classField, &req)
+	if !ok {
+		return
+	}
+	if s.actStaff(w, r, a, people.EraseAccount{Admin: a.By.Actor, Account: req.Account, At: a.By.At}) {
 		s.dropStaffViews(req.Account)
 	}
 }

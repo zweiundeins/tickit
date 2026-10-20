@@ -28,11 +28,18 @@ for ((i = 0; i < 100; i++)); do
 done
 
 [[ "$(curl -fsS "$URL/healthz")" == "ok $version" ]] || fail "/healthz does not answer ok $version"
-curl -fsS -o /dev/null "$URL/readyz" || fail "/readyz is not 200"
+# Ready once the static files are compressed, which takes a few seconds on a slow machine.
+for ((i = 0; i < 300; i++)); do
+	curl -fsS -o /dev/null "$URL/readyz" 2>/dev/null && break
+	sleep 0.1
+done
+curl -fsS -o /dev/null "$URL/readyz" || fail "/readyz is not 200 after 30 s"
 headers=$(curl -fsS -D - -o /dev/null "$URL/") || fail "/ is not 2xx"
 grep -qi '^strict-transport-security:' <<<"$headers" || fail "no HSTS with -secure"
 grep -qi '^set-cookie: __Host-' <<<"$headers" || echo ">> (no __Host- cookie on /: set on the first action)"
-curl -fsS "http://127.0.0.1:$METRICS/metrics" | grep -q "^tickit_build_info{version=\"$version\"} 1" || fail "/metrics has no tickit_build_info"
+# Read it whole first: with pipefail, grep -q leaving early fails curl with SIGPIPE.
+metrics=$(curl -fsS "http://127.0.0.1:$METRICS/metrics") || fail "/metrics does not answer"
+grep -q "^tickit_build_info{version=\"$version\"} 1" <<<"$metrics" || fail "/metrics has no tickit_build_info"
 curl -fsS -o /dev/null "$URL/metrics" 2>/dev/null && fail "/metrics answers on the public port"
 [[ "$("$BIN" migrations-pending -db "$tmp/tickit.db")" == 0 ]] || fail "migrations-pending is not 0 on a migrated database"
 "$BIN" backup -db "$tmp/tickit.db" -backups "$tmp/backups" 2>>"$tmp/log" || fail "backup failed"

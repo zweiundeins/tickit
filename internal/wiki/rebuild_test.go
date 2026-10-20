@@ -10,6 +10,7 @@ import (
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/writer"
 
+	"github.com/zweiundeins/tickit/internal/collab"
 	"github.com/zweiundeins/tickit/internal/tracker"
 )
 
@@ -78,6 +79,7 @@ func TestRebuild(t *testing.T) {
 	e.must(TrashPage{By: e.by(rainy), Page: d})
 	e.must(DeletePage{By: e.by(admin), Page: d})
 	e.must(RestoreVersion{By: e.by(rainy), Page: a, Number: 1})
+	e.must(HideVersion{By: e.by(moderator), Page: a, Number: 2, Hidden: true, Reason: "spam"}) // DM-07.1
 	e.must(SetDocument{By: e.by(ada), Page: c, Doc: paras("Seeded", "Twice"), Message: "From the seed"})
 	cm := e.result(AddComment{By: e.by(sunny), Page: b, Body: paras("First")})["id"]
 	e.result(AddComment{By: e.by(rainy), Page: b, Parent: cm, Body: paras("Reply")})
@@ -103,8 +105,7 @@ func TestRebuild(t *testing.T) {
 	for _, p := range []string{a, b, c, home} {
 		heads[p] = e.head(p)
 	}
-	docs.reset()
-	commits.reset()
+	collab.ResetCaches()
 	e.must(writer.Func(func(tx *writer.Tx) error {
 		if _, err := tx.Exec(`UPDATE lith_projections SET version = version + 100 WHERE name LIKE 'wiki_%' OR name = 'search_pages'`); err != nil {
 			return err
@@ -135,8 +136,7 @@ func TestRebuild(t *testing.T) {
 			t.Errorf("%s rebuilt differs:\n%s\nwas\n%s", tb, got, before[tb])
 		}
 	}
-	docs.reset()
-	commits.reset()
+	collab.ResetCaches()
 	for p, want := range heads {
 		if got := e.head(p); got != want {
 			t.Errorf("head of %s rebuilt %s, was %s", p, got, want)

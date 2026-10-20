@@ -169,7 +169,8 @@ func (s *Server) issuePage(w http.ResponseWriter, r *http.Request) {
 			Title:   m.Key + " " + m.Summary,
 			Nav:     "projects",
 			Project: m.ProjectID,
-			Views:   []string{"issue:" + m.ID, "issue-typing:" + m.ID},
+			Views:   []string{"issue:" + m.ID, "issue-desc:" + m.ID, "issue-typing:" + m.ID},
+			Scripts: []string{"editor/sb-rich-editor.min.js"},
 			Body: templ.Join(views.IssuePage(views.IssueFrameProps{
 				Issue: &m, ID: m.ID, Key: m.Key, Me: actor.ID,
 				ReadOnly: !edit || m.Project.Archived || !m.Deleted.IsZero(), Moderates: hide,
@@ -405,7 +406,7 @@ func loadIssue(ctx context.Context, q sqlite.Querier, id string, now time.Time) 
 		return m, err
 	}
 	res := &docResolver{ctx: ctx, q: q, people: m.People}
-	if m.DescHTML, m.DescMarkup, err = renderDoc(d.Description, res); err != nil {
+	if m.DescHTML, err = descHTML(ctx, q, id, d.Description, res); err != nil {
 		return m, err
 	}
 	for _, c := range comments {
@@ -415,8 +416,8 @@ func loadIssue(ctx context.Context, q sqlite.Querier, id string, now time.Time) 
 		}
 		m.Comments = append(m.Comments, vc)
 	}
-	// The texts to edit show the names of the people they mention, which
-	// the page turns back into ids when it sends them (FR-67.2).
+	// The comments to edit show the names of the people they mention,
+	// which the page turns back into ids when it sends them (FR-67.2).
 	var named []string
 	add := func(ids []string) {
 		for _, id := range ids {
@@ -426,12 +427,10 @@ func loadIssue(ctx context.Context, q sqlite.Querier, id string, now time.Time) 
 			}
 		}
 	}
-	var ids2 []string
-	m.DescMarkup, ids2 = views.NamedMentions(m.DescMarkup, m.People)
-	add(ids2)
 	for i := range m.Comments {
-		m.Comments[i].Markup, ids2 = views.NamedMentions(m.Comments[i].Markup, m.People)
-		add(ids2)
+		var ids []string
+		m.Comments[i].Markup, ids = views.NamedMentions(m.Comments[i].Markup, m.People)
+		add(ids)
 	}
 	return m, nil
 }
@@ -512,11 +511,13 @@ func (r *docResolver) Issue(key string) (doc.Chip, bool) {
 }
 
 func (r *docResolver) Person(id string) (string, bool) {
+	// An erased account's mentions say DeletedName, not the name the
+	// document kept (NFR-27.1).
 	if p, ok := r.people[id]; ok {
-		return p.Name, p.Kind != people.Deleted
+		return p.Name, true
 	}
 	p, err := people.Get(r.ctx, r.q, id)
-	if err != nil || p.Kind == people.Deleted {
+	if err != nil {
 		return "", false
 	}
 	r.people[id] = p
@@ -645,12 +646,6 @@ func (s *Server) issueCommand(ctx context.Context, a action, id, field string, r
 	switch field {
 	case "summary":
 		return also{tracker.SetSummary{By: by, Issue: id, Seen: req.Seen, Summary: v}, stop(tracker.TypingSummary)}, nil
-	case "description":
-		body, err := s.parseText(ctx, v, markup.Text)
-		if err != nil {
-			return refuse(tracker.FieldDescription, textProblem(err)), nil
-		}
-		return also{tracker.SetDescription{By: by, Issue: id, Seen: req.Seen, Description: body}, stop(tracker.TypingDescription)}, nil
 	case "type":
 		return tracker.SetType{By: by, Issue: id, Seen: req.Seen, Type: tracker.IssueType(v)}, nil
 	case "status":

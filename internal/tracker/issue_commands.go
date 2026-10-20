@@ -1,7 +1,6 @@
 package tracker
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -192,6 +191,11 @@ func (c CreateIssue) ApplyResult(tx *writer.Tx) ([]byte, error) {
 		c.ID = NewID()
 	}
 	when := at(c.By)
+	desc, err := descDoc(c.Description)
+	if err != nil {
+		return nil, err
+	}
+	c.Description = descRaw(desc) // as the document stream holds it
 	n := newIssue{CreateIssue: c, project: p, number: p.Last + 1}
 	if c.Parent != "" {
 		if n.parent, err = relatedIssue(tx, c.Parent, c.ID); err != nil {
@@ -215,6 +219,9 @@ func (c CreateIssue) ApplyResult(tx *writer.Tx) ([]byte, error) {
 	}
 	m := meta(c.By)
 	if err := events.Execute(Store(), tx, createIssue, IssueStream.ID(c.ID), events.NoStream, n, m); err != nil {
+		return nil, err
+	}
+	if _, err := descDocs.Create(tx, c.ID, desc, m); err != nil { // FR-15: co-edited from the start
 		return nil, err
 	}
 	_, key, err := assignNumber(tx, p, c.Project, c.ID, m)
@@ -377,9 +384,8 @@ type edit struct {
 	Field string
 	Seen  int64
 	Actor string
-	Text  string          // summary, type, status, priority, assignee, parent, due, sprint
-	Doc   json.RawMessage // description
-	Num   *int            // points, estimate, remaining
+	Text  string // summary, type, status, priority, assignee, parent, due, sprint
+	Num   *int   // points, estimate, remaining
 
 	wf       Workflow
 	sprints  []Sprint
@@ -411,16 +417,6 @@ func decideEdit(c edit, s IssueState) ([]IssueEvent, error) {
 		}
 		yours = v
 		evs = []IssueEvent{SummaryChanged{From: s.Summary, To: v}}
-	case FieldDescription:
-		info, err := description(c.Doc)
-		if err != nil {
-			return nil, err
-		}
-		doc := canonical(c.Doc)
-		if bytes.Equal(doc, canonical(s.Description)) {
-			return nil, nil
-		}
-		evs = append([]IssueEvent{DescriptionChanged{To: doc, Mentions: added(s.Mentioned, info.Mentions)}}, newWatchers(s, info.Mentions...)...)
 	case FieldType:
 		t := IssueType(c.Text)
 		if !t.Valid() {
@@ -818,12 +814,6 @@ type (
 		Seen    int64
 		Summary string
 	}
-	SetDescription struct {
-		By          tabs.By
-		Issue       string
-		Seen        int64
-		Description json.RawMessage
-	}
 	SetType struct {
 		By    tabs.By
 		Issue string
@@ -897,16 +887,15 @@ type (
 	}
 )
 
-func (c SetSummary) Validate() error     { return checkBy(c.By) }
-func (c SetDescription) Validate() error { return checkBy(c.By) }
-func (c SetType) Validate() error        { return checkBy(c.By) }
-func (c SetStatus) Validate() error      { return checkBy(c.By) }
-func (c SetPriority) Validate() error    { return checkBy(c.By) }
-func (c SetDue) Validate() error         { return checkBy(c.By) }
-func (c SetPoints) Validate() error      { return checkBy(c.By) }
-func (c SetEstimate) Validate() error    { return checkBy(c.By) }
-func (c SetRemaining) Validate() error   { return checkBy(c.By) }
-func (c SetSprint) Validate() error      { return checkBy(c.By) }
+func (c SetSummary) Validate() error   { return checkBy(c.By) }
+func (c SetType) Validate() error      { return checkBy(c.By) }
+func (c SetStatus) Validate() error    { return checkBy(c.By) }
+func (c SetPriority) Validate() error  { return checkBy(c.By) }
+func (c SetDue) Validate() error       { return checkBy(c.By) }
+func (c SetPoints) Validate() error    { return checkBy(c.By) }
+func (c SetEstimate) Validate() error  { return checkBy(c.By) }
+func (c SetRemaining) Validate() error { return checkBy(c.By) }
+func (c SetSprint) Validate() error    { return checkBy(c.By) }
 
 func (c Assign) Validate() error {
 	if !validPerson(c.Assignee) {
@@ -924,10 +913,6 @@ func (c SetParent) Validate() error {
 
 func (c SetSummary) Apply(tx *writer.Tx) error {
 	return executeEdit(tx, c.By, c.Issue, edit{Field: FieldSummary, Seen: c.Seen, Text: c.Summary})
-}
-
-func (c SetDescription) Apply(tx *writer.Tx) error {
-	return executeEdit(tx, c.By, c.Issue, edit{Field: FieldDescription, Seen: c.Seen, Doc: c.Description})
 }
 
 func (c SetType) Apply(tx *writer.Tx) error {

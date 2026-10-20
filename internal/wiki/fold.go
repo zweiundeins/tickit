@@ -1,20 +1,20 @@
 package wiki
 
 import (
-	"cmp"
 	"database/sql"
 	"time"
 
-	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/writer"
+
+	"github.com/zweiundeins/tickit/internal/collab"
 )
 
 // The fold (NFR-43): the commits of a page's document up to a version are
 // folded into a snapshot FoldAfter after the version is cut, at most
 // FoldBatch events a command.
 const (
-	FoldAfter = 15 * time.Minute
-	FoldBatch = 200
+	FoldAfter = collab.FoldAfter
+	FoldBatch = collab.FoldBatch
 )
 
 // Fold folds the commits that versions hold into snapshots, with lith's
@@ -52,8 +52,7 @@ func (c *Fold) Apply(tx *writer.Tx) error {
 	if oldest.Valid && time.UnixMilli(oldest.Int64).Before(since) {
 		since = time.UnixMilli(oldest.Int64)
 	}
-	n, err := events.Compact(Store(), tx, DocSnapshotType, events.Retention{Since: since, Limit: cmp.Or(c.Limit, FoldBatch)}, peekDocDecider,
-		func(s DocState) DocSnapshot { return DocSnapshot{Epoch: s.Epoch, Doc: marshalDoc(s.doc)} })
+	n, err := pageDocs.Fold(tx, since, c.Limit)
 	c.Deleted = n
 	return err
 }

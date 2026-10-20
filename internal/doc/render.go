@@ -42,10 +42,19 @@ type StaticResolver struct {
 	People map[string]string
 	Pages  map[string]string
 	Faces  map[string]string `json:",omitempty"`
+	// Hidden are the images a moderator hid (DM-07.1).
+	Hidden map[string]bool `json:",omitempty"`
 }
 
 // Face looks up a face.
 func (s StaticResolver) Face(id string) string { return s.Faces[id] }
+
+// ImageHidden reports whether a moderator hid an image.
+func (s StaticResolver) ImageHidden(id string) bool { return s.Hidden[id] }
+
+// imageHider is a Resolver that knows hidden images: the renderer shows
+// their place without them.
+type imageHider interface{ ImageHidden(id string) bool }
 
 // Issue looks up a chip.
 func (s StaticResolver) Issue(key string) (Chip, bool) { c, ok := s.Issues[key]; return c, ok }
@@ -223,6 +232,10 @@ func (w htmlWriter) wrap(n *Node, extra string, body func()) {
 		body()
 		w.s("</" + name + ">")
 	case "image":
+		if h, ok := w.r.(imageHider); ok && h.ImageHidden(n.AttrString("imageId")) {
+			w.s(`<figure class="doc-image doc-image--hidden"` + extra + `><p>Image hidden by a moderator</p></figure>`)
+			return
+		}
 		w.s(`<figure class="doc-image"` + extra + `><img src="/img/lib/`)
 		w.esc(url.PathEscape(n.AttrString("imageId")))
 		w.s(`" alt="`)
@@ -466,6 +479,7 @@ type Refs struct {
 	Issues []string // issue keys of chips (FR-101)
 	People []string // person ids of mentions
 	Pages  []string // page ids of page links (FR-103)
+	Images []string // image ids, for the hidden ones (DM-07.1)
 }
 
 // References returns the issue keys, person ids and page ids of the
@@ -480,10 +494,12 @@ func References(d Doc) Refs {
 			r.People = append(r.People, n.AttrString("personId"))
 		case "page_link":
 			r.Pages = append(r.Pages, n.AttrString("pageId"))
+		case "image":
+			r.Images = append(r.Images, n.AttrString("imageId"))
 		}
 		return true
 	})
-	for _, s := range []*[]string{&r.Issues, &r.People, &r.Pages} {
+	for _, s := range []*[]string{&r.Issues, &r.People, &r.Pages, &r.Images} {
 		slices.Sort(*s)
 		*s = slices.Compact(*s)
 	}

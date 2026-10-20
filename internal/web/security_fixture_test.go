@@ -165,6 +165,14 @@ func newFixture(t testing.TB) *fixture {
 		n, _ := res.LastInsertId()
 		f.ids["notification"] = fmt.Sprint(n)
 		f.ids["o.notification"] = f.ids["notification"]
+		// A guest's report of the open project's issue (DM-08).
+		res, err = tx.Exec(`INSERT INTO reports (kind, target_id, label, reason, by, at) VALUES ('issue', ?, 'SEC-1', 'spam', ?, ?)`, f.ids["o.issue"], f.p[wGuest].ID, now.Unix())
+		if err != nil {
+			return err
+		}
+		n, _ = res.LastInsertId()
+		f.ids["report"] = fmt.Sprint(n)
+		f.ids["o.report"] = f.ids["report"]
 		return nil
 	}))
 	f.ids["victim"] = f.p[wOther].ID

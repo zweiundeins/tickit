@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/a-h/templ"
+
 	"github.com/zweiundeins/tickit/internal/demo"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/ui"
@@ -144,7 +146,18 @@ type Moderation struct {
 	People map[string]people.Person
 	Blocks []demo.Blocked
 	Log    []demo.LogEntry
-	Now    time.Time
+	// Reports are the open reports, the oldest first (DM-08).
+	Reports []demo.OpenReport
+	Now     time.Time
+}
+
+// ReportID is the id of the report dialog, in every document.
+const ReportID = "report"
+
+// ReportAttrs are the attributes of a Report button for a thing of a
+// moderated kind (DM-08).
+func ReportAttrs(kind, id string) templ.Attributes {
+	return templ.Attributes{"data-report-kind": kind, "data-report-id": id, "data-on:click": reportOpen}
 }
 
 // ModerationID is the id of the moderation page's live region.
@@ -203,24 +216,33 @@ func personOr(m map[string]people.Person, id string) people.Person {
 
 // The admin's and the moderator's actions: one pending op each page.
 var (
-	adminSignals   = `{_admin: {op: '', ok: false, msg: '', email: '', username: '', name: '', role: 'moderator', password: ''}}`
-	adminSettled   = Settle("_admin.op", "$_admin.ok = o.ok, $_admin.msg = o.ok ? 'Done.' : o.msg, o.ok && ($_admin.password = '')")
-	adminFailed    = Failed("_admin.op")
-	adminBusy      = Busy("_admin.op")
-	adminKind      = `$_admin.msg ? ($_admin.ok ? 'ok' : 'refused') : false`
-	adminCreate    = Act("_admin.op", "/cmd/admin/create", "email: $_admin.email, username: $_admin.username, name: $_admin.name, role: $_admin.role, password: $_admin.password")
-	adminRole      = Act("_admin.op", "/cmd/admin/role", "account: el.dataset.account, role: el.dataset.role")
-	adminActive    = Act("_admin.op", "/cmd/admin/active", "account: el.dataset.account, active: el.dataset.active === 'true'")
-	adminReset     = Ask("Reset the demo now? Every visitor's changes are deleted, and every open page shows the fresh demo.", "Reset now", Act("_admin.op", "/cmd/admin/reset", ""))
-	modSignals     = `{_mod: {op: '', ok: false, msg: '', reason: ''}}`
-	modSettled     = Settle("_mod.op", "$_mod.ok = o.ok, $_mod.msg = o.ok ? 'Done.' : o.msg")
-	modFailed      = Failed("_mod.op")
-	modBusy        = Busy("_mod.op")
-	modKind        = `$_mod.msg ? ($_mod.ok ? 'ok' : 'refused') : false`
-	modAct         = Act("_mod.op", "/cmd/moderation/act", "action: el.dataset.action, kind: el.dataset.kind, id: el.dataset.id, reason: $_mod.reason")
-	modDelete      = Ask("Delete this for good? It cannot be restored.", "Delete for good", modAct)
-	modBlock       = Act("_mod.op", "/cmd/moderation/block", "person: el.dataset.person, reason: $_mod.reason")
-	modUnblock     = Act("_mod.op", "/cmd/moderation/unblock", "person: el.dataset.person")
+	adminSignals = `{_admin: {op: '', ok: false, msg: '', email: '', username: '', name: '', role: 'moderator', password: ''}}`
+	adminSettled = Settle("_admin.op", "$_admin.ok = o.ok, $_admin.msg = o.ok ? 'Done.' : o.msg, o.ok && ($_admin.password = '')")
+	adminFailed  = Failed("_admin.op")
+	adminBusy    = Busy("_admin.op")
+	adminKind    = `$_admin.msg ? ($_admin.ok ? 'ok' : 'refused') : false`
+	adminCreate  = Act("_admin.op", "/cmd/admin/create", "email: $_admin.email, username: $_admin.username, name: $_admin.name, role: $_admin.role, password: $_admin.password")
+	adminRole    = Act("_admin.op", "/cmd/admin/role", "account: el.dataset.account, role: el.dataset.role")
+	adminActive  = Act("_admin.op", "/cmd/admin/active", "account: el.dataset.account, active: el.dataset.active === 'true'")
+	adminErase   = Ask("Erase this account? Its email, username, name and sessions are deleted for good, and what it did shows as by \"Deleted person\".", "Erase", Act("_admin.op", "/cmd/admin/erase", "account: el.dataset.account"))
+	adminReset   = Ask("Reset the demo now? Every visitor's changes are deleted, and every open page shows the fresh demo.", "Reset now", Act("_admin.op", "/cmd/admin/reset", ""))
+	modSignals   = `{_mod: {op: '', ok: false, msg: '', reason: ''}}`
+	modSettled   = Settle("_mod.op", "$_mod.ok = o.ok, $_mod.msg = o.ok ? 'Done.' : o.msg")
+	modFailed    = Failed("_mod.op")
+	modBusy      = Busy("_mod.op")
+	modKind      = `$_mod.msg ? ($_mod.ok ? 'ok' : 'refused') : false`
+	modAct       = Act("_mod.op", "/cmd/moderation/act", "action: el.dataset.action, kind: el.dataset.kind, id: el.dataset.id, reason: $_mod.reason")
+	modDelete    = Ask("Delete this for good? It cannot be restored.", "Delete for good", modAct)
+	modBlock     = Act("_mod.op", "/cmd/moderation/block", "person: el.dataset.person, reason: $_mod.reason")
+	modUnblock   = Act("_mod.op", "/cmd/moderation/unblock", "person: el.dataset.person")
+	modDismiss   = Act("_mod.op", "/cmd/moderation/dismiss", "report: +el.dataset.report")
+	// The report dialog (DM-08), which a Report button opens with its
+	// thing's kind and id in data-report-kind and data-report-id.
+	reportSignals  = `{_report: {op: '', kind: '', id: '', reason: '', msg: '', ok: false}}`
+	reportOpen     = `$_report.kind = el.dataset.reportKind, $_report.id = el.dataset.reportId, $_report.reason = '', $_report.msg = '', $_report.ok = false, el.closest('[popover]')?.hidePopover(), document.getElementById('` + ReportID + `').showModal()`
+	reportSend     = `$_report.reason.trim() && ` + Act("_report.op", "/cmd/report", "kind: $_report.kind, id: $_report.id, reason: $_report.reason")
+	reportSettled  = Settle("_report.op", "$_report.ok = o.ok, $_report.msg = o.ok ? 'Thank you. A moderator will look at it.' : o.msg")
+	reportFailed   = Failed("_report.op")
 	accountSignals = `{_pw: {op: '', ok: false, msg: '', current: '', password: '', again: ''}}`
 	pwChange       = `$_pw.password !== $_pw.again ? ($_pw.ok = false, $_pw.msg = 'The new passwords differ.') : ` + Act("_pw.op", "/cmd/account/password", "current: $_pw.current, password: $_pw.password")
 	pwSettled      = Settle("_pw.op", "$_pw.ok = o.ok, $_pw.msg = o.ok ? 'Your password is changed. Your other sessions ended.' : o.msg, o.ok && ($_pw.current = '', $_pw.password = '', $_pw.again = '', $_goto = '/account')")

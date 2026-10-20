@@ -22,7 +22,7 @@ import (
 // The pages go in through the hook the wiki's projector calls.
 func newSearchEnv(t *testing.T) *listEnv {
 	e := newList(t)
-	e.Do(t, tracker.SetDescription{By: e.by(e.ada), Issue: e.ids["WEB-2"], Seen: 1 << 40, Description: tracker.PlainDoc("The <b>cart</b> & the login fail")})
+	e.Do(t, tracker.SetDescription{By: e.by(e.ada), Issue: e.ids["WEB-2"], Description: tracker.PlainDoc("The <b>cart</b> & the login fail")})
 	e.result(tracker.AddComment{By: e.by(e.bo), Issue: e.ids["APP-1"], Body: tracker.PlainDoc("Seen with the login screen")})
 	e.Do(t, writer.Func(func(tx *writer.Tx) error {
 		if err := access.AddScope(tx, access.Space, "space-eng", "ENG", true, e.ada.ID, time.Now()); err != nil {

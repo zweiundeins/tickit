@@ -1,6 +1,8 @@
 package views
 
 import (
+	"strconv"
+
 	"github.com/zweiundeins/tickit/internal/demo"
 	"github.com/zweiundeins/tickit/internal/ui"
 )
@@ -31,6 +33,30 @@ templ ModerationPage(m Moderation) {
 // visitors write or moderators act.
 templ ModerationRegion(m Moderation) {
 	<div id={ ModerationID } class="tk-admin__grid">
+		<div class="stack">
+		if len(m.Reports) > 0 {
+			<section class="tk-box" aria-labelledby="mod-reports">
+				<header><h2 class="tk-eyebrow" id="mod-reports">Open reports</h2></header>
+				<ul class="tk-modlist" role="list">
+					for _, rp := range m.Reports {
+						<li class="tk-modlist__item">
+							<div class="tk-modlist__head">
+								<span class="tk-modlist__kind">{ m.Names[rp.Kind] }</span>
+								<span class="tk-key mono">{ rp.Label }</span>
+							</div>
+							<p class="tk-modlist__text">{ rp.Reason }</p>
+							<div class="tk-modlist__foot">
+								@ui.Byline(ui.BylineProps{Person: UIPerson(personOr(m.People, rp.By)), At: rp.At, Now: m.Now})
+								<div class="cluster tk-modlist__actions">
+									@ui.Button(ui.ButtonProps{Label: "Hide", Icon: "eye", Size: ui.SizeSM, Attrs: modAttrs(demo.Target{Kind: rp.Kind, ID: rp.Target}, demo.ActHide, modAct)})
+									@ui.Button(ui.ButtonProps{Label: "Dismiss", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-report": strconv.FormatInt(rp.ID, 10), "data-on:click": modDismiss, "data-on:datastar-fetch": modFailed, "data-attr:aria-busy": modBusy}})
+								</div>
+							</div>
+						</li>
+					}
+				</ul>
+			</section>
+		}
 		<section class="tk-box" aria-labelledby="mod-newest">
 			<header><h2 class="tk-eyebrow" id="mod-newest">Newest from visitors</h2></header>
 			if len(m.Items) == 0 {
@@ -77,6 +103,7 @@ templ ModerationRegion(m Moderation) {
 				</ul>
 			}
 		</section>
+		</div>
 		<div class="stack">
 			<section class="tk-box" aria-labelledby="mod-blocks">
 				<header><h2 class="tk-eyebrow" id="mod-blocks">Paused guests</h2></header>
@@ -119,6 +146,25 @@ templ ModerationRegion(m Moderation) {
 			</section>
 		</div>
 	</div>
+}
+
+// ReportDialog asks a visitor why they report something (DM-08); a
+// Report button (ReportAttrs) opens it. It is in every document.
+templ ReportDialog() {
+	@ui.Dialog(ui.DialogProps{ID: ReportID, Title: "Report this", Description: "A moderator looks at what visitors report. Say what is wrong with it.", Size: ui.SizeSM, Footer: reportFooter(), Attrs: templ.Attributes{"data-signals": reportSignals, "data-effect": reportSettled}}) {
+		<form id="report-form" data-on:submit__prevent={ reportSend } data-on:datastar-fetch={ reportFailed }>
+			{{ f := ui.FieldProps{ID: "report-reason", Label: "Reason", Required: true, ErrorAttrs: templ.Attributes{"data-text": "$_report.ok ? '' : $_report.msg"}} }}
+			@ui.Field(f) {
+				@ui.Input(ui.InputProps{ID: f.ID, MaxLength: 200, Required: true, Placeholder: "Spam, abuse, personal data", DescribedBy: f.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_report.reason", "data-attr:readonly": Pending("_report.op") + " || $_report.ok"}})
+			}
+			<p role="status" data-text="$_report.ok ? $_report.msg : ''"></p>
+		</form>
+	}
+}
+
+templ reportFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Close", Variant: ui.Ghost, Command: "close", CommandFor: ReportID})
+	@ui.Button(ui.ButtonProps{Label: "Report", Variant: ui.Primary, Type: "submit", Attrs: templ.Attributes{"form": "report-form", "data-attr:aria-busy": Busy("_report.op"), "data-attr:disabled": "$_report.ok"}})
 }
 
 func modAttrs(t demo.Target, action, expr string) templ.Attributes {

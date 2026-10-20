@@ -294,7 +294,7 @@ func (s *Server) listChange(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		view = s.listView(query)
+		view = s.quiet(s.listView(query))
 		if arg, ok := strings.CutPrefix(req.View, "list:"); ok && !strings.Contains(arg, ",") {
 			if old, err := s.listViewOf(ctx, tx, actor, arg); err == nil {
 				prev = old.Key

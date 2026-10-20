@@ -13,4 +13,5 @@ func TestSamples(t *testing.T) {
 	eventstest.Samples(t, Store(), ProjectStream, os.DirFS("testdata/project"))
 	eventstest.Samples(t, Store(), IssueStream, os.DirFS("testdata/issue"))
 	eventstest.Samples(t, Store(), CommentStream, os.DirFS("testdata/comment"))
+	eventstest.Samples(t, Store(), DescDocStream, os.DirFS("testdata/issuedoc"))
 }

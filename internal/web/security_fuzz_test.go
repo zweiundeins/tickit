@@ -189,7 +189,9 @@ func FuzzBoardActions(f *testing.F) { fuzzFamily(f, "projects/", "board/", "back
 func FuzzWikiActions(f *testing.F) {
 	fuzzFamily(f, "spaces/", "pages/r", "pages/m", "pages/l", "pages/w", "pages/t", "pages/d", "pages/s", "pages/c")
 }
-func FuzzEditorActions(f *testing.F) { fuzzFamily(f, "pages/open", "pages/commit", "pages/presence") }
+func FuzzEditorActions(f *testing.F) {
+	fuzzFamily(f, "pages/open", "pages/commit", "pages/presence", "issues/description/")
+}
 func FuzzNotifyActions(f *testing.F) { fuzzFamily(f, "notify/") }
 func FuzzStaffActions(f *testing.F) {
 	fuzzFamily(f, "moderation/", "admin/c", "admin/role", "admin/active", "account/")

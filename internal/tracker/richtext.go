@@ -25,11 +25,21 @@ type node struct {
 }
 
 // PlainDoc turns plain text into a document: a paragraph per line, the
-// empty lines left out. Empty text gives an empty document, nil.
+// empty lines left out, a tab a space and other control characters gone
+// (the document's rules allow none outside code). Empty text gives an
+// empty document, nil.
 func PlainDoc(text string) json.RawMessage {
 	var paras []node
 	for line := range strings.Lines(text) {
-		line = strings.TrimRight(line, "\r\n")
+		line = strings.Map(func(r rune) rune {
+			switch {
+			case r == '\t':
+				return ' '
+			case r < 0x20 || r >= 0x7f && r <= 0x9f:
+				return -1
+			}
+			return r
+		}, strings.TrimRight(line, "\r\n"))
 		if strings.TrimSpace(line) == "" {
 			continue
 		}

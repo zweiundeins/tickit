@@ -19,7 +19,7 @@ import (
 // IssueFields are the actions of an issue's page, each its own pending
 // state: POST /cmd/issues/{id}/{field}.
 var IssueFields = []string{
-	"summary", "description", "type", "status", "priority", "assignee", "parent", "due", "points",
+	"summary", "type", "status", "priority", "assignee", "parent", "due", "points",
 	"estimate", "remaining", "sprint", "labels", "components", "watch", "link", "unlink", "subtask",
 	"comment", "cedit", "cdelete", "chide", "delete", "pagelink", "pageunlink",
 }
@@ -36,7 +36,7 @@ func issueSignals(id, key, me string, readOnly, moderates bool) string {
 	}
 	b, _ := json.Marshal(map[string]any{"_is": map[string]any{
 		"id": id, "key": key, "me": me, "ro": readOnly, "mod": moderates,
-		"edit": "", "val": "", "orig": "", "seen": 0, "ref": "",
+		"edit": "", "val": "", "orig": "", "seen": 0, "ref": "", "desc": false,
 		"ops": per(""), "last": per(""), "msg": per(""), "fail": per(""), "conflict": per(false), "want": per(""), "sent": per(0), "refs": per(""),
 		"aq": "", "lq": "", "pq": "", "mseen": 0, "sub": "", "link": map[string]any{"type": "blocks", "key": ""},
 		"draft": "", "mq": false, "cedit": "", "ctext": "",
@@ -51,7 +51,7 @@ const curVersion = `+(document.getElementById('issue-main')?.dataset.v || 0)`
 
 // issueSendFn sends field f with value v, seen s and ref r, unless f is
 // pending: a new op id in ops[f], the value kept in want[f] for a retry.
-const issueSendFn = `((f, v, s, r) => (v = ['comment', 'cedit', 'description'].includes(f) ? ` + mentionIDs + `(v) : v, !$_is.ro || f === 'comment' || f === 'cedit' || f === 'cdelete') && $_is.ops[f] === '' && ($_is.msg[f] = '', $_is.fail[f] = '', $_is.conflict[f] = false, $_is.want[f] = v, $_is.sent[f] = s, $_is.refs[f] = r, $_is.ops[f] = ` + newOp + `, @post('/cmd/issues/' + $_is.id + '/' + f, {payload: {tab: $_tab, op: $_is.ops[f], seen: s, value: v, ref: r}, retryMaxCount: 2})))`
+const issueSendFn = `((f, v, s, r) => (v = ['comment', 'cedit'].includes(f) ? ` + mentionIDs + `(v) : v, !$_is.ro || f === 'comment' || f === 'cedit' || f === 'cdelete') && $_is.ops[f] === '' && ($_is.msg[f] = '', $_is.fail[f] = '', $_is.conflict[f] = false, $_is.want[f] = v, $_is.sent[f] = s, $_is.refs[f] = r, $_is.ops[f] = ` + newOp + `, @post('/cmd/issues/' + $_is.id + '/' + f, {payload: {tab: $_tab, op: $_is.ops[f], seen: s, value: v, ref: r}, retryMaxCount: 2})))`
 
 // menuOpened keeps the version a menu showed when it opened: a choice in
 // it sends that version, so a change someone made while the menu was open
@@ -98,6 +98,8 @@ const issueClick = `((t) => {
 	switch (t.dataset.act) {
 	case 'choose': { const m = t.closest('[popover]'); m?.hidePopover(); ` + issueSendFn + `(f, t.dataset.value ?? '', (m && $_is.mseen) || ` + curVersion + `, t.dataset.ref ?? ''); break }
 	case 'edit': ` + issueEditFn + `(t); break
+	case 'desc-edit': ` + descEditFn + `; break
+	case 'desc-done': ` + descDone + `; break
 	case 'save': ` + issueSave + `; break
 	case 'cancel': ` + issueCancel + `; break
 	case 'clear': $_is.val = ''; ` + issueSave + `; break
@@ -179,6 +181,29 @@ const issueFailed = `((d) => {
 	for (const g of f && f in $_is.ops ? [f] : Object.keys($_is.ops)) if ($_is.ops[g] !== '') { $_is.last[g] = $_is.ops[g]; $_is.ops[g] = ''; $_is.fail[g] = msg }
 })(evt.detail)`
 
+// The description's co-edited editor (FR-15, docs/editor.md). Edit
+// fetches the editor's host, with the document as it is now, into the
+// page (a read: GET /issues/{id}/description/editor); its data-init posts
+// open, as a page's does. In the issue panel, Edit opens the issue's page
+// with the editor open (?edit=description). Done closes it, once nothing
+// waits to be saved (or the editor stopped), and ends the "is editing"
+// indicator at once (MP-07.4).
+const (
+	// DescBodyID is the description as readers see it (the view
+	// issue-desc:<id>), DescEditorID where the editor's host goes.
+	DescBodyID   = "issue-desc-body"
+	DescEditorID = "issue-desc-editor"
+
+	descEditorSignals = `{_editor: {status: 'saved', stopped: '', unsaved: 0, problem: ''}, _carets: '[]', _pick: {kind: '', q: '', label: ''}}`
+	descOpen          = `($_is.desc = true, $_editor.status = 'saved', $_editor.stopped = '', $_editor.problem = '', @get('/issues/' + $_is.id + '/description/editor', {retry: 'error', retryMaxCount: 5}))`
+	descEditFn        = `!$_is.ro && $_is.at === 0 && !$_is.desc && (document.getElementById('issue-panel') ? location.assign('/' + $_is.key + '?edit=description') : ` + descOpen + `)`
+	descEditInit      = `!$_is.ro && new URLSearchParams(location.search).get('edit') === 'description' && ` + descOpen
+	descDone          = `$_is.desc && ($_editor.status === 'saving' && !$_editor.stopped ? ($_editor.problem = 'Your last changes are still being saved. Wait a moment.') : ` +
+		`($_is.desc = false, $_editor.problem = '', document.getElementById('` + DescEditorID + `').replaceChildren(), ` +
+		`@post('/cmd/issues/' + $_is.id + '/description/close', {payload: {tab: $_tab, op: ` + newOp + `}, requestCancellation: 'disabled', retryMaxCount: 2}), ` +
+		`@post('/cmd/issues/' + $_is.id + '/typing', {payload: {tab: $_tab, op: ` + newOp + `, field: 'description', stop: true}, requestCancellation: 'disabled', retryMaxCount: 0})))`
+)
+
 // The comment box (FR-65): Ctrl or Cmd Enter sends; the draft stays in the
 // tab across a reconnect and a reload (sessionStorage is per tab).
 const (
@@ -247,8 +272,8 @@ const (
 // back; the list never left, so its filter and scroll stay. A click with
 // a modifier key follows the link.
 const (
-	panelRegions = `['issue-main', 'issue-desc', 'issue-related', 'issue-side', 'issue-comments', 'issue-history', 'issue-activity', 'issue-mentions', 'issue-asof', 'issue-typing-summary', 'issue-typing-description', 'issue-typing-comment'].forEach(i => document.getElementById(i)?.replaceChildren())`
-	panelUnwatch = `((id, at) => { if (!id) return; for (const v of ['issue:' + id, 'issue-typing:' + id].concat(at ? ['issue-at:' + id + '.' + at] : [])) @post('/cmd/unwatch', {payload: {tab: $_tab, view: v}, requestCancellation: 'disabled'}) })($_is.id, $_is.at)`
+	panelRegions = `['issue-main', 'issue-desc', 'issue-desc-body', 'issue-related', 'issue-side', 'issue-comments', 'issue-history', 'issue-activity', 'issue-mentions', 'issue-asof', 'issue-typing-summary', 'issue-typing-description', 'issue-typing-comment'].forEach(i => document.getElementById(i)?.replaceChildren())`
+	panelUnwatch = `((id, at) => { if (!id) return; for (const v of ['issue:' + id, 'issue-desc:' + id, 'issue-typing:' + id].concat(at ? ['issue-at:' + id + '.' + at] : [])) @post('/cmd/unwatch', {payload: {tab: $_tab, view: v}, requestCancellation: 'disabled'}) })($_is.id, $_is.at)`
 	panelOpen    = `((a) => {
 	if (!a || evt.defaultPrevented || evt.button !== 0 || evt.ctrlKey || evt.metaKey || evt.shiftKey || evt.altKey) return
 	evt.preventDefault()
@@ -264,7 +289,7 @@ const (
 	document.getElementById('issue-presence-slot').replaceChildren(Object.assign(document.createElement('ul'), {id: 'presence-issue-' + id, className: 'tk-presence'}))
 	if (d.open) history.replaceState({issuePanel: id}, '', a.href)
 	else { $_is.back = location.href; history.pushState({issuePanel: id}, '', a.href); d.showModal() }
-	for (const v of ['issue:' + id, 'issue-typing:' + id]) @post('/cmd/watch', {payload: {tab: $_tab, view: v}, requestCancellation: 'disabled'})
+	for (const v of ['issue:' + id, 'issue-desc:' + id, 'issue-typing:' + id]) @post('/cmd/watch', {payload: {tab: $_tab, view: v}, requestCancellation: 'disabled'})
 	@post('/cmd/notify/seen', {payload: {tab: $_tab, op: ` + newOp + `, subject: id, kind: 'issue'}, requestCancellation: 'disabled'})
 })(evt.target.closest?.('a[` + IssueLink + `]'))`
 	panelClose = `$_is.id && (` + panelUnwatch + `, $_is.id = '', $_is.at = 0, $_is.pop ? ($_is.pop = false) : history.state?.issuePanel ? history.back() : $_is.back && history.replaceState(null, '', $_is.back))`
