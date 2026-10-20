@@ -1,0 +1,184 @@
+package views
+
+import (
+	"strconv"
+	"time"
+
+	"github.com/mbolli/tickit/internal/tracker"
+	"github.com/mbolli/tickit/internal/ui"
+)
+
+// Board is the board's page: the head, the project's tabs, the quick
+// filters with the people on the board, the lanes, and the parts of a
+// move that no frame may touch (the dragged copy, the reason of a
+// refusal, the live region, the card menu). The stage (.tk-bd) carries
+// every handler; the stream patches #board-head, #board-faces, the
+// presence row and #board-lanes inside it.
+templ Board(p BoardPage) {
+	<div
+		class="tk-bd"
+		data-project={ p.Project.Key }
+		data-arg={ BoardArg(p.Project.Key, p.Filter) }
+		if p.CanEdit {
+			data-edit="1"
+		}
+		data-signals={ boardSignals(p) }
+		data-init={ boardInit }
+		data-class:is-dragging="$_board.drag"
+		data-on:pointerdown__window={ boardPress }
+		data-on:pointermove={ boardDrag }
+		data-on:pointerup={ boardRelease }
+		data-on:pointercancel={ boardLost }
+		data-on:lostpointercapture={ boardLost }
+		data-on:keydown__window={ boardKeys }
+		data-on:click__capture={ boardClick }
+		data-on:dragstart={ boardDragStart }
+		data-on:datastar-fetch={ boardFailed }
+		data-effect={ boardSettle }
+	>
+		@ui.Sprites()
+		<span hidden data-effect={ boardRefilter }></span>
+		@BoardHeadRegion(p.Head)
+		@ui.TabNav("Project", ProjectTabs(p.Project.Key, "board", p.Admin))
+		<div class="tk-boardbar">
+			<div class="tk-bd__filters" role="group" aria-label="Quick filters">
+				@ui.Input(ui.InputProps{ID: "board-q", Type: "search", Icon: "search", Placeholder: "Filter cards", Size: ui.SizeSM, MaxLength: 60, Class: "tk-bd__q",
+					Attrs: map[string]any{"aria-label": "Filter cards by text", "data-bind": "_bf.text", "data-on:input__debounce.300ms": textApply, "data-on:search": textApply}})
+				@BoardFaces(p.Head)
+				<button class="tk-btn tk-btn--secondary tk-btn--sm tk-bd__chip" type="button" data-filter="mine" aria-pressed="false" data-attr:aria-pressed={ mineOn }>Only my issues</button>
+				<span class="tk-bd__types" role="group" aria-label="Types">
+					for _, t := range ui.IssueTypes {
+						<button class="tk-btn tk-btn--ghost tk-btn--sm tk-btn--icon tk-bd__type" type="button" data-filter="types" data-v={ string(t) } aria-pressed="false" data-attr:aria-pressed={ typeOn } aria-label={ t.Name() } title={ t.Name() }>
+							@ui.TypeMark(t)
+						</button>
+					}
+				</span>
+				if len(p.Labels) > 0 {
+					@ui.Menu(ui.MenuProps{ID: "board-labels", Label: "Labels", Icon: "tag", Caret: true, Size: ui.SizeSM, Variant: ui.Secondary}) {
+						for _, l := range p.Labels {
+							<button class="tk-menu__item" type="button" role="menuitemcheckbox" data-filter="labels" data-v={ l } aria-checked="false" data-attr:aria-checked={ labelOn }>
+								@ui.Label(l, "")
+							</button>
+						}
+					}
+				}
+				<button class="tk-btn tk-btn--ghost tk-btn--sm" type="button" data-filter="clear" hidden data-attr:hidden={ "!(" + anyFilter + ")" }>Clear filters</button>
+			</div>
+			@Presence(PresenceID(BoardHeadKey(p.Project.ID)), nil)
+		</div>
+		@BoardLanes(p.Lanes)
+		<div class="tk-bd__ghost" hidden aria-hidden="true" inert></div>
+		<div class="tk-bd__note" role="status" aria-live="polite">
+			<p class="tk-outcome tk-bd__reason" data-kind="refused" hidden data-attr:hidden="!$_board.note" data-text="$_board.note"></p>
+		</div>
+		<div class="tk-bd__problem" role="alert" hidden data-attr:hidden="!$_board.problem">
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneDanger, Action: ui.Button(ui.ButtonProps{Label: "Retry", Icon: "redo", Size: ui.SizeSM, Attrs: map[string]any{"data-retry": ""}})}) {
+				<p data-text="$_board.problem"></p>
+			}
+		</div>
+		<p class="visually-hidden" aria-live="assertive" data-text="$_board.say"></p>
+		@ui.CardMenu(ui.CardMenuProps{ID: CardMenuID, Lanes: laneRefs(p.Lanes.Board)})
+		<p id="board-help" class="tk-bd__help muted">
+			Drag a card to another column or place, or open its <span aria-hidden="true">“…”</span> menu to move it with the keyboard. On a touch screen, drag a card by its grip.
+		</p>
+		@CompleteSprint(p.Head)
+		if p.CreateStatus != "" {
+			<span hidden data-init={ openCreate } data-create-status={ p.CreateStatus }></span>
+		}
+	</div>
+}
+
+// BoardLanes is the board's shared region: the same bytes for every tab
+// with its filter. Each card's list item has an id, so a frame that moves
+// a card moves the element, and the card glides there in the view
+// transition scoped to the region.
+templ BoardLanes(l Lanes) {
+	@ui.Board(ui.BoardProps{Label: "Board of " + l.Board.Project.Name, Attrs: map[string]any{"id": BoardLanesID, "data-rev": l.Rev}}) {
+		@ui.FaceSprites(facesOf(l.Board, l.People))
+		for _, col := range l.Board.Columns {
+			@ui.Lane(ui.LaneProps{ID: laneID(col.ID), Name: col.Name, Category: category(col.Category), Count: len(col.Cards), Total: l.Totals[col.ID], WIP: col.WIP,
+				CreateAttrs: map[string]any{"data-create": col.ID}, Attrs: map[string]any{"data-lane": col.ID, "data-name": col.Name}}) {
+				for _, c := range col.Cards {
+					@ui.BoardCard(cardProps(c, l.People, l.Now, CardMenuID))
+				}
+			}
+		}
+	}
+}
+
+// BoardHeadRegion is the head of a project's board: its name, archived or
+// not, and the active sprint with its days left and points (FR-46.2).
+templ BoardHeadRegion(h BoardHead) {
+	<div id={ HeadID } class="tk-bdhead">
+		<div class="tk-pagehead">
+			<div class="tk-bdhead__title">
+				<p class="tk-eyebrow">{ h.Project.Key } · Board</p>
+				<h1>{ h.Project.Name }</h1>
+			</div>
+			if h.Project.Archived {
+				@ui.StatusLozenge("Archived", ui.Done)
+			}
+		</div>
+		if h.Sprint != nil {
+			<section class="tk-sprint" aria-label="Active sprint">
+				<div class="tk-sprint__name">
+					<span class="tk-eyebrow">Active sprint</span>
+					<strong>{ h.Sprint.Name }</strong>
+					if h.Sprint.Goal != "" {
+						<span class="tk-sprint__goal">{ h.Sprint.Goal }</span>
+					}
+				</div>
+				@ui.Stats([]ui.Stat{
+					{Label: "Time", Value: daysLeft(*h.Sprint, h.Now), Tone: sprintTone(*h.Sprint, h.Now)},
+					{Label: "Points done", Value: strconv.Itoa(h.Done) + " of " + strconv.Itoa(h.Points)},
+					{Label: "Issues done", Value: strconv.Itoa(h.Issues-h.Open) + " of " + strconv.Itoa(h.Issues)},
+				})
+				@ui.Button(ui.ButtonProps{Label: "Complete sprint", Size: ui.SizeSM, Command: "show-modal", CommandFor: "complete-sprint"})
+			</section>
+		}
+	</div>
+}
+
+// BoardFaces are the faces of the people with cards on the board, each a
+// toggle of the quick filter (FR-42).
+templ BoardFaces(h BoardHead) {
+	<span id="board-faces" class="tk-bd__faces" role="group" aria-label="Assignees">
+		for _, a := range h.Assignees {
+			<button class="tk-bd__face" type="button" data-filter="who" data-v={ a.ID } aria-pressed="false" data-attr:aria-pressed={ whoOn } aria-label={ a.Name } title={ a.Name }>
+				@ui.Avatar(ui.AvatarProps{Person: UIPerson(a), Size: ui.SizeSM, Decorative: true})
+			</button>
+		}
+	</span>
+}
+
+// CompleteSprint is the dialog that completes the active sprint, with
+// where its open issues go (FR-46.1).
+templ CompleteSprint(h BoardHead) {
+	if h.Sprint != nil {
+		@ui.Dialog(ui.DialogProps{ID: "complete-sprint", Title: "Complete " + h.Sprint.Name, Description: plural(h.Open, "open issue") + " in this sprint.",
+			Footer: completeFooter(), Attrs: map[string]any{"data-signals": `{_done: {op: '', to: '', msg: ''}}`, "data-effect": completeSettled, "data-sprint": h.Sprint.ID, "data-project": h.Project.Key}}) {
+			<fieldset class="tk-radios">
+				<legend class="tk-field__label">Move the open issues to</legend>
+				<div class="tk-radios__options">
+					<label class="tk-radio"><input class="tk-radio__input" type="radio" name="complete-to" value="" checked data-on:change="$_done.to = ''"/> The backlog</label>
+					for _, s := range h.Next {
+						<label class="tk-radio"><input class="tk-radio__input" type="radio" name="complete-to" value={ s.ID } data-on:change="$_done.to = el.value"/> { s.Name }</label>
+					}
+				</div>
+			</fieldset>
+			@ui.Outcome(ui.OutcomeProps{Kind: ui.OutcomeRefused, Attrs: map[string]any{"data-text": "$_done.msg", "hidden": true, "data-attr:hidden": "!$_done.msg"}})
+		}
+	}
+}
+
+templ completeFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: "complete-sprint"})
+	@ui.Button(ui.ButtonProps{Label: "Complete sprint", Variant: ui.Primary, Attrs: map[string]any{"data-on:click": completeSprint, "data-attr:aria-busy": Busy("_done.op"), "data-on:datastar-fetch": Failed("_done.op")}})
+}
+
+func sprintTone(s tracker.Sprint, now time.Time) ui.Tone {
+	if n, ok := DaysLeft(s, now); ok && n < 0 {
+		return ui.ToneDanger
+	}
+	return ui.ToneNeutral
+}

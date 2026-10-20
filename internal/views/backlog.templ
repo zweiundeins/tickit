@@ -1,0 +1,213 @@
+package views
+
+import (
+	"strconv"
+	"time"
+
+	"github.com/mbolli/tickit/internal/people"
+	"github.com/mbolli/tickit/internal/tracker"
+	"github.com/mbolli/tickit/internal/ui"
+)
+
+// BacklogID is the id of the backlog's region.
+const BacklogID = "backlog"
+
+// BacklogKey is the key of a project's backlog view, with presence: one
+// for everyone (FR-45.1).
+func BacklogKey(projectID string) string { return "backlog:" + projectID }
+
+// BacklogData is what the backlog's region shows.
+type BacklogData struct {
+	View   tracker.BacklogView
+	People map[string]people.Person
+	Now    time.Time
+	Rev    string // the frame's revision (Lanes.Rev)
+}
+
+// BacklogPage is the backlog's page.
+type BacklogPage struct {
+	Project tracker.Project
+	Data    BacklogData
+	CanEdit bool
+	Admin   bool
+}
+
+// BacklogRowID is the id of an issue's row.
+func BacklogRowID(key string) string { return "b-" + key }
+
+// Backlog is the backlog's page (FR-45, FR-46): the future sprints with
+// their issues, then the backlog, in rank order. Rows drag to rank, live
+// for everyone; checked rows move to a sprint or to the top or bottom at
+// once. The stage (.tk-bl) carries every handler; the stream patches the
+// presence row and #backlog inside it.
+templ Backlog(p BacklogPage) {
+	<div
+		class="tk-bl"
+		data-project={ p.Project.Key }
+		if p.CanEdit {
+			data-edit="1"
+		}
+		data-signals={ `{_bl: {op: '', n: 0, rows: '', say: '', msg: '', move: {}}, _sp: {op: '', name: '', goal: '', start: '', end: '', msg: ''}, _ss: {op: '', msg: ''}}` }
+		data-init={ backlogInit }
+		data-on:pointerdown={ backlogPress }
+		data-on:pointermove={ backlogDrag }
+		data-on:pointerup={ backlogRelease }
+		data-on:pointercancel={ backlogLost }
+		data-on:lostpointercapture={ backlogLost }
+		data-on:click__capture={ backlogClick }
+		data-on:change={ backlogCount }
+		data-on:dragstart={ boardDragStart }
+		data-on:datastar-fetch={ backlogFailed }
+		data-effect={ backlogSettle }
+	>
+		@ui.Sprites()
+		<span hidden data-effect={ Settle("_ss.op", "$_ss.msg = o.ok ? '' : o.msg") }></span>
+		<div class="split">
+			<div class="tk-bdhead__title">
+				<p class="tk-eyebrow">{ p.Project.Key } · Backlog</p>
+				<h1>{ p.Project.Name }</h1>
+			</div>
+			@Presence(PresenceID(BacklogKey(p.Project.ID)), nil)
+		</div>
+		@ui.TabNav("Project", ProjectTabs(p.Project.Key, "backlog", p.Admin))
+		<div class="tk-bl__bar">
+			<p class="tk-bl__count" aria-live="polite" data-text="$_bl.n ? $_bl.n + ' selected' : 'Check issues to move several at once.'">Check issues to move several at once.</p>
+			@ui.Button(ui.ButtonProps{Label: "Top", Icon: "arrow-up", Size: ui.SizeSM, Attrs: map[string]any{"data-bulk": "top", "data-attr:disabled": "!$_bl.n"}})
+			@ui.Button(ui.ButtonProps{Label: "Bottom", Icon: "arrow-down", Size: ui.SizeSM, Attrs: map[string]any{"data-bulk": "bottom", "data-attr:disabled": "!$_bl.n"}})
+			@ui.Menu(ui.MenuProps{ID: "bl-sprint", Label: "Move to sprint", Icon: "sprint", Caret: true, Size: ui.SizeSM, Variant: ui.Secondary, Attrs: map[string]any{"data-attr:disabled": "!$_bl.n"}}) {
+				@BacklogSprints(p.Data.View)
+			}
+			@ui.Button(ui.ButtonProps{Label: "Create sprint", Icon: "plus", Size: ui.SizeSM, Command: "show-modal", CommandFor: "create-sprint"})
+		</div>
+		<p class="tk-outcome tk-bl__msg" data-kind="refused" role="status" hidden data-attr:hidden="!$_bl.msg" data-text="$_bl.msg"></p>
+		<p class="tk-outcome tk-bl__msg" data-kind="refused" role="status" hidden data-attr:hidden="!$_ss.msg" data-text="$_ss.msg"></p>
+		@BacklogRegion(p.Data)
+		<div class="tk-bd__ghost" hidden aria-hidden="true" inert></div>
+		<p class="visually-hidden" aria-live="assertive" data-text="$_bl.say"></p>
+		@createSprint()
+	</div>
+}
+
+// BacklogSprints are the sprints the checked issues move to; the
+// backlog's frame patches them with the sections.
+templ BacklogSprints(b tracker.BacklogView) {
+	<div id="bl-sprints">
+		for _, s := range b.Sprints {
+			<button class="tk-menu__item" type="button" data-sprint={ s.Sprint.ID }><span class="tk-menu__label">{ s.Sprint.Name }</span></button>
+		}
+		<button class="tk-menu__item" type="button" data-sprint=""><span class="tk-menu__label">The backlog</span></button>
+	</div>
+}
+
+// BacklogRegion is the backlog's shared region.
+templ BacklogRegion(d BacklogData) {
+	<div id={ BacklogID } class="tk-bl__sections" data-rev={ d.Rev }>
+		@ui.FaceSprites(backlogFaces(d))
+		if d.View.Active != nil {
+			<p class="tk-bl__active">
+				@ui.Icon("sprint")
+				<span><strong>{ d.View.Active.Name }</strong> is active: its issues are on the <a href={ templ.SafeURL("/projects/" + d.View.Project.Key + "/board") }>board</a>.</span>
+			</p>
+		}
+		for _, s := range d.View.Sprints {
+			@backlogSection(d, s.Sprint.ID, s.Sprint.Name, sprintMeta(s.Sprint), s.Cards, s.Points, &s.Sprint)
+		}
+		@backlogSection(d, "", "Backlog", "", d.View.Cards, d.View.Points, nil)
+	</div>
+}
+
+templ backlogSection(d BacklogData, id, name, meta string, cards []tracker.Card, pts int, sprint *tracker.Sprint) {
+	<section
+		class="tk-blsec"
+		data-section={ id }
+		data-name={ name }
+		aria-labelledby={ "bls-" + sectionID(id) }
+		if sprint != nil {
+			data-sprint
+		}
+	>
+		<header class="tk-blsec__head">
+			<h2 id={ "bls-" + sectionID(id) } class="tk-blsec__name">{ name }</h2>
+			if meta != "" {
+				<span class="muted">{ meta }</span>
+			}
+			<span class="tk-count" aria-label={ plural(len(cards), "issue") }>{ strconv.Itoa(len(cards)) }</span>
+			<span class="muted">{ points(pts) }</span>
+			if sprint != nil && d.View.Active == nil {
+				@ui.Button(ui.ButtonProps{Label: "Start sprint", Size: ui.SizeSM, Class: "tk-blsec__start", Attrs: map[string]any{"data-start": sprint.ID}})
+			}
+		</header>
+		<ol class="tk-blsec__rows" role="list">
+			for _, c := range cards {
+				@backlogRow(c, d.People, d.Now)
+			}
+			if len(cards) == 0 {
+				<li class="tk-blsec__empty muted">
+					if sprint != nil {
+						Drag issues here, or check them and choose Move to sprint.
+					} else {
+						Nothing left in the backlog.
+					}
+				</li>
+			}
+		</ol>
+	</section>
+}
+
+// backlogRow is an issue in the backlog: the same parts as a card, in a
+// line (FR-45.1).
+templ backlogRow(c tracker.Card, who map[string]people.Person, now time.Time) {
+	<li id={ BacklogRowID(c.Key) } class="tk-blrow" data-v={ strconv.FormatInt(c.Version, 10) } data-preserve-attr="data-state aria-busy">
+		<span class="tk-card__grip"></span>
+		<input class="tk-check__box tk-blrow__check" type="checkbox" aria-label={ "Select " + c.Key } data-preserve-attr="checked"/>
+		<svg class="tk-type" data-type={ string(c.Type) } role="img" aria-label={ ui.IssueType(c.Type).Name() }><use href={ "#tk-t-" + string(c.Type) }></use></svg>
+		<span class="tk-card__key">{ c.Key }</span>
+		<a class="tk-blrow__summary" href={ templ.SafeURL("/" + c.Key) }>{ c.Summary }</a>
+		if c.Epic != nil {
+			<span class="tk-card__epic" data-hue={ strconv.Itoa(ui.HueOf(c.Epic.Summary)) }><span class="visually-hidden">Epic: </span>{ c.Epic.Summary }</span>
+		}
+		@ui.StatusLozenge(c.StatusName, category(c.Category))
+		<svg class="tk-prio" data-prio={ string(c.Priority) } role="img" aria-label={ ui.Priority(c.Priority).Name() + " priority" }><use href={ "#tk-p-" + string(c.Priority) }></use></svg>
+		if c.Points != nil {
+			@ui.Points(strconv.Itoa(*c.Points))
+		}
+		if c.Assignee != "" {
+			{{ a := UIPerson(who[c.Assignee]) }}
+			<span class="tk-av tk-av--xs" data-hue={ strconv.Itoa(a.HueIndex()) } role="img" title={ a.Name }><svg class="tk-face"><use href={ "#" + ui.FaceRef(a.Seed) }></use></svg></span>
+		} else {
+			<span class="tk-card__nobody" aria-label="Unassigned" role="img"></span>
+		}
+	</li>
+}
+
+// createSprint is the dialog that creates a sprint (FR-46.1).
+templ createSprint() {
+	@ui.Dialog(ui.DialogProps{ID: "create-sprint", Title: "Create a sprint", Footer: createSprintFooter(), Attrs: map[string]any{"data-effect": sprintSettled}}) {
+		<form id="create-sprint-form" class="stack" data-on:submit__prevent={ sprintCreate } data-on:datastar-fetch={ Failed("_sp.op") }>
+			{{ name := ui.FieldProps{ID: "sp-name", Label: "Name", Required: true} }}
+			@ui.Field(name) {
+				@ui.Input(ui.InputProps{ID: name.ID, MaxLength: tracker.MaxSprintName, Required: true, Placeholder: "Sprint 4", Attrs: map[string]any{"data-bind": "_sp.name", "data-attr:readonly": Pending("_sp.op"), "autofocus": true}})
+			}
+			{{ goal := ui.FieldProps{ID: "sp-goal", Label: "Goal", Optional: true} }}
+			@ui.Field(goal) {
+				@ui.Textarea(ui.TextareaProps{ID: goal.ID, Rows: 2, MaxLength: tracker.MaxSprintGoal, Attrs: map[string]any{"data-bind": "_sp.goal", "data-attr:readonly": Pending("_sp.op")}})
+			}
+			<div class="cluster">
+				{{ start := ui.FieldProps{ID: "sp-start", Label: "Starts", Optional: true} }}
+				@ui.Field(start) {
+					<input id={ start.ID } class="tk-input" type="date" data-bind="_sp.start"/>
+				}
+				{{ end := ui.FieldProps{ID: "sp-end", Label: "Ends", Optional: true} }}
+				@ui.Field(end) {
+					<input id={ end.ID } class="tk-input" type="date" data-bind="_sp.end"/>
+				}
+			</div>
+			<p class="tk-outcome" data-kind="refused" role="status" hidden data-attr:hidden="!$_sp.msg" data-text="$_sp.msg"></p>
+		</form>
+	}
+}
+
+templ createSprintFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: "create-sprint"})
+	@ui.Button(ui.ButtonProps{Label: "Create sprint", Variant: ui.Primary, Type: "submit", Attrs: map[string]any{"form": "create-sprint-form", "data-attr:aria-busy": Busy("_sp.op")}})
+}

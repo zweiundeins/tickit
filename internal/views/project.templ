@@ -1,0 +1,309 @@
+package views
+
+import (
+	"strconv"
+
+	"github.com/mbolli/tickit/internal/access"
+	"github.com/mbolli/tickit/internal/tracker"
+	"github.com/mbolli/tickit/internal/ui"
+)
+
+// Projects is the page of projects (FR-01.1): the list, live, and the
+// dialog that creates one (FR-02).
+templ Projects(p ProjectsPage) {
+	<div class="tk-projects" data-signals={ projectsSignals }>
+		<div class="tk-pagehead">
+			<h1>Projects</h1>
+			if p.CanCreate {
+				@ui.Button(ui.ButtonProps{Label: "Create project", Icon: "plus", Variant: ui.Primary, Command: "show-modal", CommandFor: "create-project"})
+			}
+		</div>
+		@ProjectsList(p.List)
+		if p.CanCreate {
+			@createProject()
+		}
+	</div>
+}
+
+// ProjectsList is the list's shared region: by name, archived projects
+// last and dimmed (FR-01.1).
+templ ProjectsList(l ProjectList) {
+	<div id={ ProjectsListID } class="tk-projects__list">
+		if len(l.Projects) == 0 {
+			@ui.EmptyState(ui.EmptyProps{Icon: "folder", Title: "No projects yet", Text: "Create the first one: it gets a board and a backlog at once."})
+		} else {
+			@ui.Table(ui.TableProps{Caption: "Projects", HideCaption: true}) {
+				<thead>
+					<tr><th scope="col">Key</th><th scope="col" class="tk-grow">Name</th><th scope="col">Lead</th><th scope="col" class="tk-num">Open issues</th></tr>
+				</thead>
+				<tbody>
+					for _, pr := range l.Projects {
+						<tr
+							class="tk-projects__row"
+							if pr.Archived {
+								data-archived
+							}
+						>
+							<td><span class="tk-key">{ pr.Key }</span></td>
+							<td class="tk-grow">
+								<a href={ templ.SafeURL("/projects/" + pr.Key + "/board") }>{ pr.Name }</a>
+								if pr.Archived {
+									@ui.StatusLozenge("Archived", ui.Done)
+								}
+							</td>
+							<td>
+								if pr.Lead != "" {
+									<span class="tk-cell">
+										@ui.Avatar(ui.AvatarProps{Person: UIPerson(l.People[pr.Lead]), Size: ui.SizeXS, Decorative: true})
+										{ l.People[pr.Lead].Name }
+									</span>
+								} else {
+									<span class="muted">Nobody</span>
+								}
+							</td>
+							<td class="tk-num">{ strconv.Itoa(pr.OpenIssues) }</td>
+						</tr>
+					}
+				</tbody>
+			}
+		}
+	</div>
+}
+
+// createProject is the dialog that creates a project: name, key and
+// description; a refusal shows beside its field ("The key ABC is
+// taken."), and the page goes to the new project's board (FR-02).
+templ createProject() {
+	@ui.Dialog(ui.DialogProps{ID: "create-project", Title: "Create a project", Description: "It gets the default workflow, a board and a backlog. You become its admin.",
+		Footer: createProjectFooter(), Attrs: map[string]any{"data-effect": createProjectSettled}}) {
+		<form id="create-project-form" class="stack" data-on:submit__prevent={ createProjectSubmit } data-on:datastar-fetch={ createProjectFailed }>
+			{{ name := ui.FieldProps{ID: "np-name", Label: "Name", Required: true, ErrorAttrs: map[string]any{"data-text": "$_np.err.name"}} }}
+			@ui.Field(name) {
+				@ui.Input(ui.InputProps{ID: name.ID, MaxLength: tracker.MaxProjectName, Required: true, DescribedBy: name.DescribedBy(), Autocomplete: "off",
+					Attrs: map[string]any{"data-bind": "_np.name", "data-attr:readonly": Pending("_np.op"), "autofocus": true}})
+			}
+			{{ key := ui.FieldProps{ID: "np-key", Label: "Key", Hint: "2 to 6 letters. Every issue key starts with it, as in ABC-12; it never changes.", Required: true, ErrorAttrs: map[string]any{"data-text": "$_np.err.key"}} }}
+			@ui.Field(key) {
+				@ui.Input(ui.InputProps{ID: key.ID, MaxLength: tracker.MaxKey, Required: true, DescribedBy: key.DescribedBy(), Autocomplete: "off", Class: "tk-np__key",
+					Attrs: map[string]any{"data-bind": "_np.key", "data-on:input": upperKey, "data-attr:readonly": Pending("_np.op"), "pattern": "[A-Za-z]{2,6}", "spellcheck": "false"}})
+			}
+			{{ desc := ui.FieldProps{ID: "np-description", Label: "Description", Optional: true, ErrorAttrs: map[string]any{"data-text": "$_np.err.description"}} }}
+			@ui.Field(desc) {
+				@ui.Textarea(ui.TextareaProps{ID: desc.ID, Rows: 3, MaxLength: tracker.MaxDescription, DescribedBy: desc.DescribedBy(),
+					Attrs: map[string]any{"data-bind": "_np.description", "data-attr:readonly": Pending("_np.op")}})
+			}
+			@ui.Outcome(ui.OutcomeProps{Kind: ui.OutcomeRefused, Attrs: map[string]any{"data-text": "$_np.err.any", "hidden": true, "data-attr:hidden": "!$_np.err.any"}})
+		</form>
+	}
+}
+
+templ createProjectFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: "create-project"})
+	@ui.Button(ui.ButtonProps{Label: "Create project", Variant: ui.Primary, Type: "submit", Attrs: map[string]any{"form": "create-project-form", "data-attr:aria-busy": Busy("_np.op")}})
+}
+
+// ProjectHead is the head of a project's page that has no live head of
+// its own: its name, and its tabs.
+templ ProjectHead(p tracker.Project, current string, admin bool) {
+	<div class="tk-pagehead">
+		<div class="tk-bdhead__title">
+			<p class="tk-eyebrow">{ p.Key } · { tabName(current) }</p>
+			<h1>{ p.Name }</h1>
+		</div>
+		if p.Archived {
+			@ui.StatusLozenge("Archived", ui.Done)
+		}
+	</div>
+	@ui.TabNav("Project", ProjectTabs(p.Key, current, admin))
+}
+
+func tabName(current string) string {
+	switch current {
+	case "board":
+		return "Board"
+	case "backlog":
+		return "Backlog"
+	case "activity":
+		return "Activity"
+	case "settings":
+		return "Settings"
+	}
+	return current
+}
+
+// Activity is a project's activity tab: the feed of what happened in it
+// comes with notifications and feeds (FR-01.2).
+templ Activity(p ProjectPage) {
+	@ProjectHead(p.Project, "activity", p.Admin)
+	@ui.EmptyState(ui.EmptyProps{Icon: "history", Title: "Activity comes soon", Text: "What people do in this project will show here, newest first."})
+}
+
+// SettingsPage is a project's settings, for its Admins: name,
+// description and lead (FR-03), archive (FR-04), members and roles
+// (FR-05), components (FR-24) and the board's limits (FR-43). Forms keep
+// what the person types; the region below them shows what is stored now.
+templ SettingsPage(s Settings) {
+	<div
+		class="tk-settings stack"
+		data-project={ s.Project.Key }
+		data-signals={ `{_pd: {op: '', msg: '', name: ` + jsString(s.Project.Name) + `, description: ` + jsString(s.Project.Description) + `, lead: ` + jsString(s.Project.Lead) + `}, _ar: {op: '', msg: ''}, _ms: {op: '', msg: '', person: '', role: 'member'}, _cs: {op: '', msg: '', name: '', description: ''}, _wip: {op: '', msg: ''}}` }
+	>
+		@ProjectHead(s.Project, "settings", true)
+		<span hidden data-effect={ detailsSettled }></span>
+		<span hidden data-effect={ archiveSettled }></span>
+		<span hidden data-effect={ membersSettled }></span>
+		<span hidden data-effect={ componentsSettled }></span>
+		<span hidden data-effect={ wipSettled }></span>
+		<section class="tk-settings__part" aria-labelledby="set-details">
+			<h2 id="set-details">Details</h2>
+			<form class="stack" data-on:submit__prevent={ saveDetails } data-on:datastar-fetch={ Failed("_pd.op") }>
+				{{ name := ui.FieldProps{ID: "pd-name", Label: "Name", Required: true} }}
+				@ui.Field(name) {
+					@ui.Input(ui.InputProps{ID: name.ID, MaxLength: tracker.MaxProjectName, Required: true, Attrs: map[string]any{"data-bind": "_pd.name", "data-attr:readonly": Pending("_pd.op")}})
+				}
+				{{ desc := ui.FieldProps{ID: "pd-description", Label: "Description", Optional: true} }}
+				@ui.Field(desc) {
+					@ui.Textarea(ui.TextareaProps{ID: desc.ID, Rows: 3, MaxLength: tracker.MaxDescription, Attrs: map[string]any{"data-bind": "_pd.description", "data-attr:readonly": Pending("_pd.op")}})
+				}
+				{{ lead := ui.FieldProps{ID: "pd-lead", Label: "Lead", Optional: true} }}
+				@ui.Field(lead) {
+					@ui.Select(ui.SelectProps{ID: lead.ID, Options: personOptions(s.Candidates, s.Project.Lead, "Nobody"), Attrs: map[string]any{"data-bind": "_pd.lead"}})
+				}
+				<div class="cluster">
+					@ui.Button(ui.ButtonProps{Label: "Save", Variant: ui.Primary, Type: "submit", Attrs: map[string]any{"data-attr:aria-busy": Busy("_pd.op")}})
+					<p class="tk-outcome" role="status" data-text="$_pd.msg"></p>
+				</div>
+				<p class="muted">The key { s.Project.Key } stays: issue keys and links never change.</p>
+			</form>
+		</section>
+		@SettingsRegion(s.Live)
+		<section class="tk-settings__part" aria-labelledby="set-add-member">
+			<h2 id="set-add-member">Add a member</h2>
+			<form class="cluster" data-on:submit__prevent={ addMember } data-on:datastar-fetch={ Failed("_ms.op") }>
+				@ui.Select(ui.SelectProps{ID: "ms-person", Options: personOptions(s.Candidates, "", "Choose a person"), Attrs: map[string]any{"data-bind": "_ms.person", "aria-label": "Person"}})
+				@ui.Select(ui.SelectProps{ID: "ms-role", Options: roleOptions(access.Member), Attrs: map[string]any{"data-bind": "_ms.role", "aria-label": "Role"}})
+				@ui.Button(ui.ButtonProps{Label: "Add", Type: "submit", Attrs: map[string]any{"data-attr:aria-busy": Busy("_ms.op")}})
+				<p class="tk-outcome" role="status" data-text="$_ms.msg"></p>
+			</form>
+			<p class="muted">The list offers the project's members and the people who acted in it in the last day. In an open project everyone works as a Member; roles raise someone to Admin.</p>
+		</section>
+		<section class="tk-settings__part" aria-labelledby="set-add-component">
+			<h2 id="set-add-component">Add a component</h2>
+			<form class="cluster" data-on:submit__prevent={ addComponent } data-on:datastar-fetch={ Failed("_cs.op") }>
+				@ui.Input(ui.InputProps{ID: "cs-name", Placeholder: "Name", MaxLength: tracker.MaxComponent, Required: true, Attrs: map[string]any{"data-bind": "_cs.name", "aria-label": "Component name", "data-attr:readonly": Pending("_cs.op")}})
+				@ui.Input(ui.InputProps{ID: "cs-description", Placeholder: "Description (optional)", Attrs: map[string]any{"data-bind": "_cs.description", "aria-label": "Component description", "data-attr:readonly": Pending("_cs.op")}})
+				@ui.Button(ui.ButtonProps{Label: "Add", Type: "submit", Attrs: map[string]any{"data-attr:aria-busy": Busy("_cs.op")}})
+				<p class="tk-outcome" role="status" data-text="$_cs.msg"></p>
+			</form>
+		</section>
+		<section class="tk-settings__part" aria-labelledby="set-wip">
+			<h2 id="set-wip">Work-in-progress limits</h2>
+			<p class="muted">A column over its limit shows it in colour and words; nothing stops a move. Empty or 0: no limit.</p>
+			<ul class="tk-settings__wip" role="list" data-on:datastar-fetch={ Failed("_wip.op") }>
+				for _, c := range s.Columns {
+					if tracker.OnBoard(c.ID) {
+						<li class="cluster">
+							<label class="tk-settings__wipname" for={ "wip-" + c.ID }>{ c.Name }</label>
+							@ui.Input(ui.InputProps{ID: "wip-" + c.ID, Type: "number", Value: wipValue(c.WIP), Size: ui.SizeSM, Class: "tk-settings__wipinput", Attrs: map[string]any{"min": "0", "max": "999", "inputmode": "numeric", "data-status": c.ID}})
+							@ui.Button(ui.ButtonProps{Label: "Set", Size: ui.SizeSM, Attrs: map[string]any{"data-status": c.ID, "data-on:click": setWIP, "data-attr:aria-busy": Busy("_wip.op")}})
+						</li>
+					}
+				}
+			</ul>
+			<p class="tk-outcome" role="status" data-text="$_wip.msg"></p>
+		</section>
+		<section class="tk-settings__part" aria-labelledby="set-archive">
+			<h2 id="set-archive">Archive</h2>
+			if s.Project.Archived {
+				<p>This project is archived: its issues are read-only and it takes no new ones. It stays reachable by its address and its issue keys.</p>
+				@ui.Button(ui.ButtonProps{Label: "Unarchive", Attrs: map[string]any{"data-archived": "false", "data-on:click": archive, "data-attr:aria-busy": Busy("_ar.op"), "data-on:datastar-fetch": Failed("_ar.op")}})
+			} else {
+				<p>An archived project's issues are read-only, and it leaves pickers and default filters (FR-04).</p>
+				@ui.Button(ui.ButtonProps{Label: "Archive project", Variant: ui.Danger, Attrs: map[string]any{"data-archived": "true", "data-on:click": archive, "data-attr:aria-busy": Busy("_ar.op"), "data-on:datastar-fetch": Failed("_ar.op")}})
+			}
+			<p class="tk-outcome" role="status" data-text="$_ar.msg"></p>
+		</section>
+	</div>
+}
+
+// SettingsRegion is the settings' shared region: members with their
+// roles, the components, and the limits as stored.
+templ SettingsRegion(l SettingsLive) {
+	<div id={ SettingsID } class="stack">
+		<section class="tk-settings__part" aria-labelledby="set-members">
+			<h2 id="set-members">Members</h2>
+			@ui.Table(ui.TableProps{Caption: "Members", HideCaption: true}) {
+				<thead><tr><th scope="col" class="tk-grow">Person</th><th scope="col">Role</th><th scope="col">Since</th><th scope="col"><span class="visually-hidden">Remove</span></th></tr></thead>
+				<tbody>
+					for _, m := range l.Members {
+						<tr>
+							<td class="tk-grow">
+								<span class="tk-cell">
+									@ui.Avatar(ui.AvatarProps{Person: UIPerson(l.People[m.Person]), Size: ui.SizeXS, Decorative: true})
+									{ l.People[m.Person].Name }
+								</span>
+							</td>
+							<td>
+								@ui.Select(ui.SelectProps{ID: "role-" + m.Person, Size: ui.SizeSM, Options: roleOptions(m.Role),
+									Attrs: map[string]any{"aria-label": "Role of " + l.People[m.Person].Name, "data-person": m.Person, "data-on:change": setRole, "data-attr:disabled": Pending("_ms.op")}})
+							</td>
+							<td class="muted">{ since(m.AddedAt) }</td>
+							<td>
+								@ui.Button(ui.ButtonProps{Label: "Remove " + l.People[m.Person].Name, Icon: "trash", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM,
+									Attrs: map[string]any{"data-person": m.Person, "data-on:click": removeMember, "data-attr:aria-busy": Busy("_ms.op"), "data-on:datastar-fetch": Failed("_ms.op")}})
+							</td>
+						</tr>
+					}
+				</tbody>
+			}
+		</section>
+		<section class="tk-settings__part" aria-labelledby="set-components">
+			<h2 id="set-components">Components</h2>
+			if len(l.Components) == 0 {
+				<p class="muted">No components yet.</p>
+			} else {
+				<ul class="tk-settings__components" role="list">
+					for _, c := range l.Components {
+						<li class="cluster">
+							<strong>{ c.Name }</strong>
+							if c.Description != "" {
+								<span class="muted">{ c.Description }</span>
+							}
+							@ui.Button(ui.ButtonProps{Label: "Remove " + c.Name, Icon: "trash", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM,
+								Attrs: map[string]any{"data-name": c.Name, "data-on:click": removeComponent, "data-attr:aria-busy": Busy("_cs.op"), "data-on:datastar-fetch": Failed("_cs.op")}})
+						</li>
+					}
+				</ul>
+			}
+		</section>
+		<p class="muted tk-settings__limits">
+			Limits now:
+			for i, c := range l.Columns {
+				if tracker.OnBoard(c.ID) {
+					<span>
+						{ c.Name }
+						if c.WIP > 0 {
+							{ strconv.Itoa(c.WIP) }
+						} else {
+							none
+						}
+						if i < len(l.Columns)-1 {
+							·
+						}
+					</span>
+				}
+			}
+		</p>
+	</div>
+}
+
+// Forbidden is a project's page that the person may not use: why.
+templ Forbidden(p tracker.Project, why string) {
+	<div class="tk-pagehead">
+		<div class="tk-bdhead__title">
+			<p class="tk-eyebrow">{ p.Key }</p>
+			<h1>{ p.Name }</h1>
+		</div>
+	</div>
+	@ui.EmptyState(ui.EmptyProps{Icon: "lock", Title: "Not for you", Text: why})
+}

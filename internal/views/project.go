@@ -1,0 +1,105 @@
+package views
+
+import (
+	"strconv"
+	"time"
+
+	"github.com/mbolli/tickit/internal/access"
+	"github.com/mbolli/tickit/internal/people"
+	"github.com/mbolli/tickit/internal/tracker"
+	"github.com/mbolli/tickit/internal/ui"
+)
+
+// Projects (FR-01 to FR-05): the list of the projects a person can read
+// ("projects:", key projects:<hash of the readable ids>), the dialog that
+// creates one, and a project's settings ("settings:<KEY>", key
+// settings:<projectID>, for its Admins).
+
+// ProjectsListID is the id of the projects list's region.
+const ProjectsListID = "projects-list"
+
+// ProjectList is what the list of projects shows.
+type ProjectList struct {
+	Projects []tracker.Project
+	People   map[string]people.Person // the leads
+}
+
+// ProjectsPage is the page of projects.
+type ProjectsPage struct {
+	List      ProjectList
+	CanCreate bool
+}
+
+// Settings is a project's settings page (FR-03, FR-04, FR-05, FR-24,
+// FR-43).
+type Settings struct {
+	Project    tracker.Project
+	Columns    []tracker.Column // the board's columns, with their limits
+	Live       SettingsLive
+	Candidates []people.Person // whom the lead and the members' pickers offer
+}
+
+// SettingsLive is the settings' shared region: the members with their
+// roles, the components, the limits as set now.
+type SettingsLive struct {
+	Project    tracker.Project
+	Members    []tracker.Member
+	People     map[string]people.Person
+	Components []tracker.Component
+	Columns    []tracker.Column
+}
+
+// SettingsID is the id of the settings' region.
+const SettingsID = "project-settings"
+
+// ProjectPage is a project's page that has no live part of its own yet
+// (Activity).
+type ProjectPage struct {
+	Project tracker.Project
+	Admin   bool
+}
+
+var roles = []access.Role{access.Viewer, access.Member, access.Admin}
+
+func roleName(r access.Role) string {
+	switch r {
+	case access.Viewer:
+		return "Viewer"
+	case access.Member:
+		return "Member"
+	case access.Admin:
+		return "Admin"
+	}
+	return string(r)
+}
+
+func roleOptions(current access.Role) []ui.Option {
+	out := make([]ui.Option, len(roles))
+	for i, r := range roles {
+		out[i] = ui.Option{Value: string(r), Label: roleName(r), Selected: r == current}
+	}
+	return out
+}
+
+func personOptions(list []people.Person, current string, none string) []ui.Option {
+	out := []ui.Option{{Value: "", Label: none, Selected: current == ""}}
+	for _, p := range list {
+		out = append(out, ui.Option{Value: p.ID, Label: p.Name, Selected: p.ID == current})
+	}
+	return out
+}
+
+func wipValue(n int) string {
+	if n == 0 {
+		return ""
+	}
+	return strconv.Itoa(n)
+}
+
+func openIssues(n int) string { return plural(n, "open issue") }
+
+func since(t time.Time) string { return t.Format("2 Jan 2006") }
+
+// projectsSignals are the create dialog's: the fields, each one's
+// refusal, and the op in flight.
+const projectsSignals = `{_np: {op: '', name: '', key: '', description: '', err: {name: '', key: '', description: '', any: ''}}}`
