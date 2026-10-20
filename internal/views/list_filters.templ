@@ -1,0 +1,89 @@
+package views
+
+import (
+	"strconv"
+
+	"github.com/mbolli/tickit/internal/ui"
+)
+
+// SavedFiltersBody is the Filters page (FR-56.1): every saved filter, with
+// dialogs to rename and delete one's own.
+templ SavedFiltersBody(d SavedFilters) {
+	<div class="filters-page" data-signals={ filtersSignals } data-effect={ filtersSettled } data-on:datastar-fetch={ filtersFailed }>
+		<div class="tk-pagehead">
+			<h1>Filters</h1>
+			@ui.Button(ui.ButtonProps{Label: "Issues", Icon: "issues", Href: "/issues"})
+		</div>
+		<p class="list-saved" role="status" data-text="$_filters.msg"></p>
+		<div data-on:click={ filtersClick }>
+			@SavedFiltersRegion(d)
+		</div>
+		@ui.Dialog(ui.DialogProps{ID: "rename-filter", Title: "Rename filter", Size: ui.SizeSM, Footer: renameFilterFooter()}) {
+			<form id="rename-filter-form" data-on:submit__prevent={ renameFilter }>
+				@ui.Field(ui.FieldProps{ID: "rename-filter-name", Label: "Name", Required: true, ErrorAttrs: templ.Attributes{"data-text": "$_filters.msg"}}) {
+					@ui.Input(ui.InputProps{ID: "rename-filter-name", Required: true, MaxLength: 60, DescribedBy: "rename-filter-name-error",
+						Attrs: templ.Attributes{"data-bind": "_filters.name", "data-attr:readonly": filtersReadonly, "autofocus": true}})
+				}
+			</form>
+		}
+		@ui.Dialog(ui.DialogProps{ID: "delete-filter", Title: "Delete filter", Description: "Lists that use it keep working; the filter goes from Filters.", Size: ui.SizeSM, Footer: deleteFilterFooter()}) {
+			<p>Delete <strong data-text="$_filters.name"></strong>?</p>
+		}
+	</div>
+}
+
+templ renameFilterFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: "rename-filter"})
+	@ui.Button(ui.ButtonProps{Label: "Rename", Variant: ui.Primary, Type: "submit", Attrs: templ.Attributes{"form": "rename-filter-form", "data-attr:aria-busy": filtersBusy}})
+}
+
+templ deleteFilterFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: "delete-filter"})
+	@ui.Button(ui.ButtonProps{Label: "Delete", Variant: ui.Danger, Attrs: templ.Attributes{"data-on:click": deleteFilter, "data-attr:aria-busy": filtersBusy}})
+}
+
+// SavedFiltersRegion is the list of saved filters, the person's view.
+templ SavedFiltersRegion(d SavedFilters) {
+	<div id="saved-filters">
+		if len(d.Filters) == 0 {
+			@ui.EmptyState(ui.EmptyProps{Icon: "filter", Title: "No saved filters", Text: "Filter the issue list, then save the filter to find it here.", Action: ui.Button(ui.ButtonProps{Label: "Open the issue list", Href: "/issues", Variant: ui.Primary})})
+		} else {
+			@ui.Table(ui.TableProps{Caption: "Saved filters", HideCaption: true}) {
+				<thead>
+					<tr>
+						<th scope="col"><span class="visually-hidden">Star</span></th>
+						<th scope="col">Name</th>
+						<th scope="col">Filter</th>
+						<th scope="col">Owner</th>
+						<th scope="col" class="tk-num">Stars</th>
+						<th scope="col"><span class="visually-hidden">Actions</span></th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, f := range d.Filters {
+						<tr>
+							<td>
+								@ui.Button(ui.ButtonProps{Label: starLabel(f), Icon: "star", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Pressed: pressed(f.Starred), Class: "filters-star",
+									Attrs: templ.Attributes{"data-act": "star", "data-id": f.ID, "data-name": f.Name, "data-attr:aria-busy": starBusy}})
+							</td>
+							<td class="tk-grow"><a href={ templ.SafeURL(savedHref(f)) }>{ f.Name }</a></td>
+							<td class="filters-what">{ d.describe(f) }</td>
+							<td>
+								@personCell(d.People[f.Owner])
+							</td>
+							<td class="tk-num">{ strconv.Itoa(f.Stars) }</td>
+							<td>
+								if d.mayChange(f) {
+									<span class="cluster filters-actions">
+										@ui.Button(ui.ButtonProps{Label: "Rename", Icon: "edit", Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-act": "rename", "data-id": f.ID, "data-name": f.Name}})
+										@ui.Button(ui.ButtonProps{Label: "Delete", Icon: "trash", Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-act": "delete", "data-id": f.ID, "data-name": f.Name}})
+									</span>
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			}
+		}
+	</div>
+}

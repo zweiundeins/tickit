@@ -33,6 +33,7 @@ var Stylesheets = []string{
 	"css/notify.css",
 	"css/issue.css",
 	"css/app.css",
+	"css/list.css",
 	"css/utilities.css",
 }
 

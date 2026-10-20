@@ -1,0 +1,356 @@
+/* The issue list, saved filters and search (FR-50 to FR-57): the filter
+ * bar above the list, the list's region, the results of a search with
+ * their snippets, and the typeahead under the header's search box. */
+@layer components {
+	/* ── The issue list ────────────────────────────────────────────── */
+	/* The pages never grow wider than main: their table and filter row
+	 * scroll inside it. */
+	.list-page,
+	.filters-page,
+	.search-page {
+		min-inline-size: 0;
+		max-inline-size: 100%;
+	}
+
+	.list-filters {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-2);
+		margin-block-end: var(--tk-space-4);
+
+		& > .tk-input-wrap {
+			flex: 1 1 16rem;
+			max-inline-size: 22rem;
+		}
+	}
+
+	.list-filters__button .tk-count {
+		margin-inline-start: var(--tk-space-1);
+		background: var(--tk-accent-subtle);
+		color: var(--tk-accent-text);
+	}
+
+	.list-filters__menu {
+		min-inline-size: 14rem;
+		max-block-size: min(24rem, 70vh);
+		overflow-y: auto;
+	}
+
+	.list-filters__set {
+		display: grid;
+		gap: var(--tk-space-1_5);
+		margin: 0;
+		padding: var(--tk-space-2) var(--tk-space-3);
+		border: 0;
+
+		& legend {
+			padding: 0;
+			margin-block-end: var(--tk-space-1);
+		}
+	}
+
+	.list-filters__range {
+		gap: var(--tk-space-2);
+	}
+
+	.list-saved:empty {
+		display: none;
+	}
+
+	.list-saved {
+		margin-block-end: var(--tk-space-3);
+		color: var(--tk-ok);
+		font-size: var(--tk-text-sm);
+	}
+
+	.list-count {
+		margin-block-end: var(--tk-space-2);
+		color: var(--tk-text-2);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-xs);
+	}
+
+	.list-region {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--tk-space-3);
+	}
+
+	/* On a phone the filters are one row that scrolls sideways. */
+	@media (max-width: 40rem) {
+		.list-filters {
+			flex-wrap: nowrap;
+			overflow-x: auto;
+			padding-block-end: var(--tk-space-1);
+
+			& > .tk-input-wrap {
+				flex: 0 0 12rem;
+			}
+
+			& > * {
+				flex: none;
+			}
+		}
+	}
+
+	/* Visually hidden text in a cell is absolute: the scrolling region is
+	 * its containing block, or it escapes the region's clip. */
+	.list-region .tk-table-wrap,
+	.filters-page .tk-table-wrap {
+		position: relative;
+	}
+
+	.list-table tbody tr[data-href] {
+		cursor: pointer;
+	}
+
+	.list-table .tk-grow {
+		min-inline-size: 16rem;
+	}
+
+	.list-project {
+		color: var(--tk-text-2);
+	}
+
+	/* ── Saved filters ─────────────────────────────────────────────── */
+	.filters-what {
+		max-inline-size: 28rem;
+		overflow: hidden;
+		color: var(--tk-text-2);
+		text-overflow: ellipsis;
+	}
+
+	.filters-star[aria-pressed="true"] {
+		color: var(--tk-warn);
+	}
+
+	.filters-actions {
+		flex-wrap: nowrap;
+		justify-content: end;
+	}
+
+	/* ── Search results ────────────────────────────────────────────── */
+	.search-layout {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--tk-space-6);
+
+		@media (min-width: 60rem) {
+			grid-template-columns: 15rem minmax(0, 1fr);
+		}
+	}
+
+	.search-facets {
+		display: grid;
+		align-content: start;
+		gap: var(--tk-space-4);
+
+		/* On a phone the results come first, the filters after them. */
+		@media (max-width: 60rem) {
+			order: 2;
+		}
+	}
+
+	.search-form {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-2);
+		margin-block-end: var(--tk-space-4);
+
+		& > .tk-input-wrap {
+			flex: 1 1 18rem;
+		}
+	}
+
+	.search-kinds {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-1);
+		margin: 0 0 var(--tk-space-4);
+		padding: 0;
+		list-style: none;
+
+		& .tk-count {
+			margin-inline-start: var(--tk-space-1);
+		}
+	}
+
+	.search-hits {
+		display: grid;
+		gap: var(--tk-space-1);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.search-hit {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		gap: var(--tk-space-1) var(--tk-space-3);
+		padding: var(--tk-space-3);
+		border: 1px solid var(--tk-border-subtle);
+		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-1);
+
+		&:hover {
+			border-color: var(--tk-border-strong);
+		}
+	}
+
+	.search-hit__title {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: var(--tk-space-1) var(--tk-space-2);
+		font-size: var(--tk-text-md);
+		font-weight: var(--tk-weight-semibold);
+
+		& a {
+			color: var(--tk-text-1);
+		}
+	}
+
+	.search-hit__key,
+	.search-hit__place {
+		color: var(--tk-text-2);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-xs);
+		font-weight: var(--tk-weight-regular);
+	}
+
+	.search-hit__snippet {
+		grid-column: 2;
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+		overflow-wrap: anywhere;
+
+		& mark {
+			padding-inline: 1px;
+			background: var(--tk-accent-subtle);
+			color: var(--tk-text-1);
+			font-weight: var(--tk-weight-semibold);
+		}
+	}
+
+	.search-hit__meta {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-2);
+		grid-column: 2;
+		color: var(--tk-text-muted);
+		font-size: var(--tk-text-xs);
+	}
+
+	/* ── The header's typeahead ────────────────────────────────────── */
+	/* The panel is a popover, in the top layer above the header and the
+	 * notices, anchored under the search box. */
+	.tk-search {
+		anchor-name: --tk-search;
+	}
+
+	.search-suggest {
+		position: fixed;
+		position-anchor: --tk-search;
+		inset: auto;
+		inset-block-start: calc(anchor(bottom) + var(--tk-space-1));
+		inset-inline-start: anchor(left);
+		margin: 0;
+		inline-size: max(anchor-size(width), min(28rem, calc(100vw - 2 * var(--tk-space-4))));
+		max-block-size: min(32rem, 80vh);
+		overflow-y: auto;
+		position-try-fallbacks: flip-inline;
+		padding: var(--tk-space-1);
+		border: 1px solid var(--tk-border);
+		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-overlay);
+		box-shadow: var(--tk-shadow-overlay);
+		color: var(--tk-text-1);
+
+		@media (max-width: 40rem) {
+			inset-inline: var(--tk-space-2);
+			inline-size: auto;
+		}
+	}
+
+	.search-suggest__group {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.search-suggest__label {
+		padding: var(--tk-space-1) var(--tk-space-2);
+	}
+
+	.search-suggest__item {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-2);
+		padding: var(--tk-space-1_5) var(--tk-space-2);
+		border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+		color: var(--tk-text-1);
+		font-size: var(--tk-text-sm);
+		text-decoration: none;
+
+		&:hover,
+		&:focus-visible,
+		&[aria-selected="true"] {
+			background: var(--tk-surface-hover);
+		}
+
+		& .search-hit__key {
+			flex: none;
+		}
+
+		& span:last-child {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+	}
+
+	.search-suggest__all {
+		display: block;
+		padding: var(--tk-space-1_5) var(--tk-space-2);
+		border-block-start: 1px solid var(--tk-border-subtle);
+		font-size: var(--tk-text-xs);
+	}
+}
+
+@layer components {
+	.search-facet-list {
+		display: grid;
+		gap: var(--tk-space-0_5);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.search-facet {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-1);
+		padding: var(--tk-space-1) var(--tk-space-1_5);
+		border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+		text-decoration: none;
+
+		&:hover {
+			background: var(--tk-surface-hover);
+			color: var(--tk-text-1);
+		}
+
+		&[aria-current="true"] {
+			color: var(--tk-accent-text);
+			font-weight: var(--tk-weight-semibold);
+		}
+	}
+
+	.search-kinds a[aria-current="page"] {
+		background: var(--tk-surface-selected);
+		color: var(--tk-accent-text);
+	}
+}
