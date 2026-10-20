@@ -96,7 +96,11 @@ var listColumns = []sortColumn{
 	{"Created", tracker.SortCreated, "end"},
 	{"Updated", tracker.SortUpdated, "end"},
 	{"Due", tracker.SortDue, "end"},
+	{"Resolved", tracker.SortResolved, "end"},
 }
+
+// LabelHref is the issue list of the issues with a label (FR-23.2).
+func LabelHref(label string) string { return "/issues?label=" + url.QueryEscape(label) }
 
 // Category is a status category as internal/ui draws it.
 func Category(c tracker.Category) ui.StatusCategory {

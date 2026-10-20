@@ -460,7 +460,7 @@ templ issueSide(m Issue) {
 				<div class="tk-issue__chips">
 					for _, l := range m.Detail.Labels {
 						<span class="tk-issue__label">
-							@ui.Label(l, "/issues?label="+l)
+							@ui.Label(l, LabelHref(l))
 							<button type="button" class="tk-issue__x" aria-label={ "Remove the label " + l } { merge(locked, choice("labels", l, "remove"))... }>
 								@ui.Icon("close")
 							</button>

@@ -32,8 +32,8 @@ const MaxFilterText = 200
 // the values of one filter with OR, an empty one filters nothing. Its URL
 // form (Values, ParseFilter) uses the parameters project (keys), type,
 // status (ids), category, priority, assignee, reporter, label, component,
-// sprint, due_from, due_to, created_from, created_to (YYYY-MM-DD,
-// inclusive) and q (the text).
+// sprint, due_from, due_to, created_from, created_to, resolved_from,
+// resolved_to (YYYY-MM-DD, inclusive) and q (the text).
 type Filter struct {
 	Projects    []string // project keys
 	Types       []IssueType
@@ -49,7 +49,11 @@ type Filter struct {
 	DueTo       string
 	CreatedFrom string
 	CreatedTo   string
-	Text        string // matches keys, summaries, descriptions and comments, without regard to case; % and _ match themselves
+	// ResolvedFrom and ResolvedTo select issues resolved on those days
+	// (FR-38): an issue not resolved matches neither.
+	ResolvedFrom string
+	ResolvedTo   string
+	Text         string // matches keys, summaries, descriptions and comments, without regard to case; % and _ match themselves
 }
 
 // Normalize returns the filter with values the model does not have left
@@ -98,6 +102,7 @@ func (f Filter) Normalize(me string) Filter {
 		return d
 	}
 	n.DueFrom, n.DueTo, n.CreatedFrom, n.CreatedTo = date(f.DueFrom), date(f.DueTo), date(f.CreatedFrom), date(f.CreatedTo)
+	n.ResolvedFrom, n.ResolvedTo = date(f.ResolvedFrom), date(f.ResolvedTo)
 	n.Text = strings.Join(strings.Fields(f.Text), " ")
 	if utf8.RuneCountInString(n.Text) > MaxFilterText {
 		n.Text = string([]rune(n.Text)[:MaxFilterText])
@@ -143,7 +148,8 @@ func (f Filter) Values() url.Values {
 	add("label", f.Labels)
 	add("component", f.Components)
 	add("sprint", f.Sprints)
-	for key, x := range map[string]string{"due_from": f.DueFrom, "due_to": f.DueTo, "created_from": f.CreatedFrom, "created_to": f.CreatedTo, "q": f.Text} {
+	for key, x := range map[string]string{"due_from": f.DueFrom, "due_to": f.DueTo, "created_from": f.CreatedFrom, "created_to": f.CreatedTo,
+		"resolved_from": f.ResolvedFrom, "resolved_to": f.ResolvedTo, "q": f.Text} {
 		if x != "" {
 			v.Set(key, x)
 		}
@@ -171,21 +177,23 @@ func typed[T ~string](in []string) []T {
 // with Me kept.
 func ParseFilter(v url.Values) Filter {
 	return Filter{
-		Projects:    v["project"],
-		Types:       typed[IssueType](v["type"]),
-		Statuses:    v["status"],
-		Categories:  typed[Category](v["category"]),
-		Priorities:  typed[Priority](v["priority"]),
-		Assignees:   v["assignee"],
-		Reporters:   v["reporter"],
-		Labels:      v["label"],
-		Components:  v["component"],
-		Sprints:     v["sprint"],
-		DueFrom:     v.Get("due_from"),
-		DueTo:       v.Get("due_to"),
-		CreatedFrom: v.Get("created_from"),
-		CreatedTo:   v.Get("created_to"),
-		Text:        v.Get("q"),
+		Projects:     v["project"],
+		Types:        typed[IssueType](v["type"]),
+		Statuses:     v["status"],
+		Categories:   typed[Category](v["category"]),
+		Priorities:   typed[Priority](v["priority"]),
+		Assignees:    v["assignee"],
+		Reporters:    v["reporter"],
+		Labels:       v["label"],
+		Components:   v["component"],
+		Sprints:      v["sprint"],
+		DueFrom:      v.Get("due_from"),
+		DueTo:        v.Get("due_to"),
+		CreatedFrom:  v.Get("created_from"),
+		CreatedTo:    v.Get("created_to"),
+		ResolvedFrom: v.Get("resolved_from"),
+		ResolvedTo:   v.Get("resolved_to"),
+		Text:         v.Get("q"),
 	}.Normalize("")
 }
 
@@ -365,7 +373,9 @@ const filterWhere = ` WHERE i.deleted_at IS NULL
 	AND (?14 = 0 OR i.created_at >= ?14)
 	AND (?15 = 0 OR i.created_at < ?15)
 	AND (?16 = '' OR instr(i.search, ?16) > 0 OR EXISTS (SELECT 1 FROM comments c
-		WHERE c.subject_id = i.id AND c.deleted_at IS NULL AND c.hidden_at IS NULL AND instr(c.search, ?16) > 0))`
+		WHERE c.subject_id = i.id AND c.deleted_at IS NULL AND c.hidden_at IS NULL AND instr(c.search, ?16) > 0))
+	AND (?18 = 0 OR i.resolved_at >= ?18)
+	AND (?19 = 0 OR i.resolved_at < ?19)`
 
 // byAssignee repeats filterWhere's assignee term on its own, and
 // issueFromByAssignee reads issues by issues_assignee: "assigned to me",
@@ -387,7 +397,8 @@ func jsonList(v []string) string {
 }
 
 // filterArgs are the parameters of filterWhere and orderBy (?17, the
-// exact key) for a normalized filter.
+// exact key) for a normalized filter: ?1 to ?19. A statement's own
+// parameters come after them, from ?20.
 func filterArgs(readable []string, f Filter) []any {
 	day := func(d string, next bool) int64 {
 		if d == "" {
@@ -418,7 +429,8 @@ func filterArgs(readable []string, f Filter) []any {
 	return []any{jsonList(readable), jsonList(f.Projects), jsonList(strs(f.Types)), jsonList(f.Statuses),
 		jsonList(strs(f.Categories)), jsonList(strs(f.Priorities)), jsonList(assignees), jsonList(f.Reporters),
 		jsonList(f.Labels), jsonList(f.Components), jsonList(sprints), f.DueFrom, f.DueTo,
-		day(f.CreatedFrom, false), day(f.CreatedTo, true), strings.ToLower(f.Text), exact}
+		day(f.CreatedFrom, false), day(f.CreatedTo, true), strings.ToLower(f.Text), exact,
+		day(f.ResolvedFrom, false), day(f.ResolvedTo, true)}
 }
 
 // issueFrom are the tables of an issue's row.
@@ -467,7 +479,7 @@ func Search(ctx context.Context, q sqlite.Querier, query Query) (Results, error)
 	if query.Sort.By == SortAssignee || query.Sort.By == SortReporter {
 		joins = ` LEFT JOIN people pa ON pa.id = i.assignee LEFT JOIN people pr ON pr.id = i.reporter`
 	}
-	rows, err := q.QueryContext(ctx, `SELECT `+issueColumns+from+joins+where+query.Sort.orderBy()+` LIMIT 25 OFFSET ?18`,
+	rows, err := q.QueryContext(ctx, `SELECT `+issueColumns+from+joins+where+query.Sort.orderBy()+` LIMIT 25 OFFSET ?20`,
 		append(args, (res.Page-1)*PageSize)...)
 	if err != nil {
 		return res, err

@@ -233,7 +233,7 @@ func shortID(id string) string {
 func cardProps(c tracker.Card, who map[string]people.Person, now time.Time, menu string) ui.CardProps {
 	p := ui.CardProps{
 		ID: CardID(c.Key), Key: c.Key, Summary: c.Summary, Href: "/" + c.Key, LinkAttrs: map[string]any{"data-i": shortID(c.ID)},
-		Type: ui.IssueType(c.Type), Priority: ui.Priority(c.Priority), Labels: c.Labels, Now: now, MenuID: menu,
+		Type: ui.IssueType(c.Type), Priority: ui.Priority(c.Priority), Labels: c.Labels, LabelHref: LabelHref, Now: now, MenuID: menu,
 		SlotAttrs: map[string]any{"data-v": strconv.FormatInt(c.Version, 10)},
 	}
 	if c.Assignee != "" {

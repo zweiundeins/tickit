@@ -316,14 +316,14 @@ func BoardCard(p CardProps) templ.Component {
 		}
 		if !p.Due.IsZero() {
 			if p.Overdue {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<span class=\"tk-due\" data-overdue><span class=\"visually-hidden\">Overdue, due </span><time datetime=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<span class=\"tk-due\" data-overdue><b>Overdue</b> <time datetime=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var17 string
 				templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Due.Format("2006-01-02"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/boardcard.templ`, Line: 46, Col: 131}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/boardcard.templ`, Line: 46, Col: 96}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 				if templ_7745c5c3_Err != nil {
@@ -336,7 +336,7 @@ func BoardCard(p CardProps) templ.Component {
 				var templ_7745c5c3_Var18 string
 				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(Date(p.Due, p.Now))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/boardcard.templ`, Line: 46, Col: 154}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/boardcard.templ`, Line: 46, Col: 119}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 				if templ_7745c5c3_Err != nil {
@@ -380,7 +380,7 @@ func BoardCard(p CardProps) templ.Component {
 			}
 		}
 		for _, l := range p.Labels {
-			templ_7745c5c3_Err = Label(l, "").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = Label(l, labelHref(p.LabelHref, l)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

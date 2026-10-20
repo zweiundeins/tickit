@@ -103,6 +103,24 @@
 		min-inline-size: 16rem;
 	}
 
+	/* A summary with its labels (FR-23.2): the summary gives way, the
+	 * labels stay whole. */
+	.list-summary {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-1);
+		min-inline-size: 0;
+
+		& > .truncate {
+			min-inline-size: 0;
+		}
+
+		& > .tk-label {
+			flex: none;
+			color: var(--tk-text-2);
+		}
+	}
+
 	.list-project {
 		color: var(--tk-text-2);
 	}
