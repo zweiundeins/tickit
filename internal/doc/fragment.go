@@ -156,16 +156,6 @@ func (f Fragment) cut(from, to int) Fragment {
 	return Fragment{nodes: result, size: size}
 }
 
-func (f Fragment) cutByIndex(from, to int) Fragment {
-	if from == to {
-		return Fragment{}
-	}
-	if from == 0 && to == len(f.nodes) {
-		return f
-	}
-	return newFragment(f.nodes[from:to:to])
-}
-
 func (f Fragment) replaceChild(index int, n *Node) Fragment {
 	cur := f.nodes[index]
 	if cur == n {
@@ -175,18 +165,6 @@ func (f Fragment) replaceChild(index int, n *Node) Fragment {
 	copy(cp, f.nodes)
 	cp[index] = n
 	return Fragment{nodes: cp, size: f.size + n.size - cur.size}
-}
-
-func (f Fragment) addToStart(n *Node) Fragment {
-	cp := make([]*Node, 0, len(f.nodes)+1)
-	cp = append(cp, n)
-	return Fragment{nodes: append(cp, f.nodes...), size: f.size + n.size}
-}
-
-func (f Fragment) addToEnd(n *Node) Fragment {
-	cp := make([]*Node, len(f.nodes), len(f.nodes)+1)
-	copy(cp, f.nodes)
-	return Fragment{nodes: append(cp, n), size: f.size + n.size}
 }
 
 // Eq reports whether two fragments hold equal nodes.

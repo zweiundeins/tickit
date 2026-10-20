@@ -71,33 +71,6 @@ func byteOffset(s string, units, off int) int {
 	return len(s)
 }
 
-// insidePair reports whether a UTF-16 offset falls inside a surrogate pair.
-func insidePair(s string, units, off int) bool {
-	if len(s) == units || off <= 0 || off >= units {
-		return false
-	}
-	n := 0
-	for i := 0; i < len(s) && n < off; {
-		c := s[i]
-		if c < 0x80 {
-			n++
-			i++
-			continue
-		}
-		r, size := utf8.DecodeRuneInString(s[i:])
-		if r >= 0x10000 {
-			n += 2
-			if n > off {
-				return true
-			}
-		} else {
-			n++
-		}
-		i += size
-	}
-	return false
-}
-
 // truncateUTF16 keeps the first n UTF-16 units of s; half a pair at the end
 // becomes U+FFFD, as goja hands such a JavaScript string to Go.
 func truncateUTF16(s string, n int) string {

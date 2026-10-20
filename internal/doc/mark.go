@@ -129,28 +129,6 @@ func (m *Mark) isInSet(set []*Mark) bool {
 	return false
 }
 
-// removeFromSet returns the set without marks of the type.
-func (t *MarkType) removeFromSet(set []*Mark) []*Mark {
-	for i := 0; i < len(set); i++ {
-		if set[i].typ == t {
-			out := make([]*Mark, 0, len(set)-1)
-			out = append(out, set[:i]...)
-			set = append(out, set[i+1:]...)
-			i--
-		}
-	}
-	return set
-}
-
-func (t *MarkType) isInSet(set []*Mark) *Mark {
-	for _, m := range set {
-		if m.typ == t {
-			return m
-		}
-	}
-	return nil
-}
-
 func sameMarkSet(a, b []*Mark) bool {
 	if len(a) != len(b) {
 		return false

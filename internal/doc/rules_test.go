@@ -137,3 +137,30 @@ func TestSafeHref(t *testing.T) {
 		}
 	}
 }
+
+// Documents are shared between the writer, views and jobs: concurrent
+// reads, caches included, are safe (run with -race).
+func TestConcurrentReads(t *testing.T) {
+	d := mustDoc(t, string(readFixture(t, "f20k-doc.json")))
+	st, _ := tickit.ParseStep([]byte(`{"stepType":"replace","from":3,"to":3,"slice":{"content":[{"type":"text","text":"x"}]}}`))
+	var c BlockCache
+	done := make(chan struct{})
+	for i := 0; i < 8; i++ {
+		go func() {
+			defer func() { done <- struct{}{} }()
+			after, err := st.Apply(d)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			_ = library.Check(d, after)
+			_ = RenderHTML(after, testResolver)
+			_ = c.Render(after, testResolver)
+			_ = Text(d)
+			_ = d.JSONLen() + d.Blocks()
+		}()
+	}
+	for i := 0; i < 8; i++ {
+		<-done
+	}
+}

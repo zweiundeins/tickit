@@ -316,7 +316,7 @@ func parseExprAtom(ts *tokenStream) (*expr, error) {
 		return e, nil
 	}
 	n := ts.next()
-	if n != "" && tokenize(n)[0] == n && isWordToken(n) {
+	if n != "" && isWordToken(n) {
 		types, err := resolveName(ts, n)
 		if err != nil {
 			return nil, err
