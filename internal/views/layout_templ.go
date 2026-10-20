@@ -526,7 +526,7 @@ func firstVisitHint() templ.Component {
 			Tone:   ui.ToneInfo,
 			Icon:   "users",
 			Class:  "tk-hint",
-			Attrs:  templ.Attributes{"id": "first-visit", "data-attr:hidden": hintHidden},
+			Attrs:  templ.Attributes{"id": "first-visit", "role": "complementary", "aria-label": "Hint", "data-attr:hidden": hintHidden},
 			Action: ui.Button(ui.ButtonProps{Label: "Dismiss", Icon: "close", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": dismissHint, "data-on:datastar-fetch": dismissFailed, "data-attr:aria-busy": dismissBusy}}),
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var23), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

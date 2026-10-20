@@ -13,7 +13,7 @@ import (
 // header renders it inside #tk-notifications; the person view patches it.
 templ NotificationPanel(b Bell) {
 	<div id={ NotifyPanelID } class="tk-notif" data-signals__ifmissing={ notifySignals(b.Unread) } data-effect={ notifyEffects }>
-		<header class="tk-notif__head">
+		<div class="tk-notif__head">
 			<h2 class="tk-eyebrow">Notifications</h2>
 			if len(b.Items) > 0 {
 				<div class="cluster tk-notif__all">
@@ -23,7 +23,7 @@ templ NotificationPanel(b Bell) {
 					@ui.Button(ui.ButtonProps{Label: "Dismiss all", Icon: "close", Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": dismissAll, "data-on:datastar-fetch": notifyFail, "data-attr:aria-busy": notifyBusy}})
 				</div>
 			}
-		</header>
+		</div>
 		if len(b.Items) == 0 {
 			@ui.EmptyState(ui.EmptyProps{Icon: "bell", Title: "Nothing new", Text: "Mentions, assignments and changes to what you watch show here.", Class: "tk-empty--sm"})
 		} else {
