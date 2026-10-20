@@ -231,7 +231,7 @@ func (s *Server) stats(ctx context.Context, q sqlite.Querier) (views.AdminStats,
 			{Label: "Commands", Value: strconv.FormatInt(wr.Commands, 10), Note: strconv.FormatInt(wr.Failures, 10) + " failed"},
 			{Label: "Batches", Value: strconv.FormatInt(wr.Batches, 10), Note: "at most " + strconv.Itoa(wr.MaxBatch) + " commands"},
 			{Label: "Queue", Value: strconv.Itoa(wr.Queue)},
-			{Label: "Commit p99", Value: wr.P99Commit.Round(time.Microsecond).String(), Note: "last " + wr.LastCommit.Round(time.Microsecond).String()},
+			{Label: "Commit p99", Value: millis(wr.P99Commit), Note: "last " + millis(wr.LastCommit)},
 		},
 		Hub: []ui.Stat{
 			{Label: "Views", Value: strconv.Itoa(hub.Views)},
@@ -557,4 +557,9 @@ func (s *Server) endSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.act(w, r, a, people.EndSession{Person: a.By.Actor.ID, ID: req.Session, At: a.By.At})
+}
+
+// millis is a duration as the statistics show it: "68.9 ms".
+func millis(d time.Duration) string {
+	return strconv.FormatFloat(float64(d)/float64(time.Millisecond), 'f', 1, 64) + " ms"
 }
