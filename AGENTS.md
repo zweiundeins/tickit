@@ -14,14 +14,20 @@ tickit is a Go, SQLite and Datastar application on lith (github.com/zweiundeins/
 - `internal/notify`: notifications made by catch-up projectors (`Parts()`, `Bind(w)` in `cmd/tickit`), the person's actions (`Read`, `ReadAll`, `Dismiss`, `DismissAll`, `Open`, `Seen`), `PanelOf`, `Unread`, `HasUnread`, `Sweep`.
 - `internal/activity`: feeds read from `lith_events` (`Home`, `Project`, `Space`, `Mine`, `Readable`).
 - `internal/search`: the FTS5 index over issues, pages and comments as a projection (`Put`, `Patch`, `Hide`, `Remove` from projectors' handlers; `Tables`, the projectors' names and versions), and `Search` with its ranking and snippets. The tracker's parts index issues and comments; the wiki's page projector is the hook for pages (docs/architecture.md, "Search").
-- `internal/demo`: the nightly reset's notice (`Notice`, `NextReset`); the demo area adds the seed and the reset.
-
-- `internal/demo`: the public demo. `Seed` writes `internal/demo/seed`'s content with the real commands by the seeded people, backdated over 30 days, with stable ids (`Run`: `IssueID`, `PageID`, `Doc`); `Demo` (made by `web.New`, `site.Demo()`) holds the nightly reset (`Run`, `Reset`, `Hold`, `Wipe`, `Kept`), the guard of every action (`Guard`: 503 while it resets, blocked guests, the caps of DM-04.3), moderation (`Moderate`, `Block`, `Unblock`, the moderation log), the notice (`Notice`, `NextReset`, `Status`) and the epoch (`Epoch`, MP-13.2). The wiki's hooks: `RegisterPageSeeder`, `RegisterModerated`, `CountCreations`. `internal/demo/words`: the word list (`Blocked`).
+- `internal/wiki`: spaces, the page tree, pages, their co-edited documents (`Commit` rebases a stale commit), versions (`CutVersion`, `CutDue`), the fold (`Fold`, NFR-43), comments, labels, watchers and the trash, as event streams (`SpaceStream`, `PageStream`, `PageDocStream`) with projections and reads; `Parts()` and `Bind(store)` in `cmd/tickit`. docs/editor.md says how co-editing works.
+- `internal/doc`: the rich-text document in pure Go: the schema (`schema.json`, which the editor reads too), ProseMirror's steps and their rebase, the server's rules, HTML, plain text, references, version diffs. Its tests check it against the real prosemirror-transform in goja.
+- `internal/markup`: the text markup of the seed, descriptions and comments: `Parse`, `ParseMode`, `Write`.
+- `internal/demo`: the public demo. `Seed` writes `internal/demo/seed`'s content with the real commands by the seeded people, backdated over 30 days, with stable ids (`Run`: `IssueID`, `PageID`, `Doc`); `Demo` (made by `web.New`, `site.Demo()`) holds the nightly reset (`Run`, `Reset`, `Hold`, `Wipe`, `Kept`), the guard of every action (`Guard`: 503 while it resets, blocked guests, the caps of DM-04.3), moderation (`Moderate`, `Block`, `Unblock`, the moderation log), the notice (`Notice`, `NextReset`, `Status`) and the epoch (`Epoch`, MP-13.2). The wiki's hooks: `RegisterPageSeeder`, `RegisterModerated`, `CountCreations`. `internal/demo/words`: the word list (`Blocked`). `internal/demo/seed`: the seed's content (`data/`, `Load`) and `genimages`, which draws its pixel images.
+- `internal/ui`: the design system: templ components with plain props, the pixel icons and faces, the glyph masks for pages that repeat icons (`Glyphs`, `FaceStyles`, NFR-37); `/design` renders them, docs/design-system.md says how to use them. `internal/ui/styleguide`: the `/design` page.
 - `internal/views`: the document (`Layout` around `ui.Shell`, `Shell`), the person menu, `UIPerson` (a person as `internal/ui` draws them) and presence rows, the home, login, privacy, 404 and 410 pages, and the Datastar expressions (`expr.go`: `Act`, `Pending`, `Busy`, `Settle`, `Failed` for areas). A page sets its frame through `web.Page` (docs/architecture.md, Pages and the document).
 - `internal/web`: the server (`server.go`: `New`, `Handler` with the edge chain, `get` and `post` registration), actions (`action.go`: `Payload`, `decode`, rate-limit classes, `act`, `actResult`), pages (`render.go`: `render`, `notFound`, `gone`), the stream (`stream.go`: the view registry, presence, `/cmd/watch`), metrics (`metrics.go`), and one `routes_<area>.go` per area: each area adds its routes and views in its own file only. `static/vendor` holds Starbase's patched Datastar build; its `VERSION` says which. lith's `newest-frame.js` (`live.NewestFrame`) is served beside them as `/static/lith/newest-frame.<hash>.js`, and the page loads it after Datastar. Scripts and stylesheets go out minified (`edge.Minify(minify.Bytes)`, from `github.com/zweiundeins/lith/minify`), and as written with `-dev`.
 - `internal/web/webtest`: the server in process for tests (`Start`, `Client`, `Get`, `Post`, `Listen`, `Next`, `Silent`, `Fingerprint`, `Account`, `Login`).
+- `internal/tracker/trackertest`: issue and board data for tests (`Board`).
 - `internal/dbtest`: a migrated database and writer for command tests (`Open`, `Do`, `View`, `Touched`, `Run` for an events runner).
 - `internal/browsertest`: lith's headless Chromium and Firefox driver (MIT), for `e2e/`.
+- `cmd/tickit-load`: the load test of NFR-38 (`gen` writes 10,000 issues, 2,000 pages and 1,000,000 events through the commands; `run` drives the binary as a process of its own with 200 streams and reports per requirement). A binary built with `-tags pprof` serves `/debug/pprof/` on its metrics listener, for profiling under load.
+- `cmd/vendor-starbase`: copies Starbase's components and fonts into `internal/web/static/vendor/`.
+- `editor`: the source of the `sb-rich-editor` Rocket component (ProseMirror), its build and its browser tests (`editor/README.md`); the bundle in `internal/web/static/editor/` is committed.
 - `e2e`: browser tests; `go tool task e2e` (`CHROME`, and `LITH_CHROME_NO_SANDBOX=1` where Chromium has no sandbox).
 - `migrations`: `NNN_name.sql`, applied in order at startup. Add a file for every schema change, never edit one that has shipped.
 - `deploy`: systemd units, the Caddy site block, deploy script, backups, and in `deploy/observability` the probes and log shipping a host's Prometheus and Alloy load (`deploy/README.md`).
@@ -31,12 +37,15 @@ tickit is a Go, SQLite and Datastar application on lith (github.com/zweiundeins/
 
 - `go tool task dev`: serve on http://127.0.0.1:8080 with `-dev`, static files as written, and rebuild on every change.
 - `go tool task test`: vet, gofmt, `go test ./...`. `go tool task e2e`: the browser tests. `go tool task test-race` adds the race detector, which is several times slower: run it at milestones, not after every change.
-- `go tool task build`: the static binary.
+- `go tool task build`: the static binary. `go tool task smoke`: the built binary as the host runs it (`deploy/smoke-test.sh`). `go tool task vuln`: govulncheck.
+- `go tool task security`: `go test ./...`, the fuzzers of every action family (`FUZZTIME`), `deploy/security-smoke.sh` on the binary and govulncheck (docs/security.md).
+- `go tool task load`: the load of NFR-38 against the built binary (`LOAD_DIR`, `LOAD_SECONDS`, `LOAD_SUSTAIN`, `SERVER_CPUS`, `LOAD_CPUS`); record its numbers in `benchmarks/RESULTS.md`.
+- `go tool task generate`: `templ generate`, which `test`, `e2e` and `build` run first. `go tool task vendor-starbase STARBASE=/path`: Starbase's files from a checkout.
 - `go tool templ generate` after editing a `.templ` file. The `_templ.go` files are committed.
 
 ## Project rules
 
-- `docs/requirements.md` says what tickit must do; `docs/architecture.md` says how the code is cut (packages, ids, actions, views and topics, events, migration numbers by area). Read both before a change, and keep the second true.
+- `docs/requirements.md` says what tickit must do, `docs/status.md` how far each requirement is done and which tests prove it (update it with the requirement you finish); `docs/architecture.md` says how the code is cut (packages, ids, actions, views and topics, events, migration numbers by area). Read both before a change, and keep the second true.
 - Cite the requirement a test proves in its name or a one-line comment (`// FR-11.2`).
 - Every change is a `POST /cmd/...` action through `tabs.Act`; the actor comes from the session. No route runs a command the client names.
 - UI text and docs are English. In prose, use no em dashes or en dashes.

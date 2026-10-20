@@ -16,6 +16,8 @@
 #   tickit_resets_total{outcome}          demo resets, outcome ok or failed (rules-tickit.yaml)
 #   tickit_reset_seconds                  how long a reset took
 #   tickit_guests_active                  guests who acted in the last 24 hours
+#   tickit_tick_seconds                   how long each tick that rendered views took (NFR-35)
+#   tickit_folded_events_total, tickit_fold_seconds   page edits folded, a fold command's time in the writer (NFR-43)
 #   tickit_build_info{version}
 #   go_*, process_*                       the Go runtime and the process
 - targets: ['127.0.0.1:7205']
