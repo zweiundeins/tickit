@@ -13,7 +13,7 @@ import (
 // FoldBatch events a command.
 const (
 	FoldAfter = 15 * time.Minute
-	FoldBatch = 500
+	FoldBatch = 200
 )
 
 // Fold folds the commits that versions hold into snapshots, with lith's

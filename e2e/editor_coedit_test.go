@@ -98,6 +98,9 @@ func coedit(t *testing.T, n int, d time.Duration, rate float64) coeditResult {
 	pages := make([]*browsertest.Page, n)
 	for i := range pages {
 		pages[i] = b.NewPage(t, 1000, 700)
+		// Each person from an address of their own, as the proxy reports it.
+		pages[i].Call(t, "Network.enable", nil)
+		pages[i].Call(t, "Network.setExtraHTTPHeaders", map[string]any{"headers": map[string]string{"X-Real-IP": fmt.Sprintf("10.1.0.%d", i+1)}})
 		pages[i].Navigate(t, edit)
 		editorReady(t, pages[i])
 		pages[i].Eval(t, observe, nil)
