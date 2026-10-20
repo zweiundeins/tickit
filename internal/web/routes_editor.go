@@ -101,7 +101,9 @@ func (s *Server) editorPage(w http.ResponseWriter, r *http.Request) {
 }
 
 // imagesJSON is the image library as the editor's Image button offers it.
-func imagesJSON() string {
+// The library is fixed in the binary; it is read once, not at every
+// render of an editor frame (seed.Load parses the whole seed).
+var imagesJSON = sync.OnceValue(func() string {
 	type image struct {
 		ID  string `json:"id"`
 		Alt string `json:"alt"`
@@ -112,7 +114,7 @@ func imagesJSON() string {
 	}
 	b, _ := json.Marshal(list)
 	return string(b)
-}
+})
 
 // chipsJSON is the editor's chips attribute: what the document's issue
 // chips, mentions and page links show now (editor/README.md).
@@ -569,6 +571,8 @@ func (s *Server) WikiJobs(ctx context.Context) {
 				if f.Deleted == 0 {
 					break
 				}
+				s.metrics.folded.Add(float64(f.Deleted))
+				s.metrics.foldSeconds.Observe(f.Took.Seconds())
 			}
 		case <-sweep.C:
 			do(wiki.SweepEditors{At: time.Now()})
