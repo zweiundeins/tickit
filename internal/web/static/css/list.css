@@ -19,8 +19,9 @@
 		gap: var(--tk-space-2);
 		margin-block-end: var(--tk-space-4);
 
+		/* The text field gives way first, so Clear stays on the line. */
 		& > .tk-input-wrap {
-			flex: 1 1 16rem;
+			flex: 1 1 10rem;
 			max-inline-size: 22rem;
 		}
 	}

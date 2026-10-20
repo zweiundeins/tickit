@@ -1486,6 +1486,11 @@
 		& .tk-cell {
 			display: flex;
 		}
+
+		/* Glyph and word sit on the row's middle, as the lozenges do. */
+		& td > :is(.tk-typed, .tk-due) {
+			vertical-align: middle;
+		}
 	}
 
 	/* A face or an icon beside a name, in a cell or anywhere. */
