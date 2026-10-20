@@ -1,0 +1,91 @@
+[
+  {
+    "page": "Deploy to production",
+    "by": "s-lena",
+    "at": "-17d 16:00",
+    "body": "Could the smoke tests also place a test order with the staff voucher? Half of our bad deploys broke the checkout, not the home page.",
+    "replies": [
+      {
+        "by": "s-tomasz",
+        "at": "-17d 16:30",
+        "body": "Good idea. The voucher exists, the order is cancelled by itself after a minute. Adding it."
+      },
+      {
+        "by": "s-lena",
+        "at": "-17d 16:45",
+        "body": "Merci!"
+      }
+    ]
+  },
+  {
+    "page": "Deploy to production",
+    "by": "s-mateo",
+    "at": "-8d 14:25",
+    "body": "Updated the canary step: it now waits for 500 requests, because at night it sometimes saw three requests and promoted anyway. The hang this causes is [[OPS-42]].",
+    "replies": []
+  },
+  {
+    "page": "Postmortem: the sold-out socks",
+    "by": "s-priya",
+    "at": "-17d 11:00",
+    "body": "Thank you for writing this so quickly. One more follow-up from the product side: a support template for stock problems, so @s-lena does not write 23 emails by hand next time.",
+    "replies": [
+      {
+        "by": "s-lena",
+        "at": "-17d 11:20",
+        "body": "Already drafted it. It mentions socks only once."
+      },
+      {
+        "by": "s-tomasz",
+        "at": "-17d 11:25",
+        "body": "Added to the follow-ups."
+      }
+    ]
+  },
+  {
+    "page": "Postmortem: the sold-out socks",
+    "by": "s-yuki",
+    "at": "-16d 09:10",
+    "body": "Did the app show the same thing? I could not find app crashes from that morning, only sad screenshots.",
+    "replies": [
+      {
+        "by": "s-mateo",
+        "at": "-16d 09:30",
+        "body": "Yes, same API, same stock. The app just showed it more politely."
+      }
+    ]
+  },
+  {
+    "page": "Set up your laptop",
+    "by": "s-yuki",
+    "at": "-20d 10:00",
+    "body": "On a fresh laptop `alp dev db up` needs the container runtime running first, otherwise it waits forever without a message. Worth a line?",
+    "replies": [
+      {
+        "by": "s-mateo",
+        "at": "-20d 10:12",
+        "body": "Worth a line and a better error. I will do both."
+      }
+    ]
+  },
+  {
+    "page": "Code review guide",
+    "by": "s-amara",
+    "at": "-22d 15:00",
+    "body": "Can the guide say something about screenshots? For anything visible, a before and after picture in the merge request saves me from checking out the branch.",
+    "replies": [
+      {
+        "by": "s-tomasz",
+        "at": "-22d 15:40",
+        "body": "Yes. Add it yourself, you have edit rights and better words for it."
+      }
+    ]
+  },
+  {
+    "page": "PostgreSQL 18 upgrade plan",
+    "by": "s-priya",
+    "at": "-4d 09:30",
+    "body": "If the window moves after the sale, can we put the new date here? People ask me.",
+    "replies": []
+  }
+]
