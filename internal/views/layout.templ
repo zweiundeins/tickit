@@ -39,9 +39,10 @@ templ Layout(s Shell) {
 			<span hidden data-effect={ displaySettled + "; " + dismissSettled }></span>
 			<span hidden data-effect={ alive }></span>
 			<span hidden data-effect={ revoked }></span>
+			<span hidden data-init={ keepPlace }></span>
 			<span
 				hidden
-				data-init={ inputSeen }
+				data-effect={ firstInput }
 				data-on:keydown__window={ inputSeen }
 				data-on:pointerdown__window={ inputSeen }
 				data-on:pointermove__window__throttle.5s={ inputSeen }

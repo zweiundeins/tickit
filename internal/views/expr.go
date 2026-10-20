@@ -33,16 +33,33 @@ const behind = `@post('/pace?tab=' + $_tab, {requestCancellation: 'disabled'})`
 // its stream.
 const alive = `$_ping > 0 && @post('/alive?tab=' + $_tab, {requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0}).catch(() => {})`
 
-// inputSeen reports that the person gave input (MP-02.4): as the page
-// opens, then at most once a minute while there is input, so a person
-// with no input for 5 minutes shows as away and one who comes back shows
-// at once. $_input is when it last reported.
+// inputSeen reports that the person gave input (MP-02.4), at most once a
+// minute while there is input, so a person with no input for 5 minutes
+// shows as away and one who comes back shows at once. $_input is when it
+// last reported. firstInput reports at the stream's first heartbeat when
+// nothing did before: the page's opening counts as input, but its stream
+// may not be open as it opens.
 const inputSeen = `Date.now() - $_input > 60000 && ($_input = Date.now(), @post('/cmd/input', {payload: {tab: $_tab, op: ` + newOp + `}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0}).catch(() => {}))`
+
+const firstInput = `$_ping > 0 && $_input === 0 && ` + inputSeen
 
 // revoked loads the page again when the person may no longer read one of
 // its views (NFR-01.2): the server answers it as it would anyone without
 // the right.
 const revoked = `$_revoked && location.reload()`
+
+// keepPlace keeps the focused element where it is on screen when a frame
+// changes the layout above it (MP-03.3, NFR-48.1): a comment that comes in
+// above the comment box someone types in, a row that grows above a focused
+// one. The browser's scroll anchoring holds the first visible element
+// instead, which can sit above the change. It notes the focused element's
+// place after every scroll, focus and keystroke, and when the page's size
+// changes and the element moved without a scroll, scrolls it back.
+const keepPlace = `(() => { let at = null, top = 0; ` +
+	`const note = () => { at = document.activeElement; top = at && at !== document.body ? at.getBoundingClientRect().top : 0 }; ` +
+	`addEventListener('scroll', note, {passive: true}); document.addEventListener('focusin', note); document.addEventListener('input', note, true); ` +
+	`new ResizeObserver(() => { const a = document.activeElement; ` +
+	`if (a && a !== document.body && a === at && a.isConnected) { const d = a.getBoundingClientRect().top - top; if (Math.abs(d) > 0.5) scrollBy(0, d) } note() }).observe(document.body) })()`
 
 // startStream is the stream element's data-init.
 const startStream = `$_beat = Date.now(); ` + openStream

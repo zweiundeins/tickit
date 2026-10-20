@@ -51,13 +51,18 @@ func (s *Server) present(ctx context.Context, q sqlite.Querier, key string, now 
 type inputRequest struct{ Payload }
 
 // input is POST /cmd/input {tab, op}: the person gave input in the tab
-// (MP-02.4). The page sends it as it opens, then at most once a minute
-// while there is input, without waiting; it has no outcome. A blocked
-// guest's input counts for nothing (403).
+// (MP-02.4). The page sends it at most once a minute while there is
+// input, and at its first heartbeat, without waiting; it has no outcome.
+// A tab without an open stream shows no face: its report counts for
+// nothing (204), and so does a blocked guest's (403).
 func (s *Server) input(w http.ResponseWriter, r *http.Request) {
 	var req inputRequest
 	a, ok := s.decode(w, r, classCaret, &req)
-	if !ok || s.paused(w, r, a.By.Actor) || !s.connected(w, r, a.By.Actor, a.Tab) {
+	if !ok || s.paused(w, r, a.By.Actor) {
+		return
+	}
+	if !s.hub.HasStream(streamID(a.By.Actor, a.Tab)) {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	if err := s.w.Send(people.Input{Person: a.By.Actor.ID, At: a.By.At}); err != nil {
