@@ -51,12 +51,18 @@ const curVersion = `+(document.getElementById('issue-main')?.dataset.v || 0)`
 
 // issueSendFn sends field f with value v, seen s and ref r, unless f is
 // pending: a new op id in ops[f], the value kept in want[f] for a retry.
-const issueSendFn = `((f, v, s, r) => (!$_is.ro || f === 'comment' || f === 'cedit' || f === 'cdelete') && $_is.ops[f] === '' && ($_is.msg[f] = '', $_is.fail[f] = '', $_is.conflict[f] = false, $_is.want[f] = v, $_is.sent[f] = s, $_is.refs[f] = r, $_is.ops[f] = ` + newOp + `, @post('/cmd/issues/' + $_is.id + '/' + f, {payload: {tab: $_tab, op: $_is.ops[f], seen: s, value: v, ref: r}, retryMaxCount: 2})))`
+const issueSendFn = `((f, v, s, r) => (v = ['comment', 'cedit', 'description'].includes(f) ? ` + mentionIDs + `(v) : v, !$_is.ro || f === 'comment' || f === 'cedit' || f === 'cdelete') && $_is.ops[f] === '' && ($_is.msg[f] = '', $_is.fail[f] = '', $_is.conflict[f] = false, $_is.want[f] = v, $_is.sent[f] = s, $_is.refs[f] = r, $_is.ops[f] = ` + newOp + `, @post('/cmd/issues/' + $_is.id + '/' + f, {payload: {tab: $_tab, op: $_is.ops[f], seen: s, value: v, ref: r}, retryMaxCount: 2})))`
 
 // menuOpened keeps the version a menu showed when it opened: a choice in
 // it sends that version, so a change someone made while the menu was open
 // is a conflict, not overwritten (MP-08.2). On a menu's button.
 const menuOpened = `$_is.mseen = ` + curVersion
+
+// mentionIDs turns the names of mentions in a text ("@Ada Lovelace", as
+// the comment box and the editors show them) back into the ids the markup
+// holds ("@s-ada"): the names of the people the picker offers and the
+// texts mention, longest first (FR-67.2).
+const mentionIDs = `((s) => { const m = new Map(); document.querySelectorAll('#issue-mentions [data-id]').forEach((e) => m.has(e.dataset.name) || m.set(e.dataset.name, e.dataset.id)); for (const n of [...m.keys()].sort((a, b) => b.length - a.length)) s = s.split('@' + n).join('@' + m.get(n)); return s })`
 
 // issueRetry sends field f's request that reached no outcome again with
 // its op id, so that it applies once (MP-09.3, MP-09.4).
@@ -101,7 +107,7 @@ const issueClick = `((t) => {
 	case 'cedit': $_is.cedit = t.dataset.comment; $_is.ctext = (document.getElementById('comment-src-' + t.dataset.comment)?.textContent ?? '').trim(); setTimeout(() => document.getElementById('comment-edit-' + t.dataset.comment)?.focus()); break
 	case 'csave': $_is.ctext.trim() !== '' && ` + issueSendFn + `('cedit', $_is.ctext, 0, t.dataset.comment); break
 	case 'ccancel': $_is.cedit = ''; $_is.msg.cedit = ''; break
-	case 'mention': { const c = document.getElementById('issue-comment'), pos = c.selectionStart, before = c.value.slice(0, pos).replace(/@[^\s@]*$/, '@' + t.dataset.id + ' '); $_is.draft = before + c.value.slice(pos); $_is.mq = false; c.focus(); setTimeout(() => c.setSelectionRange(before.length, before.length)); break }
+	case 'mention': { const c = document.getElementById('issue-comment'), pos = c.selectionStart, before = c.value.slice(0, pos).replace(/@[^\s@]*$/, '@' + t.dataset.name + ' '); $_is.draft = before + c.value.slice(pos); $_is.mq = false; c.focus(); setTimeout(() => c.setSelectionRange(before.length, before.length)); break }
 	}
 })(evt.target.closest?.('[data-act]'))`
 

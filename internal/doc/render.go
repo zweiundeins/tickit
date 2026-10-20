@@ -28,12 +28,24 @@ type Resolver interface {
 	Page(id string) (string, bool)
 }
 
-// StaticResolver is a Resolver over maps, for tests and previews.
+// FaceResolver is a Resolver that also draws people's faces: a mention
+// then shows the face before the name, without the "@" (FR-67.2). Face
+// returns trusted HTML, "" for none.
+type FaceResolver interface {
+	Face(id string) string
+}
+
+// StaticResolver is a Resolver over maps, for tests and previews. Faces
+// are trusted HTML by person id (FaceResolver).
 type StaticResolver struct {
 	Issues map[string]Chip
 	People map[string]string
 	Pages  map[string]string
+	Faces  map[string]string `json:",omitempty"`
 }
+
+// Face looks up a face.
+func (s StaticResolver) Face(id string) string { return s.Faces[id] }
 
 // Issue looks up a chip.
 func (s StaticResolver) Issue(key string) (Chip, bool) { c, ok := s.Issues[key]; return c, ok }
@@ -296,15 +308,24 @@ func (w htmlWriter) leaf(n *Node) {
 		w.chip(n.AttrString("key"))
 	case "mention":
 		id := n.AttrString("personId")
-		name, ok := w.r.Person(id)
-		if !ok || name == "" {
-			name = n.AttrString("label")
+		name, known := w.r.Person(id)
+		if !known || name == "" {
+			known, name = false, n.AttrString("label")
 		}
 		w.s(`<a class="mention" data-person="`)
 		w.esc(id)
 		w.s(`" href="/people/`)
 		w.esc(url.PathEscape(id))
-		w.s(`">@`)
+		face := ""
+		if f, ok := w.r.(FaceResolver); ok && known {
+			face = f.Face(id)
+		}
+		if face != "" {
+			w.s(`" data-face>`)
+			w.s(face)
+		} else {
+			w.s(`">@`)
+		}
 		w.esc(name)
 		w.s(`</a>`)
 	case "page_link":

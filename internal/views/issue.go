@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/zweiundeins/tickit/internal/wiki"
 	"io"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -38,7 +40,31 @@ type Issue struct {
 	Pages    []wiki.PageRef
 	History  []tracker.Entry
 	Activity []tracker.ActivityItem
-	Now      time.Time
+	// Mentioned are the people the description and the comments mention,
+	// whose names their markup shows in place of ids (NamedMentions).
+	Mentioned []people.Person
+	Now       time.Time
+}
+
+// mentionID is a mention in markup: "@" and a person's id.
+var mentionID = regexp.MustCompile(`@(s-[a-z]+|g-[a-z2-7]{20}|a-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`)
+
+// NamedMentions is markup with "@Ada Lovelace" for "@s-ada", for editing
+// it: the page turns the names of the people it knows back into ids when
+// it sends the text (FR-67.2). It returns the ids it named.
+func NamedMentions(text string, who map[string]people.Person) (string, []string) {
+	var ids []string
+	out := mentionID.ReplaceAllStringFunc(text, func(m string) string {
+		p, ok := who[m[1:]]
+		if !ok || p.Kind == people.Deleted || p.Name == "" {
+			return m
+		}
+		if !slices.Contains(ids, p.ID) {
+			ids = append(ids, p.ID)
+		}
+		return "@" + p.Name
+	})
+	return out, ids
 }
 
 // Comment is a comment with its body rendered and as markup.

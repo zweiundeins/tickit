@@ -1,0 +1,78 @@
+package views
+
+import (
+	"time"
+
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/ui"
+)
+
+// PersonBody is a person's page: the head with their face and name, and
+// the live region.
+templ PersonBody(p PersonPage) {
+	<div class="tk-pagehead tk-person">
+		@ui.Avatar(ui.AvatarProps{Person: UIPerson(p.Person), Size: ui.SizeLG, Decorative: true})
+		<div>
+			<p class="tk-eyebrow">{ p.kind() }</p>
+			<h1>{ p.Person.Name }</h1>
+		</div>
+	</div>
+	@PersonRegion(p)
+}
+
+// PersonRegion is the part of a person's page that its view renders
+// again: their issues and what they did.
+templ PersonRegion(p PersonPage) {
+	<div id={ PersonPageID } class="tk-home">
+		<div class="tk-home__work">
+			<section class="tk-box tk-home__wide" aria-labelledby="person-assigned">
+				<header>
+					<h2 class="tk-eyebrow" id="person-assigned">Assigned, open</h2>
+					if p.Assigned.Total > 0 {
+						<a href={ templ.SafeURL(p.assignedHref()) }>All { issueTotal(p.Assigned.Total) }</a>
+					}
+				</header>
+				@IssueWorklist(p.Assigned.Issues, PersonShown, p.Now, "No open issues are assigned to " + p.Person.Name + ".")
+			</section>
+			<section class="tk-box tk-home__wide" aria-labelledby="person-reported">
+				<header>
+					<h2 class="tk-eyebrow" id="person-reported">Reported</h2>
+					if p.Reported.Total > 0 {
+						<a href={ templ.SafeURL(p.reportedHref()) }>All { issueTotal(p.Reported.Total) }</a>
+					}
+				</header>
+				@IssueWorklist(p.Reported.Issues, PersonShown, p.Now, p.Person.Name + " has not reported an issue you can see.")
+			</section>
+		</div>
+		<section class="tk-box tk-home__activity" aria-labelledby="person-activity">
+			<header>
+				<h2 class="tk-eyebrow" id="person-activity">Recent activity</h2>
+			</header>
+			@Activity(p.Feed)
+		</section>
+	</div>
+}
+
+// IssueWorklist is a short list of issues: type, key, summary, the due
+// date and the status; empty says none.
+templ IssueWorklist(list []tracker.Issue, n int, now time.Time, none string) {
+	if len(list) == 0 {
+		<p class="muted">{ none }</p>
+	} else {
+		<ul class="tk-worklist" role="list">
+			for i, is := range list {
+				if i < n {
+					<li>
+						@ui.TypeIcon(ui.IssueType(is.Type))
+						<span class="tk-key mono">{ is.Key }</span>
+						<a class="truncate" href={ templ.SafeURL("/" + is.Key) }>{ is.Summary }</a>
+						if is.Due != "" {
+							@ui.Due(dueDate(is.Due, now), now, is.Overdue(now))
+						}
+						@ui.StatusLozenge(is.StatusName, uiCategory(string(is.Category)))
+					</li>
+				}
+			}
+		</ul>
+	}
+}

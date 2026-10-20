@@ -408,7 +408,7 @@ func comments(ctx context.Context, q sqlite.Querier, page string) ([]views.Comme
 	if err != nil {
 		return nil, err
 	}
-	res, err := wiki.Resolve(ctx, q, refs)
+	res, err := resolveFaces(ctx, q, refs)
 	if err != nil {
 		return nil, err
 	}
@@ -618,7 +618,7 @@ func (s *Server) readerHTML(ctx context.Context, q sqlite.Querier, page string) 
 	if err != nil {
 		return "", err
 	}
-	res, err := wiki.Resolve(ctx, q, doc.References(h.Doc))
+	res, err := resolveFaces(ctx, q, doc.References(h.Doc))
 	if err != nil {
 		return "", err
 	}
@@ -826,7 +826,7 @@ func (s *Server) oldVersion(w http.ResponseWriter, r *http.Request, from, n int)
 			o := doc.References(old)
 			refs = doc.Refs{Issues: append(refs.Issues, o.Issues...), People: append(refs.People, o.People...), Pages: append(refs.Pages, o.Pages...)}
 		}
-		res, err := wiki.Resolve(ctx, q, refs)
+		res, err := resolveFaces(ctx, q, refs)
 		if err != nil {
 			return Page{}, err
 		}

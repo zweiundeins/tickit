@@ -776,6 +776,9 @@ templ issueMentions(m Issue) {
 				<span>{ p.Name }</span>
 			</button>
 		}
+		for _, p := range m.Mentioned {
+			<span hidden data-id={ p.ID } data-name={ p.Name }></span>
+		}
 	</div>
 }
 

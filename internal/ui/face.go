@@ -2,6 +2,7 @@ package ui
 
 import (
 	"crypto/sha256"
+	"html"
 	"strconv"
 	"strings"
 )
@@ -69,4 +70,12 @@ func ones(n uint32) int {
 func HueOf(name string) int {
 	sum := sha256.Sum256([]byte(name))
 	return int(sum[0] & 15)
+}
+
+// FaceHTML is a decorative face of 1em as HTML, for what renders outside
+// templ: a mention in a document (FR-67.2, doc.FaceResolver). The name is
+// written beside it.
+func FaceHTML(p Person) string {
+	return `<span class="tk-av tk-av--xs" data-hue="` + strconv.Itoa(p.HueIndex()) + `" aria-hidden="true"><svg class="tk-face" viewBox="0 0 7 7" shape-rendering="crispEdges" focusable="false"><path d="` +
+		html.EscapeString(FaceOf(p.Seed).Path) + `"></path></svg></span>`
 }

@@ -168,6 +168,7 @@ func (s *Server) register() {
 	s.routesWiki()
 	s.routesEditor()
 	s.routesNotify()
+	s.routesPeople()
 	s.routesAdmin()
 	s.routesModeration()
 	s.routesDemo()

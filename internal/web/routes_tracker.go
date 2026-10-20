@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/ui"
 	"github.com/zweiundeins/tickit/internal/views"
 	"github.com/zweiundeins/tickit/internal/wiki"
 )
@@ -360,6 +362,24 @@ func loadIssue(ctx context.Context, q sqlite.Querier, id string, now time.Time) 
 		}
 		m.Comments = append(m.Comments, vc)
 	}
+	// The texts to edit show the names of the people they mention, which
+	// the page turns back into ids when it sends them (FR-67.2).
+	var named []string
+	add := func(ids []string) {
+		for _, id := range ids {
+			if !slices.Contains(named, id) {
+				named = append(named, id)
+				m.Mentioned = append(m.Mentioned, m.People[id])
+			}
+		}
+	}
+	var ids2 []string
+	m.DescMarkup, ids2 = views.NamedMentions(m.DescMarkup, m.People)
+	add(ids2)
+	for i := range m.Comments {
+		m.Comments[i].Markup, ids2 = views.NamedMentions(m.Comments[i].Markup, m.People)
+		add(ids2)
+	}
 	return m, nil
 }
 
@@ -448,6 +468,15 @@ func (r *docResolver) Person(id string) (string, bool) {
 	}
 	r.people[id] = p
 	return p.Name, true
+}
+
+// Face is a mentioned person's face (FR-67.2), for one Person found.
+func (r *docResolver) Face(id string) string {
+	p, ok := r.people[id]
+	if !ok || p.Kind == people.Deleted {
+		return ""
+	}
+	return ui.FaceHTML(views.UIPerson(p))
 }
 
 // Page is a linked page's title while it is current; one in the trash or

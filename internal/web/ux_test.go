@@ -1,12 +1,14 @@
 package web_test
 
 import (
+	"html"
 	"net/http"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/zweiundeins/tickit/internal/markup"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/web/webtest"
@@ -123,4 +125,65 @@ func TestBoardSavedFilter(t *testing.T) {
 	if frame := webtest.Next(t, ev2, `id="board-lanes"`); !strings.Contains(frame, `id="c-WEB-3"`) {
 		t.Errorf("an unknown saved filter hides cards")
 	}
+}
+
+type namesOnly map[string]string
+
+func (namesOnly) Issue(string) bool                 { return false }
+func (n namesOnly) Person(id string) (string, bool) { s, ok := n[id]; return s, ok }
+func (namesOnly) Page(string) (string, bool)        { return "", false }
+func (namesOnly) Image(string) bool                 { return false }
+
+// FR-67.2: a mention shows the person's face and name and links to their
+// page, which shows their face, name, issues and what they did; the text
+// to edit names them, not their ids (QA: "@g-m3z2…" in the draft).
+func TestMentionsAndPersonPage(t *testing.T) {
+	e := newList(t)
+	body, err := markup.ParseMode("Over to @"+e.bo.ID+" for the login.", namesOnly{e.bo.ID: e.bo.Name}, markup.Comment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Do(t, tracker.AddComment{By: e.by(e.ada), Issue: e.ids["WEB-1"], Body: body})
+	c := webtest.Client(t)
+	_, page := webtest.Get(t, c, e.URL+"/WEB-1")
+	for _, want := range []string{
+		`<a class="mention" data-person="` + e.bo.ID + `" href="/people/` + e.bo.ID + `" data-face><span class="tk-av tk-av--xs"`,
+		`</svg></span>` + html.EscapeString(e.bo.Name) + `</a>`,
+		`Over to @` + html.EscapeString(e.bo.Name) + ` for the login.`, // the comment's markup to edit
+		`<span hidden data-id="` + e.bo.ID + `" data-name="` + html.EscapeString(e.bo.Name) + `"></span>`,
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the issue page has no %q", want)
+		}
+	}
+	if strings.Contains(page, "@"+e.bo.ID+" ") {
+		t.Errorf("the comment's markup shows the mention's id")
+	}
+
+	code, pp := webtest.Get(t, c, e.URL+"/people/"+e.bo.ID)
+	if code != http.StatusOK {
+		t.Fatalf("/people/%s: %d", e.bo.ID, code)
+	}
+	for _, want := range []string{"<h1>" + html.EscapeString(e.bo.Name) + "</h1>", `class="tk-av tk-av--lg"`, "Fix the login", "Crash on start", `data-views`} {
+		if want == "data-views" {
+			want = "profile:" + e.bo.ID
+		}
+		if !strings.Contains(pp, want) {
+			t.Errorf("Bo's page has no %q", want)
+		}
+	}
+	_, ap := webtest.Get(t, c, e.URL+"/people/"+e.ada.ID)
+	if !strings.Contains(ap, "Search_box") || !strings.Contains(ap, "Cart 100% broken") || !strings.Contains(ap, "commented on") {
+		t.Errorf("Ada's page lacks what she reported or did")
+	}
+	for _, bad := range []string{"/people/nope", "/people/a-01920000-0000-7000-8000-000000000001"} {
+		if code, _ := webtest.Get(t, c, e.URL+bad); code != http.StatusNotFound {
+			t.Errorf("%s: %d, want 404", bad, code)
+		}
+	}
+	// The page is live: a new issue assigned to Bo shows in its next frame.
+	ev := webtest.Listen(t, c, e.URL+"/stream?tab=tabpp&v=profile:"+e.bo.ID, nil)
+	webtest.Next(t, ev, `id="person-page"`)
+	e.issue("WEB-9", tracker.CreateIssue{Project: e.web, Summary: "Bo's new one", Assignee: e.bo.ID})
+	webtest.Next(t, ev, "Bo&#39;s new one")
 }
