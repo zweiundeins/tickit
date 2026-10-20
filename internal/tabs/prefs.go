@@ -131,7 +131,7 @@ func (c SetPref) Apply(tx *writer.Tx) error {
 // the tab id and it closes over the session, as View does.
 func PrefsView(sid, tab string) live.View {
 	return live.View{
-		Key:    "prefs:" + tab,
+		Key:    "prefs:" + tab + "." + sessionKey(sid),
 		Topics: []string{PrefsTopic(sid)},
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			var q sqlite.Querier = tx

@@ -143,3 +143,49 @@ func TestBlockedGuestTypes(t *testing.T) {
 		t.Error("a blocked guest's typing changed the database")
 	}
 }
+
+// NFR-02.3: a tab's own views belong to its session: another session that
+// names the same tab id gets its own outcomes and preferences, never the
+// first one's, whichever stream opened first.
+func TestTabViewsBySession(t *testing.T) {
+	e := webtest.Start(t)
+	a, b := webtest.Client(t), webtest.Client(t)
+	webtest.Get(t, a, e.URL+"/")
+	webtest.Get(t, b, e.URL+"/")
+	const tab = "shared-tab-id"
+	webtest.Post(t, a, e.URL+"/cmd/prefs", `{"tab":"`+tab+`","op":"a-pref","key":"theme","value":"dark"}`)
+	as := webtest.Listen(t, a, e.URL+"/stream?tab="+tab+"&v=", nil)
+	webtest.Next(t, as, `"a-pref"`)
+	bs := webtest.Listen(t, b, e.URL+"/stream?tab="+tab+"&v=", nil)
+	first := webtest.Next(t, bs, `"_outcomes"`)
+	if strings.Contains(first, "a-pref") {
+		t.Errorf("another session's stream with the tab's id got its outcomes: %s", first)
+	}
+	webtest.Silent(t, bs, `"dark"`, 300*time.Millisecond)
+	webtest.Post(t, b, e.URL+"/cmd/prefs", `{"tab":"`+tab+`","op":"b-pref","key":"theme","value":"light"}`)
+	webtest.Next(t, bs, `"b-pref"`)
+	webtest.Silent(t, as, `"b-pref"`, 300*time.Millisecond)
+}
+
+// NFR-02.3: a stream that names another person's editing tab gets an
+// editor of its own, never that tab's.
+func TestEditorViewByPerson(t *testing.T) {
+	e := startWiki(t)
+	a, b := webtest.Client(t), webtest.Client(t)
+	webtest.Get(t, a, e.URL+"/")
+	webtest.Get(t, b, e.URL+"/")
+	space, home := wikiSpace(t, e, a, "ENG")
+	page := wikiPage(t, e, a, space, home, "Notes")
+	h := head(t, e, page)
+	as := webtest.Listen(t, a, e.URL+"/stream?tab=tab1&v=", nil)
+	webtest.Next(t, as, `"_outcomes"`)
+	if code, _ := act(t, e, a, "/cmd/pages/"+page+"/open", "tab1", map[string]any{"base": h.Version, "client": "aaaaaaaaaaaa"}); code != http.StatusNoContent {
+		t.Fatalf("open: %d", code)
+	}
+	webtest.Next(t, as, `client="aaaaaaaaaaaa"`)
+	bs := webtest.Listen(t, b, e.URL+"/stream?tab=tab9&v=editor:"+page+".tab1", nil)
+	frame := webtest.Next(t, bs, `id="editor"`)
+	if strings.Contains(frame, "aaaaaaaaaaaa") || !strings.Contains(frame, `state="reset"`) {
+		t.Errorf("another person's stream got the tab's editor: %s", frame)
+	}
+}

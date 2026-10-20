@@ -309,9 +309,10 @@ func (s *Server) editorView(ctx context.Context, q sqlite.Querier, actor people.
 	if _, _, err := readable(ctx, q, actor, page); err != nil {
 		return live.View{}, err
 	}
-	key := wiki.EditorView(page, tab)
 	return live.View{
-		Key:    key,
+		// The person too: another who names the tab id gets a view of
+		// their own, never the tab's (NFR-02.3).
+		Key:    wiki.EditorView(page, tab) + "." + actor.ID,
 		Topics: []string{wiki.DocTopic(page), wiki.ChipsTopic(page), wiki.PageTopic(page), wiki.EditorTopic(tab), people.Topic},
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			host, err := editorHost(ctx, querier(ctx, tx), actor, page, tab)

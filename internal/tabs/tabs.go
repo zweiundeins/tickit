@@ -9,7 +9,9 @@ package tabs
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"slices"
@@ -337,13 +339,12 @@ type signal struct {
 
 // View is the tab's own view: it patches the signal _outcomes, an object
 // from op id to {ok, msg, field, data}, from the tab's row. Its key holds the
-// tab id and it closes over the session: never show a tab id to anyone
-// else, who could open a stream with it.
+// tab id and a hash of the session, which it closes over: another session
+// naming the same tab id gets a view of its own (NFR-02.3).
 func View(sid, tab string) live.View {
-	key := Topic(tab)
 	return live.View{
-		Key:    key,
-		Topics: []string{key},
+		Key:    Topic(tab) + "." + sessionKey(sid),
+		Topics: []string{Topic(tab)},
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			var q sqlite.Querier = tx
 			if wq, ok := sqlite.QuerierFrom(ctx); ok {
@@ -364,6 +365,13 @@ func View(sid, tab string) live.View {
 			return sse.PatchSignals(b, false), nil
 		},
 	}
+}
+
+// sessionKey is a short hash of a session id for the keys of a tab's own
+// views, which must differ between sessions and never show the id.
+func sessionKey(sid string) string {
+	sum := sha256.Sum256([]byte("tab-view:" + sid))
+	return hex.EncodeToString(sum[:12])
 }
 
 // Sweep deletes the rows of tabs not seen for TTL and the preferences not
