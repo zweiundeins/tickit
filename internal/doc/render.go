@@ -118,22 +118,41 @@ func (w htmlWriter) blocks(n *Node) {
 	}
 }
 
-func (w htmlWriter) block(n *Node) {
+func (w htmlWriter) block(n *Node) { w.wrap(n, "", nil) }
+
+// body renders a node's content the default way.
+func (w htmlWriter) body(n *Node) {
+	switch {
+	case n.typ.code:
+		for _, t := range n.content.nodes {
+			w.esc(t.text)
+		}
+	case n.typ.inlineContent:
+		w.inline(n.content.nodes)
+	default:
+		w.blocks(n)
+	}
+}
+
+// wrap writes a block's element with extra attributes (written verbatim)
+// around its content; body nil renders the content the default way.
+func (w htmlWriter) wrap(n *Node, extra string, body func()) {
+	if body == nil {
+		body = func() { w.body(n) }
+	}
+	tag := func(name string) {
+		w.s("<" + name + extra + ">")
+		body()
+		w.s("</" + name + ">")
+	}
 	switch n.typ.name {
 	case "paragraph":
-		w.s("<p>")
-		w.inline(n.content.nodes)
-		w.s("</p>")
+		tag("p")
 	case "heading":
 		l, _ := n.AttrInt("level")
-		tag := "h" + strconv.Itoa(min(max(l, 1), 3)+1)
-		w.s("<" + tag + ">")
-		w.inline(n.content.nodes)
-		w.s("</" + tag + ">")
+		tag("h" + strconv.Itoa(min(max(l, 1), 3)+1))
 	case "blockquote":
-		w.s("<blockquote>")
-		w.blocks(n)
-		w.s("</blockquote>")
+		tag("blockquote")
 	case "code_block":
 		w.s("<pre")
 		if l := n.AttrString("language"); l != "" {
@@ -141,73 +160,65 @@ func (w htmlWriter) block(n *Node) {
 			w.esc(l)
 			w.s(`"`)
 		}
-		w.s("><code>")
-		for _, t := range n.content.nodes {
-			w.esc(t.text)
-		}
+		w.s(extra + "><code>")
+		body()
 		w.s("</code></pre>")
 	case "horizontal_rule":
-		w.s("<hr>")
+		w.s("<hr" + extra + ">")
 	case "bullet_list":
-		w.s("<ul>")
-		w.blocks(n)
-		w.s("</ul>")
+		tag("ul")
 	case "ordered_list":
 		if o, ok := n.AttrInt("order"); ok && o != 1 {
-			w.s(`<ol start="` + strconv.Itoa(o) + `">`)
+			w.s(`<ol start="` + strconv.Itoa(o) + `"` + extra + `>`)
 		} else {
-			w.s("<ol>")
+			w.s("<ol" + extra + ">")
 		}
-		w.blocks(n)
+		body()
 		w.s("</ol>")
 	case "list_item":
-		w.s("<li>")
-		w.blocks(n)
-		w.s("</li>")
+		tag("li")
 	case "task_list":
-		w.s(`<ul class="task-list">`)
-		w.blocks(n)
+		w.s(`<ul class="task-list"` + extra + `>`)
+		body()
 		w.s("</ul>")
 	case "task_item":
 		if n.AttrBool("checked") {
-			w.s(`<li class="task-item" data-checked="true"><input type="checkbox" disabled checked><div>`)
+			w.s(`<li class="task-item" data-checked="true"` + extra + `><input type="checkbox" disabled checked><div>`)
 		} else {
-			w.s(`<li class="task-item" data-checked="false"><input type="checkbox" disabled><div>`)
+			w.s(`<li class="task-item" data-checked="false"` + extra + `><input type="checkbox" disabled><div>`)
 		}
-		w.blocks(n)
+		body()
 		w.s("</div></li>")
 	case "table":
-		w.s("<table><tbody>")
-		w.blocks(n)
+		w.s("<table" + extra + "><tbody>")
+		body()
 		w.s("</tbody></table>")
 	case "table_row":
-		w.s("<tr>")
-		w.blocks(n)
-		w.s("</tr>")
+		tag("tr")
 	case "table_cell", "table_header":
-		tag := "td"
+		name := "td"
 		if n.typ.name == "table_header" {
-			tag = "th"
+			name = "th"
 		}
-		w.s("<" + tag)
+		w.s("<" + name)
 		if c, ok := n.AttrInt("colspan"); ok && c != 1 {
 			w.s(` colspan="` + strconv.Itoa(c) + `"`)
 		}
 		if r, ok := n.AttrInt("rowspan"); ok && r != 1 {
 			w.s(` rowspan="` + strconv.Itoa(r) + `"`)
 		}
-		w.s(">")
-		w.blocks(n)
-		w.s("</" + tag + ">")
+		w.s(extra + ">")
+		body()
+		w.s("</" + name + ">")
 	case "image":
-		w.s(`<figure class="doc-image"><img src="/img/lib/`)
+		w.s(`<figure class="doc-image"` + extra + `><img src="/img/lib/`)
 		w.esc(url.PathEscape(n.AttrString("imageId")))
 		w.s(`" alt="`)
 		w.esc(n.AttrString("alt"))
 		w.s(`" loading="lazy"></figure>`)
 	default:
 		// A node type the renderer does not know renders its content.
-		w.blocks(n)
+		body()
 	}
 }
 
