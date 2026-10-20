@@ -321,7 +321,12 @@ if (o.ok) {
 	const lane = li && B.laneOf(li)
 	B.say($_board.pcard + ' is in ' + (lane ? lane.dataset.name : 'its new place') + '.')
 } else {
-	if (B.board().dataset.rev === B.rev) B.back(li)
+	// A frame that came with the outcome may still wait in its view
+	// transition: the card goes back only once the lanes are up to date
+	// and no frame came since the drop.
+	const rev = B.rev, back = () => { if (B.board().dataset.rev === rev) B.back(li) }
+	const vt = B.board().activeViewTransition
+	vt ? vt.updateCallbackDone.then(back, back) : requestAnimationFrame(() => { const v = B.board().activeViewTransition; v ? v.updateCallbackDone.then(back, back) : back() })
 	B.mark(li, 'refused')
 	$_board.note = o.msg
 	$_board.ncard = $_board.pcard
