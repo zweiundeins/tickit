@@ -235,6 +235,27 @@ templ AdminStatsTab(s AdminStats) {
 			<header><h2 class="tk-eyebrow" id="stats-hub">Render loop</h2></header>
 			@ui.Stats(s.Hub)
 		</section>
+		if len(s.Views) > 0 {
+			<section class="tk-box" aria-labelledby="stats-views">
+				<header><h2 class="tk-eyebrow" id="stats-views">Renders per view</h2></header>
+				@ui.Table(ui.TableProps{Caption: "The views rendered most since they were first watched", HideCaption: true, Class: "tk-admin__table"}) {
+					<thead>
+						<tr>
+							<th scope="col">View</th>
+							<th scope="col" class="num">Renders</th>
+						</tr>
+					</thead>
+					<tbody>
+						for _, v := range s.Views {
+							<tr>
+								<td><code>{ v.Key }</code></td>
+								<td class="num">{ itoa(int(v.Renders)) }</td>
+							</tr>
+						}
+					</tbody>
+				}
+			</section>
+		}
 	</div>
 }
 

@@ -141,7 +141,7 @@ func New(cfg Config) (*Server, error) {
 		streams:  newStreamLimits(),
 		pacing:   newPaceLimits(),
 		lockout:  people.NewLockout(),
-		metrics:  newMetrics(cfg.DB),
+		metrics:  newMetrics(cfg.DB, cfg.Hub),
 		projects: newProjectsCache(cfg.Hub),
 		mux:      http.NewServeMux(),
 		views:    newViewRegistry(),
@@ -151,6 +151,7 @@ func New(cfg Config) (*Server, error) {
 		return nil, err
 	}
 	s.register()
+	go s.metrics.renders.run()
 	return s, nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/zweiundeins/lith/live"
 	"github.com/zweiundeins/lith/sqlite"
 )
 
@@ -27,10 +28,12 @@ type metrics struct {
 	guests       prometheus.GaugeFunc   // guests who acted in the last 24 hours
 	folded       prometheus.Counter     // events the fold deleted (NFR-43)
 	foldSeconds  prometheus.Histogram   // a fold command's time in the writer (NFR-43.3)
+	renders      *renderCounts          // renders by view kind (MP-11.4, renders.go)
 }
 
-func newMetrics(db *sqlite.DB) *metrics {
+func newMetrics(db *sqlite.DB, hub *live.Hub) *metrics {
 	m := &metrics{
+		renders: newRenderCounts(hub),
 		limited: prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: namespace, Name: "rate_limited_total",
 			Help: "Requests answered 429, by rate-limit class."}, []string{"class"}),
 		refusals: prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: namespace, Name: "refusals_total",
@@ -80,5 +83,5 @@ func (m *metrics) reset(ok bool, took time.Duration) {
 // listener.
 func (s *Server) Collectors() []prometheus.Collector {
 	m := s.metrics
-	return []prometheus.Collector{m.limited, m.refusals, m.logins, m.editBatches, m.editors, m.moderations, m.resets, m.resetSeconds, m.guests, m.folded, m.foldSeconds}
+	return []prometheus.Collector{m.limited, m.refusals, m.logins, m.editBatches, m.editors, m.moderations, m.resets, m.resetSeconds, m.guests, m.folded, m.foldSeconds, m.renders}
 }

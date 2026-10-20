@@ -90,6 +90,14 @@ type AdminStats struct {
 	Counts []ui.Stat // accounts, guests today, issues, pages, streams
 	Writer []ui.Stat // the writer's numbers
 	Hub    []ui.Stat // the render loop's numbers
+	// Views are the view keys rendered most, most first (MP-11.4).
+	Views []ViewRenders
+}
+
+// ViewRenders is a view key with its renders since it was first watched.
+type ViewRenders struct {
+	Key     string
+	Renders int64
 }
 
 // AdminSecurity is a page of the security log (FR-156.2).

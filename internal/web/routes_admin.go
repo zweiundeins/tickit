@@ -239,6 +239,7 @@ func (s *Server) stats(ctx context.Context, q sqlite.Querier) (views.AdminStats,
 			{Label: "Frames sent", Value: strconv.FormatInt(hub.FramesSent, 10), Note: strconv.FormatInt(hub.FramesDropped, 10) + " dropped"},
 			{Label: "Overruns", Value: strconv.FormatInt(hub.Overruns, 10), Tone: overrunTone(hub.Overruns)},
 		},
+		Views: s.topViews(TopViews),
 	}
 	return st, errors.Join(errs...)
 }
