@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zweiundeins/lith/writer"
+
 	"github.com/mbolli/tickit/internal/dbtest"
 	"github.com/mbolli/tickit/internal/demo"
 	"github.com/mbolli/tickit/internal/demo/seed"
@@ -187,4 +189,41 @@ func dump(t *testing.T, e *dbtest.Env, q string) string {
 		fmt.Fprintf(&b, "%q\n", vals)
 	}
 	return b.String()
+}
+
+// fakePages is a PageSeeder of one step, which notes what the log held
+// when it ran.
+type fakePages struct {
+	at          time.Time
+	before, max int64
+	id          string
+}
+
+func (f *fakePages) PageSteps(r *demo.Run) ([]demo.Step, error) {
+	f.at = r.Time(seed.When{Days: -15, Minutes: 12 * 60})
+	f.id = r.PageID("ENG", r.Content.Pages[0].Title)
+	return []demo.Step{{At: f.at, Phase: demo.PhaseCreate, Name: "a page", Cmd: writer.Func(func(tx *writer.Tx) error {
+		return tx.QueryRow(`SELECT count(*), coalesce(max(at), 0) FROM lith_events`).Scan(&f.before, &f.max)
+	})}}, nil
+}
+
+// DM-02: the wiki's steps run among the tracker's in time order, with the
+// page ids that issues link to.
+func TestPageSeeder(t *testing.T) {
+	f := &fakePages{}
+	demo.RegisterPageSeeder(f)
+	t.Cleanup(func() { demo.RegisterPageSeeder(nil) })
+	e, n := seeded(t)
+	if n.PageSteps != 1 || f.before == 0 {
+		t.Fatalf("the page step: %+v, %d events before it", n, f.before)
+	}
+	if f.max > f.at.UnixMilli() {
+		t.Errorf("an event at %d ran before the page step at %d", f.max, f.at.UnixMilli())
+	}
+	if later := count(t, e, `SELECT count(*) FROM lith_events WHERE at > ?`, f.at.UnixMilli()); later == 0 {
+		t.Error("no event after the page step: it ran last")
+	}
+	if !tracker.ValidID(f.id) || f.id != demo.NewRun(content(t), run, 1).PageID("ENG", content(t).Pages[0].Title) {
+		t.Errorf("page id %q", f.id)
+	}
 }
