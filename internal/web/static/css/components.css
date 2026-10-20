@@ -65,6 +65,7 @@
 	.tk-count {
 		--_n: calc(1px * var(--tk-notch));
 		display: inline-grid;
+		flex: none;
 		place-items: center;
 		min-inline-size: 1.25rem;
 		block-size: 1.125rem;
@@ -75,6 +76,7 @@
 		font-family: var(--tk-font-mono);
 		font-size: var(--tk-text-2xs);
 		line-height: 1;
+		white-space: nowrap;
 	}
 
 	.tk-kbd {
