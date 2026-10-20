@@ -1,0 +1,47 @@
+{
+  "key": "WEB",
+  "name": "Web shop",
+  "description": "The storefront.",
+  "lead": "s-ada",
+  "open": true,
+  "workflow": {
+    "statuses": [
+      {
+        "id": "backlog",
+        "name": "Backlog",
+        "category": "todo"
+      },
+      {
+        "id": "selected",
+        "name": "Selected for Development",
+        "category": "todo"
+      },
+      {
+        "id": "todo",
+        "name": "To Do",
+        "category": "todo"
+      },
+      {
+        "id": "inprogress",
+        "name": "In Progress",
+        "category": "inprogress"
+      },
+      {
+        "id": "inreview",
+        "name": "In Review",
+        "category": "inprogress"
+      },
+      {
+        "id": "blocked",
+        "name": "Blocked",
+        "category": "inprogress"
+      },
+      {
+        "id": "done",
+        "name": "Done",
+        "category": "done"
+      }
+    ],
+    "start": "todo"
+  }
+}

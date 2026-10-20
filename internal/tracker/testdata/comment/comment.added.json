@@ -1,0 +1,29 @@
+{
+  "subject": "issue",
+  "subject_id": "0192f000-0000-7000-8000-000000000002",
+  "project": "0192f000-0000-7000-8000-000000000001",
+  "body": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Steps "
+          },
+          {
+            "type": "mention",
+            "attrs": {
+              "personId": "s-ada",
+              "label": "Ada Brunner"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "mentions": [
+    "s-ada"
+  ]
+}

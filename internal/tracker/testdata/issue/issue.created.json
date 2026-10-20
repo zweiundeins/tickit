@@ -1,0 +1,53 @@
+{
+  "project": "0192f000-0000-7000-8000-000000000001",
+  "number": 12,
+  "key": "WEB-12",
+  "type": "story",
+  "summary": "Fix the login",
+  "description": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Steps "
+          },
+          {
+            "type": "mention",
+            "attrs": {
+              "personId": "s-ada",
+              "label": "Ada Brunner"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "status": "todo",
+  "category": "todo",
+  "priority": "medium",
+  "assignee": "s-bruno",
+  "reporter": "s-ada",
+  "labels": [
+    "checkout"
+  ],
+  "components": [
+    "Search"
+  ],
+  "parent": "0192f000-0000-7000-8000-000000000003",
+  "due": "2026-11-01",
+  "points": 3,
+  "estimate": 120,
+  "remaining": 90,
+  "rank": "a5",
+  "sprint": "0192f000-0000-7000-8000-000000000004",
+  "watchers": [
+    "s-ada",
+    "s-bruno"
+  ],
+  "mentions": [
+    "s-ada"
+  ]
+}

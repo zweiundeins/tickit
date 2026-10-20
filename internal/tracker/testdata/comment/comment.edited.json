@@ -1,0 +1,26 @@
+{
+  "body": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Steps "
+          },
+          {
+            "type": "mention",
+            "attrs": {
+              "personId": "s-ada",
+              "label": "Ada Brunner"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "mentions_added": [
+    "s-bruno"
+  ]
+}

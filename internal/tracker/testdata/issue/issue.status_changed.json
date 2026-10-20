@@ -1,0 +1,5 @@
+{
+  "from": "todo",
+  "to": "inreview",
+  "category": "inprogress"
+}
