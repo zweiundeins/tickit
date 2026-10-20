@@ -219,10 +219,20 @@
 		}
 	}
 
+	/* The labels take a line of their own, the field to add one the next. */
 	.tk-issue__chips {
 		display: flex;
+		flex: 1 1 100%;
 		flex-wrap: wrap;
 		gap: var(--tk-space-1);
+
+		&:empty {
+			display: none;
+		}
+	}
+
+	.tk-issue__chips + .tk-issue__addrow {
+		flex: 1 1 100%;
 	}
 
 	.tk-issue__label {
@@ -276,6 +286,20 @@
 		@container page (width < 50rem) {
 			position: static;
 		}
+	}
+
+	/* A due date in the side column reads at the size of the other values. */
+	.tk-issue__side .tk-due {
+		font-size: inherit;
+
+		&:not([data-overdue]) {
+			color: var(--tk-text-1);
+		}
+	}
+
+	/* A parent in the narrow side column shows its summary, not its status. */
+	.tk-issue__side .issue-chip .tk-lozenge {
+		display: none;
 	}
 
 	.tk-issue__menusearch {

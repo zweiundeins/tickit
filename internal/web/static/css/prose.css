@@ -365,6 +365,7 @@
 		}
 
 		& .tk-lozenge {
+			flex: none;
 			block-size: 1.15rem;
 		}
 

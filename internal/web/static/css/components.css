@@ -1476,9 +1476,15 @@
 
 		& .tk-cell {
 			display: flex;
-			align-items: center;
-			gap: var(--tk-space-1_5);
 		}
+	}
+
+	/* A face or an icon beside a name, in a cell or anywhere. */
+	.tk-cell {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-1_5);
+		min-inline-size: 0;
 	}
 
 	.tk-table--sticky thead th {
@@ -2178,15 +2184,20 @@
 		}
 	}
 
-	/* Fields shown as label and value (an issue's side). */
+	/* Fields shown as label and value (an issue's side). A label sits on
+	 * the first line of its value, which may wrap; a value that is a menu
+	 * reads as the plain values do, and starts where they start. */
 	.tk-props {
 		display: grid;
 		grid-template-columns: 7rem minmax(0, 1fr);
 		gap: var(--tk-space-2) var(--tk-space-3);
-		align-items: center;
+		align-items: start;
 		margin: 0;
 
 		& dt {
+			display: flex;
+			align-items: center;
+			min-block-size: var(--tk-control-sm);
 			color: var(--tk-text-muted);
 			font-size: var(--tk-text-xs);
 		}
@@ -2196,9 +2207,25 @@
 			flex-wrap: wrap;
 			align-items: center;
 			gap: var(--tk-space-1_5);
+			min-block-size: var(--tk-control-sm);
 			min-inline-size: 0;
 			margin: 0;
 			font-size: var(--tk-text-md);
+		}
+
+		& dd > .tk-menu-button {
+			max-inline-size: calc(100% + var(--tk-space-2));
+			margin-inline-start: calc(-1 * var(--tk-space-2));
+			font-family: var(--tk-font-ui);
+			font-size: var(--tk-text-md);
+			font-weight: var(--tk-weight-regular);
+			letter-spacing: normal;
+
+			& > span {
+				min-inline-size: 0;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
 		}
 	}
 
