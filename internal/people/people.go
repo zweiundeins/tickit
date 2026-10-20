@@ -55,7 +55,10 @@ type Person struct {
 	ID   string
 	Kind Kind
 	Name string
-	// Hue is the face's hue in oklch degrees.
+	// Hue is one of sixteen hues, 0 to 15, of the face, the caret and the
+	// name tag: data-hue in the page, whose stylesheet turns it into
+	// degrees (times 22.5). Guests and accounts get the one their id
+	// draws; seeded people have their own.
 	Hue int
 	// Face draws the face on a 7x7 grid: an SVG path for viewBox "0 0 7 7".
 	Face string

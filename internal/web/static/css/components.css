@@ -1604,6 +1604,12 @@
 		& > .tk-tip {
 			border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
 		}
+
+		/* A shared row's faces after the eighth; the document shows the
+		 * viewer's own among the eight (internal/views). */
+		&[data-overflow] {
+			display: none;
+		}
 	}
 
 	.tk-presence__editing {

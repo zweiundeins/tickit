@@ -5,15 +5,21 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/fs"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
+	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/mbolli/tickit/internal/dbtest"
+	"github.com/mbolli/tickit/internal/demo/seed"
 	"github.com/mbolli/tickit/internal/people"
+	"github.com/mbolli/tickit/migrations"
 )
 
 var now = time.Unix(1_800_000_000, 0)
@@ -62,7 +68,7 @@ func TestFaces(t *testing.T) {
 				t.Fatalf("%s: pixel %v has no mirror", p.ID, c)
 			}
 		}
-		if p.Hue < 0 || p.Hue >= 360 {
+		if p.Hue < 0 || p.Hue > 15 {
 			t.Fatalf("%s: hue %d", p.ID, p.Hue)
 		}
 	}
@@ -392,6 +398,57 @@ func TestCreateAccount(t *testing.T) {
 	} {
 		if err := e.W.Do(ctx, bad); !errors.Is(err, writer.ErrInvalid) {
 			t.Errorf("%+v: %v", bad, err)
+		}
+	}
+}
+
+// DM-02.3: the seeded people have the names and hues of the seed's
+// company.json.
+func TestSeededAsCompany(t *testing.T) {
+	c, err := seed.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]seed.Person{}
+	for _, p := range c.People {
+		want[p.ID] = p
+	}
+	for _, p := range people.Seeded {
+		if w, ok := want[p.ID]; !ok || w.Name != p.Name || w.Hue != p.Hue {
+			t.Errorf("%s: %q hue %d, company.json %+v", p.ID, p.Name, p.Hue, w)
+		}
+	}
+}
+
+// Migration 002: hues stored as degrees before become the index they were
+// drawn from, and an index stays as it is.
+func TestHueMigration(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "old.db")
+	core, err := fs.ReadFile(migrations.FS, "001_core.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sqlite.Open(ctx, path, sqlite.Options{Migrations: fstest.MapFS{"001_core.sql": {Data: core}}, Readers: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored := map[string]int{"s-priya": 248, "s-lena": 23, "g-a": 0, "g-b": 337, "g-c": 7}
+	for id, hue := range stored {
+		if _, err := db.W.ExecContext(ctx, `INSERT INTO people (id, kind, display_name, hue, created_at, last_seen_at) VALUES (?, 'guest', 'x', ?, 0, 0)`, id, hue); err != nil {
+			t.Fatal(err)
+		}
+	}
+	db.Close()
+	db, err = sqlite.Open(ctx, path, sqlite.Options{Migrations: migrations.FS, Readers: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	for id, want := range map[string]int{"s-priya": 11, "s-lena": 1, "g-a": 0, "g-b": 15, "g-c": 7} {
+		var hue int
+		if err := db.R.QueryRowContext(ctx, `SELECT hue FROM people WHERE id = ?`, id).Scan(&hue); err != nil || hue != want {
+			t.Errorf("%s: hue %d %v, want %d", id, hue, err, want)
 		}
 	}
 }

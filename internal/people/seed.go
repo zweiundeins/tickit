@@ -7,16 +7,16 @@ import (
 )
 
 // Seeded are the six people of the demo's history (DM-02.3): the staff of
-// Alpenglow, a fictional Swiss shop for outdoor gear (internal/demo/seed's
-// company.json, whose hue index times 22.5 gives these degrees). They act in the
-// seed's history and cannot log in: they have no accounts.
+// Alpenglow, a fictional Swiss shop for outdoor gear, with the hues of
+// internal/demo/seed's company.json. They act in the seed's history and
+// cannot log in: they have no accounts.
 var Seeded = []Person{
-	{ID: "s-priya", Kind: Seed, Name: "Priya Raman", Hue: 248, Role: NoRole},
-	{ID: "s-tomasz", Kind: Seed, Name: "Tomasz Nowak", Hue: 68, Role: NoRole},
-	{ID: "s-mateo", Kind: Seed, Name: "Mateo Silva", Hue: 135, Role: NoRole},
-	{ID: "s-yuki", Kind: Seed, Name: "Yuki Tanaka", Hue: 203, Role: NoRole},
-	{ID: "s-amara", Kind: Seed, Name: "Amara Okafor", Hue: 315, Role: NoRole},
-	{ID: "s-lena", Kind: Seed, Name: "Lena Brunner", Hue: 23, Role: NoRole},
+	{ID: "s-priya", Kind: Seed, Name: "Priya Raman", Hue: 11, Role: NoRole},
+	{ID: "s-tomasz", Kind: Seed, Name: "Tomasz Nowak", Hue: 3, Role: NoRole},
+	{ID: "s-mateo", Kind: Seed, Name: "Mateo Silva", Hue: 6, Role: NoRole},
+	{ID: "s-yuki", Kind: Seed, Name: "Yuki Tanaka", Hue: 9, Role: NoRole},
+	{ID: "s-amara", Kind: Seed, Name: "Amara Okafor", Hue: 14, Role: NoRole},
+	{ID: "s-lena", Kind: Seed, Name: "Lena Brunner", Hue: 1, Role: NoRole},
 }
 
 func init() {
