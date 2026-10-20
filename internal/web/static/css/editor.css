@@ -1,0 +1,224 @@
+/* The editor's chrome around the document: the frame, the toolbar, the
+ * status, the notices, and other editors' carets and selections (MP-06).
+ * sb-rich-editor keeps its toolbar and status in its shadow root and reads
+ * the same tokens; these classes are the reference it follows, and what
+ * light-DOM chrome uses. Carets and selections are ProseMirror decorations
+ * in the light-DOM mount, so they are styled here. */
+@layer components {
+	.tk-editor {
+		--_n: calc(3px * var(--tk-notch));
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		border: 1px solid var(--tk-border);
+		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-1);
+
+		&:focus-within {
+			border-color: var(--tk-accent-edge);
+			box-shadow: 0 0 0 1px var(--tk-accent-edge);
+		}
+	}
+
+	.tk-editor__bar {
+		position: sticky;
+		inset-block-start: var(--tk-header-height);
+		z-index: var(--tk-z-raised);
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--tk-space-2);
+		padding: var(--tk-space-1) var(--tk-space-2);
+		border-block-end: 1px solid var(--tk-border-subtle);
+		background: var(--tk-surface-2);
+	}
+
+	/* The surface: the document's own .prose, with room around it. */
+	.tk-editor__surface,
+	.pm-mount {
+		min-block-size: 10rem;
+		padding: var(--tk-space-5) var(--tk-space-6);
+		outline: none;
+		caret-color: var(--tk-accent);
+	}
+
+	.tk-editor__surface:focus-visible,
+	.pm-mount:focus-within {
+		outline: none;
+	}
+
+	/* An empty document's placeholder (ProseMirror's empty node). */
+	.pm-mount .is-empty::before,
+	.tk-editor__surface .is-empty::before {
+		content: attr(data-placeholder);
+		float: inline-start;
+		block-size: 0;
+		color: var(--tk-text-muted);
+		pointer-events: none;
+	}
+
+	/* ── Toolbar: one tab stop, the arrow keys along it. ──────────── */
+	.tk-toolbar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 2px;
+	}
+
+	.tk-toolbar__btn {
+		display: inline-grid;
+		place-items: center;
+		inline-size: var(--tk-control-sm);
+		block-size: var(--tk-control-sm);
+		padding: 0;
+		border: 0;
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		background: transparent;
+		color: var(--tk-text-2);
+		transition: background-color var(--tk-dur-1) var(--tk-ease-snap), color var(--tk-dur-1) var(--tk-ease-snap);
+
+		&:hover {
+			background: var(--tk-surface-hover);
+			color: var(--tk-text-1);
+		}
+
+		&:focus-visible {
+			outline-offset: -2px;
+		}
+
+		/* The mark or block at the caret (NFR-49.1). */
+		&[aria-pressed="true"] {
+			background: var(--tk-accent-subtle);
+			box-shadow: inset 0 -2px 0 var(--tk-accent);
+			color: var(--tk-accent-text);
+		}
+
+		&:disabled {
+			opacity: 0.4;
+		}
+	}
+
+	.tk-toolbar__sep {
+		inline-size: 1px;
+		block-size: 1.125rem;
+		margin-inline: var(--tk-space-1);
+		background: var(--tk-border);
+	}
+
+	/* ── "Saving" and "Saved" (MP-05.5) ────────────────────────────── */
+	.tk-editor__status {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--tk-space-1_5);
+		color: var(--tk-text-muted);
+		font-family: var(--tk-font-mono);
+		font-size: var(--tk-text-2xs);
+		font-weight: var(--tk-weight-semibold);
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+
+		& .tk-icon {
+			inline-size: 0.875rem;
+			block-size: 0.875rem;
+		}
+
+		&[data-state="saved"] .tk-icon {
+			color: var(--tk-ok);
+		}
+
+		&[data-state="offline"] {
+			color: var(--tk-warn);
+		}
+	}
+
+	/* Saving: the pending pixel, walking a small square. */
+	.tk-editor__dot {
+		inline-size: 5px;
+		block-size: 5px;
+		margin: 3px;
+		background: var(--tk-accent);
+		animation: tk-busy 0.8s steps(1, end) infinite;
+	}
+
+	/* ── Unsaved edits and conflicts (MP-05.6) ─────────────────────── */
+	.tk-editor__notice {
+		margin: var(--tk-space-2) var(--tk-space-2) 0;
+	}
+
+	/* A copy of edits that could not merge, beside the page. */
+	.tk-editor__copy {
+		border-style: dashed;
+		border-color: var(--tk-warn);
+		background: linear-gradient(var(--tk-warn-subtle), var(--tk-warn-subtle)), var(--tk-surface-1);
+	}
+
+	/* ── Other people's carets, name tags and selections (MP-06) ──── */
+	.tk-caret {
+		position: relative;
+		z-index: var(--tk-z-caret);
+		display: inline-block;
+		inline-size: 0;
+		block-size: 1.2em;
+		margin-inline: -1px;
+		border-inline-start: 2px solid var(--tk-hue-fill);
+		vertical-align: text-bottom;
+		pointer-events: none;
+		user-select: none;
+	}
+
+	/* The tag on the caret's top, 8-bit corners from four shadows of its
+	 * colour. It stays while the person types or moves (the editor drops
+	 * data-idle), and on hover; an idle caret keeps only its bar. */
+	.tk-caret__tag {
+		--_n: calc(2px * var(--tk-notch));
+		position: absolute;
+		inset-block-end: 100%;
+		inset-inline-start: -2px;
+		padding: 0 4px;
+		border-radius: calc(3px * (1 - var(--tk-notch)));
+		background: var(--tk-hue-fill);
+		box-shadow:
+			var(--_n) 0 0 0 var(--tk-hue-fill),
+			calc(-1 * var(--_n)) 0 0 0 var(--tk-hue-fill),
+			0 calc(-1 * var(--_n)) 0 0 var(--tk-hue-fill);
+		color: var(--tk-hue-on);
+		font-family: var(--tk-font-mono);
+		font-size: 11px;
+		font-style: normal;
+		font-weight: 600;
+		line-height: 15px;
+		letter-spacing: 0;
+		white-space: nowrap;
+		transition: opacity var(--tk-dur-2) var(--tk-ease-glide);
+
+		.tk-caret[data-idle] > & {
+			opacity: 0;
+		}
+
+		.tk-caret:hover > & {
+			opacity: 1;
+		}
+	}
+
+	.tk-remote-sel {
+		background: color-mix(in oklch, var(--tk-hue-fill) 26%, transparent);
+		box-shadow: 0 1px 0 color-mix(in oklch, var(--tk-hue-fill) 60%, transparent);
+	}
+
+	@media (forced-colors: active) {
+		.tk-caret {
+			border-color: Highlight;
+		}
+
+		.tk-caret__tag {
+			background: Highlight;
+			color: HighlightText;
+			box-shadow: none;
+		}
+
+		.tk-remote-sel {
+			background: Highlight;
+			color: HighlightText;
+		}
+	}
+}

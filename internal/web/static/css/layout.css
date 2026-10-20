@@ -1,0 +1,135 @@
+/* The app's frame: header, optional sidebar beside main, footer, and the
+ * widths of main. Layouts answer to the width they get (container
+ * queries); the frame itself answers to the viewport, down to 320px
+ * (NFR-46). */
+@layer layout {
+	.tk-app {
+		display: grid;
+		overflow-x: clip;
+		grid-template-rows: auto auto 1fr auto;
+		min-block-size: 100dvh;
+	}
+
+	.tk-body {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		min-inline-size: 0;
+	}
+
+	.tk-app[data-sidebar] .tk-body {
+		grid-template-columns: var(--tk-sidebar-width) minmax(0, 1fr);
+	}
+
+	.tk-app[data-sidebar="collapsed"] .tk-body {
+		grid-template-columns: var(--tk-sidebar-collapsed) minmax(0, 1fr);
+	}
+
+	.tk-sidebar {
+		position: sticky;
+		inset-block-start: var(--tk-header-height);
+		align-self: start;
+		block-size: calc(100dvh - var(--tk-header-height));
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		border-inline-end: 1px solid var(--tk-border-subtle);
+		background: var(--tk-surface-1);
+	}
+
+	/* main is the page container: its children read its width. */
+	.tk-main {
+		container: page / inline-size;
+		--_gutter: clamp(var(--tk-space-4), 3vw, var(--tk-space-8));
+		min-inline-size: 0;
+		padding: var(--tk-space-6) var(--_gutter) var(--tk-space-12);
+
+		&:focus {
+			outline: none;
+		}
+
+		& > * {
+			max-inline-size: var(--tk-content-max);
+			margin-inline: auto;
+		}
+	}
+
+	.tk-main--prose > * {
+		max-inline-size: var(--tk-prose-max);
+	}
+
+	.tk-main--full > * {
+		max-inline-size: none;
+	}
+
+	/* Narrow screens: no sidebar beside main; the menu button opens it. */
+	@media (width < 52rem) {
+		.tk-app[data-sidebar] .tk-body,
+		.tk-app[data-sidebar="collapsed"] .tk-body {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.tk-sidebar {
+			display: none;
+		}
+	}
+
+	/* Building blocks. */
+	.stack {
+		display: flex;
+		flex-direction: column;
+		gap: var(--gap, var(--tk-space-4));
+	}
+
+	.cluster {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--gap, var(--tk-space-2));
+	}
+
+	.split {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--tk-space-3);
+	}
+
+	/* A page's head: title and actions. */
+	.tk-pagehead {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: var(--tk-space-3) var(--tk-space-6);
+		margin-block-end: var(--tk-space-5);
+
+		& h1 {
+			font-size: var(--tk-text-2xl);
+		}
+	}
+
+	/* An item's page: the content beside its fields; one column on a
+	 * narrow page. */
+	.tk-detail {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 18rem;
+		gap: var(--tk-space-8);
+		align-items: start;
+
+		@container page (width < 50rem) {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	/* A wiki page: the tree, the article, nothing else. */
+	.tk-docpage {
+		display: grid;
+		grid-template-columns: 15rem minmax(0, 1fr);
+		gap: var(--tk-space-8);
+		align-items: start;
+
+		@container page (width < 56rem) {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+}

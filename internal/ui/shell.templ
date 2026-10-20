@@ -1,0 +1,442 @@
+package ui
+
+import "strconv"
+
+// Prefs are the display choices of a person, set on <html> by the
+// document (owned by internal/views): data-tk-theme, data-tk-style,
+// data-tk-density. The document draws them from the first byte.
+type Prefs struct {
+	Theme   string // "dark" (the default), "light", "system"
+	Style   string // "pixel" (the default), "smooth"
+	Density string // "comfortable" (the default), "compact"
+}
+
+// Normal returns p with unknown values replaced by the defaults.
+func (p Prefs) Normal() Prefs {
+	switch p.Theme {
+	case "light", "system":
+	default:
+		p.Theme = "dark"
+	}
+	if p.Style != "smooth" {
+		p.Style = "pixel"
+	}
+	if p.Density != "compact" {
+		p.Density = "comfortable"
+	}
+	return p
+}
+
+// Attrs are the attributes of <html> for p.
+func (p Prefs) Attrs() templ.Attributes {
+	p = p.Normal()
+	return templ.Attributes{"data-tk-theme": p.Theme, "data-tk-style": p.Style, "data-tk-density": p.Density}
+}
+
+// ColorScheme is the <meta name="color-scheme"> content for p.
+func (p Prefs) ColorScheme() string {
+	switch p.Normal().Theme {
+	case "light":
+		return "light"
+	case "system":
+		return "light dark"
+	}
+	return "dark"
+}
+
+// ShellProps is the visible frame of every page.
+type ShellProps struct {
+	Header HeaderProps
+	// Sidebar is the project's or the space's navigation (SideNav); nil
+	// for none.
+	Sidebar      templ.Component
+	SidebarLabel string
+	// Collapsed starts the sidebar collapsed to its icons.
+	Collapsed bool
+	// Notice shows under the header: the DemoNotice.
+	Notice templ.Component
+	Footer FooterProps
+	// Width of main: "" (content, 80rem), "prose" (46rem), "full" (boards).
+	Width string
+	Class string
+}
+
+// Shell is the header, the notice, the sidebar beside main (the
+// children), and the footer. Below 52rem the sidebar and the header's
+// links move into a panel that the menu button opens.
+templ Shell(p ShellProps) {
+	<div
+		class={ classes("tk-app", p.Class) }
+		if p.Sidebar != nil && p.Collapsed {
+			data-sidebar="collapsed"
+		}
+		else
+		if p.Sidebar != nil {
+			data-sidebar="open"
+		}
+		data-preserve-attr="data-sidebar"
+		data-on:keydown__window={ hushTips }
+		data-on:pointerover__window={ unhushTips }
+	>
+		<a class="tk-skip" href="#main">Skip to content</a>
+		@Header(p.Header, p.Sidebar != nil)
+		if p.Notice != nil {
+			@p.Notice
+		}
+		<div class="tk-body">
+			if p.Sidebar != nil {
+				<nav class="tk-sidebar" id="tk-sidebar" aria-label={ iconOr(p.SidebarLabel, "Project") }>
+					@p.Sidebar
+				</nav>
+			}
+			<main id="main" class={ classes("tk-main", when(p.Width != "", "tk-main--"+p.Width)) } tabindex="-1">
+				{ children... }
+			</main>
+		</div>
+		@Footer(p.Footer)
+		@SidePanel(PanelProps{ID: "tk-nav", Title: "Menu", Side: "start", Class: "tk-navpanel"}) {
+			<nav class="tk-navpanel__links" aria-label="Main">
+				for _, it := range p.Header.Nav {
+					@navLink(it)
+				}
+				for _, it := range p.Header.Admin {
+					@navLink(it)
+				}
+			</nav>
+			if p.Sidebar != nil {
+				<nav class="tk-navpanel__side" aria-label={ iconOr(p.SidebarLabel, "Project") }>
+					@p.Sidebar
+				</nav>
+			}
+		}
+	</div>
+}
+
+templ navLink(it NavItem) {
+	<a
+		href={ templ.SafeURL(it.Href) }
+		if it.Current {
+			aria-current="page"
+		}
+	>
+		if it.Icon != "" {
+			@Icon(it.Icon)
+		}
+		<span>{ it.Label }</span>
+		if it.Count != nil {
+			<span class="tk-count">{ strconv.Itoa(*it.Count) }</span>
+		}
+	</a>
+}
+
+// HeaderProps is the header's content (FR-137.1).
+type HeaderProps struct {
+	Home string // "/" by default
+	// Nav is Projects, Spaces, Filters and Dashboards (MainNav).
+	Nav []NavItem
+	// Admin are moderation and administration links, only for those who
+	// may use them (FR-137.2).
+	Admin []NavItem
+	// Search is the search box's query and its action, /search.
+	Query, SearchAction string
+	// CreateFor is the create dialog's id; CreateAttrs wire it otherwise.
+	CreateFor   string
+	CreateAttrs templ.Attributes
+	// Unread is the bell's count; Notifications the panel it opens.
+	Unread        int
+	Notifications templ.Component
+	// Me is the person; MeMenu the items of their menu.
+	Me      Person
+	MeMenu  templ.Component
+	Display DisplayProps
+}
+
+// MainNav is the header's links with the current one marked: "projects",
+// "spaces", "filters", "dashboards".
+func MainNav(current string) []NavItem {
+	items := []NavItem{
+		{Label: "Projects", Href: "/projects", Icon: "folder"},
+		{Label: "Spaces", Href: "/spaces", Icon: "space"},
+		{Label: "Filters", Href: "/filters", Icon: "filter"},
+		{Label: "Dashboards", Href: "/dashboards", Icon: "dashboard"},
+	}
+	for i := range items {
+		items[i].Current = slug(items[i].Label) == current
+	}
+	return items
+}
+
+func unreadText(n int) string {
+	switch n {
+	case 0:
+		return "No unread notifications"
+	case 1:
+		return "1 unread notification"
+	}
+	return strconv.Itoa(n) + " unread notifications"
+}
+
+// Header is the sticky header: the brand, the main links, search with its
+// Ctrl K hint, Create, the bell, the display menu and the person's menu.
+templ Header(p HeaderProps, sidebar bool) {
+	<header class="tk-header">
+		@Button(ButtonProps{Label: "Menu", Icon: "menu", IconOnly: true, Variant: Ghost, Class: "tk-header__menu", Command: "show-modal", CommandFor: "tk-nav"})
+		@Brand(iconOr(p.Home, "/"))
+		<nav class="tk-header__nav" aria-label="Main">
+			for _, it := range p.Nav {
+				@navLink(it)
+			}
+			for _, it := range p.Admin {
+				@navLink(it)
+			}
+		</nav>
+		<form class="tk-search" role="search" action={ templ.SafeURL(iconOr(p.SearchAction, "/search")) } method="get">
+			<label class="visually-hidden" for="tk-search">Search issues and pages</label>
+			@Icon("search")
+			<input
+				class="tk-search__input"
+				id="tk-search"
+				name="q"
+				type="search"
+				placeholder="Search"
+				autocomplete="off"
+				if p.Query != "" {
+					value={ p.Query }
+				}
+				aria-keyshortcuts="Control+K Meta+K"
+				data-on:keydown__window={ searchShortcut }
+			/>
+			<span class="tk-search__hint" aria-hidden="true">
+				@Kbd("Ctrl", "K")
+			</span>
+		</form>
+		<div class="tk-header__end">
+			if p.CreateFor != "" {
+				@Button(ButtonProps{Label: "Create", Icon: "plus", Variant: Primary, Class: "tk-header__create", Command: "show-modal", CommandFor: p.CreateFor, Attrs: p.CreateAttrs})
+			} else {
+				@Button(ButtonProps{Label: "Create", Icon: "plus", Variant: Primary, Class: "tk-header__create", Attrs: p.CreateAttrs})
+			}
+			<button
+				class="tk-btn tk-btn--ghost tk-btn--icon tk-bell"
+				type="button"
+				popovertarget="tk-notifications"
+				aria-expanded="false"
+				aria-label={ "Notifications, " + unreadText(p.Unread) }
+			>
+				@Icon("bell")
+				if p.Unread > 0 {
+					<span class="tk-bell__count" aria-hidden="true">{ unreadCount(p.Unread) }</span>
+				}
+			</button>
+			<span class="visually-hidden" id="tk-unread" role="status">{ unreadText(p.Unread) }</span>
+			<div id="tk-notifications" class="tk-menu tk-menu--end tk-notifications" popover data-on:toggle={ syncExpanded }>
+				if p.Notifications != nil {
+					@p.Notifications
+				}
+			</div>
+			@DisplayMenu(p.Display)
+			if p.Me.Name != "" {
+				@Menu(MenuProps{ID: "tk-me", Label: "Your menu, " + p.Me.Name, Trigger: meTrigger(p.Me), Align: "end", Class: "tk-me"}) {
+					<p class="tk-me__name">
+						@Avatar(AvatarProps{Person: p.Me, Size: SizeMD, Decorative: true})
+						<span>{ p.Me.Name }</span>
+					</p>
+					@MenuSeparator()
+					if p.MeMenu != nil {
+						@p.MeMenu
+					}
+				}
+			}
+		</div>
+	</header>
+}
+
+func unreadCount(n int) string {
+	if n > 99 {
+		return "99+"
+	}
+	return strconv.Itoa(n)
+}
+
+templ meTrigger(me Person) {
+	@Avatar(AvatarProps{Person: me, Size: SizeSM, Decorative: true})
+	<span class="tk-me__label">{ me.Name }</span>
+}
+
+// Brand is tickit's mark and name, a link home.
+templ Brand(home string) {
+	<a class="tk-brand" href={ templ.SafeURL(home) } aria-label="tickit, home">
+		@raw(brandSVG("tk-mark"))
+		<span class="tk-brand__word" aria-hidden="true">tickit</span>
+	</a>
+}
+
+// DisplayProps is the display menu: theme, corners and density. With
+// Href, each choice is a link (the styleguide); otherwise a button whose
+// Attrs the feature wires (a preference command).
+type DisplayProps struct {
+	Prefs
+	Href  func(key, value string) string
+	Attrs func(key, value string) templ.Attributes
+}
+
+type choice struct{ key, value, label, icon string }
+
+var displayGroups = []struct {
+	label   string
+	choices []choice
+}{
+	{"Theme", []choice{{"theme", "dark", "Dark", "moon"}, {"theme", "light", "Light", "sun"}, {"theme", "system", "System", "system"}}},
+	{"Corners", []choice{{"style", "pixel", "8-bit", "pixel"}, {"style", "smooth", "Smooth", "smooth"}}},
+	{"Density", []choice{{"density", "comfortable", "Roomy", "list"}, {"density", "compact", "Compact", "menu"}}},
+}
+
+func (d DisplayProps) current(key string) string {
+	p := d.Prefs.Normal()
+	switch key {
+	case "theme":
+		return p.Theme
+	case "style":
+		return p.Style
+	}
+	return p.Density
+}
+
+// DisplayMenu is the display menu: a popover of segmented choices.
+templ DisplayMenu(d DisplayProps) {
+	@Button(ButtonProps{Label: "Display settings", Icon: "display", IconOnly: true, Variant: Ghost, PopoverTarget: "tk-display"})
+	<div id="tk-display" class="tk-menu tk-menu--end tk-display" popover data-on:toggle={ syncExpanded }>
+		for _, g := range displayGroups {
+			<div class="tk-display__group" role="group" aria-labelledby={ "tk-display-" + slug(g.label) }>
+				<p class="tk-eyebrow" id={ "tk-display-" + slug(g.label) }>{ g.label }</p>
+				<div class="tk-choice">
+					for _, c := range g.choices {
+						if d.Href != nil {
+							<a
+								href={ templ.SafeURL(d.Href(c.key, c.value)) }
+								if d.current(c.key) == c.value {
+									aria-current="true"
+								}
+							>
+								@Icon(c.icon)
+								{ c.label }
+							</a>
+						} else {
+							<button
+								type="button"
+								data-pref={ c.key }
+								data-value={ c.value }
+								aria-pressed={ boolString(d.current(c.key) == c.value) }
+								if d.Attrs != nil {
+									{ d.Attrs(c.key, c.value)... }
+								}
+							>
+								@Icon(c.icon)
+								{ c.label }
+							</button>
+						}
+					}
+				</div>
+			</div>
+		}
+	</div>
+}
+
+// NavSection is a group of a SideNav.
+type NavSection struct {
+	Label string
+	Items []NavItem
+}
+
+// SideNavProps is a project's or a space's sidebar.
+type SideNavProps struct {
+	// Title is the project or space; Key its short name, drawn as its
+	// avatar ("WEB").
+	Title, Key, Href string
+	Sections         []NavSection
+	// Extra shows after the sections: a space's page Tree.
+	Extra templ.Component
+	// Collapsible adds the button that collapses the sidebar.
+	Collapsible bool
+}
+
+// SideNav is the sidebar: the project, its views, and a collapse button.
+templ SideNav(p SideNavProps) {
+	<div class="tk-sidenav">
+		<a class="tk-sidenav__project" href={ templ.SafeURL(p.Href) }>
+			<span class="tk-sidenav__key" data-hue={ strconv.Itoa(HueOf(p.Key)) } aria-hidden="true">{ firstRune(p.Key) }</span>
+			<span class="tk-sidenav__title">
+				{ p.Title }
+				<small>{ p.Key }</small>
+			</span>
+		</a>
+		for _, s := range p.Sections {
+			<div class="tk-sidenav__section">
+				if s.Label != "" {
+					<p class="tk-eyebrow tk-sidenav__label">{ s.Label }</p>
+				}
+				<ul role="list">
+					for _, it := range s.Items {
+						<li>
+							<a
+								class="tk-sidenav__item"
+								href={ templ.SafeURL(it.Href) }
+								if it.Current {
+									aria-current="page"
+								}
+							>
+								@Icon(iconOr(it.Icon, "page"))
+								<span class="tk-sidenav__text">{ it.Label }</span>
+								if it.Count != nil {
+									<span class="tk-count">{ strconv.Itoa(*it.Count) }</span>
+								}
+							</a>
+						</li>
+					}
+				</ul>
+			</div>
+		}
+		if p.Extra != nil {
+			<div class="tk-sidenav__extra">
+				@p.Extra
+			</div>
+		}
+		if p.Collapsible {
+			<button class="tk-sidenav__collapse tk-btn tk-btn--ghost tk-btn--sm" type="button" aria-controls="tk-sidebar" aria-expanded="true" data-on:click={ toggleSidebar }>
+				@Icon("sidebar")
+				<span class="tk-btn__label">Collapse</span>
+			</button>
+		}
+	</div>
+}
+
+func firstRune(s string) string {
+	for _, r := range s {
+		return string(r)
+	}
+	return "?"
+}
+
+// FooterProps is the footer's content.
+type FooterProps struct {
+	Version string
+	Links   []NavItem
+}
+
+// Footer names who runs the demo and links the privacy page.
+templ Footer(p FooterProps) {
+	<footer class="tk-footer">
+		<p>
+			@raw(brandSVG("tk-mark tk-mark--sm"))
+			<span>tickit, a demo of lith. Maintained by <a href="https://zweiundeins.gmbh">zwei und eins gmbh</a>.</span>
+		</p>
+		<nav aria-label="Footer">
+			for _, it := range p.Links {
+				<a href={ templ.SafeURL(it.Href) }>{ it.Label }</a>
+			}
+			if p.Version != "" {
+				<span>{ p.Version }</span>
+			}
+		</nav>
+	</footer>
+}

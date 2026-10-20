@@ -1,0 +1,670 @@
+package ui
+
+// ButtonVariant is a button's weight.
+type ButtonVariant string
+
+const (
+	// Primary is the one main action of a view: Create, Save.
+	Primary ButtonVariant = "primary"
+	// Secondary is every other action (the default).
+	Secondary ButtonVariant = "secondary"
+	// Ghost is a quiet action in dense places: toolbars, rows, headers.
+	Ghost ButtonVariant = "ghost"
+	// Danger deletes or cannot be undone.
+	Danger ButtonVariant = "danger"
+)
+
+// ButtonProps is a button, or a link that looks like one (Href).
+type ButtonProps struct {
+	// Label is the visible text; with IconOnly, the accessible name and
+	// the tooltip.
+	Label string
+	// Icon shows before the label, IconEnd after it (a menu's chevron).
+	Icon, IconEnd string
+	Variant       ButtonVariant
+	Size          Size // SizeSM, SizeMD (the default) or SizeLG
+	IconOnly      bool
+	// Type is "button" (the default), "submit" or "reset".
+	Type string
+	Href string
+	// Pending marks a button whose action waits for its outcome (MP-09):
+	// aria-busy, the walking pixel, clicks ignored. A feature drives it
+	// with data-attr:aria-busy in Attrs.
+	Pending  bool
+	Disabled bool
+	// Pressed makes a toggle button: "true" or "false" (aria-pressed).
+	Pressed string
+	// Command and CommandFor open and close dialogs without script:
+	// Command "show-modal" or "close", CommandFor the dialog's id.
+	Command, CommandFor string
+	// PopoverTarget opens a popover (a menu) by id.
+	PopoverTarget string
+	// Shortcut shows a key hint after the label: "C".
+	Shortcut string
+	Class    string
+	Attrs    templ.Attributes
+}
+
+func (p ButtonProps) class() string {
+	v := p.Variant
+	if v == "" {
+		v = Secondary
+	}
+	s := "tk-btn tk-btn--" + string(v)
+	if p.Size == SizeSM || p.Size == SizeLG {
+		s += " tk-btn--" + string(p.Size)
+	}
+	if p.IconOnly {
+		s += " tk-btn--icon"
+	}
+	return classes(s, p.Class)
+}
+
+func (p ButtonProps) typ() string {
+	if p.Type == "" {
+		return "button"
+	}
+	return p.Type
+}
+
+// Button is a button. An icon-only button carries its label as aria-label
+// and shows it as a tooltip.
+templ Button(p ButtonProps) {
+	if p.IconOnly {
+		<span class="tk-tip">
+			@button(p) {
+				{ children... }
+			}
+			<span class="tk-tip__bubble" aria-hidden="true">{ p.Label }</span>
+		</span>
+	} else {
+		@button(p) {
+			{ children... }
+		}
+	}
+}
+
+templ button(p ButtonProps) {
+	if p.Href != "" && !p.Disabled {
+		<a
+			class={ p.class() }
+			href={ templ.SafeURL(p.Href) }
+			if p.IconOnly {
+				aria-label={ p.Label }
+			}
+			if p.Pending {
+				aria-busy="true"
+			}
+			{ p.Attrs... }
+		>
+			@buttonBody(p) {
+				{ children... }
+			}
+		</a>
+	} else {
+		<button
+			class={ p.class() }
+			type={ p.typ() }
+			if p.IconOnly {
+				aria-label={ p.Label }
+			}
+			if p.Pending {
+				aria-busy="true"
+			}
+			if p.Disabled {
+				disabled
+			}
+			if p.Pressed != "" {
+				aria-pressed={ p.Pressed }
+			}
+			if p.Command != "" {
+				command={ p.Command }
+				commandfor={ p.CommandFor }
+			}
+			if p.PopoverTarget != "" {
+				popovertarget={ p.PopoverTarget }
+				aria-expanded="false"
+			}
+			{ p.Attrs... }
+		>
+			@buttonBody(p) {
+				{ children... }
+			}
+		</button>
+	}
+}
+
+templ buttonBody(p ButtonProps) {
+	if p.Icon != "" {
+		@Icon(p.Icon)
+	}
+	if !p.IconOnly && p.Label != "" {
+		<span class="tk-btn__label">{ p.Label }</span>
+	}
+	{ children... }
+	if p.Shortcut != "" {
+		<kbd class="tk-kbd tk-btn__kbd" aria-hidden="true">{ p.Shortcut }</kbd>
+	}
+	if p.IconEnd != "" {
+		@Icon(p.IconEnd)
+	}
+}
+
+// FieldProps is a labelled control: its label, a hint, and the message
+// that says why a value was refused, each tied to the control.
+type FieldProps struct {
+	// ID is the control's id; the label points at it.
+	ID    string
+	Label string
+	Hint  string
+	// Error is a validation message or a refusal (MP-09.2), shown under
+	// the control and read with it. ErrorAttrs wires one that arrives with
+	// the stream (data-text from the tab's outcomes).
+	Error      string
+	ErrorAttrs templ.Attributes
+	Required   bool
+	// Optional says "(optional)" after the label.
+	Optional bool
+	// HideLabel keeps the label for screen readers only.
+	HideLabel bool
+	Class     string
+}
+
+// HintID is the id of the field's hint.
+func (f FieldProps) HintID() string { return f.ID + "-hint" }
+
+// ErrorID is the id of the field's message.
+func (f FieldProps) ErrorID() string { return f.ID + "-error" }
+
+// DescribedBy is the control's aria-describedby: the hint and the message.
+func (f FieldProps) DescribedBy() string {
+	if f.Hint != "" {
+		return f.HintID() + " " + f.ErrorID()
+	}
+	return f.ErrorID()
+}
+
+// Field is a label over its control (the children), a hint under it, and
+// a polite live region for its message, so a refusal reaches screen
+// readers (NFR-48.2). The control takes DescribedBy and Invalid.
+templ Field(f FieldProps) {
+	<div
+		class={ classes("tk-field", f.Class) }
+		if f.Error != "" {
+			data-invalid
+		}
+	>
+		<label
+			class={ classes("tk-field__label", when(f.HideLabel, "visually-hidden")) }
+			for={ f.ID }
+		>
+			{ f.Label }
+			if f.Required {
+				<span class="tk-field__req" aria-hidden="true">*</span>
+			}
+			if f.Optional {
+				<span class="tk-field__opt">(optional)</span>
+			}
+		</label>
+		{ children... }
+		if f.Hint != "" {
+			<p class="tk-field__hint" id={ f.HintID() }>{ f.Hint }</p>
+		}
+		<p class="tk-field__error" id={ f.ErrorID() } aria-live="polite" { f.ErrorAttrs... }>
+			if f.Error != "" {
+				@Icon("warning")
+				{ f.Error }
+			}
+		</p>
+	</div>
+}
+
+// InputProps is a one-line text field.
+type InputProps struct {
+	ID, Name    string
+	Type        string // "text" (the default), "email", "search", "url", "password", "number"
+	Value       string
+	Placeholder string
+	// Autocomplete is the browser's hint: "off", "name", "email".
+	Autocomplete string
+	Required     bool
+	// Readonly is the pending state of a sent value (MP-09.1): the
+	// person's input stays, dashed, until its outcome.
+	Readonly    bool
+	Disabled    bool
+	Invalid     bool
+	MaxLength   int
+	DescribedBy string
+	// Icon shows at the start (search).
+	Icon string
+	// Size is SizeSM, SizeMD (the default) or SizeLG.
+	Size  Size
+	Class string
+	Attrs templ.Attributes
+}
+
+func (p InputProps) typ() string {
+	if p.Type == "" {
+		return "text"
+	}
+	return p.Type
+}
+
+func controlClass(base string, size Size, extra string) string {
+	if size == SizeSM || size == SizeLG {
+		base += " " + base + "--" + string(size)
+	}
+	return classes(base, extra)
+}
+
+// Input is a text field.
+templ Input(p InputProps) {
+	if p.Icon != "" {
+		<span class="tk-input-wrap">
+			@Icon(p.Icon)
+			@input(p)
+		</span>
+	} else {
+		@input(p)
+	}
+}
+
+templ input(p InputProps) {
+	<input
+		class={ controlClass("tk-input", p.Size, p.Class) }
+		id={ p.ID }
+		if p.Name != "" {
+			name={ p.Name }
+		}
+		type={ p.typ() }
+		if p.Value != "" {
+			value={ p.Value }
+		}
+		if p.Placeholder != "" {
+			placeholder={ p.Placeholder }
+		}
+		if p.Autocomplete != "" {
+			autocomplete={ p.Autocomplete }
+		}
+		if p.MaxLength > 0 {
+			maxlength={ itoa(p.MaxLength) }
+		}
+		if p.Required {
+			required
+		}
+		if p.Readonly {
+			readonly
+		}
+		if p.Disabled {
+			disabled
+		}
+		if p.Invalid {
+			aria-invalid="true"
+		}
+		if p.DescribedBy != "" {
+			aria-describedby={ p.DescribedBy }
+		}
+		{ p.Attrs... }
+	/>
+}
+
+// TextareaProps is a field of several lines.
+type TextareaProps struct {
+	ID, Name    string
+	Value       string
+	Placeholder string
+	Rows        int // 4 by default
+	Required    bool
+	Readonly    bool
+	Disabled    bool
+	Invalid     bool
+	MaxLength   int
+	DescribedBy string
+	Class       string
+	Attrs       templ.Attributes
+}
+
+// Textarea is a text field of several lines that grows with its text.
+templ Textarea(p TextareaProps) {
+	<textarea
+		class={ classes("tk-input tk-textarea", p.Class) }
+		id={ p.ID }
+		if p.Name != "" {
+			name={ p.Name }
+		}
+		rows={ itoa(max(p.Rows, 2)) }
+		if p.Placeholder != "" {
+			placeholder={ p.Placeholder }
+		}
+		if p.MaxLength > 0 {
+			maxlength={ itoa(p.MaxLength) }
+		}
+		if p.Required {
+			required
+		}
+		if p.Readonly {
+			readonly
+		}
+		if p.Disabled {
+			disabled
+		}
+		if p.Invalid {
+			aria-invalid="true"
+		}
+		if p.DescribedBy != "" {
+			aria-describedby={ p.DescribedBy }
+		}
+		{ p.Attrs... }
+	>{ p.Value }</textarea>
+}
+
+// Option is a choice in a select, a picker or a radio group.
+type Option struct {
+	Value, Label string
+	// Description is a second line (pickers and radio groups).
+	Description string
+	Selected    bool
+	Disabled    bool
+	// Icon draws before the label (radio groups only): a component such
+	// as TypeIcon.
+	Icon templ.Component `json:"-"`
+}
+
+// SelectProps is a native select.
+type SelectProps struct {
+	ID, Name    string
+	Options     []Option
+	Required    bool
+	Disabled    bool
+	Invalid     bool
+	DescribedBy string
+	Size        Size
+	Class       string
+	Attrs       templ.Attributes
+}
+
+// Select is the browser's own select, styled: the right choice for a short
+// list of plain options. Searchable, multiple and remote lists use Picker.
+templ Select(p SelectProps) {
+	<span class={ controlClass("tk-select", p.Size, p.Class) }>
+		<select
+			id={ p.ID }
+			if p.Name != "" {
+				name={ p.Name }
+			}
+			if p.Required {
+				required
+			}
+			if p.Disabled {
+				disabled
+			}
+			if p.Invalid {
+				aria-invalid="true"
+			}
+			if p.DescribedBy != "" {
+				aria-describedby={ p.DescribedBy }
+			}
+			{ p.Attrs... }
+		>
+			for _, o := range p.Options {
+				<option
+					value={ o.Value }
+					if o.Selected {
+						selected
+					}
+					if o.Disabled {
+						disabled
+					}
+				>{ o.Label }</option>
+			}
+		</select>
+		@Icon("chevron-down")
+	</span>
+}
+
+// CheckboxProps is a checkbox with its label.
+type CheckboxProps struct {
+	ID, Name, Value string
+	Label           string
+	Hint            string
+	Checked         bool
+	Disabled        bool
+	// HideLabel keeps the label for screen readers (a row's checkbox).
+	HideLabel bool
+	Attrs     templ.Attributes
+}
+
+// Checkbox is a checkbox: a pixel box, its label beside it.
+templ Checkbox(p CheckboxProps) {
+	<label class="tk-check">
+		<input
+			class="tk-check__box"
+			type="checkbox"
+			if p.ID != "" {
+				id={ p.ID }
+			}
+			if p.Name != "" {
+				name={ p.Name }
+			}
+			if p.Value != "" {
+				value={ p.Value }
+			}
+			if p.Checked {
+				checked
+			}
+			if p.Disabled {
+				disabled
+			}
+			{ p.Attrs... }
+		/>
+		<span class={ classes("tk-check__text", when(p.HideLabel, "visually-hidden")) }>
+			{ p.Label }
+			if p.Hint != "" {
+				<small>{ p.Hint }</small>
+			}
+		</span>
+	</label>
+}
+
+// ToggleProps is an on and off switch.
+type ToggleProps struct {
+	ID, Name string
+	Label    string
+	Checked  bool
+	Disabled bool
+	Attrs    templ.Attributes
+}
+
+// Toggle is a switch (role=switch): for settings that apply at once.
+templ Toggle(p ToggleProps) {
+	<label class="tk-toggle">
+		<input
+			class="tk-toggle__input"
+			type="checkbox"
+			role="switch"
+			if p.ID != "" {
+				id={ p.ID }
+			}
+			if p.Name != "" {
+				name={ p.Name }
+			}
+			if p.Checked {
+				checked
+			}
+			if p.Disabled {
+				disabled
+			}
+			{ p.Attrs... }
+		/>
+		<span class="tk-toggle__track" aria-hidden="true"></span>
+		<span class="tk-toggle__text">{ p.Label }</span>
+	</label>
+}
+
+// RadioGroupProps is one choice of several.
+type RadioGroupProps struct {
+	Name    string
+	Legend  string
+	Options []Option
+	// Segmented draws the options as one row of buttons (few, short
+	// options: a type, a priority, a view).
+	Segmented  bool
+	Required   bool
+	HideLegend bool
+	Attrs      templ.Attributes
+}
+
+// RadioGroup is a fieldset of radios.
+templ RadioGroup(p RadioGroupProps) {
+	<fieldset
+		class={ classes("tk-radios", when(p.Segmented, "tk-radios--segmented")) }
+		{ p.Attrs... }
+	>
+		<legend class={ classes("tk-field__label", when(p.HideLegend, "visually-hidden")) }>{ p.Legend }</legend>
+		<div class="tk-radios__options">
+			for _, o := range p.Options {
+				<label class="tk-radio">
+					<input
+						class="tk-radio__input"
+						type="radio"
+						name={ p.Name }
+						value={ o.Value }
+						if o.Selected {
+							checked
+						}
+						if o.Disabled {
+							disabled
+						}
+						if p.Required {
+							required
+						}
+					/>
+					<span class="tk-radio__text">
+						if o.Icon != nil {
+							@o.Icon
+						}
+						{ o.Label }
+						if o.Description != "" {
+							<small>{ o.Description }</small>
+						}
+					</span>
+				</label>
+			}
+		</div>
+	</fieldset>
+}
+
+// PickerProps is a searchable list of choices: Starbase's sb-select, for
+// assignees, labels, epics. Load its bundle on the page ("select").
+type PickerProps struct {
+	Label       string
+	Name        string
+	Options     []Option
+	Value       string // for Multiple, a JSON array or a comma list
+	Placeholder string
+	Multiple    bool
+	Searchable  bool
+	// Remote searches on the server: the page answers sb-search with
+	// results (Starbase's contract).
+	Remote    bool
+	Clearable bool
+	// Confirm marks a value the server has not confirmed (:state(pending)).
+	Confirm  bool
+	Disabled bool
+	Class    string
+	Attrs    templ.Attributes
+}
+
+type pickerOption struct {
+	Value       string `json:"value"`
+	Label       string `json:"label"`
+	Description string `json:"description,omitempty"`
+	Disabled    bool   `json:"disabled,omitempty"`
+}
+
+func pickerOptions(opts []Option) string {
+	out := make([]pickerOption, len(opts))
+	for i, o := range opts {
+		out[i] = pickerOption{o.Value, o.Label, o.Description, o.Disabled}
+	}
+	return jsonAttr(out)
+}
+
+// Picker is sb-select with tickit's tokens. Its label is its own (inside
+// the component), so it takes no Field.
+templ Picker(p PickerProps) {
+	<sb-select
+		class={ classes("tk-picker", p.Class) }
+		label={ p.Label }
+		if p.Name != "" {
+			name={ p.Name }
+		}
+		options={ pickerOptions(p.Options) }
+		if p.Value != "" {
+			value={ p.Value }
+		}
+		if p.Placeholder != "" {
+			placeholder={ p.Placeholder }
+		}
+		if p.Multiple {
+			multiple
+		}
+		if p.Searchable {
+			searchable
+		}
+		if p.Remote {
+			remote
+		}
+		if p.Clearable {
+			clearable
+		}
+		if p.Confirm {
+			confirm
+		}
+		if p.Disabled {
+			disabled
+		}
+		{ p.Attrs... }
+	></sb-select>
+}
+
+// DatePickerProps is a date field with a calendar: sb-date-picker. Load
+// its bundle on the page ("date-picker").
+type DatePickerProps struct {
+	Label    string
+	Name     string
+	Value    string // ISO: 2026-10-20
+	Min, Max string
+	Confirm  bool
+	Disabled bool
+	Class    string
+	Attrs    templ.Attributes
+}
+
+// DatePicker is sb-date-picker in English.
+templ DatePicker(p DatePickerProps) {
+	<sb-date-picker
+		class={ classes("tk-date", p.Class) }
+		label={ p.Label }
+		lang="en"
+		if p.Name != "" {
+			name={ p.Name }
+		}
+		if p.Value != "" {
+			value={ p.Value }
+		}
+		if p.Min != "" {
+			min={ p.Min }
+		}
+		if p.Max != "" {
+			max={ p.Max }
+		}
+		if p.Confirm {
+			confirm
+		}
+		if p.Disabled {
+			disabled
+		}
+		{ p.Attrs... }
+	></sb-date-picker>
+}

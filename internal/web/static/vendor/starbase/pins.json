@@ -1,0 +1,20 @@
+{
+  "repo": "github.com/zweiundeins/starbase",
+  "components": [
+    "copy-button",
+    "date-picker",
+    "dropdown",
+    "popover",
+    "select",
+    "tabs",
+    "toast",
+    "tree",
+    "virtual-scroll"
+  ],
+  "fonts": [
+    "jetbrains-mono.woff2",
+    "pixelify-sans.woff2",
+    "OFL-JetBrainsMono.txt",
+    "OFL-PixelifySans.txt"
+  ]
+}

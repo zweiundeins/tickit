@@ -1,0 +1,107 @@
+/*
+ * Starbase's components (static/vendor/starbase) read Starbase's semantic
+ * tokens, --sb-*, with Starbase's colours as fallbacks. Here they take
+ * tickit's: surfaces, text, accent, borders, focus and overlays of both
+ * themes (through light-dark() in --tk-*), the code colours, the fonts and
+ * the 8-bit details, so data-tk-style="smooth" smooths them too.
+ */
+@layer theme {
+	:root {
+		--sb-bg: var(--tk-bg);
+		--sb-bg-glow: transparent;
+		--sb-surface-raised: var(--tk-surface-overlay);
+		--sb-surface-card: var(--tk-surface-1);
+		--sb-surface-inset: var(--tk-surface-inset);
+		--sb-surface-hover: var(--tk-surface-hover);
+		--sb-surface-overlay: var(--tk-scrim);
+
+		--sb-border: var(--tk-border);
+		--sb-border-subtle: var(--tk-border-subtle);
+		--sb-border-strong: var(--tk-border-strong);
+
+		--sb-text-1: var(--tk-text-1);
+		--sb-text-2: var(--tk-text-2);
+		--sb-text-muted: var(--tk-text-muted);
+		--sb-text-on-brand: var(--tk-on-accent);
+		--sb-text-on-danger: var(--tk-on-danger);
+
+		/* Starbase's brand is tickit's accent. brand-light is what
+		 * components write selected text in: the accent as text. */
+		--sb-brand: var(--tk-accent);
+		--sb-brand-hover: var(--tk-accent-strong);
+		--sb-brand-light: var(--tk-accent-text);
+		--sb-brand-subtle: var(--tk-accent-subtle);
+		--sb-accent: var(--tk-accent);
+		--sb-datastar: var(--tk-ok);
+
+		--sb-ok: var(--tk-ok);
+		--sb-ok-subtle: var(--tk-ok-subtle);
+		--sb-warn: var(--tk-warn);
+		--sb-warn-subtle: var(--tk-warn-subtle);
+		--sb-danger: var(--tk-danger);
+		--sb-danger-subtle: var(--tk-danger-subtle);
+		--sb-info: var(--tk-info);
+		--sb-info-subtle: var(--tk-info-subtle);
+
+		--sb-control-bg: var(--tk-surface-inset);
+		--sb-control-border: var(--tk-control-border);
+		--sb-control-border-hover: var(--tk-text-muted);
+		--sb-control-text: var(--tk-text-1);
+		--sb-control-placeholder: var(--tk-text-muted);
+		--sb-control-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		--sb-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+		--sb-control-height-sm: var(--tk-control-sm);
+		--sb-control-height-md: var(--tk-control-md);
+		--sb-control-height-lg: var(--tk-control-lg);
+
+		--sb-frame-color: var(--tk-border-strong);
+		--sb-frame-step: var(--tk-frame-step);
+		--sb-notch: var(--tk-notch);
+		--sb-focus-ring: 0 0 0 2px var(--tk-bg), 0 0 0 4px var(--tk-focus);
+		--sb-glow-brand: 0 0 0 1px var(--tk-accent-edge), 0 8px 28px -10px var(--tk-glow);
+		--sb-selection: var(--tk-selection);
+		--sb-shadow-overlay: var(--tk-shadow-overlay);
+
+		--sb-font-ui: var(--tk-font-mono);
+		--sb-font-body: var(--tk-font-ui);
+		--sb-font-heading: var(--tk-font-ui);
+		--sb-font-display: var(--tk-font-display);
+		--sb-display-case: none;
+
+		--sb-code-keyword: var(--tk-code-keyword);
+		--sb-code-function: var(--tk-code-function);
+		--sb-code-tag: var(--tk-code-keyword);
+		--sb-code-string: var(--tk-code-string);
+		--sb-code-number: var(--tk-code-number);
+
+		--sb-z-sticky: var(--tk-z-sticky);
+		--sb-z-dropdown: var(--tk-z-dropdown);
+		--sb-z-overlay: var(--tk-z-overlay);
+		--sb-z-modal: var(--tk-z-modal);
+		--sb-z-toast: var(--tk-z-toast);
+		--sb-z-tooltip: var(--tk-z-tooltip);
+	}
+}
+
+@layer components {
+	/* Until a component's bundle defines it: nothing that would jump. */
+	sb-toast:not(:defined),
+	sb-popover:not(:defined),
+	sb-dropdown:not(:defined) {
+		visibility: hidden;
+	}
+
+	sb-select:not(:defined),
+	sb-date-picker:not(:defined) {
+		display: block;
+		min-block-size: calc(var(--tk-control-md) + 1.25rem);
+	}
+
+	sb-tabs:not(:defined) {
+		display: block;
+
+		& > [slot]:not(:first-of-type) {
+			display: none;
+		}
+	}
+}

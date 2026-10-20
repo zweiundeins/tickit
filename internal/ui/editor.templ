@@ -1,0 +1,127 @@
+package ui
+
+import "strconv"
+
+// ToolButton is a button of the editor's toolbar.
+type ToolButton struct {
+	Name string // what it does: "Bold"
+	Icon string
+	Keys string // its shortcut, for the tooltip: "Ctrl B"
+	// Pressed is the mark's or block's state at the caret (aria-pressed,
+	// NFR-49.1); nil for buttons that act once (Undo).
+	Pressed *bool
+	// Command names the editor command, for the component that wires it.
+	Command string
+}
+
+// ToolGroup is a run of toolbar buttons between separators.
+type ToolGroup []ToolButton
+
+// Pressed returns a pointer to b, for ToolButton.Pressed.
+func Pressed(b bool) *bool { return &b }
+
+// DefaultToolbar is the rich-text toolbar of pages, descriptions and
+// comments.
+var DefaultToolbar = []ToolGroup{
+	{{Name: "Undo", Icon: "undo", Keys: "Ctrl Z", Command: "undo"}, {Name: "Redo", Icon: "redo", Keys: "Ctrl Shift Z", Command: "redo"}},
+	{{Name: "Heading", Icon: "heading", Keys: "Ctrl Alt 1", Command: "heading", Pressed: Pressed(false)}},
+	{{Name: "Bold", Icon: "bold", Keys: "Ctrl B", Command: "strong", Pressed: Pressed(false)}, {Name: "Italic", Icon: "italic", Keys: "Ctrl I", Command: "em", Pressed: Pressed(false)}, {Name: "Strikethrough", Icon: "strike", Keys: "Ctrl Shift S", Command: "strike", Pressed: Pressed(false)}, {Name: "Inline code", Icon: "code", Keys: "Ctrl E", Command: "code", Pressed: Pressed(false)}},
+	{{Name: "Bulleted list", Icon: "list-bullet", Command: "bullet_list", Pressed: Pressed(false)}, {Name: "Numbered list", Icon: "list-numbered", Command: "ordered_list", Pressed: Pressed(false)}, {Name: "Task list", Icon: "list-task", Command: "task_list", Pressed: Pressed(false)}},
+	{{Name: "Quote", Icon: "quote", Command: "blockquote", Pressed: Pressed(false)}, {Name: "Code block", Icon: "code-block", Command: "code_block", Pressed: Pressed(false)}, {Name: "Divider", Icon: "rule", Command: "horizontal_rule"}, {Name: "Table", Icon: "table", Command: "table"}},
+	{{Name: "Link", Icon: "link", Keys: "Ctrl K", Command: "link", Pressed: Pressed(false)}, {Name: "Image", Icon: "image", Command: "image"}, {Name: "Issue", Icon: "board", Command: "issue_chip"}, {Name: "Mention", Icon: "user", Command: "mention"}},
+}
+
+// EditorToolbar is the toolbar's markup: role=toolbar, one tab stop, Left
+// and Right along it, every button named and its state pressed or not
+// (NFR-49.1). sb-rich-editor renders the same classes in its shadow root;
+// this is the reference, and the styleguide's.
+templ EditorToolbar(label string, groups []ToolGroup) {
+	<div class="tk-toolbar" role="toolbar" aria-label={ label } data-on:keydown={ toolbarKeys }>
+		for gi, g := range groups {
+			if gi > 0 {
+				<span class="tk-toolbar__sep" aria-hidden="true"></span>
+			}
+			for bi, b := range g {
+				@Tip(tipText(b)) {
+					<button
+						class="tk-toolbar__btn"
+						type="button"
+						aria-label={ b.Name }
+						if b.Keys != "" {
+							aria-keyshortcuts={ b.Keys }
+						}
+						if gi == 0 && bi == 0 {
+							tabindex="0"
+						} else {
+							tabindex="-1"
+						}
+						if b.Pressed != nil {
+							aria-pressed={ boolString(*b.Pressed) }
+						}
+						if b.Command != "" {
+							data-command={ b.Command }
+						}
+					>
+						@Icon(b.Icon)
+					</button>
+				}
+			}
+		}
+	</div>
+}
+
+func tipText(b ToolButton) string {
+	if b.Keys != "" {
+		return b.Name + " · " + b.Keys
+	}
+	return b.Name
+}
+
+// SaveState is the editor's status (MP-05.5).
+type SaveState string
+
+const (
+	Saving SaveState = "saving"
+	Saved  SaveState = "saved"
+	// Offline: edits kept in the tab until the connection is back (MP-05.6).
+	Offline SaveState = "offline"
+)
+
+// EditorStatus is "Saving" while the editor holds unconfirmed edits and
+// "Saved" when none are left; a polite live region that says only those.
+templ EditorStatus(s SaveState) {
+	<p class="tk-editor__status" data-state={ string(s) } role="status">
+		switch s {
+			case Saving:
+				<span class="tk-editor__dot" aria-hidden="true"></span>
+				Saving
+			case Offline:
+				@Icon("warning")
+				Offline, your edits are kept
+			default:
+				@Icon("check")
+				Saved
+		}
+	</p>
+}
+
+// Caret is another editor's caret with its name tag, as the editor draws
+// it inline (a ProseMirror widget, MP-06.1); hidden from screen readers
+// (NFR-49.1). Idle hides the tag (MP-06.3).
+templ Caret(name string, hue int, idle bool) {
+	<span
+		class="tk-caret"
+		data-hue={ strconv.Itoa(hue) }
+		if idle {
+			data-idle
+		}
+		aria-hidden="true"
+	><span class="tk-caret__tag">{ name }</span></span>
+}
+
+// RemoteSelection is another editor's selection as a band in their hue.
+templ RemoteSelection(hue int) {
+	<span class="tk-remote-sel" data-hue={ strconv.Itoa(hue) }>
+		{ children... }
+	</span>
+}

@@ -1,0 +1,282 @@
+package ui
+
+import "strconv"
+
+// TabsProps is Starbase's sb-tabs: panels in one place, the tab list's
+// keyboard and ARIA from the component. Load its bundle ("tabs").
+type TabsProps struct {
+	Labels   []string
+	Selected int
+	// Name reports the tab in sb-change, for a feature that keeps it.
+	Name  string
+	Class string
+	Attrs templ.Attributes
+}
+
+// Tabs is sb-tabs; the children are a TabPanel per label, in order.
+// Before the bundle defines it, the first panel shows.
+templ Tabs(p TabsProps) {
+	<sb-tabs
+		class={ classes("tk-tabs", p.Class) }
+		labels={ jsonAttr(p.Labels) }
+		if p.Selected > 0 {
+			selected={ strconv.Itoa(p.Selected) }
+		}
+		if p.Name != "" {
+			name={ p.Name }
+		}
+		{ p.Attrs... }
+	>
+		{ children... }
+	</sb-tabs>
+}
+
+// TabPanel is the panel of the tab with this label.
+templ TabPanel(label string) {
+	<div class="tk-tabs__panel" slot={ slug(label) }>
+		{ children... }
+	</div>
+}
+
+// TabNav is a row of links that look like tabs, for views with their own
+// URL (an issue's Comments and History as pages, a project's settings).
+templ TabNav(label string, items []NavItem) {
+	<nav class="tk-tabnav" aria-label={ label }>
+		for _, it := range items {
+			<a
+				href={ templ.SafeURL(it.Href) }
+				if it.Current {
+					aria-current="page"
+				}
+			>
+				if it.Icon != "" {
+					@Icon(it.Icon)
+				}
+				{ it.Label }
+				if it.Count != nil {
+					<span class="tk-count">{ strconv.Itoa(*it.Count) }</span>
+				}
+			</a>
+		}
+	</nav>
+}
+
+// Crumb is a step of a breadcrumb trail.
+type Crumb struct {
+	Label string
+	Href  string
+	Icon  string
+}
+
+// Breadcrumbs is the trail to the current page; the last crumb is the
+// page itself and links nowhere.
+templ Breadcrumbs(items []Crumb) {
+	<nav class="tk-crumbs" aria-label="Breadcrumbs">
+		<ol>
+			for i, c := range items {
+				<li>
+					if i == len(items)-1 {
+						<span aria-current="page">
+							if c.Icon != "" {
+								@Icon(c.Icon)
+							}
+							{ c.Label }
+						</span>
+					} else {
+						<a href={ templ.SafeURL(c.Href) }>
+							if c.Icon != "" {
+								@Icon(c.Icon)
+							}
+							{ c.Label }
+						</a>
+					}
+				</li>
+			}
+		</ol>
+	</nav>
+}
+
+// PaginationProps is a long list's pages.
+type PaginationProps struct {
+	Page, Pages int // 1-based
+	Total       int
+	// Noun is what the list holds, plural: "issues".
+	Noun string
+	// Href is the URL of a page.
+	Href func(page int) string
+}
+
+// pageList is the pages to link: the first, the last, and two around the
+// current one; 0 stands for a gap.
+func pageList(page, pages int) []int {
+	var out []int
+	for n := 1; n <= pages; n++ {
+		if n == 1 || n == pages || n >= page-1 && n <= page+1 {
+			out = append(out, n)
+		} else if len(out) > 0 && out[len(out)-1] != 0 {
+			out = append(out, 0)
+		}
+	}
+	return out
+}
+
+// Pagination is the pages of a list with its count: "Page 2 of 7, 312
+// issues", Previous, the pages, Next.
+templ Pagination(p PaginationProps) {
+	<nav class="tk-pages" aria-label="Pages">
+		<p class="tk-pages__count">
+			Page { strconv.Itoa(p.Page) } of { strconv.Itoa(max(p.Pages, 1)) }
+			<span aria-hidden="true">·</span>
+			{ strconv.Itoa(p.Total) } { p.Noun }
+		</p>
+		if p.Pages > 1 {
+			<ul class="tk-pages__list">
+				<li>
+					if p.Page > 1 {
+						@Button(ButtonProps{Label: "Previous page", Icon: "chevron-left", IconOnly: true, Variant: Ghost, Size: SizeSM, Href: p.Href(p.Page - 1)})
+					} else {
+						@Button(ButtonProps{Label: "Previous page", Icon: "chevron-left", IconOnly: true, Variant: Ghost, Size: SizeSM, Disabled: true})
+					}
+				</li>
+				for _, n := range pageList(p.Page, p.Pages) {
+					<li>
+						if n == 0 {
+							<span class="tk-pages__gap" aria-hidden="true">…</span>
+						} else if n == p.Page {
+							<a class="tk-pages__page" href={ templ.SafeURL(p.Href(n)) } aria-current="page">
+								<span class="visually-hidden">Page </span>{ strconv.Itoa(n) }
+							</a>
+						} else {
+							<a class="tk-pages__page" href={ templ.SafeURL(p.Href(n)) }>
+								<span class="visually-hidden">Page </span>{ strconv.Itoa(n) }
+							</a>
+						}
+					</li>
+				}
+				<li>
+					if p.Page < p.Pages {
+						@Button(ButtonProps{Label: "Next page", Icon: "chevron-right", IconOnly: true, Variant: Ghost, Size: SizeSM, Href: p.Href(p.Page + 1)})
+					} else {
+						@Button(ButtonProps{Label: "Next page", Icon: "chevron-right", IconOnly: true, Variant: Ghost, Size: SizeSM, Disabled: true})
+					}
+				</li>
+			</ul>
+		}
+	</nav>
+}
+
+// TreeItem is a node of a Tree: a page and its children.
+type TreeItem struct {
+	ID    string
+	Label string
+	Href  string
+	Icon  string
+	// Current is the page shown: highlighted, aria-current, and the item
+	// in the tab order.
+	Current bool
+	// Expanded shows the children; the person opens and closes nodes in
+	// the page (data-preserve-attr keeps that through frames).
+	Expanded bool
+	// Meta shows after the label, muted: a count, "draft".
+	Meta     string
+	Children []TreeItem
+}
+
+// TreeProps is a page tree.
+type TreeProps struct {
+	// Label names the tree: "Pages in Engineering".
+	Label string
+	Items []TreeItem
+	Class string
+	Attrs templ.Attributes
+}
+
+// Tree is the ARIA tree pattern, rendered by the server (NFR-47.2): links
+// as tree items, Up and Down through the visible ones, Right and Left to
+// open and close, Enter to follow. The twisty opens and closes by pointer.
+templ Tree(p TreeProps) {
+	<ul
+		class={ classes("tk-tree", p.Class) }
+		role="tree"
+		aria-label={ p.Label }
+		data-on:keydown={ treeKeys }
+		data-on:click={ treeToggle }
+		{ p.Attrs... }
+	>
+		@treeItems(p.Items, 1, focusID(p.Items))
+	</ul>
+}
+
+templ treeItems(items []TreeItem, level int, focus string) {
+	for _, it := range items {
+		<li role="none">
+			<a
+				class="tk-tree__item"
+				role="treeitem"
+				href={ templ.SafeURL(it.Href) }
+				aria-level={ strconv.Itoa(level) }
+				if it.ID == focus {
+					tabindex="0"
+				} else {
+					tabindex="-1"
+				}
+				if it.Current {
+					aria-current="page"
+					aria-selected="true"
+				}
+				if len(it.Children) > 0 {
+					aria-expanded={ boolString(it.Expanded) }
+					data-preserve-attr="aria-expanded tabindex"
+				} else {
+					data-preserve-attr="tabindex"
+				}
+			>
+				<span class="tk-tree__twisty" aria-hidden="true">
+					if len(it.Children) > 0 {
+						@Icon("chevron-right")
+					}
+				</span>
+				@Icon(iconOr(it.Icon, "page"))
+				<span class="tk-tree__label">{ it.Label }</span>
+				if it.Meta != "" {
+					<span class="tk-tree__meta">{ it.Meta }</span>
+				}
+			</a>
+			if len(it.Children) > 0 {
+				<ul role="group">
+					@treeItems(it.Children, level+1, focus)
+				</ul>
+			}
+		</li>
+	}
+}
+
+func iconOr(name, def string) string {
+	if name == "" {
+		return def
+	}
+	return name
+}
+
+// focusID is the item in the tab order: the current one, else the first.
+func focusID(items []TreeItem) string {
+	var find func([]TreeItem) string
+	find = func(list []TreeItem) string {
+		for _, it := range list {
+			if it.Current {
+				return it.ID
+			}
+			if id := find(it.Children); id != "" {
+				return id
+			}
+		}
+		return ""
+	}
+	if id := find(items); id != "" {
+		return id
+	}
+	if len(items) > 0 {
+		return items[0].ID
+	}
+	return ""
+}

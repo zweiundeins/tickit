@@ -1,0 +1,207 @@
+package ui
+
+import (
+	"strconv"
+	"strings"
+	"time"
+)
+
+// AvatarProps is a person's face: their pixel face, or their photo, on a
+// notched tile in their hue.
+type AvatarProps struct {
+	Person
+	// Size: SizeXS 1rem (cells, card footers), SizeSM 1.5rem (lists,
+	// comments, the default), SizeMD 2rem (presence, header), SizeLG 3rem
+	// (profiles).
+	Size Size
+	// You outlines the viewer's own face.
+	You bool
+	// Decorative leaves the name out, when it is written beside the face.
+	Decorative bool
+	Class      string
+}
+
+// Avatar is a face with the person's name for screen readers.
+templ Avatar(p AvatarProps) {
+	{{ f := FaceOf(p.Seed) }}
+	<span
+		class={ classes("tk-av", "tk-av--"+string(sizeOr(p.Size, SizeSM)), p.Class) }
+		data-hue={ strconv.Itoa(f.Hue) }
+		if p.Deactivated {
+			data-state="deactivated"
+		}
+		else
+		if p.Away {
+			data-state="away"
+		}
+		if p.You {
+			data-you
+		}
+	>
+		if p.Photo != "" {
+			<img src={ p.Photo } alt="" loading="lazy"/>
+		} else {
+			<svg class="tk-face" viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path d={ f.Path }></path></svg>
+		}
+		if !p.Decorative {
+			<span class="visually-hidden">{ personName(p.Person, p.You) }</span>
+		}
+	</span>
+}
+
+// personName is a name with its states, for screen readers and tooltips.
+func personName(p Person, you bool) string {
+	s := p.Name
+	if you {
+		s += " (you)"
+	}
+	if p.Deactivated {
+		s += ", deactivated"
+	} else if p.Away {
+		s += ", away"
+	}
+	return s
+}
+
+// PresenceEntry is someone who has a view open (MP-02).
+type PresenceEntry struct {
+	Person
+	// Tabs is how many tabs they have it open in; shown only in the
+	// tooltip (MP-01.1).
+	Tabs int
+	// You is the viewer: their face comes first, outlined.
+	You bool
+	// Editing marks an editor apart from readers (MP-07.3).
+	Editing bool
+}
+
+func (e PresenceEntry) describe() string {
+	var parts []string
+	parts = append(parts, personName(e.Person, e.You))
+	if e.Tabs > 1 {
+		parts = append(parts, strconv.Itoa(e.Tabs)+" tabs")
+	}
+	if e.Editing {
+		parts = append(parts, "editing")
+	}
+	return strings.Join(parts, ", ")
+}
+
+// PresenceProps is the row of people who have a view open.
+type PresenceProps struct {
+	// Label names the row: "People on this board".
+	Label  string
+	People []PresenceEntry
+	// Max faces before "+n": 8 (MP-02.1).
+	Max   int
+	Class string
+}
+
+// presence orders the viewer first and splits the faces shown from the
+// rest.
+func presence(p PresenceProps) (shown, rest []PresenceEntry) {
+	limit := p.Max
+	if limit <= 0 {
+		limit = 8
+	}
+	all := make([]PresenceEntry, 0, len(p.People))
+	for _, e := range p.People {
+		if e.You {
+			all = append(all, e)
+		}
+	}
+	for _, e := range p.People {
+		if !e.You {
+			all = append(all, e)
+		}
+	}
+	if len(all) <= limit {
+		return all, nil
+	}
+	return all[:limit], all[limit:]
+}
+
+func names(list []PresenceEntry) string {
+	n := make([]string, len(list))
+	for i, e := range list {
+		n[i] = e.describe()
+	}
+	return strings.Join(n, "; ")
+}
+
+func peopleCount(n int) string {
+	if n == 1 {
+		return "1 person"
+	}
+	return strconv.Itoa(n) + " people"
+}
+
+// PresenceRow is the faces of the people here, the viewer's own first and
+// outlined, at most eight and then "+n" (MP-02.1). Away faces dim, editors
+// carry a pencil. It is a list that screen readers can walk on request; it
+// announces nothing by itself (NFR-48.2). Each face shows its name, tab
+// count and state on hover and focus.
+templ PresenceRow(p PresenceProps) {
+	{{ shown, rest := presence(p) }}
+	<ul class={ classes("tk-presence", p.Class) } role="list" aria-label={ p.Label + ": " + peopleCount(len(p.People)) }>
+		for _, e := range shown {
+			<li
+				class="tk-presence__item"
+				if e.Editing {
+					data-editing
+				}
+			>
+				<span class="tk-tip" role="img" tabindex="0" aria-label={ e.describe() }>
+					@Avatar(AvatarProps{Person: e.Person, Size: SizeMD, You: e.You, Decorative: true})
+					if e.Editing {
+						<span class="tk-presence__editing" aria-hidden="true">
+							@Icon("edit")
+						</span>
+					}
+					<span class="tk-tip__bubble" aria-hidden="true">{ e.describe() }</span>
+				</span>
+			</li>
+		}
+		if len(rest) > 0 {
+			<li class="tk-presence__item">
+				<span class="tk-tip" role="img" tabindex="0" aria-label={ strconv.Itoa(len(rest)) + " more: " + names(rest) }>
+					<span class="tk-presence__more" aria-hidden="true">+{ strconv.Itoa(len(rest)) }</span>
+					<span class="tk-tip__bubble" aria-hidden="true">{ names(rest) }</span>
+				</span>
+			</li>
+		}
+	</ul>
+}
+
+// BylineProps is who did something to a page or a comment, and when.
+type BylineProps struct {
+	Person
+	// Verb is what they did: "created", "edited". Empty: the name and the
+	// time only.
+	Verb    string
+	At, Now time.Time
+	Href    string
+	Class   string
+}
+
+// Byline is a face, a name, a verb and a relative time.
+templ Byline(p BylineProps) {
+	<p class={ classes("tk-byline", p.Class) }>
+		@Avatar(AvatarProps{Person: p.Person, Size: SizeSM, Decorative: true})
+		if p.Href != "" {
+			<a class="tk-byline__name" href={ templ.SafeURL(p.Href) }>{ p.Name }</a>
+		} else {
+			<span class="tk-byline__name">{ p.Name }</span>
+		}
+		if p.Verb != "" {
+			<span>{ p.Verb }</span>
+		}
+		@RelativeTime(p.At, p.Now)
+	</p>
+}
+
+// Mention is a person named in a text: the same element documents render
+// (a.mention, docs/editor.md), so prose.css styles both.
+templ Mention(id, name, href string) {
+	<a class="mention" data-person={ id } href={ templ.SafeURL(href) }>{ "@" + name }</a>
+}

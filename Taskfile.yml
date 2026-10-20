@@ -57,3 +57,10 @@ tasks:
     desc: Known vulnerabilities in the code the binary calls (govulncheck)
     cmds:
       - go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+
+  vendor-starbase:
+    desc: Copy Starbase's components and fonts from a checkout (STARBASE=/path/to/starbase)
+    cmds:
+      - go run ./cmd/vendor-starbase -src {{.STARBASE}}
+    requires:
+      vars: [STARBASE]
