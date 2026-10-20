@@ -303,7 +303,7 @@ No Must or Should requirements.
 | NFR-75 | Health and readiness | Must | done | deploy/smoke-test.sh (go tool task smoke) | No Go test cites it; the 503 naming the failing check comes from lith's edge.Ready and is not tested here. |
 | NFR-76 | Metrics | Must | partly | cmd/tickit/main_test.go: TestLoopback; deploy/smoke-test.sh | The loopback listener exports lith's collector and every listed counter, but the mapping of the grouping document's metrics (76.2) is written down nowhere. |
 | NFR-77 | Logs | Must | done | internal/web/action_test.go: TestLogin | slog text handler at Info by default and edge.LogRequests; TestLogin covers NFR-11, nothing else tests the log lines. |
-| NFR-78 | Alerts and dashboard | Should | partly | none | No test cites it; deploy/observability/rules-tickit.yaml is hand-written and unconfirmed against a running Grafana, so it needs a check on the host. |
+| NFR-78 | Alerts and dashboard | Should | partly | none | No test cites it; deploy/observability/rules-tickit.yaml is hand-written. On libretto Grafana loaded it on 2026-10-20 and its three rules evaluate with health ok; none has fired yet, and the file is not yet exported over from Grafana. |
 
 ## Gaps
 
