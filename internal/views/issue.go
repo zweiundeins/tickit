@@ -46,17 +46,17 @@ type Comment struct {
 // IssueAsOf is an issue as it stood at a version (FR-70): the view
 // issue:<id>:at:<v>, which every tab at that version shares.
 type IssueAsOf struct {
-	ID, Key    string
-	State      tracker.IssueState
-	Version    int64
-	Latest     int64
-	Workflow   tracker.Workflow
-	Sprints    []tracker.Sprint
-	People     map[string]people.Person
-	Keys       map[string]string // issue ids to keys, for the parent and links
-	DescHTML   string
-	Changes    []tracker.Entry // what changed at that version
-	Now        time.Time
+	ID, Key  string
+	State    tracker.IssueState
+	Version  int64
+	Latest   int64
+	Workflow tracker.Workflow
+	Sprints  []tracker.Sprint
+	People   map[string]people.Person
+	Keys     map[string]string // issue ids to keys, for the parent and links
+	DescHTML string
+	Changes  []tracker.Entry // what changed at that version
+	Now      time.Time
 }
 
 // Typing is who types where on an issue (MP-07): the view issue-typing:<id>.
@@ -82,8 +82,8 @@ func lookup(found map[string]people.Person, id string) people.Person {
 	return people.Person{ID: id, Kind: people.Deleted, Name: people.DeletedName}
 }
 
-func uiType(t tracker.IssueType) ui.IssueType  { return ui.IssueType(t) }
-func uiPrio(p tracker.Priority) ui.Priority    { return ui.Priority(p) }
+func uiType(t tracker.IssueType) ui.IssueType { return ui.IssueType(t) }
+func uiPrio(p tracker.Priority) ui.Priority   { return ui.Priority(p) }
 func uiCat(c tracker.Category) ui.StatusCategory {
 	switch c {
 	case tracker.InProgress:
@@ -107,8 +107,8 @@ func chip(r tracker.IssueRef) ui.IssueChipProps {
 // at is t in the zone absolute times show.
 func at(t time.Time) time.Time { return t.In(Zone) }
 
-func itoa(n int) string        { return strconv.Itoa(n) }
-func i64(n int64) string       { return strconv.FormatInt(n, 10) }
+func itoa(n int) string  { return strconv.Itoa(n) }
+func i64(n int64) string { return strconv.FormatInt(n, 10) }
 func intp(p *int) string {
 	if p == nil {
 		return ""
