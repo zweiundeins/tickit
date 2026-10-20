@@ -425,6 +425,27 @@ func filterArgs(readable []string, f Filter) []any {
 const issueFrom = ` FROM issues i JOIN projects p ON p.id = i.project_id
 	LEFT JOIN statuses s ON s.project_id = i.project_id AND s.id = i.status`
 
+// Recent are the n issues of a project changed last, as Search shows them
+// sorted by update, without counting the others: the issue page's issues
+// to link by key or summary (issues_project_updated).
+func Recent(ctx context.Context, q sqlite.Querier, project string, n int) ([]Issue, error) {
+	rows, err := q.QueryContext(ctx, `SELECT `+issueColumns+issueFrom+` WHERE i.project_id = ? AND i.deleted_at IS NULL
+		ORDER BY i.updated_at DESC, i.number ASC LIMIT ?`, project, n)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Issue
+	for rows.Next() {
+		i, err := scanIssue(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, i)
+	}
+	return out, rows.Err()
+}
+
 // Search returns a page of the issues that match a query (FR-50 to
 // FR-54): of the projects the person may read, archived ones only when
 // the filter names them; an exact key first, then in the query's order,

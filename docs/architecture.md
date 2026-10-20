@@ -249,7 +249,7 @@ var pageSearch = events.NewProjector(PageStream, search.PagesProjector, search.P
 | 060 to 069 | search |
 | 070 to 089 | demo, moderation, images |
 
-`sqlite.Open` applies the files numbered above the database's `user_version`, so once a higher number has shipped, a new migration of any area takes the next number above the highest (072 is the tracker's `issues_project_open`, after demo's 071); the ranges above hold the first files of each area. Projection tables are created by migrations too, since the runner needs them to exist.
+`sqlite.Open` applies the files numbered above the database's `user_version`, so once a higher number has shipped, a new migration of any area takes the next number above the highest (072 is the tracker's `issues_project_open`, after demo's 071, and 073 its indexes of a project's epics and of its issues by update); the ranges above hold the first files of each area. Projection tables are created by migrations too, since the runner needs them to exist.
 
 ## Frontend
 
