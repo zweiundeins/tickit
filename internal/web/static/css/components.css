@@ -2001,9 +2001,11 @@
 		overflow: hidden;
 		border: 1px solid var(--tk-border-subtle);
 		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
-		background: var(--tk-border-subtle);
+		background: var(--tk-surface-1);
 	}
 
+	/* The lines between stats are their shadows in the gap, so the empty
+	 * end of a wrapped last row stays the surface, not a grey block. */
 	.tk-stat {
 		--_tone: var(--tk-text-1);
 		display: grid;
@@ -2011,6 +2013,7 @@
 		gap: var(--tk-space-1);
 		padding: var(--tk-space-3) var(--tk-space-4);
 		background: var(--tk-surface-1);
+		box-shadow: 1px 0 0 var(--tk-border-subtle), 0 1px 0 var(--tk-border-subtle);
 
 		& dd {
 			margin: 0;

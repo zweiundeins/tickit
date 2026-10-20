@@ -23,6 +23,7 @@ import (
 	"github.com/mbolli/tickit/internal/tracker"
 	"github.com/mbolli/tickit/internal/ui"
 	"github.com/mbolli/tickit/internal/views"
+	"github.com/mbolli/tickit/internal/wiki"
 )
 
 // routesNotify registers the home page (FR-59), notifications (FR-110 to
@@ -209,12 +210,12 @@ func (s *Server) work(ctx context.Context, q sqlite.Querier, me people.Person, r
 		if sc.Kind != access.Space {
 			continue
 		}
-		info, err := access.Get(ctx, q, sc)
+		sp, err := wiki.SpaceByID(ctx, q, sc.ID)
 		if err != nil {
 			return w, err
 		}
-		if !info.Archived {
-			w.Spaces = append(w.Spaces, views.Space{Key: info.Key, Name: info.Key})
+		if !sp.Archived {
+			w.Spaces = append(w.Spaces, views.Space{Key: sp.Key, Name: sp.Name})
 		}
 	}
 	return w, nil
@@ -229,7 +230,7 @@ func (s *Server) homeView(ctx context.Context, q sqlite.Querier, actor people.Pe
 	}
 	return live.View{
 		Key:    "home:" + actor.ID,
-		Topics: []string{events.Topic, people.Topic, tracker.ProjectsTopic, tracker.IssuesTopic},
+		Topics: []string{events.Topic, people.Topic, tracker.ProjectsTopic, tracker.IssuesTopic, wiki.SpacesTopic},
 		Every:  time.Minute,
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			q := querier(ctx, tx)
