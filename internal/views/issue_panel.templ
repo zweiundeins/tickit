@@ -12,7 +12,6 @@ templ IssuePanel(me string, moderates bool) {
 		@ui.SidePanel(ui.PanelProps{ID: "issue-panel", Title: "Issue", Lead: panelLead(), Actions: panelActions(), Class: "tk-issue-panel", Attrs: templ.Attributes{"data-on:close": panelClose}}) {
 			@issueFrame(IssueFrameProps{Panel: true, Me: me, Moderates: moderates})
 		}
-		@issueDeleteDialog()
 	</div>
 }
 

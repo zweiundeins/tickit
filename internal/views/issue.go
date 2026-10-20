@@ -303,7 +303,7 @@ func pending(f string) templ.Attributes {
 
 // choice is a control that sends field f with a value and a ref.
 func choice(f, value, ref string) templ.Attributes {
-	a := templ.Attributes{"data-field": f, "data-value": value, "data-on:click": issueChoose}
+	a := templ.Attributes{"data-act": "choose", "data-field": f, "data-value": value}
 	if ref != "" {
 		a["data-ref"] = ref
 	}

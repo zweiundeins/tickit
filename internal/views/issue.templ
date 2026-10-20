@@ -30,7 +30,6 @@ type IssueFrameProps struct {
 // IssuePage is the issue's page.
 templ IssuePage(p IssueFrameProps) {
 	@issueFrame(p)
-	@issueDeleteDialog()
 }
 
 templ issueFrame(p IssueFrameProps) {
@@ -42,6 +41,10 @@ templ issueFrame(p IssueFrameProps) {
 		}
 		data-effect={ issueSettle }
 		data-on:datastar-fetch={ issueFailed }
+		data-on:click={ issueClick }
+		data-on:keydown={ issueKeys }
+		data-on:focusout={ issueFocusOut }
+		data-on:input__throttle.2s={ issueTyping }
 	>
 		@viewerStyle(p.Me)
 		<div class="tk-issue__head">
@@ -100,6 +103,7 @@ templ issueFrame(p IssueFrameProps) {
 			</div>
 			@region(p, "issue-side", "aside")
 		</div>
+		@issueDeleteDialog()
 	</article>
 }
 
@@ -182,13 +186,13 @@ templ issueNote(f string) {
 		<p class="tk-outcome" data-kind="failed" role="alert" { showIf(fieldExpr(noteFailed, f))... }>
 			@ui.Icon("warning")
 			<span data-text={ fieldExpr(noteFail, f) }></span>
-			@ui.Button(ui.ButtonProps{Label: "Retry", Icon: "undo", Size: ui.SizeSM, Attrs: templ.Attributes{"data-field": f, "data-on:click": issueRetry}})
+			@ui.Button(ui.ButtonProps{Label: "Retry", Icon: "undo", Size: ui.SizeSM, Attrs: templ.Attributes{"data-field": f, "data-act": "retry"}})
 		</p>
 	</div>
 }
 
 templ anywayButton(f string) {
-	<button type="button" class="tk-btn tk-btn--sm tk-btn--secondary" data-field={ f } data-on:click={ issueAnyway }>
+	<button type="button" class="tk-btn tk-btn--sm tk-btn--secondary" data-field={ f } data-act="anyway">
 		<span class="tk-btn__label" data-text={ fieldExpr(noteAnyway, f) }>Use mine anyway</span>
 	</button>
 }
@@ -208,10 +212,10 @@ templ issueMain(m Issue) {
 			<span class="tk-issue__copied" role="status" data-text="$_is.copied ? 'Link copied' : ''"></span>
 		</p>
 		<div class="tk-issue__titlerow" { showIf(fieldExpr(editHidden, "summary"))... }>
-			<h1 class="tk-issue__title" data-field="summary" data-src="issue-summary-text" data-on:click={ issueEdit }><span id="issue-summary-text">{ m.Summary }</span></h1>
-			@ui.Button(ui.ButtonProps{Label: "Edit the summary", Icon: "edit", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: merge(locked, pending("summary"), templ.Attributes{"data-field": "summary", "data-src": "issue-summary-text", "data-on:click": issueEdit})})
+			<h1 class="tk-issue__title" data-act="edit" data-field="summary" data-src="issue-summary-text"><span id="issue-summary-text">{ m.Summary }</span></h1>
+			@ui.Button(ui.ButtonProps{Label: "Edit the summary", Icon: "edit", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: merge(locked, pending("summary"), templ.Attributes{"data-field": "summary", "data-src": "issue-summary-text", "data-act": "edit"})})
 		</div>
-		<div class="tk-issue__editor" data-ignore-morph data-show={ fieldExpr(editShown, "summary") } data-on:focusout={ issueEditOut } data-on:input__throttle.2s={ issueTyping } data-typing="edit">
+		<div class="tk-issue__editor" data-ignore-morph data-show={ fieldExpr(editShown, "summary") } data-editor="summary" data-typing="edit">
 			<label class="visually-hidden" for="issue-edit-summary">Summary</label>
 			<input
 				id="issue-edit-summary"
@@ -219,20 +223,20 @@ templ issueMain(m Issue) {
 				data-field="summary"
 				data-bind="_is.val"
 				maxlength="255"
-				data-on:keydown={ issueEditKeys }
+				data-keys="edit"
 				data-attr:readonly={ fieldExpr(editReadonly, "summary") }
 				data-attr:aria-busy={ fieldExpr(noteBusy, "summary") }
 			/>
 			<div class="cluster">
-				<button type="button" class="tk-btn tk-btn--sm tk-btn--primary" data-field="summary" data-on:click={ issueSave } data-attr:aria-busy={ fieldExpr(noteBusy, "summary") }><span class="tk-btn__label">Save</span></button>
-				<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-on:click={ issueCancel }><span class="tk-btn__label">Cancel</span></button>
+				<button type="button" class="tk-btn tk-btn--sm tk-btn--primary" data-field="summary" data-act="save" data-attr:aria-busy={ fieldExpr(noteBusy, "summary") }><span class="tk-btn__label">Save</span></button>
+				<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-act="cancel"><span class="tk-btn__label">Cancel</span></button>
 				<span class="tk-field__hint">Enter saves, Escape cancels.</span>
 			</div>
 		</div>
 		@issueNote("summary")
 		<div class="cluster tk-issue__actions">
 			@statusMenu(m)
-			<button type="button" class={ "tk-btn tk-btn--sm tk-btn--ghost tk-watch" } data-field="watch" data-value="" data-on:click={ issueChoose } { merge(pending("watch"), locked)... }>
+			<button type="button" class={ "tk-btn tk-btn--sm tk-btn--ghost tk-watch" } data-act="choose" data-field="watch" data-value="" { merge(pending("watch"), locked)... }>
 				@ui.Icon("eye")
 				<span class="tk-btn__label tk-watch__off">Watch</span>
 				<span class="tk-btn__label tk-watch__on">Watching</span>
@@ -280,19 +284,19 @@ templ issueDesc(m Issue) {
 	<section id="issue-desc" class="tk-issue__desc" aria-labelledby="issue-desc-h">
 		<div class="split">
 			<h2 class="tk-eyebrow" id="issue-desc-h">Description</h2>
-			@ui.Button(ui.ButtonProps{Label: "Edit", Icon: "edit", Variant: ui.Ghost, Size: ui.SizeSM, Attrs: merge(locked, pending("description"), showIf(fieldExpr(editHidden, "description")), templ.Attributes{"data-field": "description", "data-src": "issue-desc-markup", "data-on:click": issueEdit})})
+			@ui.Button(ui.ButtonProps{Label: "Edit", Icon: "edit", Variant: ui.Ghost, Size: ui.SizeSM, Attrs: merge(locked, pending("description"), showIf(fieldExpr(editHidden, "description")), templ.Attributes{"data-field": "description", "data-src": "issue-desc-markup", "data-act": "edit"})})
 		</div>
 		<pre hidden id="issue-desc-markup">{ m.DescMarkup }</pre>
 		<div class="tk-issue__descview" { showIf(fieldExpr(editHidden, "description"))... }>
 			if m.DescHTML != "" {
-				<div class="prose" data-field="description" data-src="issue-desc-markup" data-on:dblclick={ issueEdit }>
+				<div class="prose">
 					@templ.Raw(m.DescHTML)
 				</div>
 			} else {
-				<button type="button" class="tk-issue__empty" data-field="description" data-src="issue-desc-markup" data-on:click={ issueEdit } { locked... }>Add a description</button>
+				<button type="button" class="tk-issue__empty" data-act="edit" data-field="description" data-src="issue-desc-markup" { locked... }>Add a description</button>
 			}
 		</div>
-		<div class="tk-issue__editor" data-ignore-morph data-show={ fieldExpr(editShown, "description") } data-on:focusout={ issueEditOut } data-on:input__throttle.2s={ issueTyping } data-typing="edit">
+		<div class="tk-issue__editor" data-ignore-morph data-show={ fieldExpr(editShown, "description") } data-editor="description" data-typing="edit">
 			<label class="visually-hidden" for="issue-edit-description">Description</label>
 			<textarea
 				id="issue-edit-description"
@@ -301,14 +305,14 @@ templ issueDesc(m Issue) {
 				data-bind="_is.val"
 				rows="10"
 				aria-describedby="issue-desc-hint"
-				data-on:keydown={ issueEditKeys }
+				data-keys="edit"
 				data-attr:readonly={ fieldExpr(editReadonly, "description") }
 				data-attr:aria-busy={ fieldExpr(noteBusy, "description") }
 			></textarea>
 			<p class="tk-field__hint" id="issue-desc-hint">{ descHint }</p>
 			<div class="cluster">
-				<button type="button" class="tk-btn tk-btn--sm tk-btn--primary" data-field="description" data-on:click={ issueSave } data-attr:aria-busy={ fieldExpr(noteBusy, "description") }><span class="tk-btn__label">Save</span></button>
-				<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-on:click={ issueCancel }><span class="tk-btn__label">Cancel</span></button>
+				<button type="button" class="tk-btn tk-btn--sm tk-btn--primary" data-field="description" data-act="save" data-attr:aria-busy={ fieldExpr(noteBusy, "description") }><span class="tk-btn__label">Save</span></button>
+				<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-act="cancel"><span class="tk-btn__label">Cancel</span></button>
 			</div>
 		</div>
 		@issueNote("description")
@@ -339,8 +343,8 @@ templ issueRelated(m Issue) {
 				@refList(m.Children, "")
 				<div class="tk-issue__addrow" data-ignore-morph>
 					<label class="visually-hidden" for="issue-subtask">Add subtask</label>
-					<input id="issue-subtask" class="tk-input tk-input--sm" data-bind="_is.sub" placeholder="Add subtask" maxlength="255" data-field="subtask" data-on:keydown={ subtaskKeys } data-attr:readonly={ fieldExpr(editReadonly, "subtask") } data-attr:disabled={ disabledWhile }/>
-					<button type="button" class="tk-btn tk-btn--sm tk-btn--secondary" data-field="subtask" data-on:click={ subtaskAdd } data-attr:aria-busy={ fieldExpr(noteBusy, "subtask") } data-attr:disabled={ disabledWhile }><span class="tk-btn__label">Add</span></button>
+					<input id="issue-subtask" class="tk-input tk-input--sm" data-bind="_is.sub" placeholder="Add subtask" maxlength="255" data-field="subtask" data-keys="add" data-attr:readonly={ fieldExpr(editReadonly, "subtask") } data-attr:disabled={ disabledWhile }/>
+					<button type="button" class="tk-btn tk-btn--sm tk-btn--secondary" data-act="add" data-field="subtask" data-attr:aria-busy={ fieldExpr(noteBusy, "subtask") } data-attr:disabled={ disabledWhile }><span class="tk-btn__label">Add</span></button>
 				</div>
 				@issueNote("subtask")
 			</div>
@@ -369,8 +373,8 @@ templ issueRelated(m Issue) {
 					@ui.Icon("chevron-down")
 				</span>
 				<label class="visually-hidden" for="issue-link-key">Issue key or summary</label>
-				<input id="issue-link-key" class="tk-input tk-input--sm" data-bind="_is.link.key" placeholder="WEB-12 or a summary" list="issue-link-options" autocomplete="off" data-field="link" data-on:keydown={ linkKeys } data-attr:readonly={ fieldExpr(editReadonly, "link") } data-attr:disabled={ disabledWhile }/>
-				<button type="button" class="tk-btn tk-btn--sm tk-btn--secondary" data-field="link" data-on:click={ linkAdd } data-attr:aria-busy={ fieldExpr(noteBusy, "link") } data-attr:disabled={ disabledWhile }><span class="tk-btn__label">Link</span></button>
+				<input id="issue-link-key" class="tk-input tk-input--sm" data-bind="_is.link.key" placeholder="WEB-12 or a summary" list="issue-link-options" autocomplete="off" data-field="link" data-keys="add" data-attr:readonly={ fieldExpr(editReadonly, "link") } data-attr:disabled={ disabledWhile }/>
+				<button type="button" class="tk-btn tk-btn--sm tk-btn--secondary" data-act="add" data-field="link" data-attr:aria-busy={ fieldExpr(noteBusy, "link") } data-attr:disabled={ disabledWhile }><span class="tk-btn__label">Link</span></button>
 			</div>
 			<datalist id="issue-link-options">
 				for _, o := range m.Others {
@@ -446,7 +450,7 @@ templ issueSide(m Issue) {
 				</div>
 				<div data-ignore-morph class="tk-issue__addrow">
 					<label class="visually-hidden" for="issue-label">Add a label</label>
-					<input id="issue-label" class="tk-input tk-input--sm" list="issue-label-options" placeholder="Add a label" maxlength="50" autocomplete="off" data-bind="_is.lq" data-field="labels" data-on:keydown={ labelKeys } data-attr:readonly={ fieldExpr(editReadonly, "labels") } data-attr:disabled={ disabledWhile }/>
+					<input id="issue-label" class="tk-input tk-input--sm" list="issue-label-options" placeholder="Add a label" maxlength="50" autocomplete="off" data-bind="_is.lq" data-field="labels" data-keys="add" data-attr:readonly={ fieldExpr(editReadonly, "labels") } data-attr:disabled={ disabledWhile }/>
 				</div>
 				<datalist id="issue-label-options">
 					for _, l := range m.Labels {
@@ -613,10 +617,10 @@ templ textDisplay(s string) {
 // story points, estimates (FR-25, FR-26).
 templ editable(m Issue, f, typ, value string, display templ.Component) {
 	<span hidden id={ "issue-src-" + f }>{ value }</span>
-	<button type="button" class="tk-issue__value" data-field={ f } data-src={ "issue-src-" + f } data-on:click={ issueEdit } aria-label={ "Edit the " + tracker.FieldLabel(f) } { merge(locked, pending(f), showIf(fieldExpr(editHidden, f)))... }>
+	<button type="button" class="tk-issue__value" data-act="edit" data-field={ f } data-src={ "issue-src-" + f } aria-label={ "Edit the " + tracker.FieldLabel(f) } { merge(locked, pending(f), showIf(fieldExpr(editHidden, f)))... }>
 		@display
 	</button>
-	<span class="tk-issue__editor tk-issue__inline" data-ignore-morph data-show={ fieldExpr(editShown, f) } data-on:focusout={ issueEditOut }>
+	<span class="tk-issue__editor tk-issue__inline" data-ignore-morph data-show={ fieldExpr(editShown, f) } data-editor={ f }>
 		<label class="visually-hidden" for={ "issue-edit-" + f }>{ tracker.FieldLabel(f) }</label>
 		<input
 			id={ "issue-edit-" + f }
@@ -631,11 +635,11 @@ templ editable(m Issue, f, typ, value string, display templ.Component) {
 			}
 			data-field={ f }
 			data-bind="_is.val"
-			data-on:keydown={ issueEditKeys }
+			data-keys="edit"
 			data-attr:readonly={ fieldExpr(editReadonly, f) }
 			data-attr:aria-busy={ fieldExpr(noteBusy, f) }
 		/>
-		<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" aria-label="Clear" data-field={ f } data-on:click={ "$_is.val = '', " + issueSave }>
+		<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" aria-label="Clear" data-act="clear" data-field={ f }>
 			@ui.Icon("close")
 		</button>
 	</span>
@@ -672,16 +676,16 @@ templ commentItem(m Issue, c Comment) {
 				}
 				if !c.IsDeleted() && !c.IsHidden() {
 					<span class="tk-comment__own">
-						<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-comment={ c.ID } data-on:click={ commentEdit }><span class="tk-btn__label">Edit</span></button>
-						<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-field="cdelete" data-comment={ c.ID } data-on:click={ commentDelete } { pending("cdelete")... }><span class="tk-btn__label">Delete</span></button>
+						<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-act="cedit" data-comment={ c.ID }><span class="tk-btn__label">Edit</span></button>
+						<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-act="choose" data-field="cdelete" data-ref={ c.ID } { pending("cdelete")... }><span class="tk-btn__label">Delete</span></button>
 					</span>
 				}
 				if !c.IsDeleted() {
 					<span class="tk-comment__mod" { showIf("$_is.mod")... }>
 						if c.IsHidden() {
-							<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-field="chide" data-value="show" data-comment={ c.ID } data-on:click={ commentHide }><span class="tk-btn__label">Show</span></button>
+							<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-act="choose" data-field="chide" data-value="show" data-ref={ c.ID }><span class="tk-btn__label">Show</span></button>
 						} else {
-							<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-field="chide" data-value="hide" data-comment={ c.ID } data-on:click={ commentHide }><span class="tk-btn__label">Hide</span></button>
+							<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-act="choose" data-field="chide" data-value="hide" data-ref={ c.ID }><span class="tk-btn__label">Hide</span></button>
 						}
 					</span>
 				}
@@ -698,10 +702,10 @@ templ commentItem(m Issue, c Comment) {
 					<pre hidden id={ "comment-src-" + c.ID }>{ c.Markup }</pre>
 					<div class="tk-comment__edit" data-ignore-morph data-comment={ c.ID } data-show={ commentEditing }>
 						<label class="visually-hidden" for={ "comment-edit-" + c.ID }>Edit the comment</label>
-						<textarea id={ "comment-edit-" + c.ID } class="tk-input tk-textarea" rows="3" data-bind="_is.ctext" data-comment={ c.ID } data-on:keydown={ commentEditKeys } data-attr:readonly={ fieldExpr(editReadonly, "cedit") }></textarea>
+						<textarea id={ "comment-edit-" + c.ID } class="tk-input tk-textarea" rows="3" data-bind="_is.ctext" data-comment={ c.ID } data-keys="cedit" data-attr:readonly={ fieldExpr(editReadonly, "cedit") }></textarea>
 						<div class="cluster">
-							<button type="button" class="tk-btn tk-btn--sm tk-btn--primary" data-field="cedit" data-comment={ c.ID } data-on:click={ commentEditSave } data-attr:aria-busy={ fieldExpr(noteBusy, "cedit") }><span class="tk-btn__label">Save</span></button>
-							<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-on:click="$_is.cedit = ''"><span class="tk-btn__label">Cancel</span></button>
+							<button type="button" class="tk-btn tk-btn--sm tk-btn--primary" data-act="csave" data-field="cedit" data-comment={ c.ID } data-attr:aria-busy={ fieldExpr(noteBusy, "cedit") }><span class="tk-btn__label">Save</span></button>
+							<button type="button" class="tk-btn tk-btn--sm tk-btn--ghost" data-act="ccancel"><span class="tk-btn__label">Cancel</span></button>
 						</div>
 					</div>
 			}
@@ -712,7 +716,7 @@ templ commentItem(m Issue, c Comment) {
 // commentForm is the comment box, in the frame: no frame touches what
 // someone types (MP-03.3).
 templ commentForm(p IssueFrameProps) {
-	<div class="tk-issue__commentform" data-on:input__throttle.2s={ issueTyping } data-typing="comment">
+	<div class="tk-issue__commentform" data-typing="comment">
 		<label class="visually-hidden" for="issue-comment">Add a comment</label>
 		<textarea
 			id="issue-comment"
@@ -743,7 +747,7 @@ templ commentForm(p IssueFrameProps) {
 templ issueMentions(m Issue) {
 	<div class="tk-issue__mentions tk-menu" id="issue-mentions" role="listbox" aria-label="Mention a person" { showIf(mentionsShown)... }>
 		for _, p := range m.Assignable {
-			<button type="button" class="tk-menu__item" role="option" data-id={ p.ID } data-name={ p.Name } data-on:click={ mentionPick } { showIf(mentionShow)... }>
+			<button type="button" class="tk-menu__item" role="option" data-id={ p.ID } data-name={ p.Name } data-act="mention" { showIf(mentionShow)... }>
 				@ui.Avatar(ui.AvatarProps{Person: UIPerson(p), Size: ui.SizeXS, Decorative: true})
 				<span>{ p.Name }</span>
 			</button>

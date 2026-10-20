@@ -42,3 +42,7 @@ func seedProbes(t *testing.T, e *webtest.Env) {
 	e.Do(t, tracker.DeleteIssue{By: by(), Issue: probeGone})
 	e.Do(t, tracker.MoveToProject{By: by(), Issue: probeMoved, Project: probeApp})
 }
+
+func byOf(p people.Person, op string) tabs.By {
+	return tabs.By{Actor: p, Op: op, At: time.Now().Add(-time.Minute)}
+}

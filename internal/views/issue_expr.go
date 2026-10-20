@@ -53,25 +53,87 @@ const curVersion = `+(document.getElementById('issue-main')?.dataset.v || 0)`
 // pending: a new op id in ops[f], the value kept in want[f] for a retry.
 const issueSendFn = `((f, v, s, r) => (!$_is.ro || f === 'comment' || f === 'cedit' || f === 'cdelete') && $_is.ops[f] === '' && ($_is.msg[f] = '', $_is.fail[f] = '', $_is.conflict[f] = false, $_is.want[f] = v, $_is.sent[f] = s, $_is.refs[f] = r, $_is.ops[f] = ` + newOp + `, @post('/cmd/issues/' + $_is.id + '/' + f, {payload: {tab: $_tab, op: $_is.ops[f], seen: s, value: v, ref: r}, retryMaxCount: 2})))`
 
-// issueChoose, on a control with data-field, data-value and data-ref
-// (a menu item, a label's remove button), sends its choice against the
-// version shown, and closes the menu it is in.
-const issueChoose = `((m) => (m?.hidePopover(), ` + issueSendFn + `(el.dataset.field, el.dataset.value ?? '', (m && $_is.mseen) || ` + curVersion + `, el.dataset.ref ?? '')))(el.closest('[popover]'))`
-
 // menuOpened keeps the version a menu showed when it opened: a choice in
 // it sends that version, so a change someone made while the menu was open
 // is a conflict, not overwritten (MP-08.2). On a menu's button.
 const menuOpened = `$_is.mseen = ` + curVersion
 
-// issueRetry sends a request that reached no outcome again with its op
-// id, so that it applies once (MP-09.3, MP-09.4). On a button with
-// data-field.
-const issueRetry = `((f) => $_is.ops[f] === '' && $_is.last[f] !== '' && ($_is.fail[f] = '', $_is.ops[f] = $_is.last[f], @post('/cmd/issues/' + $_is.id + '/' + f, {payload: {tab: $_tab, op: $_is.ops[f], seen: $_is.sent[f], value: $_is.want[f], ref: $_is.refs[f]}, retryMaxCount: 2})))(el.dataset.field)`
+// issueRetry sends field f's request that reached no outcome again with
+// its op id, so that it applies once (MP-09.3, MP-09.4).
+const issueRetryFn = `((f) => $_is.ops[f] === '' && $_is.last[f] !== '' && ($_is.fail[f] = '', $_is.ops[f] = $_is.last[f], @post('/cmd/issues/' + $_is.id + '/' + f, {payload: {tab: $_tab, op: $_is.ops[f], seen: $_is.sent[f], value: $_is.want[f], ref: $_is.refs[f]}, retryMaxCount: 2})))`
 
-// issueAnyway sends the refused value again against the version the
-// conflict reports (MP-08.3: "Use Critical anyway"). On a button with
-// data-field.
-const issueAnyway = `((f) => $_is.conflict[f] && ($_is.edit === f && (f === 'summary' || f === 'description' || f === 'due' || f === 'points' || f === 'estimate' || f === 'remaining') ? ($_is.seen = $_is.conflict[f].version, ` + issueSendFn + `(f, $_is.val, $_is.seen, '')) : ` + issueSendFn + `(f, $_is.want[f], $_is.conflict[f].version, $_is.refs[f])))(el.dataset.field)`
+// issueAnywayFn sends field f's refused value again against the version
+// the conflict reports (MP-08.3: "Use Critical anyway").
+const issueAnywayFn = `((f) => $_is.conflict[f] && ($_is.edit === f ? ($_is.seen = $_is.conflict[f].version, ` + issueSendFn + `(f, $_is.val, $_is.seen, '')) : ` + issueSendFn + `(f, $_is.want[f], $_is.conflict[f].version, $_is.refs[f])))`
+
+// issueEditFn opens the editor of the field on t: the text the page shows
+// (the element t.dataset.src names) goes into $_is.val, and the version
+// shown into $_is.seen, which the save sends (MP-08.1).
+const issueEditFn = `((t) => { const f = t.dataset.field; !$_is.ro && $_is.at === 0 && $_is.ops[f] === '' && ($_is.edit = f, $_is.val = $_is.orig = (document.getElementById(t.dataset.src)?.textContent ?? '').trim(), $_is.seen = ` + curVersion + `, $_is.msg[f] = '', $_is.conflict[f] = false, setTimeout(() => document.getElementById('issue-edit-' + f)?.focus())) })`
+
+// issueSave saves the open editor: nothing changed closes it (FR-14.3).
+const issueSave = `$_is.edit !== '' && $_is.ops[$_is.edit] === '' && ($_is.val.trim() === $_is.orig ? ($_is.edit = '', ` + issueStopTyping + `) : ` + issueSendFn + `($_is.edit, $_is.val, $_is.seen, ''))`
+
+// issueCancel closes the editor without saving, unless it waits for an
+// outcome.
+const issueCancel = `$_is.edit !== '' && $_is.ops[$_is.edit] === '' && (` + issueStopTyping + `, $_is.msg[$_is.edit] = '', $_is.fail[$_is.edit] = '', $_is.conflict[$_is.edit] = false, $_is.edit = '')`
+
+// issueAddFn adds what field f's small input holds: a label, a subtask,
+// a link.
+const issueAddFn = `((f) => { const v = (f === 'labels' ? $_is.lq : f === 'subtask' ? $_is.sub : $_is.link.key).trim(); v && ` + issueSendFn + `(f, v, 0, f === 'labels' ? 'add' : f === 'link' ? $_is.link.type : '') })`
+
+// The frame's delegated handlers: every control of the regions names what
+// it does in data-act (and data-field, data-value, data-ref), so the
+// stream's frames carry attributes, not expressions, and each handler
+// compiles once (the lith rule for repeated elements).
+const issueClick = `((t) => {
+	if (!t || t.disabled || t.getAttribute('aria-disabled') === 'true') return
+	const f = t.dataset.field
+	switch (t.dataset.act) {
+	case 'choose': { const m = t.closest('[popover]'); m?.hidePopover(); ` + issueSendFn + `(f, t.dataset.value ?? '', (m && $_is.mseen) || ` + curVersion + `, t.dataset.ref ?? ''); break }
+	case 'edit': ` + issueEditFn + `(t); break
+	case 'save': ` + issueSave + `; break
+	case 'cancel': ` + issueCancel + `; break
+	case 'clear': $_is.val = ''; ` + issueSave + `; break
+	case 'retry': ` + issueRetryFn + `(f); break
+	case 'anyway': ` + issueAnywayFn + `(f); break
+	case 'add': ` + issueAddFn + `(f); break
+	case 'cedit': $_is.cedit = t.dataset.comment; $_is.ctext = (document.getElementById('comment-src-' + t.dataset.comment)?.textContent ?? '').trim(); setTimeout(() => document.getElementById('comment-edit-' + t.dataset.comment)?.focus()); break
+	case 'csave': $_is.ctext.trim() !== '' && ` + issueSendFn + `('cedit', $_is.ctext, 0, t.dataset.comment); break
+	case 'ccancel': $_is.cedit = ''; $_is.msg.cedit = ''; break
+	case 'mention': { const c = document.getElementById('issue-comment'), pos = c.selectionStart, before = c.value.slice(0, pos).replace(/@[^\s@]*$/, '@' + t.dataset.id + ' '); $_is.draft = before + c.value.slice(pos); $_is.mq = false; c.focus(); setTimeout(() => c.setSelectionRange(before.length, before.length)); break }
+	}
+})(evt.target.closest?.('[data-act]'))`
+
+// issueKeys: in an editor Enter saves a one-line field, Ctrl or Cmd Enter
+// the description, Escape cancels (FR-14.1); Enter adds in a small input;
+// Ctrl Enter saves a comment being edited.
+const issueKeys = `((t) => {
+	switch (t.dataset?.keys) {
+	case 'edit':
+		if (evt.key === 'Escape') { evt.preventDefault(); ` + issueCancel + ` }
+		else if (evt.key === 'Enter' && (t.tagName !== 'TEXTAREA' || evt.ctrlKey || evt.metaKey)) { evt.preventDefault(); ` + issueSave + ` }
+		break
+	case 'add':
+		if (evt.key === 'Enter') { evt.preventDefault(); ` + issueAddFn + `(t.dataset.field) }
+		break
+	case 'cedit':
+		if (evt.key === 'Escape') { $_is.cedit = ''; $_is.msg.cedit = '' }
+		else if ((evt.ctrlKey || evt.metaKey) && evt.key === 'Enter') { evt.preventDefault(); $_is.ctext.trim() !== '' && ` + issueSendFn + `('cedit', $_is.ctext, 0, t.dataset.comment) }
+		break
+	}
+})(evt.target)`
+
+// issueFocusOut saves an editor when the focus leaves it for the page: a
+// click outside saves (FR-14.1).
+const issueFocusOut = `((ed) => ed && ed.dataset.editor === $_is.edit && !ed.contains(evt.relatedTarget) && (` + issueSave + `))(evt.target.closest?.('[data-editor]'))`
+
+// issueTyping refreshes the typing indicator of the field typed in
+// (MP-07); throttled on the frame.
+const issueTyping = `((t) => t && $_is.at === 0 && @post('/cmd/issues/' + $_is.id + '/typing', {payload: {tab: $_tab, op: ` + newOp + `, field: t.dataset.typing === 'edit' ? $_is.edit : t.dataset.typing, stop: false}, retryMaxCount: 0}))(evt.target.closest?.('[data-typing]'))`
+
+// issueStopTyping ends the indicator of the open editor at once (MP-07.4).
+const issueStopTyping = `(($_is.edit === 'summary' || $_is.edit === 'description') && @post('/cmd/issues/' + $_is.id + '/typing', {payload: {tab: $_tab, op: ` + newOp + `, field: $_is.edit, stop: true}, retryMaxCount: 0}))`
 
 // issueSettle, a data-effect, ends each field's pending state when its
 // outcome arrives in $_outcomes: a refusal stays next to the field, a
@@ -100,35 +162,15 @@ const issueSettle = `Object.keys($_is.ops).forEach(f => {
 // issueFailed, on data-on:datastar-fetch, marks the field of a request
 // that reached no outcome (network, rate limit, a restart): "This did not
 // go through" with Retry, and the person's input stays (MP-09.3). A 403
-// brings its reason on the stream like any refusal.
-const issueFailed = `((f, d) => f && f in $_is.ops && $_is.ops[f] !== '' && ['error', 'retries-failed'].includes(d.type) && d.argsRaw.status !== '403' && ($_is.last[f] = $_is.ops[f], $_is.ops[f] = '', $_is.fail[f] = d.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : d.argsRaw.status === '503' ? 'The server is restarting. Try again in a moment.' : 'This did not go through.'))(evt.detail.el?.dataset?.field, evt.detail)`
-
-// issueEdit opens the editor of a field: the text the page shows (the
-// element data-src names) goes into $_is.val, and the version shown into
-// $_is.seen, which the save sends (MP-08.1). On the field's display, with
-// data-field and data-src.
-const issueEdit = `!$_is.ro && $_is.at === 0 && $_is.ops[el.dataset.field] === '' && ($_is.edit = el.dataset.field, $_is.val = $_is.orig = (document.getElementById(el.dataset.src)?.textContent ?? '').trim(), $_is.seen = ` + curVersion + `, $_is.msg[el.dataset.field] = '', $_is.conflict[el.dataset.field] = false, setTimeout(() => document.getElementById('issue-edit-' + el.dataset.field)?.focus()))`
-
-// issueSave saves the open editor: nothing changed closes it (FR-14.3).
-const issueSave = `$_is.edit !== '' && $_is.ops[$_is.edit] === '' && ($_is.val.trim() === $_is.orig ? ($_is.edit = '', ` + issueStopTyping + `) : ` + issueSendFn + `($_is.edit, $_is.val, $_is.seen, ''))`
-
-// issueCancel closes the editor without saving, unless it waits for an
-// outcome.
-const issueCancel = `$_is.edit !== '' && $_is.ops[$_is.edit] === '' && (` + issueStopTyping + `, $_is.msg[$_is.edit] = '', $_is.fail[$_is.edit] = '', $_is.conflict[$_is.edit] = false, $_is.edit = '')`
-
-// issueEditKeys: Enter saves a one-line field, Ctrl or Cmd Enter the
-// description; Escape cancels (FR-14.1).
-const issueEditKeys = `evt.key === 'Escape' ? (evt.preventDefault(), ` + issueCancel + `) : evt.key === 'Enter' && (el.tagName !== 'TEXTAREA' || evt.ctrlKey || evt.metaKey) && (evt.preventDefault(), ` + issueSave + `)`
-
-// issueEditOut saves when the focus leaves the editor for the page: a
-// click outside saves (FR-14.1).
-const issueEditOut = `!el.contains(evt.relatedTarget) && ` + issueSave
-
-// typingField is the field whose indicator a keystroke refreshes.
-const issueTyping = `$_is.at === 0 && @post('/cmd/issues/' + $_is.id + '/typing', {payload: {tab: $_tab, op: ` + newOp + `, field: el.dataset.typing === 'edit' ? $_is.edit : el.dataset.typing, stop: false}, retryMaxCount: 0})`
-
-// issueStopTyping ends the indicator of the open editor at once (MP-07.4).
-const issueStopTyping = `(($_is.edit === 'summary' || $_is.edit === 'description') && @post('/cmd/issues/' + $_is.id + '/typing', {payload: {tab: $_tab, op: ` + newOp + `, field: $_is.edit, stop: true}, retryMaxCount: 0}))`
+// brings its reason on the stream like any refusal. A request the frame's
+// delegated handler sent marks every pending field: a retry sends the
+// same op, which applies once.
+const issueFailed = `((d) => {
+	if (!['error', 'retries-failed'].includes(d.type) || d.argsRaw.status === '403' || !d.el?.closest?.('#issue')) return
+	const msg = d.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : d.argsRaw.status === '503' ? 'The server is restarting. Try again in a moment.' : 'This did not go through.'
+	const f = d.el.dataset.field
+	for (const g of f && f in $_is.ops ? [f] : Object.keys($_is.ops)) if ($_is.ops[g] !== '') { $_is.last[g] = $_is.ops[g]; $_is.ops[g] = ''; $_is.fail[g] = msg }
+})(evt.detail)`
 
 // The comment box (FR-65): Ctrl or Cmd Enter sends; the draft stays in the
 // tab across a reconnect and a reload (sessionStorage is per tab).
@@ -137,29 +179,16 @@ const (
 	commentKeys   = `(evt.ctrlKey || evt.metaKey) && evt.key === 'Enter' ? (evt.preventDefault(), ` + commentSend + `) : evt.key === 'Escape' && $_is.mq !== false && (evt.preventDefault(), $_is.mq = false)`
 	commentInput  = `(m => $_is.mq = m ? m[1] : false)(/(?:^|\s)@([^\s@]{0,20})$/.exec(el.value.slice(0, el.selectionStart))); try { sessionStorage.setItem('tickit-draft:' + $_is.id, el.value) } catch (e) {}`
 	commentInit   = `(() => { try { $_is.draft = sessionStorage.getItem('tickit-draft:' + $_is.id) || $_is.draft } catch (e) {} })()`
-	mentionPick   = `((t) => { const pos = t.selectionStart, before = t.value.slice(0, pos).replace(/@[^\s@]*$/, '@' + el.dataset.id + ' '); $_is.draft = before + t.value.slice(pos); $_is.mq = false; t.focus(); setTimeout(() => t.setSelectionRange(before.length, before.length)) })(document.getElementById('issue-comment'))`
 	mentionShow   = `$_is.mq !== false && el.dataset.name.toLowerCase().includes($_is.mq.toLowerCase())`
 	mentionsShown = `$_is.mq !== false`
 )
 
-// Editing one's own comment (FR-66.1): its markup goes into $_is.ctext.
-const (
-	commentEdit     = `$_is.cedit = el.dataset.comment, $_is.ctext = (document.getElementById('comment-src-' + el.dataset.comment)?.textContent ?? '').trim(), setTimeout(() => document.getElementById('comment-edit-' + el.dataset.comment)?.focus())`
-	commentEditing  = `$_is.cedit === el.dataset.comment`
-	commentEditSave = `$_is.ctext.trim() !== '' && ` + issueSendFn + `('cedit', $_is.ctext, 0, el.dataset.comment)`
-	commentEditKeys = `evt.key === 'Escape' ? ($_is.cedit = '', $_is.msg.cedit = '') : (evt.ctrlKey || evt.metaKey) && evt.key === 'Enter' && (evt.preventDefault(), ` + commentEditSave + `)`
-	commentDelete   = issueSendFn + `('cdelete', '', 0, el.dataset.comment)`
-	commentHide     = issueSendFn + `('chide', el.dataset.value, 0, el.dataset.comment)`
-)
+// A comment being edited shows its editor (FR-66.1).
+const commentEditing = `$_is.cedit === el.dataset.comment`
 
-// The assignee picker's search (FR-17.1) and the label field (FR-23.1).
+// The assignee picker's search (FR-17.1), and what copies the issue's link.
 const (
 	assigneeMatch = `$_is.aq === '' || el.dataset.name.toLowerCase().includes($_is.aq.toLowerCase())`
-	labelKeys     = `evt.key === 'Enter' && $_is.lq.trim() !== '' && (evt.preventDefault(), ` + issueSendFn + `('labels', $_is.lq.trim(), 0, 'add'))`
-	subtaskKeys   = `evt.key === 'Enter' && $_is.sub.trim() !== '' && (evt.preventDefault(), ` + issueSendFn + `('subtask', $_is.sub.trim(), 0, ''))`
-	subtaskAdd    = `$_is.sub.trim() !== '' && ` + issueSendFn + `('subtask', $_is.sub.trim(), 0, '')`
-	linkAdd       = `$_is.link.key.trim() !== '' && ` + issueSendFn + `('link', $_is.link.key.trim(), 0, $_is.link.type)`
-	linkKeys      = `evt.key === 'Enter' && (evt.preventDefault(), ` + linkAdd + `)`
 	issueDelete   = issueSendFn + `('delete', '', 0, '')`
 	copyLink      = `navigator.clipboard?.writeText(location.origin + '/' + $_is.key).then(() => { $_is.copied = true; setTimeout(() => $_is.copied = false, 1500) })`
 )
