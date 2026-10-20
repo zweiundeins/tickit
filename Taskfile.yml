@@ -36,6 +36,22 @@ tasks:
     cmds:
       - go test -count=1 ./e2e/
 
+  load:
+    desc: The load of NFR-38 against the binary in its own process (cmd/tickit-load; LOAD_DIR, LOAD_SECONDS, LOAD_SUSTAIN, SERVER_CPUS, LOAD_CPUS)
+    deps: [build]
+    vars:
+      DIR: '{{.LOAD_DIR | default "/tmp/tickit-load"}}'
+      SECONDS: '{{.LOAD_SECONDS | default "60"}}'
+      SUSTAIN: '{{.LOAD_SUSTAIN | default "0"}}'
+    cmds:
+      - mkdir -p {{.DIR}}
+      - go build -o {{.DIR}}/tickit-load ./cmd/tickit-load
+      # The data of NFR-38.2, once: 10,000 issues, 2,000 pages, 1,000,000 events (about 7 minutes).
+      - test -f {{.DIR}}/base.db || {{.DIR}}/tickit-load gen -db {{.DIR}}/base.db
+      - >-
+        {{if .LOAD_CPUS}}taskset -c {{.LOAD_CPUS}} {{end}}{{.DIR}}/tickit-load run -bin ./{{.BIN}} -base {{.DIR}}/base.db
+        -seconds {{.SECONDS}} -sustain {{.SUSTAIN}}{{if .SERVER_CPUS}} -server-cpus {{.SERVER_CPUS}}{{end}} -out {{.DIR}}/results.json
+
   build:
     desc: Build the static binary, everything embedded
     deps: [generate]
