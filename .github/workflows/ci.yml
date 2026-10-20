@@ -2,26 +2,30 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master, rewrite]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '23 2 * * 1' # the race detector, Mondays
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
   test:
-    name: Test
+    name: Test, check and build
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0 # git describe needs the tags
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
@@ -36,4 +40,36 @@ jobs:
           go tool templ generate
           if [ -n "$(git status --porcelain)" ]; then git status --short; git diff; exit 1; fi
       - name: Test
+        run: go test ./...
+      # NFR-20: fails on a known vulnerability in code the binary calls;
+      # one only in an imported package or module is listed, not fatal.
+      - name: Vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+      # NFR-60: static, CGO_ENABLED=0, the version from git describe.
+      - name: Build
+        run: go tool task build
+      - name: Smoke test
+        run: |
+          want=$(git describe --tags --match 'v[0-9]*' --always --dirty)
+          got=$(./tickit --version | awk '{print $2}')
+          if [ "$got" != "$want" ]; then echo "--version says $got, git describe $want"; exit 1; fi
+          bash deploy/smoke-test.sh ./tickit
+      - name: Shell scripts
+        run: |
+          bash -n deploy/tickit-deploy deploy/setup-host.sh deploy/smoke-test.sh
+          shellcheck deploy/tickit-deploy deploy/setup-host.sh deploy/smoke-test.sh
+
+  race:
+    name: Race detector
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Test with the race detector
         run: go test -race ./...
