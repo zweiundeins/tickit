@@ -46,7 +46,6 @@
     "blocks": 2000,
     "tableRows": 50,
     "tableColumns": 20,
-    "textLength": 2000,
     "attrLength": 2048,
     "linkSchemes": ["http", "https", "mailto"],
     "codeLanguages": ["", "text", "go", "js", "ts", "html", "css", "sql", "json", "yaml", "bash", "python", "java", "rust", "markdown", "diff"],
