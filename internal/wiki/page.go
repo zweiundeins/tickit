@@ -12,6 +12,7 @@ import (
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/mbolli/tickit/internal/access"
+	"github.com/mbolli/tickit/internal/people"
 	"github.com/mbolli/tickit/internal/tabs"
 	"github.com/mbolli/tickit/internal/tracker"
 )
@@ -810,14 +811,25 @@ func (c RestorePage) Apply(tx *writer.Tx) error {
 	if s.State != Trashed {
 		return nil
 	}
-	// Where it was, from its trash event.
+	// Where it was, from its trash event, and who trashed it.
 	var was PageTrashed
+	var by string
 	for r, err := range events.Load(tx.Context(), Store(), tx, PageStream.ID(c.Page), 0) {
 		if err != nil {
 			return err
 		}
 		if t, ok := r.Data.(PageTrashed); ok {
-			was = t
+			was, by = t, r.Actor
+		}
+	}
+	// What a moderator hid, only a moderator restores (DM-07.1).
+	if !access.SiteCan(c.By.Actor, access.Moderate) {
+		staff, err := people.Staff(tx.Context(), tx, by)
+		if err != nil {
+			return err
+		}
+		if staff {
+			return &access.Denial{Refusal: writer.Refusal{Msg: "A moderator hid this page: only a moderator restores it."}}
 		}
 	}
 	parent := was.Parent

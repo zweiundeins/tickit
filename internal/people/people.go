@@ -223,6 +223,17 @@ func Get(ctx context.Context, q sqlite.Querier, id string) (Person, error) {
 	return m[id], nil
 }
 
+// Staff reports whether id is an account with a site role, a moderator
+// or a site admin: what such a person hid, only staff show again (DM-07).
+func Staff(ctx context.Context, q sqlite.Querier, id string) (bool, error) {
+	var role SiteRole
+	err := q.QueryRowContext(ctx, `SELECT site_role FROM accounts WHERE person_id = ?`, id).Scan(&role)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil && role != NoRole, err
+}
+
 // Ensure gives the actor of a command a row in people, when a guest acts
 // for the first time, and records when they were last seen. tabs.Act calls
 // it for every action, so a command may refer to its actor's row.

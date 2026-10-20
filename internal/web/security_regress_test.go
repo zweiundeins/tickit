@@ -215,3 +215,63 @@ func TestLogoutEndsStreams(t *testing.T) {
 		}
 	}
 }
+
+// DM-07.1: what a moderator hid stays hidden: the Admin a guest becomes
+// of their own space or project cannot restore the page or show the
+// comment again, and other visitors cannot open the hidden page.
+func TestModeratorHideHolds(t *testing.T) {
+	e := startWiki(t)
+	e.Account(t, "mo@example.com", "correct horse battery", people.Moderator)
+	mo, g, other := webtest.Client(t), webtest.Client(t), webtest.Client(t)
+	e.Login(t, mo, "mo@example.com", "correct horse battery")
+	webtest.Get(t, g, e.URL+"/")
+	webtest.Get(t, other, e.URL+"/")
+	space, home := wikiSpace(t, e, g, "SPM")
+	page := wikiPage(t, e, g, space, home, "Cheap watches")
+	if code, body := act(t, e, mo, "/cmd/moderation/act", "tab1", map[string]any{"action": "hide", "kind": "page", "id": page, "reason": "spam"}); code != http.StatusNoContent {
+		t.Fatalf("hide the page: %d %s", code, body)
+	}
+	if code := status(t, other, e.URL+"/spaces/SPM/pages/"+page); code != http.StatusNotFound {
+		t.Errorf("another visitor opens the hidden page: %d", code)
+	}
+	if code := status(t, mo, e.URL+"/spaces/SPM/pages/"+page); code == http.StatusNotFound {
+		t.Errorf("the moderator opens the hidden page: %d", code)
+	}
+	if code, _ := act(t, e, g, "/cmd/pages/restore", "tab1", map[string]any{"page": page}); code != http.StatusForbidden {
+		t.Errorf("the space's Admin restores what a moderator hid: %d", code)
+	}
+	if n := rowCount(t, e, `SELECT count(*) FROM pages WHERE id = ? AND state = 'trashed'`, page); n != 1 {
+		t.Error("the hidden page is back")
+	}
+
+	code, body := act(t, e, g, "/cmd/projects/create", "tab1", map[string]any{"key": "SPM", "name": "Spam", "description": ""})
+	if code != http.StatusOK {
+		t.Fatalf("create a project: %d %s", code, body)
+	}
+	var project, issue, comment string
+	e.DB.R.QueryRow(`SELECT id FROM projects WHERE key = 'SPM'`).Scan(&project)
+	if code, body := act(t, e, g, "/cmd/issues/create", "tab1", map[string]any{"project": project, "type": "task", "summary": "Buy now"}); code != http.StatusOK {
+		t.Fatalf("create an issue: %d %s", code, body)
+	}
+	e.DB.R.QueryRow(`SELECT id FROM issues WHERE project_id = ?`, project).Scan(&issue)
+	act(t, e, g, "/cmd/issues/"+issue+"/comment", "tab1", map[string]any{"value": "Cheap watches"})
+	e.DB.R.QueryRow(`SELECT id FROM comments WHERE subject_id = ?`, issue).Scan(&comment)
+	if code, body := act(t, e, mo, "/cmd/moderation/act", "tab1", map[string]any{"action": "hide", "kind": "comment", "id": comment, "reason": "spam"}); code != http.StatusNoContent {
+		t.Fatalf("hide the comment: %d %s", code, body)
+	}
+	if code, _ := act(t, e, g, "/cmd/issues/"+issue+"/chide", "tab1", map[string]any{"value": "show", "ref": comment}); code != http.StatusForbidden {
+		t.Errorf("the project's Admin shows what a moderator hid: %d", code)
+	}
+	if n := rowCount(t, e, `SELECT count(*) FROM comments WHERE id = ? AND hidden_at IS NOT NULL`, comment); n != 1 {
+		t.Error("the hidden comment shows again")
+	}
+	// What the project's Admin hid, they show again.
+	act(t, e, g, "/cmd/issues/"+issue+"/comment", "tab1", map[string]any{"value": "Mine"})
+	var own string
+	e.DB.R.QueryRow(`SELECT id FROM comments WHERE subject_id = ? AND id != ?`, issue, comment).Scan(&own)
+	act(t, e, g, "/cmd/issues/"+issue+"/chide", "tab1", map[string]any{"value": "hide", "ref": own})
+	act(t, e, g, "/cmd/issues/"+issue+"/chide", "tab1", map[string]any{"value": "show", "ref": own})
+	if n := rowCount(t, e, `SELECT count(*) FROM comments WHERE id = ? AND hidden_at IS NULL`, own); n != 1 {
+		t.Error("an Admin cannot show a comment they hid")
+	}
+}
