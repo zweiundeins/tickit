@@ -206,3 +206,58 @@ func SavedFilters(ctx context.Context, q sqlite.Querier, person string) ([]Saved
 	}
 	return out, rows.Err()
 }
+
+// SavedFilterByID is one saved filter, access.ErrNotFound for none.
+func SavedFilterByID(ctx context.Context, q sqlite.Querier, id string) (SavedFilter, error) {
+	var f SavedFilter
+	var query string
+	err := q.QueryRowContext(ctx, `SELECT id, owner, name, query FROM saved_filters WHERE id = ?`, id).Scan(&f.ID, &f.Owner, &f.Name, &query)
+	if errors.Is(err, sql.ErrNoRows) {
+		return f, notFound("filter", id)
+	}
+	if err != nil {
+		return f, err
+	}
+	v, _ := url.ParseQuery(query)
+	f.Filter, f.Sort = ParseFilter(v), ParseSort(v)
+	return f, nil
+}
+
+// BoardPart is what a saved filter adds to a board's quick filter
+// (FR-56.2): its statuses, categories, priorities, reporters, components
+// and dates. Its assignees, types, labels and text are the quick filter's
+// own, which the board's Filters menu sets from it; its projects and
+// sprints are the board's.
+func (f Filter) BoardPart() Filter {
+	return Filter{Statuses: f.Statuses, Categories: f.Categories, Priorities: f.Priorities, Reporters: f.Reporters, Components: f.Components,
+		DueFrom: f.DueFrom, DueTo: f.DueTo, CreatedFrom: f.CreatedFrom, CreatedTo: f.CreatedTo, ResolvedFrom: f.ResolvedFrom, ResolvedTo: f.ResolvedTo}
+}
+
+// With is f with the fields that o sets and f does not: a quick filter
+// with a saved filter's BoardPart, whose fields it never sets.
+func (f Filter) With(o Filter) Filter {
+	pick := func(a, b []string) []string {
+		if len(a) > 0 {
+			return a
+		}
+		return b
+	}
+	str := func(a, b string) string {
+		if a != "" {
+			return a
+		}
+		return b
+	}
+	n := f
+	n.Statuses, n.Reporters, n.Components = pick(f.Statuses, o.Statuses), pick(f.Reporters, o.Reporters), pick(f.Components, o.Components)
+	if len(n.Categories) == 0 {
+		n.Categories = o.Categories
+	}
+	if len(n.Priorities) == 0 {
+		n.Priorities = o.Priorities
+	}
+	n.DueFrom, n.DueTo = str(f.DueFrom, o.DueFrom), str(f.DueTo, o.DueTo)
+	n.CreatedFrom, n.CreatedTo = str(f.CreatedFrom, o.CreatedFrom), str(f.CreatedTo, o.CreatedTo)
+	n.ResolvedFrom, n.ResolvedTo = str(f.ResolvedFrom, o.ResolvedFrom), str(f.ResolvedTo, o.ResolvedTo)
+	return n
+}

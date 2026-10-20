@@ -539,7 +539,8 @@ type BoardView struct {
 
 // Board reads a project's board, its cards filtered by quick (FR-42):
 // types, priorities, assignees (with Unassigned), labels and the text
-// count; normalize quick with the viewer's id for Me first.
+// count, and what a saved filter adds (Filter.BoardPart, FR-56.2);
+// normalize quick with the viewer's id for Me first.
 func Board(ctx context.Context, q sqlite.Querier, project string, quick Filter) (BoardView, error) {
 	var b BoardView
 	p, err := ProjectByID(ctx, q, project)
@@ -555,7 +556,7 @@ func Board(ctx context.Context, q sqlite.Querier, project string, quick Filter) 
 	if err != nil {
 		return b, err
 	}
-	f := Filter{Types: quick.Types, Priorities: quick.Priorities, Assignees: quick.Assignees, Labels: quick.Labels, Text: quick.Text}.Normalize("")
+	f := Filter{Types: quick.Types, Priorities: quick.Priorities, Assignees: quick.Assignees, Labels: quick.Labels, Text: quick.Text}.With(quick.BoardPart()).Normalize("")
 	f.Projects = []string{p.Key}
 	if len(sprints) > 0 && sprints[0].State == SprintActive {
 		b.Sprint = &sprints[0]

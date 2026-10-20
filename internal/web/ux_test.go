@@ -89,3 +89,38 @@ func TestDeleteOfferedToThoseWhoMay(t *testing.T) {
 		}
 	}
 }
+
+// FR-56.2: a saved filter feeds the board's quick filter: the Filters
+// menu above the board offers it with its quick parts, and the board's
+// page and its view apply what it adds (here, its categories).
+func TestBoardSavedFilter(t *testing.T) {
+	e := newList(t)
+	id := e.result(tracker.SaveFilter{By: e.by(e.ada), Name: "Not done yet", Filter: tracker.Filter{Categories: []tracker.Category{tracker.ToDo, tracker.InProgress}, Labels: []string{"ux"}}})
+	c := webtest.Client(t)
+	_, page := webtest.Get(t, c, e.URL+"/projects/WEB/board")
+	for _, want := range []string{`id="board-saved"`, `data-v="` + id + `"`, `data-filter="saved"`, `data-name="Not done yet"`, `data-l="ux"`} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the board's Filters menu has no %q", want)
+		}
+	}
+	if !strings.Contains(page, `id="c-WEB-3"`) {
+		t.Fatalf("WEB-3 is not on the unfiltered board")
+	}
+	_, page = webtest.Get(t, c, e.URL+"/projects/WEB/board?filter="+id)
+	if strings.Contains(page, `id="c-WEB-3"`) || !strings.Contains(page, `id="c-WEB-1"`) || !strings.Contains(page, `id="c-WEB-2"`) {
+		t.Errorf("the saved filter's categories do not apply to the board's page")
+	}
+	if !strings.Contains(page, `data-arg="WEB.f`+id+`"`) || !strings.Contains(page, "Not done yet") {
+		t.Errorf("the board's page does not name the saved filter")
+	}
+	ev := webtest.Listen(t, c, e.URL+"/stream?tab=tabsf&v=board:WEB.f"+id, nil)
+	frame := webtest.Next(t, ev, `id="board-lanes"`)
+	if strings.Contains(frame, `id="c-WEB-3"`) || !strings.Contains(frame, `id="c-WEB-2"`) {
+		t.Errorf("the board view with the saved filter shows the wrong cards")
+	}
+	// A saved filter that no longer exists filters nothing.
+	ev2 := webtest.Listen(t, c, e.URL+"/stream?tab=tabsg&v=board:WEB.f01920000-0000-7000-8000-00000000ffff", nil)
+	if frame := webtest.Next(t, ev2, `id="board-lanes"`); !strings.Contains(frame, `id="c-WEB-3"`) {
+		t.Errorf("an unknown saved filter hides cards")
+	}
+}
