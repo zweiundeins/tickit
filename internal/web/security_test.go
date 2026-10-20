@@ -50,6 +50,7 @@ type secCase struct {
 	mustOK  bool // allowed with a first password to change
 	outcome bool // through tabs.Act: the tab's row records it
 	noop    bool // the rightful request changes no table but the bookkeeping
+	reseeds bool // writes the seed, whose events the seeded people author
 	by      who  // who may: the positive control
 	open    bool // the positive control in the open scope
 	req     func(f *fixture, open bool) (string, map[string]any)
@@ -209,7 +210,7 @@ var secCases = []secCase{
 	{name: "admin/create", pattern: "POST /cmd/admin/create", need: siteAdmin, guard: true, outcome: true, by: wRoot, req: at("/cmd/admin/create", "email", "new@example.com", "username", "newbie", "name", "New", "role", "none", "password", "a first password")},
 	{name: "admin/role", pattern: "POST /cmd/admin/role", need: siteAdmin, guard: true, outcome: true, by: wRoot, targets: []string{"account"}, req: at("/cmd/admin/role", "account", "@victim", "role", "moderator")},
 	{name: "admin/active", pattern: "POST /cmd/admin/active", need: siteAdmin, guard: true, outcome: true, by: wRoot, targets: []string{"account"}, req: at("/cmd/admin/active", "account", "@victim", "active", false)},
-	{name: "admin/reset", pattern: "POST /cmd/admin/reset", need: siteAdmin, guard: true, outcome: true, by: wRoot, req: at("/cmd/admin/reset")},
+	{name: "admin/reset", pattern: "POST /cmd/admin/reset", need: siteAdmin, guard: true, outcome: true, reseeds: true, by: wRoot, req: at("/cmd/admin/reset")},
 	{name: "account/password", pattern: "POST /cmd/account/password", need: account, guard: true, outcome: true, mustOK: true, by: wViewer, req: at("/cmd/account/password", "current", fixturePassword, "password", "a new password here")},
 	{name: "account/end-session", pattern: "POST /cmd/account/end-session", need: account, guard: true, outcome: true, by: wViewer, req: at("/cmd/account/end-session", "session", "@session"),
 		setup: func(f *fixture) {
@@ -383,7 +384,7 @@ func TestEveryActionAllowed(t *testing.T) {
 			for rows.Next() {
 				var typ, actor, data string
 				rows.Scan(&typ, &actor, &data)
-				if actor != f.p[c.by].ID {
+				if actor != f.p[c.by].ID && !(c.reseeds && strings.HasPrefix(actor, "s-")) {
 					t.Errorf("NFR-02.2: %s by %s: the event %s names %s as its actor", c.name, c.by, typ, actor)
 				}
 				if strings.Contains(data, victim) && len(c.targets) == 0 {
