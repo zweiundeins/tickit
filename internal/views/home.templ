@@ -31,7 +31,7 @@ templ Home(w Work, feed ActivityFeed) {
 templ HomeWork(w Work) {
 	<div id={ HomeWorkID } class="tk-home__work">
 		@ui.Stats(w.stats())
-		<section class="tk-box" aria-labelledby="home-assigned">
+		<section class="tk-box tk-home__wide" aria-labelledby="home-assigned">
 			<header>
 				<h2 class="tk-eyebrow" id="home-assigned">Assigned to you</h2>
 				if w.Total > len(w.Assigned) {

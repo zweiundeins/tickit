@@ -117,7 +117,7 @@ func HomeWork(w Work) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<section class=\"tk-box\" aria-labelledby=\"home-assigned\"><header><h2 class=\"tk-eyebrow\" id=\"home-assigned\">Assigned to you</h2>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<section class=\"tk-box tk-home__wide\" aria-labelledby=\"home-assigned\"><header><h2 class=\"tk-eyebrow\" id=\"home-assigned\">Assigned to you</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -115,7 +115,8 @@
 		gap: var(--tk-space-4);
 		align-items: start;
 
-		& > .tk-stats {
+		& > .tk-stats,
+		& > .tk-home__wide {
 			grid-column: 1 / -1;
 		}
 	}
@@ -128,8 +129,10 @@
 
 		& li {
 			display: flex;
+			flex-wrap: wrap; /* the due date and the status go below on a narrow box */
 			align-items: center;
-			gap: var(--tk-space-2);
+			gap: var(--tk-space-1) var(--tk-space-2);
+			padding-block: var(--tk-space-1);
 			min-block-size: var(--tk-row-height);
 			border-block-end: 1px solid var(--tk-border-subtle);
 			font-size: var(--tk-text-sm);
@@ -138,8 +141,13 @@
 				border-block-end: 0;
 			}
 
+			& > * {
+				flex: none;
+			}
+
 			& > a {
-				flex: 1;
+				flex: 1 1 8rem;
+				min-inline-size: 0;
 				color: var(--tk-text-1);
 				text-decoration: none;
 
