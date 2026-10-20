@@ -137,7 +137,7 @@ func serve(args []string) error {
 	if err != nil {
 		return err
 	}
-	hub := live.New(live.Options{Read: db.R, MaxStreams: *streams, HeartbeatSignal: "_ping", Log: log,
+	hub := live.New(live.Options{Read: db.R, MaxStreams: *streams, MaxStreamsPerClient: web.MaxStreamsPerAddr, HeartbeatSignal: "_ping", Log: log,
 		OnTick: func(d time.Duration) { tickSeconds.Observe(d.Seconds()) }})
 	w, err := writer.New(db, writer.Options{OnCommit: hub.Changed, Log: log})
 	if err != nil {
@@ -168,6 +168,7 @@ func serve(args []string) error {
 	ready.Add("writer", running(&writerUp)) // never the writer itself: a probe must not queue behind it
 	ready.Add("hub", running(&hubUp))
 	ready.Add("events", running(&runnerUp))
+	ready.Add("static", site.Static().Warmed) // until then, a file not compressed yet waits for it
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", edge.Health(buildVersion()))
 	mux.Handle("GET /readyz", ready)

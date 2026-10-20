@@ -40,7 +40,7 @@ func TestWikiShots(t *testing.T) {
 		for _, w := range []int{1440, 375} {
 			p := b.NewPage(t, w, 900)
 			p.Navigate(t, s.URL+"/spaces")
-			p.Eval(t, fmt.Sprintf(`fetch('/cmd/prefs', {method: 'POST', headers: {'Content-Type': 'application/json', 'Datastar-Request': 'true'}, body: JSON.stringify({tab: 'shots', op: 'th%d', key: 'theme', value: %q})}).then(r => r.status)`, w, theme), nil)
+			p.Eval(t, fmt.Sprintf(`fetch('/cmd/prefs', {method: 'POST', headers: {'Content-Type': 'application/json', 'Datastar-Request': 'true'}, body: JSON.stringify({tab: document.body.dataset.signals.match(/_tab: "([^"]+)"/)[1], op: 'th%d', key: 'theme', value: %q})}).then(r => r.status)`, w, theme), nil)
 			shot := func(name, url string, full bool, ready string) {
 				p.Navigate(t, s.URL+url)
 				if ready != "" {

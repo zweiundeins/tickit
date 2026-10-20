@@ -186,6 +186,9 @@ type result struct {
 // an OK that would start what it may not (a reset). It answers the
 // requests that reached no outcome itself and reports false then.
 func (s *Server) run(w http.ResponseWriter, r *http.Request, a action, cmd writer.Command) (result, bool) {
+	if !s.connected(w, r, a.By.Actor, a.Tab) {
+		return result{}, false
+	}
 	// The demo's guard refuses while it resets, for a blocked guest, and
 	// past the caps (DM-03.4, DM-07.2, DM-04.3).
 	cmd = s.demo.Guard(a.By.Actor, a.Addr, cmd)
@@ -268,6 +271,42 @@ func (s *Server) failAction(w http.ResponseWriter, r *http.Request, err error) {
 		http.Error(w, "The server is restarting. Try again in a moment.", http.StatusServiceUnavailable)
 	default:
 		s.fail(w, r, err)
+	}
+}
+
+// NotConnected is what an action from a tab without an open stream hears
+// (409): its outcome would reach no page, and its row would come from a
+// tab id the client made up.
+const NotConnected = "This tab is not connected. Reload the page."
+
+// connected reports whether the tab's stream is open, waiting up to
+// Config.StreamWait for it, and answers 409 otherwise, or 503 once the hub
+// has stopped. An action that
+// stores tab state checks it before its command (lith's live.Hub.HasStream).
+func (s *Server) connected(w http.ResponseWriter, r *http.Request, actor people.Person, tab string) bool {
+	id := streamID(actor, tab)
+	if s.hub.HasStream(id) {
+		return true
+	}
+	deadline := time.NewTimer(s.wait)
+	defer deadline.Stop()
+	poll := time.NewTicker(20 * time.Millisecond)
+	defer poll.Stop()
+	for {
+		select {
+		case <-poll.C:
+			if s.hub.HasStream(id) {
+				return true
+			}
+			continue
+		case <-deadline.C:
+		case <-r.Context().Done():
+		case <-s.hub.Done(): // a deploy: no stream comes, and the shutdown waits for this
+			http.Error(w, "The server is restarting. Try again in a moment.", http.StatusServiceUnavailable)
+			return false
+		}
+		http.Error(w, NotConnected, http.StatusConflict)
+		return false
 	}
 }
 

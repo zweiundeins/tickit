@@ -312,3 +312,29 @@ func TestSavedFilters(t *testing.T) {
 		t.Errorf("after deleting: %+v", got)
 	}
 }
+
+// FR-13: the issue page's issues to link are the project's 25 changed
+// last, as the list sorted by update shows them, ties by number.
+func TestRecent(t *testing.T) {
+	e := newEnv(t)
+	p := e.project("WEB", true)
+	for i := range 30 {
+		e.issue(sunny, CreateIssue{Project: p, Summary: fmt.Sprint("Issue ", i+1)})
+	}
+	got, err := Recent(ctx, e.DB.R, p, PageSize)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := Search(ctx, e.DB.R, Query{Readable: []string{p}, Filter: Filter{Projects: []string{"WEB"}}, Sort: Sort{By: SortUpdated, Desc: true}, Page: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != PageSize || len(got) != len(res.Issues) {
+		t.Fatalf("%d issues, the list %d", len(got), len(res.Issues))
+	}
+	for i := range got {
+		if got[i].ID != res.Issues[i].ID {
+			t.Errorf("issue %d: %s, the list %s", i, got[i].Key, res.Issues[i].Key)
+		}
+	}
+}

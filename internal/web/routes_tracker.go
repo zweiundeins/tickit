@@ -303,12 +303,9 @@ func loadIssue(ctx context.Context, q sqlite.Querier, id string, now time.Time) 
 	if m.Epics, err = tracker.Epics(ctx, q, project); err != nil {
 		return m, err
 	}
-	others, err := tracker.Search(ctx, q, tracker.Query{Readable: []string{project}, Filter: tracker.Filter{Projects: []string{d.Project.Key}},
-		Sort: tracker.Sort{By: tracker.SortUpdated, Desc: true}, Page: 1})
-	if err != nil {
+	if m.Others, err = tracker.Recent(ctx, q, project, tracker.PageSize); err != nil {
 		return m, err
 	}
-	m.Others = others.Issues
 	comments, err := tracker.Comments(ctx, q, id)
 	if err != nil {
 		return m, err

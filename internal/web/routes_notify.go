@@ -7,11 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
 	"github.com/a-h/templ"
-	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/live"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/sse"
@@ -151,13 +151,14 @@ func (s *Server) notifySeen(w http.ResponseWriter, r *http.Request) {
 func (s *Server) home(w http.ResponseWriter, r *http.Request) {
 	me := people.Actor(r.Context())
 	pages := feedPages(r.URL.Query().Get("activity"))
+	seq := s.hub.Seq() // before the transaction: the commits the cache may count as read
 	s.render(w, r, http.StatusOK, func(ctx context.Context, q sqlite.Querier) (Page, error) {
 		readable, err := activity.Readable(ctx, q, me)
 		if err != nil {
 			return Page{}, err
 		}
 		now := time.Now()
-		work, err := s.work(ctx, q, me, readable, now)
+		work, err := s.work(ctx, q, me, readable, now, seq)
 		if err != nil {
 			return Page{}, err
 		}
@@ -183,8 +184,9 @@ func feedPages(v string) int {
 	return min(n, maxFeedPages)
 }
 
-// work reads a person's part of the home page.
-func (s *Server) work(ctx context.Context, q sqlite.Querier, me people.Person, readable []access.Scope, now time.Time) (views.Work, error) {
+// work reads a person's part of the home page; seq is what the projects'
+// cache may count as read (projectsCache.get).
+func (s *Server) work(ctx context.Context, q sqlite.Querier, me people.Person, readable []access.Scope, now time.Time, seq uint64) (views.Work, error) {
 	w := views.Work{Me: me, Now: now}
 	var projects []string
 	for _, sc := range readable {
@@ -204,7 +206,7 @@ func (s *Server) work(ctx context.Context, q sqlite.Querier, me people.Person, r
 	if w.Recent, err = activity.Mine(ctx, q, me.ID, activity.In(readable), 8); err != nil {
 		return w, err
 	}
-	if w.Projects, err = tracker.Projects(ctx, q, projects); err != nil {
+	if w.Projects, err = s.projects.get(ctx, q, projects, seq); err != nil {
 		return w, err
 	}
 	for _, sc := range readable {
@@ -219,9 +221,9 @@ func (s *Server) work(ctx context.Context, q sqlite.Querier, me people.Person, r
 			continue
 		}
 		name := info.Key
-		switch sp, err := wiki.SpaceByID(ctx, q, sc.ID); {
+		switch n, err := wiki.SpaceName(ctx, q, sc.ID); {
 		case err == nil:
-			name = sp.Name
+			name = n
 		case !errors.Is(err, access.ErrNotFound):
 			return w, err
 		}
@@ -230,16 +232,24 @@ func (s *Server) work(ctx context.Context, q sqlite.Querier, me people.Person, r
 	return w, nil
 }
 
+// feedTopics are what the feeds and the home page's own view listen to:
+// the topics of the events they show (issues and their comments, projects,
+// pages with their versions and comments, spaces) and names. Not
+// events.Topic, which every append touches: co-editing appends many
+// commits a second, and a feed shows a page's versions, never its commits.
+var feedTopics = []string{tracker.IssuesTopic, tracker.ProjectsTopic, wiki.PagesTopic, wiki.SpacesTopic, people.Topic}
+
 // homeView is the person's part of the home page: their issues, what they
-// changed, their projects and spaces. It renders on every event, as an
-// assignment, a status or a new project changes it.
+// changed, their projects and spaces. It renders on every change to an
+// issue, a project, a page or a space, as an assignment, a status or a new
+// project changes it, and on the person's own (a membership).
 func (s *Server) homeView(ctx context.Context, q sqlite.Querier, actor people.Person, arg string) (live.View, error) {
 	if arg != "" {
 		return live.View{}, fmt.Errorf("%w: home takes no argument", errBadView)
 	}
 	return live.View{
 		Key:    "home:" + actor.ID,
-		Topics: []string{events.Topic, people.Topic, tracker.ProjectsTopic, tracker.IssuesTopic, wiki.SpacesTopic},
+		Topics: append(slices.Clone(feedTopics), people.PersonTopic(actor.ID)),
 		Every:  time.Minute,
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			q := querier(ctx, tx)
@@ -247,7 +257,7 @@ func (s *Server) homeView(ctx context.Context, q sqlite.Querier, actor people.Pe
 			if err != nil {
 				return nil, err
 			}
-			w, err := s.work(ctx, q, actor, readable, time.Now())
+			w, err := s.work(ctx, q, actor, readable, time.Now(), live.Seq(ctx))
 			if err != nil {
 				return nil, err
 			}
@@ -293,7 +303,7 @@ func (s *Server) activityHomeView(ctx context.Context, q sqlite.Querier, actor p
 	}
 	return live.View{
 		Key:    "activity:home:" + activity.Key(readable) + ":" + arg,
-		Topics: []string{events.Topic, people.Topic},
+		Topics: feedTopics,
 		Every:  time.Minute,
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			f, err := s.homeFeed(ctx, querier(ctx, tx), readable, pages, time.Now())
@@ -320,7 +330,7 @@ func (s *Server) activityScopeView(kind access.Kind) ViewFactory {
 		}
 		return live.View{
 			Key:    "activity:" + string(kind) + ":" + arg,
-			Topics: []string{events.Topic, people.Topic},
+			Topics: feedTopics,
 			Every:  time.Minute,
 			Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 				f, err := s.ScopeActivity(ctx, querier(ctx, tx), scope, time.Now())

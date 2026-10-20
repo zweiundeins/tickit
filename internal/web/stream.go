@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/a-h/templ"
@@ -185,11 +184,10 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	release, ok := s.streams.open(w, r)
+	client, ok := s.streams.open(w, r)
 	if !ok {
 		return
 	}
-	defer release()
 	if len(specs) > 0 && mustChange(w, actor) { // FR-141.1: the account's page alone, which has no views
 		return
 	}
@@ -226,7 +224,14 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	// Shared views first, the tab's own last: its outcomes arrive with
 	// the frames they concern, in the same tick.
 	list = append(list, s.personView(actor), s.demoView(), connectedView, tabs.PrefsView(sid, tab), tabs.View(sid, tab))
-	spec := live.Spec{ID: streamID(actor, tab), Views: unique(list), Reconnect: views.StreamID, Slow: edge.SlowLink(r)}
+	spec := live.Spec{
+		ID:        streamID(actor, tab),
+		Client:    client,
+		Views:     unique(list),
+		Reconnect: views.StreamID,
+		Slow:      edge.SlowLink(r),
+		Ack:       ackEvent(tab), // paced once the page reports it fell behind (pace.go)
+	}
 	if actor.Kind == people.Account { // NFR-04.2: a logout ends the login's streams too
 		ctx, stop := context.WithCancel(ctx)
 		defer stop()
@@ -239,53 +244,36 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 }
 
 // Streams per client address (NFR-41): the hub's cap of all streams is
-// not for one client to take. An address may open MaxStreamsPerAddr at
-// once, which leaves room for a room of people behind one NAT, and open
-// them at StreamOpens a second after a burst of as many. A client on the
-// host itself (a probe, a load test: loopback without a proxy's header)
-// has the hub's cap alone.
+// not for one client to take. The hub holds an address to
+// MaxStreamsPerAddr open at once (live.Options.MaxStreamsPerClient, 429
+// beyond), which leaves room for a room of people behind one NAT, and an
+// address opens them at StreamOpens a second after a burst of as many. A
+// client on the host itself (a probe, a load test: loopback without a
+// proxy's header) has the hub's cap alone.
 const (
 	MaxStreamsPerAddr = 40
 	StreamOpens       = 1
 )
 
-type streamLimits struct {
-	opens *edge.Limiter
-	mu    sync.Mutex
-	count map[string]int
-}
+type streamLimits struct{ opens *edge.Limiter }
 
 func newStreamLimits() *streamLimits {
-	return &streamLimits{opens: edge.NewLimiter(StreamOpens, MaxStreamsPerAddr), count: map[string]int{}}
+	return &streamLimits{opens: edge.NewLimiter(StreamOpens, MaxStreamsPerAddr)}
 }
 
-// open counts a stream of the request's address, or answers 503 (the page
-// tries again later, as for the hub's cap) or 429 and reports false.
-func (l *streamLimits) open(w http.ResponseWriter, r *http.Request) (release func(), ok bool) {
+// open checks the rate of the request's address and returns the key the
+// hub counts its stream under (live.Spec.Client), or answers 429 and
+// reports false.
+func (l *streamLimits) open(w http.ResponseWriter, r *http.Request) (client string, ok bool) {
 	if edge.ClientIP(r).IsLoopback() {
-		return func() {}, true
+		return "", true
 	}
 	addr := edge.ClientKey(r)
-	l.mu.Lock()
-	if l.count[addr] >= MaxStreamsPerAddr {
-		l.mu.Unlock()
-		http.Error(w, "Too many open pages from this address.", http.StatusServiceUnavailable)
-		return nil, false
-	}
 	if !l.opens.Allow(addr, 1, time.Now()) {
-		l.mu.Unlock()
 		http.Error(w, tooMany, http.StatusTooManyRequests)
-		return nil, false
+		return "", false
 	}
-	l.count[addr]++
-	l.mu.Unlock()
-	return func() {
-		l.mu.Lock()
-		defer l.mu.Unlock()
-		if l.count[addr]--; l.count[addr] <= 0 {
-			delete(l.count, addr)
-		}
-	}, true
+	return addr, true
 }
 
 // LoginCheck is how often an account's stream checks that its login
@@ -351,6 +339,9 @@ func (s *Server) watch(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	actor, sid := people.Actor(ctx), edge.SessionID(ctx)
+	if !s.connected(w, r, actor, req.Tab) {
+		return
+	}
 	vs, err := s.db.ViewValue(ctx, func(tx *sql.Tx) ([]live.View, error) { return s.resolve(ctx, tx, actor, req.View) })
 	if err != nil {
 		s.failView(w, r, err)

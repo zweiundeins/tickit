@@ -13,13 +13,18 @@ package views
 const slowLink = `((c, n) => c ? c.saveData || ['slow-2g', '2g', '3g'].includes(c.effectiveType) : !!n && n.transferSize > 0 && (n.responseStart - n.requestStart > 300 || n.transferSize < 100 * (n.responseEnd - n.responseStart)))(navigator.connection, performance.getEntriesByType('navigation')[0])`
 
 // openStream opens the tab's stream with the page's views. On a slow link,
-// measured as the page starts or by newest-frame.js once the page falls
-// behind, it sends Save-Data: on (edge.SlowLink). The URL stays the same,
+// measured as the page starts, it sends Save-Data: on (edge.SlowLink). The URL stays the same,
 // so a stream opened again aborts the old request. retry 'error' retries
 // through network errors, 502s and 503s and never gives up, but leaves a
 // stream the server ends closed: on a deploy the server ends it with
 // sse.Reconnect, which runs this again.
 const openStream = `@get('/stream?tab=' + $_tab + '&v=' + encodeURIComponent($_views), {headers: $_slow ? {'Save-Data': 'on'} : {}, retry: 'error', retryMaxCount: Infinity, retryMaxWait: 10000})`
+
+// behind asks the server to pace the tab's stream each time newest-frame.js
+// reports that the page fell behind it (newest-frame-behind); /pace counts
+// the report too. It runs on <body>, where the event bubbles to: a @post
+// from the stream's element would abort its stream.
+const behind = `@post('/pace?tab=' + $_tab, {requestCancellation: 'disabled'})`
 
 // startStream is the stream element's data-init.
 const startStream = `$_beat = Date.now(); ` + openStream
@@ -76,7 +81,7 @@ func Failed(op string) string {
 }
 
 // problem is what the page says of a request that reached no outcome.
-const problem = `evt.detail.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : evt.detail.argsRaw.status === '503' ? ` + Unavailable + ` : 'This did not go through. Try again in a moment.'`
+const problem = `evt.detail.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : evt.detail.argsRaw.status === '503' ? ` + Unavailable + ` : evt.detail.argsRaw.status === '409' ? 'This tab is not connected. Reload the page.' : 'This did not go through. Try again in a moment.'`
 
 // Unavailable is what a page says of a 503: the demo's reset while the
 // demo alert says one runs, else a restart.

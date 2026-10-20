@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/mbolli/tickit/internal/tabs"
 	"github.com/mbolli/tickit/internal/tracker"
 	"github.com/mbolli/tickit/internal/web/webtest"
+	"github.com/mbolli/tickit/internal/wiki"
 )
 
 // guest is the person a client's session makes, after its first page.
@@ -205,9 +207,34 @@ func TestHomeAndReactions(t *testing.T) {
 	if code != http.StatusOK {
 		t.Errorf("home: %d", code)
 	}
+	// The open counts come from a cache (projectsCache) that every change
+	// to an issue of the project, which touches its board, refreshes.
+	third := result(tracker.CreateIssue{By: by(them, "p5"), Project: project, Type: tracker.Task, Summary: "A third"})
+	webtest.Next(t, home, "3 open issues")
+	e.Do(t, tracker.SetStatus{By: by(them, "p6"), Issue: third, Seen: 1 << 40, Status: tracker.StatusDone})
+	webtest.Next(t, home, "2 open issues")
+
 	// The project's feed is a view of its own.
 	feed := webtest.Listen(t, other, e.URL+"/stream?tab=tab2&v=activity-project:"+project, nil)
 	webtest.Next(t, feed, `id="activity-project-`+project+`"`)
+	// NFR-35: an append that no feed shows, such as a commit to a page's
+	// document, renders neither the feeds nor the home page's own view.
+	feeds := func() map[string]int64 {
+		out := map[string]int64{}
+		for key, n := range e.Hub.Stats().RendersByKey {
+			if strings.HasPrefix(key, "home:") || strings.HasPrefix(key, "activity:") {
+				out[key] = n
+			}
+		}
+		return out
+	}
+	time.Sleep(50 * time.Millisecond)
+	before := feeds()
+	e.Do(t, writer.Func(func(tx *writer.Tx) error { tx.Touch(events.Topic, wiki.DocTopic("p1")); return nil }))
+	time.Sleep(100 * time.Millisecond)
+	if after := feeds(); len(before) != 3 || !maps.Equal(before, after) {
+		t.Errorf("renders of the feeds and the home view before a commit to a document %v, after %v", before, after)
+	}
 	if code, _ := webtest.Get(t, other, e.URL+"/stream?tab=tab3&v=activity-project:nope"); code != http.StatusNotFound {
 		t.Errorf("an unknown project's feed: %d", code)
 	}

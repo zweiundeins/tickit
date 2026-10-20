@@ -47,7 +47,14 @@ type Config struct {
 	// Projectors are the events runner's stats, which the demo's reset
 	// waits on (demo.Config.Projectors); nil without a runner.
 	Projectors func() events.Stats
+	// StreamWait is how long an action waits for its tab's stream to open
+	// before it answers 409 (DefaultStreamWait when zero, negative: no
+	// wait): a page posts some actions as it loads, while its stream opens.
+	StreamWait time.Duration
 }
+
+// DefaultStreamWait is Config.StreamWait when it is zero.
+const DefaultStreamWait = 2 * time.Second
 
 // Server holds what the handlers share.
 type Server struct {
@@ -62,12 +69,15 @@ type Server struct {
 	sessions edge.Sessions
 	secure   bool
 	ttl      time.Duration
+	wait     time.Duration // Config.StreamWait
 
-	limits  *limits         // the rate limits of actions (DM-04)
-	signIn  *edge.Limiter   // logins and logouts per address (NFR-09.1)
-	streams *streamLimits   // streams opened and open per address (NFR-41)
-	lockout *people.Lockout // failed logins per email and address (NFR-09.2)
-	metrics *metrics
+	limits   *limits         // the rate limits of actions (DM-04)
+	signIn   *edge.Limiter   // logins and logouts per address (NFR-09.1)
+	streams  *streamLimits   // streams opened per address (NFR-41)
+	pacing   *paceLimits     // /pace and /ack (pace.go)
+	lockout  *people.Lockout // failed logins per email and address (NFR-09.2)
+	metrics  *metrics
+	projects *projectsCache // the home page's projects and open counts
 
 	mux     *http.ServeMux
 	probes  []string // a URL of every GET route, for the test that GET never writes (NFR-06)
@@ -87,6 +97,9 @@ func New(cfg Config) (*Server, error) {
 	}
 	if cfg.SessionTTL <= 0 {
 		cfg.SessionTTL = people.DefaultSessionTTL
+	}
+	if cfg.StreamWait == 0 {
+		cfg.StreamWait = DefaultStreamWait
 	}
 	files, err := fs.Sub(staticFiles, "static")
 	if err != nil {
@@ -122,11 +135,14 @@ func New(cfg Config) (*Server, error) {
 		sessions: edge.Sessions{Secure: cfg.Secure},
 		secure:   cfg.Secure,
 		ttl:      cfg.SessionTTL,
+		wait:     max(0, cfg.StreamWait),
 		limits:   newLimits(),
 		signIn:   edge.NewLimiter(0.5, 10), // 30 a minute, 10 at once
 		streams:  newStreamLimits(),
+		pacing:   newPaceLimits(),
 		lockout:  people.NewLockout(),
 		metrics:  newMetrics(cfg.DB),
+		projects: newProjectsCache(cfg.Hub),
 		mux:      http.NewServeMux(),
 		views:    newViewRegistry(),
 	}
@@ -196,24 +212,31 @@ func (s *Server) Actions() []string { return slices.Clone(s.actions) }
 
 // Handler returns the routes behind the edge: the session, the actor,
 // the CSRF check, the security headers, compression, recovery and the log
-// of requests. /healthz and /readyz stay outside it (cmd/tickit).
+// of requests. The static files skip the session and the actor: their
+// answers are public and immutable, and a cookie on one would go to
+// everyone a shared cache gives it to. /healthz and /readyz stay outside
+// it (cmd/tickit).
 func (s *Server) Handler() http.Handler {
-	actor := people.Middleware(s.db, s.log)(s.mux)
-	h := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/static/") {
-			s.mux.ServeHTTP(w, r) // no actor needed: nothing to read
-			return
-		}
-		actor.ServeHTTP(w, r)
-	}))
+	h := people.Middleware(s.db, s.log)(s.mux)
 	h = s.sessions.Handler(h) // inside CSRF: a refused request gets no cookie
-	h = edge.CSRF{Datastar: []string{"POST /cmd/"}}.Handler(h)
+	h = edge.CSRF{Datastar: []string{"POST /cmd/", "POST /pace", "POST /ack"}}.Handler(h)
 	h = edge.SecurityHeaders{CSP: edge.DefaultCSP(), HSTS: s.secure}.Handler(h)
 	h = noIndex(h)
 	h = edge.Compress(h)
 	h = edge.Recover(s.log, h)
-	return edge.LogRequests(s.log, h)
+	h = edge.LogRequests(s.log, h)
+
+	static := noIndex(edge.SecurityHeaders{CSP: edge.DefaultCSP(), HSTS: s.secure}.Handler(s.static))
+	static = edge.LogRequests(s.log, edge.Recover(s.log, static))
+	mux := http.NewServeMux()
+	mux.Handle("GET /static/", static) // precompressed by edge.Static
+	mux.Handle("/", h)
+	return mux
 }
+
+// Static is the static files, for cmd/tickit's readiness check
+// (edge.Static.Warmed).
+func (s *Server) Static() *edge.Static { return s.static }
 
 // noIndex keeps search engines out of what visitors write (DM-09.1).
 func noIndex(next http.Handler) http.Handler {
