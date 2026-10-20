@@ -667,6 +667,9 @@ func (s *Server) issueTyping(w http.ResponseWriter, r *http.Request, id string) 
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
+	if s.paused(w, r, a.By.Actor) {
+		return
+	}
 	if err := s.w.Send(cmd); err != nil {
 		s.failAction(w, r, err)
 		return

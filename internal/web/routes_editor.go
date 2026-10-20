@@ -282,8 +282,8 @@ func (s *Server) commit(w http.ResponseWriter, r *http.Request) {
 // presence is an editing tab's selection, sent without waiting: the next
 // one replaces it (MP-06.2).
 func (s *Server) presence(w http.ResponseWriter, r *http.Request) {
-	req, _, ok := s.decodeEditor(w, r, classCaret)
-	if !ok {
+	req, actor, ok := s.decodeEditor(w, r, classCaret)
+	if !ok || s.paused(w, r, actor) {
 		return
 	}
 	err := s.w.Send(wiki.Presence{

@@ -156,6 +156,23 @@ func mustChange(w http.ResponseWriter, actor people.Person) bool {
 	return actor.MustChange
 }
 
+// paused answers a change sent without waiting, outside tabs.Act, during
+// a reset (503) or from a blocked guest (403), and then reports true
+// (DM-03.4, DM-07.2).
+func (s *Server) paused(w http.ResponseWriter, r *http.Request, actor people.Person) bool {
+	err := s.demo.Check(r.Context(), s.db.R, actor, edge.ClientKey(r))
+	var denial *access.Denial
+	switch {
+	case err == nil:
+		return false
+	case errors.As(err, &denial):
+		http.Error(w, denial.Msg, http.StatusForbidden)
+	default:
+		s.failAction(w, r, err)
+	}
+	return true
+}
+
 // run runs cmd as action a in tabs.Act, once per op id: a retry gets the
 // first answer and runs nothing. It answers the requests that reached no
 // outcome itself and reports false then.

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mbolli/tickit/internal/people"
+	"github.com/mbolli/tickit/internal/web"
 	"github.com/mbolli/tickit/internal/web/webtest"
 )
 
@@ -114,4 +115,31 @@ func status(t *testing.T, c *http.Client, url string) int {
 	}
 	res.Body.Close()
 	return res.StatusCode
+}
+
+// DM-07.2, DM-03.4: a blocked guest's typing and carets, which skip
+// tabs.Act, are paused too.
+func TestBlockedGuestTypes(t *testing.T) {
+	e := webtest.Start(t)
+	seedProbes(t, e)
+	e.Account(t, "mo@example.com", "correct horse battery", people.Moderator)
+	mo, g := webtest.Client(t), webtest.Client(t)
+	e.Login(t, mo, "mo@example.com", "correct horse battery")
+	me := guest(t, e, g)
+	webtest.Post(t, g, e.URL+"/cmd/people/rename", `{"tab":"tab1","op":"g1","name":"Spammer"}`)
+	if code, body := webtest.Post(t, mo, e.URL+"/cmd/moderation/block", `{"tab":"tab1","op":"b1","person":"`+me.ID+`","reason":"spam"}`); code != http.StatusNoContent {
+		t.Fatalf("block: %d %s", code, body)
+	}
+	before := e.Fingerprint(t)
+	if code, _ := webtest.Post(t, g, e.URL+"/cmd/issues/"+web.ProbeIssue+"/typing", `{"tab":"tab1","op":"t1","field":"summary"}`); code != http.StatusForbidden {
+		t.Errorf("a blocked guest types: %d", code)
+	}
+	page := "0192d000-0000-7000-8000-000000000001"
+	if code, _ := webtest.Post(t, g, e.URL+"/cmd/pages/"+page+"/presence", `{"tab":"tab1","epoch":"e1","ack":1,"v":1,"anchor":1,"head":1,"seq":1}`); code != http.StatusForbidden {
+		t.Errorf("a blocked guest's caret: %d", code)
+	}
+	e.W.Flush(context.Background())
+	if e.Fingerprint(t) != before {
+		t.Error("a blocked guest's typing changed the database")
+	}
 }
