@@ -298,7 +298,7 @@ templ SettingsRegion(l SettingsLive) {
 }
 
 // Forbidden is a project's page that the person may not use: why.
-templ Forbidden(p tracker.Project, why string) {
+templ ProjectForbidden(p tracker.Project, why string) {
 	<div class="tk-pagehead">
 		<div class="tk-bdhead__title">
 			<p class="tk-eyebrow">{ p.Key }</p>

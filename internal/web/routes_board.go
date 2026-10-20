@@ -792,7 +792,7 @@ func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request) {
 			return Page{}, err
 		}
 		if !can(ctx, q, me, access.Configure, p.ID) {
-			return Page{Title: p.Name + " settings", Nav: "projects", Body: views.Forbidden(p, "Only admins of this project can change its settings.")}, nil
+			return Page{Title: p.Name + " settings", Nav: "projects", Body: views.ProjectForbidden(p, "Only admins of this project can change its settings.")}, nil
 		}
 		live, err := readSettings(ctx, q, p)
 		if err != nil {

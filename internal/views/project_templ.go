@@ -1286,7 +1286,7 @@ func SettingsRegion(l SettingsLive) templ.Component {
 }
 
 // Forbidden is a project's page that the person may not use: why.
-func Forbidden(p tracker.Project, why string) templ.Component {
+func ProjectForbidden(p tracker.Project, why string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {

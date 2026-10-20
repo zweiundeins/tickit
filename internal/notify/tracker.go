@@ -76,6 +76,8 @@ var issueReactions = events.NewProjector(tracker.IssueStream, "notify_issues", 1
 	events.Ignore(tracker.LinkRemovedType),
 	events.Ignore(tracker.IssueDeletedType),
 	events.Ignore(tracker.ProjectChangedType),
+	events.Ignore(tracker.IssueHiddenType),
+	events.Ignore(tracker.IssueUnhiddenType),
 ).SkipHistory()
 
 // commentReactions notify the people a comment mentions (FR-112) and the

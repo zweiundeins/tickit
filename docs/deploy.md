@@ -167,7 +167,9 @@ With the database lost, the latest copy brings back the staff accounts and the m
 
 ## The nightly reset
 
-The demo resets every night at 04:00 Europe/Zurich (DM-03). The app schedules it itself, so the host needs no timer or cron job for it. The reset counts itself in `tickit_resets_total{outcome}`, which the alert rules read.
+The demo resets every night at 04:00 Europe/Zurich (DM-03). The app schedules it itself, so the host needs no timer or cron job for it. Ten minutes before, every open page says "The demo resets in 10 minutes. Your changes will be deleted."; while it runs, actions answer 503 and pages say "The demo is resetting". It deletes every visitor's issues, pages, comments, notifications, tab state, events and guests, keeps the staff accounts with their logins, the display preferences of every session, the security log, the moderation log and the blocks, then writes the seed again. It takes well under a second (`benchmarks/RESULTS.md`). The reset counts itself in `tickit_resets_total{outcome}`, both outcomes from 0 on, which the alert rules read, and its duration in `tickit_reset_seconds`; a failed reset is logged at ERROR with its cause, and the admin page's Demo tab lists the last resets.
+
+A site admin resets by hand with "Reset now" on `/admin/demo`. A new database stays empty until the first reset: after the first install and its admin account, log in and use "Reset now". In development, `serve -dev` seeds an empty database at startup, and `tickit seed -db data/tickit.db` seeds a new one (`-force` empties one first, as the reset does, and keeps its staff accounts).
 
 ## Metrics, probes, logs and alerts
 

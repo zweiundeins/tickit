@@ -47,3 +47,15 @@ Every one is under the 200 ms of NFR-40 at the 95th percentile; the test fails a
 - **Frame of 100 cards** (`go test ./internal/web -run TestBoardFrameSize -v`): 58,878 bytes of HTML in one patch, 588 bytes a card (`trackertest.Board`: every card with type, key, summary, priority and face or "Unassigned"; a quarter with an epic, a third with labels, a fifth with points, a sixth with a due date). Read and rendered in 1.8 ms on average over 50 runs. Before the cards referred to the page's glyphs (`ui.BoardCard`, `ui.Glyphs`), the same board was 316 KB with `ui.Card`, then 108 KB with SVG `<use>` references.
 - **100 streams on one board, one move a second** (`TICKIT_LOAD_SECONDS=30 go test ./internal/web -run TestBoardLoad -v`): 30 moves, 30 renders of the board's one view (`RendersByKey`), 3,000 frames of 58,877 bytes, 30 to each stream. From a move's request to its frame on the slowest of the 100 streams: p50 3.6 ms, p95 7.3 ms, max 7.6 ms. The test process (server, 100 stream readers, a page load and a move a second) used 2.4 s of CPU in 29.2 s, 8.3% of one core. The 10-second run: p50 3.6 ms, p95 5.9 ms, 19% of a core while the 100 streams opened.
 - **In browsers** (`CHROME=/usr/bin/chromium LITH_CHROME_NO_SANDBOX=1 go test ./e2e -run 'TestBoardMoveLive|TestBoardPresence' -v`, Chromium 154 headless, three browser contexts on loopback): a card dropped in one shows in the two others 22 to 74 ms after the drop over five runs (section 12 item 4 asks for 250 ms); a closed tab's face leaves the others' presence row after 50 to 55 ms (MP-02.3 asks for 1 s).
+
+## The seed and the reset
+
+2026-10-20, Intel Core i5-13500 (20 threads), Linux 6.18 (Unraid), Go 1.27.2, a test database in the test's temporary directory, `synchronous` NORMAL, without the wiki's pages (no PageSeeder yet).
+
+| What | Took | Command |
+| --- | --- | --- |
+| Seed: 3 projects, 139 issues, 199 changes, 16 links, 99 comments, 83 board moves (593 steps, 1,475 events) | 91 to 110 ms | `go test ./internal/demo -run TestSeed -v` (the `seeded` log line) |
+| Wipe after 1,000 guest issues and 1,000 comments (4,778 events): the one command that holds the writer | 9 ms | a throwaway test that ran `demo.Wipe` in `writer.Func` after `tracker.CreateIssue` and `AddComment` by 1,000 guests |
+| Reset end to end: flush, wipe, seed, log | 138 ms | the same test, `Demo.Reset` |
+
+DM-02.4 wants the seed under 30 s; the reset holds the writer at most for the wipe and then for one batch of 64 seed steps at a time.

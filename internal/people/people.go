@@ -25,6 +25,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
+
+	"github.com/mbolli/tickit/internal/demo/words"
 )
 
 // Kind is what kind of person someone is.
@@ -66,6 +68,9 @@ type Person struct {
 	Role SiteRole
 	// Inactive marks a deactivated account (FR-143.1).
 	Inactive bool
+	// MustChange marks an account whose first password, set by a site
+	// admin, must be changed before it does anything else (FR-141.1).
+	MustChange bool
 }
 
 // IsZero reports whether p is nobody: the actor outside Middleware.
@@ -263,6 +268,9 @@ func (c Rename) Apply(tx *writer.Tx) error {
 	if n := utf8.RuneCountInString(name); n < MinName || n > MaxName || strings.IndexFunc(name, unicode.IsControl) >= 0 {
 		return &fieldRefusal{field: "name", Refusal: writer.Refusal{Msg: "A name has 2 to 30 characters."}}
 	}
+	if words.Blocked(name) {
+		return &fieldRefusal{field: "name", Refusal: writer.Refusal{Msg: words.Refusal}}
+	}
 	res, err := tx.Exec(`UPDATE people SET display_name = ? WHERE id = ? AND display_name != ?`, name, c.Person, name)
 	if err != nil {
 		return err
@@ -310,9 +318,9 @@ func Resolve(ctx context.Context, q sqlite.Querier, sid string, now time.Time) (
 		return Person{}, errors.New("people: no session")
 	}
 	var p Person
-	err := q.QueryRowContext(ctx, `SELECT p.id, p.display_name, p.hue, a.site_role
+	err := q.QueryRowContext(ctx, `SELECT p.id, p.display_name, p.hue, a.site_role, a.must_change_password
 		FROM login_sessions s JOIN accounts a ON a.person_id = s.person_id JOIN people p ON p.id = s.person_id
-		WHERE s.sid_hash = ? AND s.expires_at > ? AND a.status = 'active'`, sidHash(sid), now.Unix()).Scan(&p.ID, &p.Name, &p.Hue, &p.Role)
+		WHERE s.sid_hash = ? AND s.expires_at > ? AND a.status = 'active'`, sidHash(sid), now.Unix()).Scan(&p.ID, &p.Name, &p.Hue, &p.Role, &p.MustChange)
 	switch {
 	case err == nil:
 		p.Kind, p.Face = Account, avatarOf(p.ID).Face
