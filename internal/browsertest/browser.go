@@ -259,6 +259,7 @@ type Page struct {
 	b       *Browser
 	session string
 	target  string
+	userCtx string // Firefox: the user context, which holds the page's cookies
 
 	mu     sync.Mutex
 	errs   []string
