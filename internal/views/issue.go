@@ -37,9 +37,11 @@ type Issue struct {
 	DescMarkup string // the description as markup, for editing it
 	// Pages are the pages whose head document shows the issue as a chip
 	// (FR-101), live: the wiki touches the issue's topic.
-	Pages    []wiki.PageRef
-	History  []tracker.Entry
-	Activity []tracker.ActivityItem
+	Pages []wiki.PageRef
+	// LinkedPages are the pages linked to the issue by hand (FR-102).
+	LinkedPages []wiki.PageRef
+	History     []tracker.Entry
+	Activity    []tracker.ActivityItem
 	// Mentioned are the people the description and the comments mention,
 	// whose names their markup shows in place of ids (NamedMentions).
 	Mentioned []people.Person
@@ -246,7 +248,7 @@ func entryText(e tracker.Entry) string {
 		return "changed the description"
 	case tracker.FieldRank:
 		return "changed the rank"
-	case tracker.FieldLabels, tracker.FieldComponents, tracker.FieldWatchers, tracker.FieldLinks:
+	case tracker.FieldLabels, tracker.FieldComponents, tracker.FieldWatchers, tracker.FieldLinks, tracker.FieldPages:
 		switch {
 		case e.New != "" && e.Old != "":
 			return "changed the " + label + ": added " + e.New + ", removed " + e.Old

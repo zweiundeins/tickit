@@ -346,7 +346,7 @@ func TestChipsLive(t *testing.T) {
 		t.Errorf("FR-101.1: the issue page does not list the page: %d", code)
 	}
 	issueView := webtest.Listen(t, c, e.URL+"/stream?tab=itab&v=issue:"+issue, nil)
-	webtest.Next(t, issueView, `Pages that mention this issue`)
+	webtest.Next(t, issueView, `<span class="tk-issue__wording">mentions it</span>`)
 	webtest.Post(t, c, e.URL+"/cmd/pages/"+page+"/commit", fmt.Sprintf(`{"tab":"tab1","epoch":%q,"base":%d,"ref":"c2","client":"0123456789ab","steps":[{"stepType":"replace","from":1,"to":2}]}`, h.Epoch, h.Version+1))
-	webtest.Next(t, issueView, `No page shows this issue yet`)
+	webtest.Next(t, issueView, `No page shows or links this issue yet`)
 }

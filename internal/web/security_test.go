@@ -199,6 +199,14 @@ var secCases = []secCase{
 	issueCase("cdelete", ownComment, wMember, "ref", "@comment"),
 	issueCase("chide", admin, wOwner, "value", "hide", "ref", "@comment"),
 	issueCase("delete", admin, wOwner),
+	issueCase("pagelink", edit, wMember, "value", "@page"),
+	func() secCase {
+		c := issueCase("pageunlink", edit, wMember, "value", "@page")
+		c.setup = func(f *fixture) {
+			f.e.Do(f.t, tracker.LinkPage{By: f.by(wOwner), Issue: f.id("issue", false), Page: f.id("page", false), Title: "Linked"})
+		}
+		return c
+	}(),
 	{name: "issues/typing", pattern: "POST /cmd/issues/{id}/{field}", need: read, guard: true, by: wViewer, req: at("/cmd/issues/{issue}/typing", "field", "comment")},
 
 	{name: "list/view", pattern: "POST /cmd/list/view", need: self, by: wViewer, noop: true, req: at("/cmd/list/view", "view", "", "query", "project=SEC")},
@@ -246,7 +254,7 @@ func epochOf(f *fixture, page string) string {
 // issueFields are the fields of POST /cmd/issues/{id}/{field}
 // (issueCommand and issueTyping): each needs a case.
 var issueFields = []string{"summary", "description", "type", "status", "priority", "assignee", "parent", "due", "points", "estimate",
-	"remaining", "sprint", "labels", "components", "watch", "link", "unlink", "subtask", "comment", "cedit", "cdelete", "chide", "delete", "typing"}
+	"remaining", "sprint", "labels", "components", "watch", "link", "unlink", "subtask", "comment", "cedit", "cdelete", "chide", "delete", "typing", "pagelink", "pageunlink"}
 
 // lacking is who lacks c's right, and whether they act in the open scope.
 func (c secCase) lacking() []struct {

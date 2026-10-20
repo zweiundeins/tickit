@@ -4,6 +4,7 @@ import (
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/ui"
+	"github.com/zweiundeins/tickit/internal/wiki"
 )
 
 // The issue's page (FR-13): a frame the document renders once, with the
@@ -254,6 +255,7 @@ templ issueMain(m Issue) {
 					@ui.MenuItem(ui.MenuItemProps{Label: "Add subtask", Icon: "plus", Autofocus: true, Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-subtask')?.focus()"}})
 				}
 				@ui.MenuItem(ui.MenuItemProps{Label: "Link issue", Icon: "link", Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-link-key')?.focus()"}})
+				@ui.MenuItem(ui.MenuItemProps{Label: "Link page", Icon: "page", Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-page-q')?.focus()"}})
 				<hr class="tk-menu__sep" data-del/>
 				@ui.MenuItem(ui.MenuItemProps{Label: "Delete issue", Icon: "trash", Danger: true, Attrs: templ.Attributes{"data-del": true, "data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-delete').showModal()"}})
 			}
@@ -394,19 +396,35 @@ templ issueRelated(m Issue) {
 			@issueNote("unlink")
 		</div>
 		<div class="tk-issue__group">
-			<h2 class="tk-eyebrow">Pages that mention this issue</h2>
-			if len(m.Pages) > 0 {
+			<h2 class="tk-eyebrow">Pages</h2>
+			if len(m.Pages) > 0 || len(m.LinkedPages) > 0 {
 				<ul class="tk-issue__refs" role="list">
+					for _, pg := range m.LinkedPages {
+						<li>
+							<span class="tk-issue__wording">linked</span>
+							@ui.PageLink(pg.ID, pg.Title, pg.URL(), false)
+							<span class="muted">{ pg.SpaceName }</span>
+							@ui.Button(ui.ButtonProps{Label: "Unlink " + pg.Title, Icon: "close", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: merge(locked, choice("pageunlink", pg.ID, ""))})
+						</li>
+					}
 					for _, pg := range m.Pages {
 						<li>
+							<span class="tk-issue__wording">mentions it</span>
 							@ui.PageLink(pg.ID, pg.Title, pg.URL(), false)
 							<span class="muted">{ pg.SpaceName }</span>
 						</li>
 					}
 				</ul>
 			} else {
-				<p class="muted">No page shows this issue yet. Type its key in a page to link it there.</p>
+				<p class="muted">No page shows or links this issue yet.</p>
 			}
+			<div class="tk-issue__addrow tk-issue__pagepick" data-ignore-morph>
+				<label class="visually-hidden" for="issue-page-q">Link a page: search pages by title</label>
+				<input id="issue-page-q" class="tk-input tk-input--sm" type="search" data-bind="_is.pq" placeholder="Link a page: type its title" autocomplete="off" aria-controls={ PagePickID } data-on:input__debounce.250ms={ pagePick } data-attr:readonly={ fieldExpr(editReadonly, "pagelink") } data-attr:disabled={ disabledWhile }/>
+				<ul id={ PagePickID } class="tk-issue__picks" role="list" aria-label="Pages to link"></ul>
+			</div>
+			@issueNote("pagelink")
+			@issueNote("pageunlink")
 		</div>
 	</section>
 }
@@ -765,6 +783,25 @@ templ commentForm(p IssueFrameProps) {
 		</div>
 		@issueNote("comment")
 	</div>
+}
+
+// PagePicks are the pages "Link page" offers for a search (FR-102): a
+// choice links the page, as the frame's delegated handler sends it.
+templ PagePicks(list []wiki.PageRef, searched bool) {
+	<ul id={ PagePickID } class="tk-issue__picks" role="list" aria-label="Pages to link">
+		for _, pg := range list {
+			<li>
+				<button type="button" class="tk-menu__item" data-act="choose" data-field="pagelink" data-value={ pg.ID }>
+					@ui.Icon("page")
+					<span class="tk-menu__label">{ pg.Title }</span>
+					<span class="muted">{ pg.SpaceName }</span>
+				</button>
+			</li>
+		}
+		if searched && len(list) == 0 {
+			<li class="muted">No page has that title.</li>
+		}
+	</ul>
 }
 
 // issueMentions are the people "@" offers in the comment box (FR-67.1).

@@ -21,7 +21,7 @@ import (
 var IssueFields = []string{
 	"summary", "description", "type", "status", "priority", "assignee", "parent", "due", "points",
 	"estimate", "remaining", "sprint", "labels", "components", "watch", "link", "unlink", "subtask",
-	"comment", "cedit", "cdelete", "chide", "delete",
+	"comment", "cedit", "cdelete", "chide", "delete", "pagelink", "pageunlink",
 }
 
 // issueSignals are the page's state of the issue it shows. The issue's id,
@@ -38,7 +38,7 @@ func issueSignals(id, key, me string, readOnly, moderates bool) string {
 		"id": id, "key": key, "me": me, "ro": readOnly, "mod": moderates,
 		"edit": "", "val": "", "orig": "", "seen": 0, "ref": "",
 		"ops": per(""), "last": per(""), "msg": per(""), "fail": per(""), "conflict": per(false), "want": per(""), "sent": per(0), "refs": per(""),
-		"aq": "", "lq": "", "mseen": 0, "sub": "", "link": map[string]any{"type": "blocks", "key": ""},
+		"aq": "", "lq": "", "pq": "", "mseen": 0, "sub": "", "link": map[string]any{"type": "blocks", "key": ""},
 		"draft": "", "mq": false, "cedit": "", "ctext": "",
 		"tab": "comments", "at": 0, "max": 1, "copied": false, "back": "", "pop": false,
 	}})
@@ -157,6 +157,7 @@ const issueSettle = `Object.keys($_is.ops).forEach(f => {
 		if (f === 'subtask') $_is.sub = ''
 		if (f === 'link') $_is.link.key = ''
 		if (f === 'labels') $_is.lq = ''
+		if (f === 'pagelink') { $_is.pq = ''; document.getElementById('` + PagePickID + `')?.replaceChildren() }
 		if (f === 'cedit') $_is.cedit = ''
 		if (f === 'delete') document.getElementById('issue-delete')?.close()
 	} else {
@@ -197,6 +198,13 @@ const (
 	assigneeMatch = `$_is.aq === '' || el.dataset.name.toLowerCase().includes($_is.aq.toLowerCase())`
 	issueDelete   = issueSendFn + `('delete', '', 0, '')`
 	copyLink      = `navigator.clipboard?.writeText(location.origin + '/' + $_is.key).then(() => { $_is.copied = true; setTimeout(() => $_is.copied = false, 1500) })`
+)
+
+// PagePickID is the list of pages that "Link page" offers for its search
+// (FR-102), which GET /issues/link-page patches; pagePick asks for it.
+const (
+	PagePickID = "issue-page-pick"
+	pagePick   = `$_is.pq.trim().length < 2 ? document.getElementById('` + PagePickID + `').replaceChildren() : @get('/issues/link-page?q=' + encodeURIComponent($_is.pq.trim()), {requestCancellation: 'auto'})`
 )
 
 // The tabs of the issue's page: Comments, History, Activity (FR-68).

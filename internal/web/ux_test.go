@@ -1,6 +1,7 @@
 package web_test
 
 import (
+	"encoding/json"
 	"html"
 	"net/http"
 	"slices"
@@ -8,9 +9,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zweiundeins/lith/writer"
+
 	"github.com/zweiundeins/tickit/internal/markup"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/views"
 	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
@@ -186,4 +190,60 @@ func TestMentionsAndPersonPage(t *testing.T) {
 	webtest.Next(t, ev, `id="person-page"`)
 	e.issue("WEB-9", tracker.CreateIssue{Project: e.web, Summary: "Bo's new one", Assignee: e.bo.ID})
 	webtest.Next(t, ev, "Bo&#39;s new one")
+}
+
+// FR-102: "Link page" on an issue picks a page by search and links it;
+// the issue lists it beside the pages that mention it, the page lists the
+// issue under "Linked issues", both in the next frame; unlinking takes
+// it off both.
+func TestLinkPage(t *testing.T) {
+	e := startWiki(t)
+	c := webtest.Client(t)
+	webtest.Get(t, c, e.URL+"/")
+	space, home := wikiSpace(t, e, c, "ENG")
+	page := wikiPage(t, e, c, space, home, "Release plan")
+	ada := people.Seeded[0]
+	e.Do(t, people.SeedPeople{At: time.Now()})
+	var issue string
+	e.Do(t, writer.Func(func(tx *writer.Tx) error {
+		b, err := tracker.CreateProject{By: wikiBy(ada, "p1"), Key: "WEB", Name: "Web", Open: true}.ApplyResult(tx)
+		if err != nil {
+			return err
+		}
+		var m map[string]string
+		json.Unmarshal(b, &m)
+		b, err = tracker.CreateIssue{By: wikiBy(ada, "i1"), Project: m["id"], Type: tracker.Bug, Summary: "Fix the login"}.ApplyResult(tx)
+		json.Unmarshal(b, &m)
+		issue = m["id"]
+		return err
+	}))
+	if code, pick := webtest.Get(t, c, e.URL+"/issues/link-page?q=release"); code != http.StatusOK || !strings.Contains(pick, `data-field="pagelink" data-value="`+page+`"`) {
+		t.Fatalf("the page search: %d %.300s", code, pick)
+	}
+	issueView := webtest.Listen(t, c, e.URL+"/stream?tab=itab&v=issue:"+issue, nil)
+	webtest.Next(t, issueView, `No page shows or links this issue yet`)
+	pageView := webtest.Listen(t, c, e.URL+"/stream?tab=ptab&v=page:"+page, nil)
+	webtest.Next(t, pageView, `id="`+views.PageRefsID+`"`)
+	if code, _ := act(t, e, c, "/cmd/issues/"+issue+"/pagelink", "tab1", map[string]any{"value": page, "seen": 1 << 40}); code != http.StatusNoContent {
+		t.Fatalf("pagelink: %d", code)
+	}
+	webtest.Next(t, issueView, `<span class="tk-issue__wording">linked</span><a class="page-link" data-page="`+page+`"`)
+	webtest.Next(t, pageView, `Linked issues`)
+	// A second link of the same page is refused next to the field.
+	act(t, e, c, "/cmd/issues/"+issue+"/pagelink", "tab1", map[string]any{"value": page, "seen": 1 << 40})
+	// The issue follows the linked page's title.
+	act(t, e, c, "/cmd/pages/rename", "tab1", map[string]any{"page": page, "title": "Launch plan"})
+	webtest.Next(t, issueView, `>Launch plan</a>`)
+	if _, history := webtest.Get(t, c, e.URL+"/WEB-1"); !strings.Contains(history, "added Release plan to the linked pages") {
+		t.Errorf("the history does not say who linked the page")
+	}
+	if code, _ := act(t, e, c, "/cmd/issues/"+issue+"/pageunlink", "tab1", map[string]any{"value": page, "seen": 1 << 40}); code != http.StatusNoContent {
+		t.Fatalf("pageunlink: %d", code)
+	}
+	webtest.Next(t, issueView, `No page shows or links this issue yet`)
+	webtest.Next(t, pageView, `aria-label="Links"></aside>`) // no linked issue any more
+	// A page that is no page is refused, not linked.
+	if code, _ := act(t, e, c, "/cmd/issues/"+issue+"/pagelink", "tab1", map[string]any{"value": tracker.NewID(), "seen": 1 << 40}); code != http.StatusNoContent {
+		t.Errorf("a link to no page: %d, want 204 and a refusal", code)
+	}
 }

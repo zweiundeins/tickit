@@ -238,6 +238,36 @@
 		}
 	}
 
+	/* The pages "Link page" offers for its search (FR-102). */
+	.tk-issue__picks {
+		display: grid;
+		flex: 1 0 100%;
+		margin: 0;
+		padding: var(--tk-space-1);
+		border: 1px solid var(--tk-border-subtle);
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-overlay);
+		list-style: none;
+
+		&:empty {
+			display: none;
+		}
+
+		& .tk-menu__item {
+			inline-size: 100%;
+
+			& > .muted {
+				margin-inline-start: auto;
+				font-size: var(--tk-text-xs);
+			}
+		}
+
+		& > li.muted {
+			padding: var(--tk-space-1) var(--tk-space-2);
+			font-size: var(--tk-text-sm);
+		}
+	}
+
 	.tk-issue__chips + .tk-issue__addrow {
 		flex: 1 1 100%;
 	}

@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -47,6 +48,48 @@ func (s *Server) routesTracker() {
 	s.views.Register("issue-typing", s.issueTypingView)
 	s.post("POST /cmd/issues/create", s.createIssue)
 	s.post("POST /cmd/issues/{id}/{field}", s.issueAction)
+	s.get("GET /issues/link-page", http.HandlerFunc(s.pagePick), "/issues/link-page?q=plan", "/issues/link-page?q=")
+}
+
+// pagePick answers "Link page"'s search (FR-102): the first current pages
+// whose title matches, of the spaces the person may read, as a patch of
+// the list the issue's page shows them in.
+func (s *Server) pagePick(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	me := people.Actor(ctx)
+	text := strings.TrimSpace(r.URL.Query().Get("q"))
+	if len(text) > 100 {
+		text = text[:100]
+	}
+	var list []wiki.PageRef
+	err := s.db.View(ctx, func(tx *sql.Tx) error {
+		if text == "" {
+			return nil
+		}
+		found, err := wiki.SearchPages(ctx, tx, text, 20)
+		if err != nil {
+			return err
+		}
+		for _, p := range found {
+			if len(list) < 8 && canRead(ctx, tx, me, spaceOf(ctx, tx, p.ID)) == nil {
+				list = append(list, p)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	var buf bytes.Buffer
+	if err := views.PagePicks(list, text != "").Render(ctx, &buf); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	h := w.Header()
+	h.Set("Content-Type", "text/event-stream")
+	h.Set("Cache-Control", "no-store")
+	w.Write(sse.PatchElements(buf.Bytes()))
 }
 
 // ProbeIssue is the id of WEB-1 in the probes' data (seedProbes).
@@ -305,6 +348,15 @@ func loadIssue(ctx context.Context, q sqlite.Querier, id string, now time.Time) 
 	m := views.Issue{Detail: d, Now: now}
 	if m.Pages, err = wiki.PagesMentioningIssue(ctx, q, id); err != nil { // FR-101
 		return m, err
+	}
+	if m.LinkedPages, err = wiki.PagesLinkedToIssue(ctx, q, id); err != nil { // FR-102
+		return m, err
+	}
+	m.Pages = slices.DeleteFunc(m.Pages, func(p wiki.PageRef) bool {
+		return slices.ContainsFunc(m.LinkedPages, func(l wiki.PageRef) bool { return l.ID == p.ID })
+	})
+	for _, p := range m.LinkedPages {
+		live.Depends(ctx, wiki.PageTopic(p.ID)) // a linked page's title
 	}
 	project := d.ProjectID
 	if m.Workflow, err = tracker.ProjectWorkflow(ctx, q, project); err != nil {
@@ -698,6 +750,11 @@ func (s *Server) issueCommand(ctx context.Context, a action, id, field string, r
 		return tracker.EditComment{By: by, Comment: req.Ref, Body: body}, nil
 	case "delete":
 		return tracker.DeleteIssue{By: by, Issue: id}, nil
+	case "pagelink", "pageunlink":
+		if !tracker.ValidID(v) {
+			return nil, fmt.Errorf("%w: page id", errField)
+		}
+		return linkPage{By: by, Issue: id, Page: v, Unlink: field == "pageunlink"}, nil
 	}
 	return nil, fmt.Errorf("%w %q", errField, field)
 }
@@ -1008,6 +1065,32 @@ func (c linkByKey) Apply(tx *writer.Tx) error {
 		return tabs.Refuse(tracker.FieldLinks, "No issue has the key "+strings.ToUpper(key)+".")
 	}
 	return tracker.LinkIssues{By: c.By, Issue: c.Issue, Type: c.Type, Other: ref.ID}.Apply(tx)
+}
+
+// linkPage links a page the actor may read to an issue, or unlinks it
+// (FR-102): the tracker checks the issue's right, this the page's.
+type linkPage struct {
+	By     tabs.By
+	Issue  string
+	Page   string
+	Unlink bool
+}
+
+func (c linkPage) Apply(tx *writer.Tx) error {
+	if _, err := readableIssue(tx.Context(), tx, c.By.Actor, c.Issue); err != nil {
+		return err
+	}
+	title := ""
+	switch p, _, err := readable(tx.Context(), tx, c.By.Actor, c.Page); {
+	case err == nil && p.State == wiki.Current:
+		title = p.Title
+	case c.Unlink && (err == nil || errors.Is(err, access.ErrNotFound)):
+	case err == nil || errors.Is(err, access.ErrNotFound):
+		return tabs.Refuse(tracker.FieldPages, "No such page.")
+	default:
+		return err
+	}
+	return tracker.LinkPage{By: c.By, Issue: c.Issue, Page: c.Page, Title: title, Unlink: c.Unlink}.Apply(tx)
 }
 
 // A subtask is a new issue for the demo's cap (DM-04.3).

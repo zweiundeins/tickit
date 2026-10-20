@@ -359,6 +359,15 @@ func pageRefs(ctx context.Context, q sqlite.Querier, page string) (views.PageRef
 	if err != nil {
 		return refs, err
 	}
+	linked, err := wiki.IssuesLinkedTo(ctx, q, page) // FR-102
+	if err != nil {
+		return refs, err
+	}
+	for _, k := range linked {
+		if !slices.Contains(keys, k) {
+			keys = append(keys, k)
+		}
+	}
 	res, err := wiki.Resolve(ctx, q, doc.Refs{Issues: keys})
 	if err != nil {
 		return refs, err

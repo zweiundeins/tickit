@@ -119,6 +119,10 @@ func History(ctx context.Context, q sqlite.Querier, issue string) ([]Entry, erro
 			add(FieldLinks, string(e.Link)+" "+e.Issue, "")
 			out[len(out)-1].outward = e.Outward
 			issueIDs[e.Issue] = true
+		case PageLinked:
+			add(FieldPages, "", e.Title)
+		case PageUnlinked:
+			add(FieldPages, e.Title, "")
 		case IssueDeleted:
 			add(EntryDeleted, "", "")
 		case ProjectChanged:

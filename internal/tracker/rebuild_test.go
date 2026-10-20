@@ -40,7 +40,7 @@ func (e *env) dump(table string) string {
 	return b.String()
 }
 
-var projectionTables = []string{"projects", "statuses", "components", "sprints", "issues", "issue_labels", "labels", "issue_links", "issue_watchers", "comments"}
+var projectionTables = []string{"projects", "statuses", "components", "sprints", "issues", "issue_labels", "labels", "issue_links", "issue_watchers", "issue_pages", "comments"}
 
 // FR-155.2: rebuilding every read model from the stored events yields the
 // same tables. FR-155.1: every event has its actor, time and op id.
@@ -67,6 +67,10 @@ func TestRebuild(t *testing.T) {
 	e.must(LinkIssues{By: e.by(sunny), Issue: web1, Type: Blocks, Other: web4})
 	e.must(LinkIssues{By: e.by(sunny), Issue: web1, Type: Duplicates, Other: e.ids["APP-1"]})
 	e.must(UnlinkIssues{By: e.by(sunny), Issue: web1, Type: Duplicates, Other: e.ids["APP-1"]})
+	page1, page2 := NewID(), NewID() // FR-102
+	e.must(LinkPage{By: e.by(sunny), Issue: web1, Page: page1, Title: "Plan"})
+	e.must(LinkPage{By: e.by(sunny), Issue: web1, Page: page2, Title: "Notes"})
+	e.must(LinkPage{By: e.by(sunny), Issue: web1, Page: page2, Unlink: true})
 	e.must(Watch{By: e.by(rainy), Issue: web3, Watch: true})
 	e.must(Watch{By: e.by(sunny), Issue: web3, Watch: false})
 	c := e.result(AddComment{By: e.by(sunny), Issue: web1, Body: PlainDoc("First")})["id"]
