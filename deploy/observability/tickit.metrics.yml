@@ -1,0 +1,22 @@
+# tickit's metrics listener for the host's Prometheus, installed as
+# /etc/prometheus/apps/tickit.yml, which the host's `apps` job reads. The host's
+# "lith apps" dashboard and rules pick it up by its metric names (namespace
+# "tickit") and these labels.
+#
+# What it serves (cmd/tickit, internal/web/metrics.go):
+#   tickit_writer_*                       batches, commands, failures, queue, commit p99 (lith/prom)
+#   tickit_live_*                         ticks, overruns, renders, frames sent and dropped, streams, views (lith/prom)
+#   tickit_sse_budget_*                   limit, reserved, frames, refused, reopened (lith/prom)
+#   tickit_events_*                       head, appends, conflicts, refolds, projector status and lag (lith/prom)
+#   tickit_rate_limited_total{class}      requests answered 429
+#   tickit_refusals_total{route}          refused actions
+#   tickit_logins_total{outcome}
+#   tickit_edit_batches_total, tickit_page_editors_max
+#   tickit_moderation_actions_total{action}
+#   tickit_resets_total{outcome}          demo resets, outcome ok or failed (rules-tickit.yaml)
+#   tickit_reset_seconds                  how long a reset took
+#   tickit_guests_active                  guests who acted in the last 24 hours
+#   tickit_build_info{version}
+#   go_*, process_*                       the Go runtime and the process
+- targets: ['127.0.0.1:7205']
+  labels: { app: tickit, slot: prod }

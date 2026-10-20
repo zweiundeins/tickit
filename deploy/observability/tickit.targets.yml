@@ -1,6 +1,0 @@
-# Blackbox probes for tickit, with the real domain, as /etc/prometheus/targets/tickit.yml.
-# `module` is one of the host's generic modules; `service` is the access log's site.
-- targets: ['https://tickit.example.com/']
-  labels: { service: tickit, module: http_2xx }
-- targets: ['https://tickit.example.com/healthz']
-  labels: { service: tickit, module: http_2xx_ok }

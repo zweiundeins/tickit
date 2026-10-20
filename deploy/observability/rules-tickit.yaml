@@ -1,0 +1,196 @@
+# tickit's own Grafana alert rules (NFR-78), installed by setup-host.sh as
+# /etc/grafana/provisioning/alerting/rules-tickit.yaml. Grafana loads them on
+# a restart or a provisioning reload.
+#
+# The host's rules already cover the rest of NFR-78 for tickit: a failed probe
+# ("External endpoint unreachable", on every blackbox probe), tick overruns
+# and a parked projector (rules-lith-apps.yaml, by metric name, app and slot),
+# and a unit that fails or keeps restarting (rules-services.yaml).
+#
+# NOTE ON PROVENANCE: hand-written to the schema of Grafana's exported rule
+# files, like lith's rules-lith-apps.yaml, without a running instance. Import
+# them, confirm they evaluate without Error or false NoData states against
+# real data, and export them over this file before relying on them.
+apiVersion: 1
+groups:
+    - orgId: 1
+      name: tickit
+      folder: "tickit"
+      interval: 1m
+      rules:
+        - uid: tickit-5xx-ratio
+          title: 'tickit: 5xx ratio above 1%'
+          # From Caddy's access log, which sees every request, the app's
+          # crashes and timeouts included. Counts only with at least 5 errors
+          # in 5 minutes, so streams cut by a deploy do not page.
+          condition: E
+          data:
+            - refId: A
+              queryType: range
+              relativeTimeRange:
+                from: 300
+                to: 0
+              datasourceUid: loki-ds
+              model:
+                expr: sum(rate({job="caddy", site="tickitdemo", status_class="5xx"}[5m])) or (sum(rate({job="caddy", site="tickitdemo"}[5m])) * 0)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: B
+              queryType: range
+              relativeTimeRange:
+                from: 300
+                to: 0
+              datasourceUid: loki-ds
+              model:
+                expr: sum(rate({job="caddy", site="tickitdemo"}[5m]))
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: B
+            - refId: C
+              relativeTimeRange:
+                from: 300
+                to: 0
+              datasourceUid: __expr__
+              model:
+                expression: ($A / $B) * ($A * 300 >= 5)
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: math
+            - refId: D
+              relativeTimeRange:
+                from: 300
+                to: 0
+              datasourceUid: __expr__
+              model:
+                expression: C
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: D
+                type: reduce
+            - refId: E
+              relativeTimeRange:
+                from: 300
+                to: 0
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0.01
+                        type: gt
+                expression: D
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: E
+                type: threshold
+          noDataState: OK
+          execErrState: Alerting
+          for: 5m
+          annotations:
+            summary: 'tickitdemo.zweiundeins.gmbh answers more than 1% of its requests with a 5xx, for 5 minutes'
+          isPaused: false
+        - uid: tickit-reset-failed
+          title: 'tickit: demo reset failed'
+          # DM-03: the app runs the reset itself and counts each one in
+          # tickit_resets_total{outcome="ok"|"failed"}.
+          condition: C
+          data:
+            - refId: A
+              queryType: range
+              relativeTimeRange:
+                from: 3600
+                to: 0
+              datasourceUid: prometheus-ds
+              model:
+                expr: 'sum by (app, slot) (increase(tickit_resets_total{outcome="failed"}[1h]))'
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: B
+              relativeTimeRange:
+                from: 3600
+                to: 0
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                type: reduce
+            - refId: C
+              relativeTimeRange:
+                from: 3600
+                to: 0
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Alerting
+          for: 0s
+          annotations:
+            summary: '{{ $labels.app }} ({{ $labels.slot }}): a demo reset failed in the last hour; see {job="tickit", level="ERROR"}'
+          isPaused: false
+        - uid: tickit-reset-missing
+          title: 'tickit: no demo reset for 26 hours'
+          # A reset that never ran counts nothing. Only once the counter has
+          # been scraped for the whole window, so a new install does not page.
+          condition: C
+          data:
+            - refId: A
+              queryType: range
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: prometheus-ds
+              model:
+                expr: '(sum by (app, slot) (increase(tickit_resets_total{outcome="ok"}[26h])) < bool 1) * on (app, slot) (min by (app, slot) (time() - min_over_time(timestamp(tickit_resets_total{outcome="ok"})[26h:10m])) > bool 90000)'
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: B
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: __expr__
+              model:
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: last
+                refId: B
+                type: reduce
+            - refId: C
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                expression: B
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Alerting
+          for: 10m
+          annotations:
+            summary: '{{ $labels.app }} ({{ $labels.slot }}) has not reset the demo for 26 hours (due daily at 04:00 Europe/Zurich)'
+          isPaused: false
