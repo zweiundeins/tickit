@@ -367,7 +367,7 @@ func TestEveryActionAllowed(t *testing.T) {
 			if code != http.StatusOK && code != http.StatusNoContent {
 				t.Fatalf("%s as %s: %d %.200s", c.name, c.by, code, answer)
 			}
-			if c.outcome {
+			if c.outcome && !c.reseeds { // a reset deletes tab rows, its own one included (DM-03.3)
 				if o, ok := f.outcomeOf(c.by, "sec", "allowed"); !ok || !o.OK {
 					t.Fatalf("%s as %s: the outcome %+v (%v)", c.name, c.by, o, ok)
 				}
