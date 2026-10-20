@@ -94,6 +94,12 @@ type coeditResult struct {
 func coedit(t *testing.T, n int, d time.Duration, rate float64) coeditResult {
 	s := newRealServer(t)
 	page, edit := s.wikiPage(t)
+	// MP-05.3's link: COEDIT_DELAY each way (25ms for the 50 ms round trip).
+	if delay, err := time.ParseDuration(os.Getenv("COEDIT_DELAY")); err == nil && delay > 0 {
+		proxy := newDelayProxy(t, s.URL, delay)
+		edit = proxy.URL + strings.TrimPrefix(edit, s.URL)
+		t.Logf("through a delaying proxy: %v each way", delay)
+	}
 	b := browsertest.Start(t)
 	pages := make([]*browsertest.Page, n)
 	for i := range pages {

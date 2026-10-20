@@ -42,11 +42,11 @@ type loadEditor struct {
 
 var batchesRe = regexp.MustCompile(` batches="([^"]*)"`)
 
-func newLoadEditor(t *testing.T, s *realServer, page string, i int) *loadEditor {
+func newLoadEditor(t *testing.T, base string, page string, i int) *loadEditor {
 	jar, _ := cookiejar.New(nil)
-	e := &loadEditor{id: i, c: &http.Client{Jar: jar}, tab: fmt.Sprintf("load%02d", i), page: page, url: s.URL,
+	e := &loadEditor{id: i, c: &http.Client{Jar: jar}, tab: fmt.Sprintf("load%02d", i), page: page, url: base,
 		client: fmt.Sprintf("%012x", i+1), seen: map[string]time.Time{}, confirm: make(chan string, 64)}
-	res, err := e.c.Get(s.URL + "/pages/" + page + "/edit")
+	res, err := e.c.Get(base + "/pages/" + page + "/edit")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func newLoadEditor(t *testing.T, s *realServer, page string, i int) *loadEditor 
 	e.head, _ = strconv.ParseInt(string(m[2]), 10, 64)
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	req, _ := http.NewRequestWithContext(ctx, "GET", s.URL+"/stream?tab="+e.tab+"&v=carets:"+page+",pagepeople:"+page, nil)
+	req, _ := http.NewRequestWithContext(ctx, "GET", base+"/stream?tab="+e.tab+"&v=carets:"+page+",pagepeople:"+page, nil)
 	req.Header.Set("Accept-Encoding", "identity")
 	req.Header.Set("X-Real-IP", e.addr())
 	sres, err := e.c.Do(req)
@@ -151,9 +151,15 @@ func TestCoEditingLoad(t *testing.T) {
 	}
 	s := newRealServer(t)
 	page, _ := s.wikiPage(t)
+	base := s.URL
+	// MP-05.3's link: LOAD_DELAY each way (25ms for the 50 ms round trip).
+	if delay, err := time.ParseDuration(os.Getenv("LOAD_DELAY")); err == nil && delay > 0 {
+		base = newDelayProxy(t, s.URL, delay).URL
+		t.Logf("through a delaying proxy: %v each way", delay)
+	}
 	eds := make([]*loadEditor, n)
 	for i := range eds {
-		eds[i] = newLoadEditor(t, s, page, i)
+		eds[i] = newLoadEditor(t, base, page, i)
 	}
 	type sent struct {
 		ref   string
