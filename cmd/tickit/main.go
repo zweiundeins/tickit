@@ -46,6 +46,7 @@ import (
 	"github.com/mbolli/tickit/internal/tabs"
 	"github.com/mbolli/tickit/internal/tracker"
 	"github.com/mbolli/tickit/internal/web"
+	"github.com/mbolli/tickit/internal/wiki"
 	"github.com/mbolli/tickit/migrations"
 )
 
@@ -85,7 +86,7 @@ func main() {
 func parts() []events.Part {
 	var p []events.Part
 	p = append(p, tracker.Parts()...)
-	// p = append(p, wiki.Parts()...)
+	p = append(p, wiki.Parts()...)
 	return p
 }
 
@@ -121,6 +122,7 @@ func serve(args []string) error {
 		return err
 	}
 	tracker.Bind(store)
+	wiki.Bind(store)
 	db, err := sqlite.Open(ctx, *dbPath, sqlite.Options{
 		Synchronous: *synchronous,
 		Migrations:  migrations.FS,
