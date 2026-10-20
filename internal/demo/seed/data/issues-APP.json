@@ -1,0 +1,1398 @@
+{
+  "project": "APP",
+  "rank": [
+    "APP-37",
+    "APP-2",
+    "APP-38",
+    "APP-28",
+    "APP-29",
+    "APP-35",
+    "APP-39",
+    "APP-40",
+    "APP-9",
+    "APP-26",
+    "APP-27",
+    "APP-1",
+    "APP-34",
+    "APP-24",
+    "APP-16",
+    "APP-22",
+    "APP-23",
+    "APP-45",
+    "APP-41",
+    "APP-43",
+    "APP-14",
+    "APP-3",
+    "APP-21",
+    "APP-15",
+    "APP-31",
+    "APP-4",
+    "APP-30",
+    "APP-12",
+    "APP-42",
+    "APP-44",
+    "APP-5",
+    "APP-6",
+    "APP-7",
+    "APP-8",
+    "APP-10",
+    "APP-11",
+    "APP-13",
+    "APP-17",
+    "APP-18",
+    "APP-19",
+    "APP-20",
+    "APP-25",
+    "APP-32",
+    "APP-33",
+    "APP-36"
+  ],
+  "issues": [
+    {
+      "key": "APP-1",
+      "type": "Epic",
+      "summary": "Pack lists",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": ["pack-lists"],
+      "components": ["Pack lists"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-amara", "s-priya"],
+      "created": "-30d 09:30",
+      "description": [
+        "## The problem",
+        "",
+        "In interviews, 9 of 12 hikers told us they pack from a list: a note on the phone, a spreadsheet, a photo of last year's paper list. Three said they forgot the same thing twice. Head torches, mostly.",
+        "",
+        "## The idea",
+        "",
+        "A pack list for every trip, started from a template, ticked off at home, with the weight adding up. What is missing can go straight into the cart.",
+        "",
+        "## Out of scope for 3.0",
+        "",
+        "- Sharing a list with friends ([[APP-12]])",
+        "- Lists without signal ([[APP-4]])",
+        "",
+        "Requirements: [[page:PROD/Pack lists]]"
+      ],
+      "history": [
+        {"at": "-28d 09:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-tomasz",
+          "at": "-29d 10:00",
+          "body": "One question before we start: are lists stored on the phone or in summit? I would like summit, so a list survives a new phone."
+        },
+        {
+          "by": "s-yuki",
+          "at": "-29d 10:40",
+          "body": "summit, with a copy on the phone for reading. Writing without signal comes with the offline epic."
+        },
+        {
+          "by": "s-priya",
+          "at": "-2d 17:00",
+          "body": "Beta testers created 214 lists in two weeks. The most used template is the hut trip, the least used is winter camping, which is fair for October."
+        }
+      ]
+    },
+    {
+      "key": "APP-2",
+      "type": "Epic",
+      "summary": "App 3.0 release",
+      "status": "In Progress",
+      "priority": "Critical",
+      "assignee": "s-yuki",
+      "reporter": "s-yuki",
+      "parent": "",
+      "labels": ["release-blocker"],
+      "components": ["Release"],
+      "due": 5,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-priya", "s-tomasz", "s-lena"],
+      "created": "-30d 09:45",
+      "description": [
+        "3.0 brings pack lists and the new home feed. Release train:",
+        "",
+        "![The two-week release train](lib:app-release-train)",
+        "",
+        "- [x] Branch cut and beta",
+        "- [x] Crash rate in the beta at or above 99.5 %",
+        "- [ ] Store review passed",
+        "- [ ] Staged rollout finished before the sale"
+      ],
+      "history": [
+        {"at": "-22d 09:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-priya",
+          "at": "-5d 09:10",
+          "body": "The review rejection costs us the buffer. If 3.0 is not at 100 % two days before the sale, we keep 2.8 for the sale and ship 3.0 after. No heroics."
+        },
+        {
+          "by": "s-yuki",
+          "at": "-5d 09:25",
+          "body": "Agreed. The account deletion fix is in review, resubmission tomorrow morning."
+        }
+      ]
+    },
+    {
+      "key": "APP-3",
+      "type": "Epic",
+      "summary": "Back-in-stock alerts",
+      "status": "Selected for Development",
+      "priority": "Medium",
+      "assignee": "s-priya",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": [],
+      "components": ["Notifications"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-mateo"],
+      "created": "-29d 11:20",
+      "description": "When a size comes back, tell the people who asked for it, once, and only them. Shop and app share the list of who waits for what: [[WEB-37]].",
+      "history": [
+        {"at": "-18d 10:00", "by": "s-priya", "field": "status", "from": "Backlog", "to": "Selected for Development"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-4",
+      "type": "Epic",
+      "summary": "Offline pack lists",
+      "status": "Backlog",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": ["offline", "pack-lists"],
+      "components": ["Offline", "Pack lists"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-29d 11:40",
+      "description": "Huts have no signal. The pack list should still open there, and changes should sync on the way down.",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-5",
+      "type": "Task",
+      "summary": "Design the pack list screens",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-amara",
+      "reporter": "s-priya",
+      "parent": "APP-1",
+      "labels": ["pack-lists", "ux"],
+      "components": ["Pack lists"],
+      "due": null,
+      "points": null,
+      "estimate": "24h",
+      "remaining": "",
+      "watchers": [],
+      "created": "-29d 14:00",
+      "description": "![A pack list in the app](lib:app-pack-list)",
+      "history": [
+        {"at": "-29d 14:10", "by": "s-amara", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-25d 17:00", "by": "s-amara", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-24d 11:00", "by": "s-priya", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-amara",
+          "at": "-25d 17:05",
+          "body": "Three screens: templates, the list, and the missing gear sheet. Checkboxes are 28 px with a 44 px touch area. Ticked items fade but stay, people like to see what they already have."
+        },
+        {
+          "by": "s-yuki",
+          "at": "-25d 17:40",
+          "body": "Love it. One question: do we sort by category or by the order people add things?"
+        },
+        {
+          "by": "s-amara",
+          "at": "-25d 18:02",
+          "body": "By category, with the order inside each category up to the person. Like a real packing table."
+        }
+      ]
+    },
+    {
+      "key": "APP-6",
+      "type": "Story",
+      "summary": "Create a pack list from a trip template",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-priya",
+      "parent": "APP-1",
+      "labels": ["pack-lists"],
+      "components": ["Pack lists"],
+      "due": null,
+      "points": 8,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-28d 09:20",
+      "description": [
+        "Templates for 3.0:",
+        "",
+        "| Template | Items | Typical weight |",
+        "| --- | --- | --- |",
+        "| Day hike | 14 | 4.2 kg |",
+        "| Hut to hut, 3 days | 23 | 6.8 kg |",
+        "| Summer camping | 31 | 11.5 kg |",
+        "| Winter day | 19 | 6.1 kg |"
+      ],
+      "history": [
+        {"at": "-24d 09:30", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-17d 16:00", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-16d 12:00", "by": "s-lena", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-7",
+      "type": "Story",
+      "summary": "Tick off items and see the total weight",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-yuki",
+      "reporter": "s-priya",
+      "parent": "APP-1",
+      "labels": ["pack-lists"],
+      "components": ["Pack lists"],
+      "due": null,
+      "points": 5,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-28d 09:40",
+      "description": "",
+      "history": [
+        {"at": "-20d 09:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-15d 15:00", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-14d 10:00", "by": "s-lena", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-8",
+      "type": "Task",
+      "summary": "Pack list templates endpoint in summit",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-mateo",
+      "reporter": "s-yuki",
+      "parent": "APP-1",
+      "labels": ["pack-lists"],
+      "components": ["Pack lists"],
+      "due": null,
+      "points": null,
+      "estimate": "6h",
+      "remaining": "",
+      "watchers": [],
+      "created": "-27d 10:00",
+      "description": [
+        "```json",
+        "{",
+        "  \"id\": \"hut-3-days\",",
+        "  \"name\": \"Hut to hut, 3 days\",",
+        "  \"items\": [",
+        "    {\"name\": \"Rain shell\", \"category\": \"clothing\", \"grams\": 380, \"shopCategory\": \"jackets\"},",
+        "    {\"name\": \"Hut sleeping bag liner\", \"category\": \"gear\", \"grams\": 260, \"shopCategory\": \"sleeping\"}",
+        "  ]",
+        "}",
+        "```"
+      ],
+      "history": [
+        {"at": "-26d 09:00", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-25d 14:00", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-25d 16:30", "by": "s-tomasz", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-9",
+      "type": "Story",
+      "summary": "Suggest missing gear and add it to the cart",
+      "status": "In Review",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-priya",
+      "parent": "APP-1",
+      "labels": ["pack-lists"],
+      "components": ["Pack lists", "Orders"],
+      "due": null,
+      "points": 8,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-mateo"],
+      "created": "-27d 11:00",
+      "description": [
+        "Items not ticked when the trip is two days away count as missing. The sheet shows at most three products per missing item, in the person's sizes where we know them.",
+        "",
+        "Not pushy: one button, \"Add 2 missing items to cart\", and nothing else."
+      ],
+      "history": [
+        {"at": "-14d 09:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-5d 16:20", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "In Review"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-priya",
+          "at": "-13d 15:00",
+          "body": "Please no notification for this in 3.0. Let us see how people use the button first."
+        },
+        {
+          "by": "s-lena",
+          "at": "-4d 11:00",
+          "body": "Tested 20 lists. The suggestions are good, except trekking poles suggest a pole tip set. @s-mateo, is that the category mapping?"
+        },
+        {
+          "by": "s-mateo",
+          "at": "-4d 11:40",
+          "body": "Yes, poles map to \"pole accessories\". Fixed in [[APP-34]], the poles are poles again."
+        }
+      ]
+    },
+    {
+      "key": "APP-10",
+      "type": "Subtask",
+      "summary": "Empty state for a new pack list",
+      "status": "Done",
+      "priority": "Low",
+      "assignee": "s-amara",
+      "reporter": "s-amara",
+      "parent": "APP-6",
+      "labels": [],
+      "components": [],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-26d 10:00",
+      "description": "",
+      "history": [
+        {"at": "-26d 10:30", "by": "s-amara", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-26d 16:00", "by": "s-amara", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-11",
+      "type": "Subtask",
+      "summary": "Group items by category",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-yuki",
+      "reporter": "s-yuki",
+      "parent": "APP-7",
+      "labels": [],
+      "components": [],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-26d 11:00",
+      "description": "",
+      "history": [
+        {"at": "-19d 10:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-18d 12:00", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-12",
+      "type": "Story",
+      "summary": "Share a pack list with a link",
+      "status": "Backlog",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "APP-1",
+      "labels": ["pack-lists"],
+      "components": ["Pack lists"],
+      "due": null,
+      "points": 5,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-25d 09:00",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-13",
+      "type": "Story",
+      "summary": "Home feed card: your next trip",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-yuki",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": [],
+      "components": ["Browse"],
+      "due": null,
+      "points": 3,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-25d 10:00",
+      "description": "![The app's home screen](lib:app-home)",
+      "history": [
+        {"at": "-23d 09:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-21d 15:00", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-21d 17:00", "by": "s-priya", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-14",
+      "type": "Bug",
+      "summary": "Push permission prompt appears on first start, before sign-in",
+      "status": "To Do",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-amara",
+      "parent": "",
+      "labels": ["push", "ux"],
+      "components": ["Onboarding", "Notifications"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-24d 09:00",
+      "description": [
+        "We ask for push permission before people know what the app does. Most say no, and we cannot ask again.",
+        "",
+        "Ask when someone sets a back-in-stock alert or finishes a pack list instead."
+      ],
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-15",
+      "type": "Story",
+      "summary": "Sign in with a link sent by email",
+      "status": "Selected for Development",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": [],
+      "components": ["Onboarding"],
+      "due": null,
+      "points": 5,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-24d 10:00",
+      "description": "",
+      "history": [
+        {"at": "-10d 10:00", "by": "s-priya", "field": "status", "from": "Backlog", "to": "Selected for Development"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-16",
+      "type": "Task",
+      "summary": "Upgrade the TypeScript toolchain and the test runner",
+      "status": "In Progress",
+      "priority": "Low",
+      "assignee": "s-yuki",
+      "reporter": "s-yuki",
+      "parent": "",
+      "labels": ["tech-debt"],
+      "components": ["Release"],
+      "due": null,
+      "points": null,
+      "estimate": "8h",
+      "remaining": "3h",
+      "watchers": [],
+      "created": "-23d 09:00",
+      "description": "",
+      "history": [
+        {"at": "-8d 09:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-7d 17:00", "by": "s-yuki", "field": "remaining", "from": "8h", "to": "3h"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-tomasz",
+          "at": "-8d 09:30",
+          "body": "Fine, but not on the 3.0 branch."
+        },
+        {
+          "by": "s-yuki",
+          "at": "-8d 09:35",
+          "body": "Main only, promise."
+        }
+      ]
+    },
+    {
+      "key": "APP-17",
+      "type": "Task",
+      "summary": "Branch cut for 3.0 and a beta for testers",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-yuki",
+      "parent": "APP-2",
+      "labels": [],
+      "components": ["Release"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-22d 09:10",
+      "description": [
+        "```bash",
+        "git switch -c release/3.0",
+        "alp app build --channel beta --version 3.0.0-beta.1",
+        "alp app beta invite --group testers --notes \"Pack lists are here. Tell us what you forgot to pack.\"",
+        "```"
+      ],
+      "history": [
+        {"at": "-22d 09:15", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-22d 16:00", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-18",
+      "type": "Bug",
+      "summary": "Weight shows 6800 kg instead of 6.8 kg",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-lena",
+      "parent": "APP-1",
+      "labels": ["pack-lists"],
+      "components": ["Pack lists"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-21d 10:00",
+      "description": "Hut to hut, 3 days: \"6800 kg\". That is a heavy hut trip.",
+      "history": [
+        {"at": "-21d 10:20", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-21d 14:00", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-yuki",
+          "at": "-21d 10:25",
+          "body": "Grams formatted as kilograms. Embarrassing and quick."
+        },
+        {
+          "by": "s-lena",
+          "at": "-21d 14:30",
+          "body": "Shows 6.8 kg now. My back thanks you."
+        }
+      ]
+    },
+    {
+      "key": "APP-19",
+      "type": "Task",
+      "summary": "Crash reporting dashboard for the beta",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-tomasz",
+      "reporter": "s-yuki",
+      "parent": "APP-2",
+      "labels": ["crash"],
+      "components": ["Release"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-21d 11:00",
+      "description": "![Crash-free sessions by version](lib:chart-crash-free)",
+      "history": [
+        {"at": "-21d 13:00", "by": "s-tomasz", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-20d 10:00", "by": "s-tomasz", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-20",
+      "type": "Bug",
+      "summary": "App crashes on resume after hours in the background",
+      "status": "Done",
+      "priority": "Critical",
+      "assignee": "s-yuki",
+      "reporter": "s-lena",
+      "parent": "APP-2",
+      "labels": ["crash", "release-blocker"],
+      "components": ["Release"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-tomasz"],
+      "created": "-20d 09:00",
+      "description": [
+        "Beta 1 crash-free sessions: 98.2 %. Nearly all crashes happen when the app comes back after more than an hour.",
+        "",
+        "Steps: open a pack list, lock the phone, wait two hours (or move the clock), unlock."
+      ],
+      "history": [
+        {"at": "-20d 09:10", "by": "s-yuki", "field": "assignee", "from": "", "to": "s-yuki"},
+        {"at": "-20d 09:11", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-18d 15:00", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-17d 09:00", "by": "s-lena", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-yuki",
+          "at": "-19d 11:00",
+          "body": "The pack list screen keeps a reference to a session that the system has freed. On resume we reload the session first now."
+        },
+        {
+          "by": "s-yuki",
+          "at": "-18d 15:05",
+          "body": "Beta 2 is out with the fix."
+        },
+        {
+          "by": "s-lena",
+          "at": "-17d 08:55",
+          "body": "Two days of beta 2: 99.3 %, and no crash on resume in the reports. Closing."
+        }
+      ]
+    },
+    {
+      "key": "APP-21",
+      "type": "Story",
+      "summary": "Notify me when my size is back",
+      "status": "Selected for Development",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "APP-3",
+      "labels": ["push"],
+      "components": ["Notifications", "Browse"],
+      "due": null,
+      "points": 5,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-20d 10:00",
+      "description": "",
+      "history": [
+        {"at": "-18d 10:05", "by": "s-priya", "field": "status", "from": "Backlog", "to": "Selected for Development"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-22",
+      "type": "Task",
+      "summary": "Design the notification settings screen",
+      "status": "In Progress",
+      "priority": "Medium",
+      "assignee": "s-amara",
+      "reporter": "s-priya",
+      "parent": "APP-3",
+      "labels": [],
+      "components": ["Notifications"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-20d 10:30",
+      "description": "One switch per kind: back in stock, order updates, sale reminders. Sale reminders off by default.",
+      "history": [
+        {"at": "-11d 09:00", "by": "s-amara", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-23",
+      "type": "Task",
+      "summary": "Back-in-stock events from the stock sync",
+      "status": "Blocked",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-mateo",
+      "parent": "APP-3",
+      "labels": [],
+      "components": ["Notifications"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-18d 11:00",
+      "description": "An event when a variant goes from 0 to more than 0 in stock. Only from a stock file that passed the guard.",
+      "history": [
+        {"at": "-16d 09:00", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-16d 15:00", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "Blocked"}
+      ],
+      "links": [
+        {"type": "relates to", "key": "OPS-43", "by": "s-mateo", "at": "-4d 10:00"}
+      ],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-16d 15:05",
+          "body": "Blocked by the guard for sold-out ratios ([[OPS-25]]). After the socks, I do not want 412 back-in-stock alerts at 09:02 for products that were never gone."
+        }
+      ]
+    },
+    {
+      "key": "APP-24",
+      "type": "Bug",
+      "summary": "Product images flicker when scrolling the home feed",
+      "status": "In Review",
+      "priority": "Medium",
+      "assignee": "s-yuki",
+      "reporter": "s-lena",
+      "parent": "",
+      "labels": ["performance"],
+      "components": ["Browse"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-17d 14:00",
+      "description": "",
+      "history": [
+        {"at": "-9d 09:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-6d 11:00", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "In Review"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-25",
+      "type": "Task",
+      "summary": "Round up the beta feedback",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-lena",
+      "reporter": "s-priya",
+      "parent": "APP-2",
+      "labels": [],
+      "components": ["Release"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-16d 09:00",
+      "description": [
+        "## Most mentioned",
+        "",
+        "1. \"Can I share my list with my partner?\" (17 times)",
+        "2. \"Let me add my own items to a template\" (11)",
+        "3. \"The weight is great, show it per person\" (6)",
+        "",
+        "## Best quote",
+        "",
+        "> I finally know why my pack weighs 9 kg. It is the second fleece."
+      ],
+      "history": [
+        {"at": "-16d 09:30", "by": "s-lena", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-12d 16:00", "by": "s-lena", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-26",
+      "type": "Story",
+      "summary": "First Snow Sale banner in the app",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": ["first-snow-sale"],
+      "components": ["Browse"],
+      "due": null,
+      "points": 2,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-15d 09:00",
+      "description": "",
+      "history": [
+        {"at": "-7d 09:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-27",
+      "type": "Subtask",
+      "summary": "Countdown to the sale in the app banner",
+      "status": "To Do",
+      "priority": "Medium",
+      "assignee": "s-yuki",
+      "reporter": "s-yuki",
+      "parent": "APP-26",
+      "labels": ["first-snow-sale"],
+      "components": ["Browse"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-15d 09:20",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-28",
+      "type": "Bug",
+      "summary": "Order tracking says Delivered while the parcel is still on its way",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-lena",
+      "parent": "",
+      "labels": ["customer-reported"],
+      "components": ["Orders"],
+      "due": -3,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-priya"],
+      "created": "-14d 10:00",
+      "description": [
+        "A customer wrote: \"Your app says my boots arrived. My letterbox disagrees.\"",
+        "",
+        "Parcelwise sends \"delivered to pick-up point\" and \"delivered\" with the same status group, and we show both as Delivered.",
+        "",
+        "![Order tracking in the app](lib:app-order-tracking)"
+      ],
+      "history": [
+        {"at": "-14d 10:30", "by": "s-tomasz", "field": "assignee", "from": "", "to": "s-mateo"},
+        {"at": "-7d 09:00", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-7d 09:20",
+          "body": "Mapping every carrier status to ours with a test each, in [[APP-29]]. There are 31 of them, some only used at Christmas."
+        },
+        {
+          "by": "s-lena",
+          "at": "-2d 09:00",
+          "body": "Three more emails about this. Can we at least show \"At the pick-up point\" for now?"
+        }
+      ]
+    },
+    {
+      "key": "APP-29",
+      "type": "Subtask",
+      "summary": "Map every carrier status to ours, with a test for each",
+      "status": "In Progress",
+      "priority": "High",
+      "assignee": "s-mateo",
+      "reporter": "s-mateo",
+      "parent": "APP-28",
+      "labels": [],
+      "components": ["Orders"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-13d 09:00",
+      "description": "",
+      "history": [
+        {"at": "-7d 09:10", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-30",
+      "type": "Story",
+      "summary": "Keep pack lists readable without signal",
+      "status": "Backlog",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "APP-4",
+      "labels": ["offline"],
+      "components": ["Offline", "Pack lists"],
+      "due": null,
+      "points": 8,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-13d 10:00",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-31",
+      "type": "Task",
+      "summary": "Spike: local storage for offline pack lists",
+      "status": "Selected for Development",
+      "priority": "Medium",
+      "assignee": "s-yuki",
+      "reporter": "s-yuki",
+      "parent": "APP-4",
+      "labels": ["offline"],
+      "components": ["Offline"],
+      "due": null,
+      "points": null,
+      "estimate": "8h",
+      "remaining": "",
+      "watchers": [],
+      "created": "-12d 09:00",
+      "description": "Compare SQLite on the phone with a JSON file per list. Measure start time with 50 lists.",
+      "history": [
+        {"at": "-12d 09:05", "by": "s-yuki", "field": "status", "from": "Backlog", "to": "Selected for Development"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-32",
+      "type": "Bug",
+      "summary": "Signing out leaves the previous person's cart",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-lena",
+      "parent": "",
+      "labels": [],
+      "components": ["Orders", "Onboarding"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-12d 11:00",
+      "description": "On a shared tablet the next person sees what the last one bought. Clear the cart and the pack lists on sign-out.",
+      "history": [
+        {"at": "-12d 11:15", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-11d 16:00", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "In Review"},
+        {"at": "-10d 10:00", "by": "s-lena", "field": "status", "from": "In Review", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-33",
+      "type": "Bug",
+      "summary": "App checkout total differs from the web shop by 0.05",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-lena",
+      "parent": "",
+      "labels": ["customer-reported"],
+      "components": ["Orders"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-11d 15:00",
+      "description": "",
+      "history": [
+        {"at": "-11d 15:20", "by": "s-mateo", "field": "status", "from": "To Do", "to": "Done"}
+      ],
+      "links": [
+        {"type": "duplicates", "key": "WEB-44", "by": "s-mateo", "at": "-11d 15:20"}
+      ],
+      "comments": [
+        {
+          "by": "s-mateo",
+          "at": "-11d 15:20",
+          "body": "Same rounding as [[WEB-44]], and the fix lives in summit, so it covers the app too."
+        }
+      ]
+    },
+    {
+      "key": "APP-34",
+      "type": "Subtask",
+      "summary": "Map gear categories to shop categories",
+      "status": "Done",
+      "priority": "Medium",
+      "assignee": "s-mateo",
+      "reporter": "s-mateo",
+      "parent": "APP-9",
+      "labels": [],
+      "components": [],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-11d 16:00",
+      "description": "",
+      "history": [
+        {"at": "-5d 09:00", "by": "s-mateo", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-4d 11:35", "by": "s-mateo", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-35",
+      "type": "Task",
+      "summary": "Store listing texts and screenshots for 3.0",
+      "status": "In Review",
+      "priority": "High",
+      "assignee": "s-priya",
+      "reporter": "s-yuki",
+      "parent": "APP-2",
+      "labels": ["store-review"],
+      "components": ["Release"],
+      "due": 1,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-9d 09:00",
+      "description": [
+        "- [x] What is new, in English, German and French",
+        "- [x] Five screenshots: home, pack list, missing gear, product, order tracking",
+        "- [ ] Review by @s-amara"
+      ],
+      "history": [
+        {"at": "-8d 09:00", "by": "s-priya", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-3d 16:00", "by": "s-priya", "field": "status", "from": "In Progress", "to": "In Review"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-36",
+      "type": "Task",
+      "summary": "Update the privacy details for the stores",
+      "status": "Done",
+      "priority": "High",
+      "assignee": "s-priya",
+      "reporter": "s-tomasz",
+      "parent": "APP-2",
+      "labels": ["store-review"],
+      "components": ["Release"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-9d 09:30",
+      "description": "",
+      "history": [
+        {"at": "-9d 10:00", "by": "s-priya", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-8d 15:00", "by": "s-priya", "field": "status", "from": "In Progress", "to": "Done"}
+      ],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-37",
+      "type": "Bug",
+      "summary": "Store review rejected 3.0: account deletion is hard to find",
+      "status": "In Progress",
+      "priority": "Critical",
+      "assignee": "s-yuki",
+      "reporter": "s-yuki",
+      "parent": "APP-2",
+      "labels": ["store-review", "release-blocker"],
+      "components": ["Release", "Onboarding"],
+      "due": -1,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": ["s-priya", "s-tomasz"],
+      "created": "-6d 08:40",
+      "description": [
+        "The reviewer's note: people must be able to start deleting their account from inside the app. Ours is behind \"Contact support\", which does not count.",
+        "",
+        "Fix: a \"Delete my account\" entry in the profile ([[APP-38]]), and a help page that explains it."
+      ],
+      "history": [
+        {"at": "-6d 09:00", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"}
+      ],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-tomasz",
+          "at": "-6d 09:30",
+          "body": "The endpoint exists in summit already for the shop, more or less. @s-mateo, can you check it is fit for the app?"
+        },
+        {
+          "by": "s-mateo",
+          "at": "-6d 10:15",
+          "body": "It needs a confirmation step and must cancel open orders first. I will make it proper: [[OPS-39]]."
+        },
+        {
+          "by": "s-yuki",
+          "at": "-2d 16:00",
+          "body": "Resubmitted with the fix in the build. Waiting for review again."
+        }
+      ]
+    },
+    {
+      "key": "APP-38",
+      "type": "Story",
+      "summary": "Delete my account from the profile screen",
+      "status": "In Review",
+      "priority": "Critical",
+      "assignee": "s-yuki",
+      "reporter": "s-priya",
+      "parent": "APP-2",
+      "labels": ["store-review"],
+      "components": ["Onboarding"],
+      "due": null,
+      "points": 3,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-6d 09:00",
+      "description": [
+        "1. Profile, \"Delete my account\"",
+        "2. A screen that says what goes: orders history, pack lists, alerts. Open orders are cancelled and refunded.",
+        "3. Type DELETE to confirm",
+        "4. Signed out, with a short goodbye"
+      ],
+      "history": [
+        {"at": "-6d 09:05", "by": "s-yuki", "field": "status", "from": "To Do", "to": "In Progress"},
+        {"at": "-3d 15:00", "by": "s-yuki", "field": "status", "from": "In Progress", "to": "In Review"}
+      ],
+      "links": [
+        {"type": "blocks", "key": "APP-37", "by": "s-yuki", "at": "-6d 09:06"},
+        {"type": "relates to", "key": "OPS-39", "by": "s-mateo", "at": "-6d 10:20"}
+      ],
+      "comments": [
+        {
+          "by": "s-amara",
+          "at": "-5d 11:00",
+          "body": "Please make the confirm button red and plain, no clever copy. People who delete their account are not in the mood for jokes."
+        }
+      ]
+    },
+    {
+      "key": "APP-39",
+      "type": "Subtask",
+      "summary": "Explain on the help page how to delete an account",
+      "status": "To Do",
+      "priority": "High",
+      "assignee": "s-priya",
+      "reporter": "s-yuki",
+      "parent": "APP-37",
+      "labels": ["store-review"],
+      "components": ["Release"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-5d 09:00",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-40",
+      "type": "Task",
+      "summary": "Staged rollout plan: 10, 50, 100 %",
+      "status": "To Do",
+      "priority": "High",
+      "assignee": "s-yuki",
+      "reporter": "s-yuki",
+      "parent": "APP-2",
+      "labels": [],
+      "components": ["Release"],
+      "due": 5,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-5d 10:00",
+      "description": [
+        "| Step | Share | Wait | Stop if |",
+        "| --- | --- | --- | --- |",
+        "| 1 | 10 % | 24 h | crash-free below 99.5 % |",
+        "| 2 | 50 % | 24 h | crash-free below 99.5 % or checkout errors up |",
+        "| 3 | 100 % | | |"
+      ],
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-41",
+      "type": "Bug",
+      "summary": "Screen reader reads the price twice on product screens",
+      "status": "To Do",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-amara",
+      "parent": "",
+      "labels": ["accessibility"],
+      "components": ["Browse"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-4d 10:00",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-42",
+      "type": "Bug",
+      "summary": "French labels overflow the tab bar on small phones",
+      "status": "Backlog",
+      "priority": "Low",
+      "assignee": "",
+      "reporter": "s-lena",
+      "parent": "",
+      "labels": ["ux"],
+      "components": ["Browse"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-4d 14:00",
+      "description": "\"Commandes\" and \"Rechercher\" do not fit at 320 px. Shorter labels or icons only below 340 px.",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-43",
+      "type": "Bug",
+      "summary": "Winter template suggests sunscreen twice",
+      "status": "To Do",
+      "priority": "Low",
+      "assignee": "",
+      "reporter": "s-lena",
+      "parent": "APP-1",
+      "labels": ["pack-lists"],
+      "components": ["Pack lists"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-3d 11:00",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": [
+        {
+          "by": "s-amara",
+          "at": "-3d 11:30",
+          "body": "To be fair, the sun on snow is no joke. Once is enough though."
+        }
+      ]
+    },
+    {
+      "key": "APP-44",
+      "type": "Story",
+      "summary": "Pay with a saved card",
+      "status": "Backlog",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-priya",
+      "parent": "",
+      "labels": [],
+      "components": ["Orders"],
+      "due": null,
+      "points": 8,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-3d 15:00",
+      "description": "",
+      "history": [],
+      "links": [],
+      "comments": []
+    },
+    {
+      "key": "APP-45",
+      "type": "Bug",
+      "summary": "Back gesture leaves the checkout without asking",
+      "status": "To Do",
+      "priority": "Medium",
+      "assignee": "",
+      "reporter": "s-lena",
+      "parent": "",
+      "labels": [],
+      "components": ["Orders"],
+      "due": null,
+      "points": null,
+      "estimate": "",
+      "remaining": "",
+      "watchers": [],
+      "created": "-2d 10:00",
+      "description": [
+        "Steps:",
+        "",
+        "1. Open the checkout with two items",
+        "2. Fill in the address",
+        "3. Swipe back from the edge",
+        "",
+        "Expected: \"Leave the checkout? Your address is kept.\" Actual: back on the cart, the address is gone."
+      ],
+      "history": [],
+      "links": [],
+      "comments": []
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+[
+  {
+    "page": "Roadmap",
+    "by": "s-yuki",
+    "at": "-5d 17:00",
+    "body": "For the record: 3.0 is ready apart from the account deletion. If review is quick, we still make it.",
+    "replies": [
+      {
+        "by": "s-priya",
+        "at": "-5d 17:15",
+        "body": "Noted, and I hope so. The plan B is there so nobody has to stay up for it."
+      }
+    ]
+  },
+  {
+    "page": "Roadmap",
+    "by": "s-mateo",
+    "at": "-17d 10:00",
+    "body": "Could \"Search on cairn for everyone\" move to now? It is mostly done and it would help the sale.",
+    "replies": [
+      {
+        "by": "s-priya",
+        "at": "-17d 10:30",
+        "body": "Not before [[WEB-19]] is fixed, then yes. Let us look again in two weeks."
+      },
+      {
+        "by": "s-tomasz",
+        "at": "-17d 10:35",
+        "body": "Agree. A faster search that finds socks for jackets is not an improvement."
+      }
+    ]
+  },
+  {
+    "page": "Pack lists",
+    "by": "s-lena",
+    "at": "-12d 17:30",
+    "body": "Beta testers keep asking for lists per person on group trips. Should that be a requirement for the next version?",
+    "replies": [
+      {
+        "by": "s-amara",
+        "at": "-12d 18:00",
+        "body": "I would love to try it. Two people, one stove, no duplicates."
+      },
+      {
+        "by": "s-priya",
+        "at": "-11d 09:00",
+        "body": "Next version, yes. I added it to the list of things the beta asked for."
+      }
+    ]
+  },
+  {
+    "page": "Style guide",
+    "by": "s-yuki",
+    "at": "-9d 11:30",
+    "body": "The new teal looks good in the app too. I updated the colour tokens there, so shop and app match again.",
+    "replies": []
+  },
+  {
+    "page": "Product sync: store review",
+    "by": "s-mateo",
+    "at": "-5d 12:00",
+    "body": "Sorry I missed it. [[WEB-44]] is close: the rounding rule is agreed, one test left.",
+    "replies": []
+  },
+  {
+    "page": "Sale launch day plan",
+    "by": "s-tomasz",
+    "at": "-9d 09:00",
+    "body": "Can we add one line at 07:40: check that the stock file of 07:30 passed the guard? After last time I would sleep better.",
+    "replies": [
+      {
+        "by": "s-priya",
+        "at": "-9d 09:20",
+        "body": "It is in the 07:30 line now. Sleep well."
+      }
+    ]
+  },
+  {
+    "page": "Support FAQ",
+    "by": "s-amara",
+    "at": "-20d 16:00",
+    "body": "Love \"we hike a lot\". Can we keep that line forever?",
+    "replies": [
+      {
+        "by": "s-lena",
+        "at": "-20d 16:10",
+        "body": "As long as it stays true."
+      }
+    ]
+  }
+]
