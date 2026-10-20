@@ -522,9 +522,16 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 	}
 	a := action{Session: edge.SessionID(ctx), Tab: req.Tab, By: tabs.By{Actor: me, Op: req.Op, At: now}, Addr: edge.ClientKey(r)}
 	var cmd writer.Command
+	// NFR-09.2: a session cannot guess its account's password either.
+	key := people.LockoutKey(me.ID, a.Addr)
+	if s.lockout.Locked(key, now) {
+		s.act(w, r, a, refuse("current", people.MsgLocked))
+		return
+	}
 	cur, err := people.CheckCurrent(ctx, s.db.R, me.ID, req.Current)
 	switch {
 	case errors.Is(err, people.ErrWrongLogin):
+		s.lockout.Fail(key, now)
 		cmd = refuse("current", "The current password is wrong.")
 	case err != nil:
 		s.fail(w, r, err)

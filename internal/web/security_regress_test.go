@@ -366,3 +366,19 @@ func TestStreamsPerAddress(t *testing.T) {
 		t.Error("an address opened streams without a limit")
 	}
 }
+
+// NFR-09.2: a session guesses its account's current password 5 times at
+// most from an address; then even the right one waits.
+func TestPasswordChangeLockout(t *testing.T) {
+	e := webtest.Start(t)
+	ada := e.Account(t, "ada@example.com", "correct horse battery", people.NoRole)
+	c := webtest.Client(t)
+	e.Login(t, c, "ada@example.com", "correct horse battery")
+	for i := range 5 {
+		webtest.Post(t, c, e.URL+"/cmd/account/password", fmt.Sprintf(`{"tab":"tab1","op":"w%d","current":"guess %d","password":"a new password"}`, i, i))
+	}
+	webtest.Post(t, c, e.URL+"/cmd/account/password", `{"tab":"tab1","op":"right","current":"correct horse battery","password":"a new password"}`)
+	if o := outcome(t, e, people.Person{ID: ada, Kind: people.Account}, "right"); o.OK || o.Msg != people.MsgLocked {
+		t.Errorf("the right password after 5 wrong ones: %+v", o)
+	}
+}
