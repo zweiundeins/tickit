@@ -175,7 +175,15 @@ var secCases = []secCase{
 
 	{name: "issues/create", pattern: "POST /cmd/issues/create", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/issues/create", "project", "@proj", "type", "task", "summary", "A new one")},
 	issueCase("summary", edit, wMember, "value", "Changed"),
-	issueCase("description", edit, wMember, "value", "Changed *text*"),
+	{name: "issues/description/open", pattern: "POST /cmd/issues/{id}/description/open", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/issues/{issue}/description/open", "base", 0, "client", "0123456789ab")},
+	{name: "issues/description/close", pattern: "POST /cmd/issues/{id}/description/close", need: self, guard: true, outcome: true, by: wMember, req: at("/cmd/issues/{issue}/description/close"),
+		setup: func(f *fixture) {
+			f.e.Do(f.t, tracker.OpenDescription{By: f.by(wMember), Session: f.sid(wMember), Tab: "sec", Issue: f.id("issue", false), Client: "0123456789ab"})
+		}},
+	{name: "issues/description/commit", pattern: "POST /cmd/issues/{id}/description/commit", need: edit, guard: true, by: wMember, req: descCommitReq},
+	{name: "issues/description/presence", pattern: "POST /cmd/issues/{id}/description/presence", need: self, guard: true, by: wMember, noop: true, req: func(f *fixture, open bool) (string, map[string]any) {
+		return "/cmd/issues/" + f.id("issue", open) + "/description/presence", map[string]any{"epoch": descEpochOf(f, f.id("issue", open)), "ack": 0, "v": 0, "anchor": 1, "head": 1, "seq": 1}
+	}},
 	issueCase("type", edit, wMember, "value", "story"),
 	issueCase("status", edit, wMember, "value", "inprogress"),
 	issueCase("priority", edit, wMember, "value", "high"),
@@ -237,6 +245,28 @@ func commitReq(f *fixture, open bool) (string, map[string]any) {
 		"steps": []any{map[string]any{"stepType": "replace", "from": 1, "to": 1, "slice": map[string]any{"content": []any{map[string]any{"type": "text", "text": "x"}}}}}}
 }
 
+// descCommitReq is a commit of one character on the issue's description
+// as it is (FR-15).
+func descCommitReq(f *fixture, open bool) (string, map[string]any) {
+	issue := f.id("issue", open)
+	var h tracker.DescHead
+	f.e.DB.View(context.Background(), func(tx *sql.Tx) (err error) {
+		h, err = tracker.DescriptionHead(context.Background(), tx, issue)
+		return err
+	})
+	return "/cmd/issues/" + issue + "/description/commit", map[string]any{"epoch": h.Epoch, "base": h.Version, "ref": fmt.Sprintf("r%d", f.n.Add(1)), "client": "0123456789ab",
+		"steps": []any{map[string]any{"stepType": "replace", "from": 1, "to": 1, "slice": map[string]any{"content": []any{map[string]any{"type": "text", "text": "x"}}}}}}
+}
+
+func descEpochOf(f *fixture, issue string) string {
+	var h tracker.DescHead
+	f.e.DB.View(context.Background(), func(tx *sql.Tx) (err error) {
+		h, err = tracker.DescriptionHead(context.Background(), tx, issue)
+		return err
+	})
+	return h.Epoch
+}
+
 func epochOf(f *fixture, page string) string {
 	var h wiki.Head
 	f.e.DB.View(context.Background(), func(tx *sql.Tx) (err error) { h, err = wiki.HeadOf(context.Background(), tx, page); return err })
@@ -245,7 +275,7 @@ func epochOf(f *fixture, page string) string {
 
 // issueFields are the fields of POST /cmd/issues/{id}/{field}
 // (issueCommand and issueTyping): each needs a case.
-var issueFields = []string{"summary", "description", "type", "status", "priority", "assignee", "parent", "due", "points", "estimate",
+var issueFields = []string{"summary", "type", "status", "priority", "assignee", "parent", "due", "points", "estimate",
 	"remaining", "sprint", "labels", "components", "watch", "link", "unlink", "subtask", "comment", "cedit", "cdelete", "chide", "delete", "typing"}
 
 // lacking is who lacks c's right, and whether they act in the open scope.
@@ -319,8 +349,8 @@ func TestEveryActionRefused(t *testing.T) {
 			want := []int{http.StatusForbidden}
 			if l.w == wGuest && !l.open {
 				want = append(want, http.StatusNotFound)
-				if c.name == "pages/commit" {
-					want = append(want, http.StatusConflict) // as for a removed page (docs/editor.md)
+				if c.name == "pages/commit" || c.name == "issues/description/commit" {
+					want = append(want, http.StatusConflict) // as for a removed page or issue (docs/editor.md)
 				}
 			}
 			if !slices.Contains(want, code) {

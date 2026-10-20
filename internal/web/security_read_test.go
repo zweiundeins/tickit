@@ -36,7 +36,8 @@ func TestEveryGetReadOnly(t *testing.T) {
 			"/projects/"+scope.key+"/activity", "/projects/"+scope.key+"/settings", sp, pg, pg+"/the-plan", pg+"/history", pg+"/versions/1",
 			pg+"/compare?from=1&to=1", pg+"/edit", sp+"/trash", "/pages/"+scope.page, "/pages/"+scope.page+"/edit",
 			"/issues?project="+scope.key, "/issues.csv?project="+scope.key, "/search?q=plan&space="+scope.space, "/search/suggest?q=the",
-			"/wiki/pick?kind=issue&q="+scope.key, "/wiki/pick?kind=page&q=plan", "/wiki/pick?kind=person&q=the")
+			"/wiki/pick?kind=issue&q="+scope.key, "/wiki/pick?kind=page&q=plan", "/wiki/pick?kind=person&q=the",
+			"/issues/"+scope.issue+"/description/editor", "/issues/"+scope.issue+"/description?v=1", "/"+scope.key+"-1?edit=description")
 	}
 	urls = append(urls, "/filters", "/admin", "/admin/guests", "/admin/stats", "/admin/security", "/admin/demo", "/account", "/moderation", "/labels/urgent")
 
@@ -72,6 +73,9 @@ func TestEveryGetReadOnly(t *testing.T) {
 		add("issue:" + i)
 		add("issue-at:" + i + ".1")
 		add("issue-typing:" + i)
+		add("issue-desc:" + i)
+		add("desc-carets:" + i)
+		add("desc-editor:" + i + ".probe")
 	}
 	add("trash:" + f.id("space", false))
 	add("activity-space:" + f.id("space", false))
