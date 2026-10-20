@@ -46,7 +46,7 @@ tasks:
     cmds:
       - mkdir -p {{.DIR}}
       - go build -o {{.DIR}}/tickit-load ./cmd/tickit-load
-      # The data of NFR-38.2, once: 10,000 issues, 2,000 pages, 1,000,000 events (about 7 minutes).
+      # The data of NFR-38.2, once: 10,000 issues, 2,000 pages, 1,000,000 events (11 to 14 minutes).
       - test -f {{.DIR}}/base.db || {{.DIR}}/tickit-load gen -db {{.DIR}}/base.db
       - >-
         {{if .LOAD_CPUS}}taskset -c {{.LOAD_CPUS}} {{end}}{{.DIR}}/tickit-load run -bin ./{{.BIN}} -base {{.DIR}}/base.db
