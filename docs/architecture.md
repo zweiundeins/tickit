@@ -234,7 +234,25 @@ var pageSearch = events.NewProjector(PageStream, search.PagesProjector, search.P
 
 ## The edge
 
-`web.Server.Handler` puts the edge around the routes, inside out: the actor (`people.Middleware`), `edge.Sessions` (`__Host-sid` with `-secure`), `edge.CSRF` with `Datastar: ["POST /cmd/", "POST /pace", "POST /ack"]` and no exemptions, `edge.SecurityHeaders` with `DefaultCSP` and HSTS with `-secure`, `X-Robots-Tag: noindex, nofollow`, `edge.Compress`, `edge.Recover`, `edge.LogRequests`. `GET /static/` skips the session and the actor (the security headers, the log and recovery stay): its answers are public and immutable, precompressed by `edge.Static`, and a cookie on one would go to everyone a shared cache gives it to. `cmd/tickit` mounts `/healthz` and `/readyz` beside it (`/readyz` waits for the database, the writer, the hub, the runner and the static files' compression, `edge.Static.Warmed`) and serves metrics on a loopback listener of their own (`-metrics`, 127.0.0.1:7205). Pages register with `s.get(pattern, handler, probes...)` and actions with `s.post`, which refuses anything outside `POST /cmd/`.
+`web.Server.Handler` puts the edge around the routes, inside out: the actor (`people.Middleware`), `edge.Sessions` (`__Host-sid` with `-secure`), `edge.CSRF` with `Datastar: ["POST /cmd/", "POST /pace", "POST /ack"]` and no exemptions, `edge.SecurityHeaders` with `DefaultCSP` and HSTS with `-secure`, `X-Robots-Tag: noindex, nofollow`, `edge.Compress`, `edge.Recover`, `edge.LogRequests` (its lines name a page by its id, with the slug written as `-`, and `/labels/<name>` as `/labels/-`, so the log holds no text of issues, pages or comments: `web.LogPath`, NFR-28). `GET /static/` skips the session and the actor (the security headers, the log and recovery stay): its answers are public and immutable, precompressed by `edge.Static`, and a cookie on one would go to everyone a shared cache gives it to. `cmd/tickit` mounts `/healthz` and `/readyz` beside it (`/readyz` waits for the database, the writer, the hub, the runner and the static files' compression, `edge.Static.Warmed`) and serves metrics on a loopback listener of their own (`-metrics`, 127.0.0.1:7205). Pages register with `s.get(pattern, handler, probes...)` and actions with `s.post`, which refuses anything outside `POST /cmd/`.
+
+## Metrics
+
+The metrics listener (`-metrics`, `metricsServer` in `cmd/tickit/main.go`) exports lith's collector under the namespace `tickit` (`tickit_writer_*`, `tickit_live_*`, `tickit_sse_budget_*`, `tickit_events_*`), tickit's own numbers (`internal/web/metrics.go`, `Server.Collectors`), `tickit_tick_seconds`, `tickit_build_info`, `go_*` and `process_*` (NFR-76.1). A vector such as `tickit_refusals_total{route}` shows up with its first label, and `tickit_views_watched` and `tickit_view_renders` only while some view is watched.
+
+The old grouping document (`docs/event-driven-grouping-requirements.md` of the old codebase, section 7) asked for metrics of session groups. On lith a group is a view that streams watch, and its metrics map onto these (NFR-76.2):
+
+| The grouping document | Here | Metrics |
+| --- | --- | --- |
+| Group count | views watched | `tickit_live_views` (all), `tickit_views_watched{kind}` (by the part of the view's key before its first colon: `issue`, `board`, `list`, `tab`, ...) |
+| Group size distribution | watchers of a view | not exported; `Hub.Watchers(key)` lists them, and `tickit_live_streams` counts the streams open |
+| Update frequency per group | renders by view key | `tickit_live_renders_total` (all), `tickit_view_renders{kind}` (renders of the views watched now since each was first watched, summed by kind from the hub's `Stats().RendersByKey` so the labels stay few), `tickit_live_ticks_total` |
+| Query execution time per filter combination | render time | `tickit_tick_seconds` (one tick, in which every dirty view renders once in parallel workers), `tickit_live_tick_overruns_total`, `tickit_live_read_txs_total`; lith times no single render, and logs one that overruns its timeout as `live: render overrun` with the view's key |
+| Memory usage per group | the streams' budget | `tickit_sse_budget_reserved_bytes`, `tickit_sse_budget_frames_bytes`, `tickit_sse_budget_limit_bytes`, for all views together |
+| Session connection and disconnection rates | streams opened and closed | `tickit_streams_opened_total` and `tickit_streams_closed_total` (streams the hub took, and those of them that ended), `tickit_live_streams`, `tickit_sse_budget_refused_total`, `tickit_sse_budget_reopened_total` |
+| Cache hit and miss ratios | frames kept | one render serves every stream of a view, so `tickit_live_frames_sent_total` over `tickit_live_renders_total` is the frames per render; `tickit_live_renders_deferred_total` counts renders skipped while every watcher still had a frame waiting, `tickit_live_frames_dropped_total` frames a newer one replaced, and `tickit_sse_budget_frames_bytes` the frames kept for views that two or more streams watch |
+
+`TestViewAndStreamMetrics` (`internal/web/metrics_test.go`) checks the view and stream metrics.
 
 ## Migrations
 
