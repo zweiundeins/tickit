@@ -3,6 +3,7 @@ package tabs_test
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -112,6 +113,41 @@ func TestRefused(t *testing.T) {
 	if got := e.Touched(); len(got) != 0 {
 		t.Errorf("the retry touched %v", got)
 	}
+}
+
+// dataRefusal is a refusal with data for the page, as tracker.Conflict.
+type dataRefusal struct {
+	writer.Refusal
+}
+
+func (r *dataRefusal) Error() string   { return r.Msg }
+func (r *dataRefusal) Unwrap() error   { return &r.Refusal }
+func (r *dataRefusal) OnField() string { return "priority" }
+func (r *dataRefusal) OutcomeData() json.RawMessage {
+	return json.RawMessage(`{"kind":"conflict","version":7}`)
+}
+
+// MP-08.3: a refusal's data reaches the outcome and the tab's signal.
+func TestRefusalData(t *testing.T) {
+	e := dbtest.Open(t)
+	msg := "Sunny Otter changed the priority to High 5 seconds ago. Your Critical was not saved."
+	if _, _, err := act(e, "op1", note{key: "a", refuse: &dataRefusal{writer.Refusal{Msg: msg}}}); err != nil {
+		t.Fatal(err)
+	}
+	s, _ := state(t, e)
+	if o, _ := s.Outcome("op1"); o.OK || o.Msg != msg || o.Field != "priority" || string(o.Data) != `{"kind":"conflict","version":7}` {
+		t.Errorf("the outcome: %+v", o)
+	}
+	e.View(t, func(tx *sql.Tx) error {
+		frame, err := tabs.View("s1", "t1").Render(context.Background(), tx)
+		if err != nil {
+			return err
+		}
+		if b := string(frame.([]byte)); !strings.Contains(b, `"field":"priority","data":{"kind":"conflict","version":7}}`) {
+			t.Errorf("the tab's frame: %s", b)
+		}
+		return nil
+	})
 }
 
 // NFR-01.1: a refusal for want of a right is Denied: the action answers 403.
