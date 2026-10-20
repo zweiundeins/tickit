@@ -71,7 +71,7 @@ func doc(p Props, carets bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</p><ul class=\"task-list\"><li class=\"task-item\" data-checked=\"true\"><input type=\"checkbox\" disabled checked><div><p>Run the browser tests in Chromium, Firefox and WebKit</p></div></li><li class=\"task-item\" data-checked=\"true\"><input type=\"checkbox\" disabled checked><div><p>Check the contrast test in both themes</p></div></li><li class=\"task-item\" data-checked=\"false\"><input type=\"checkbox\" disabled><div><p>Read the <a href=\"https://lith.zweiundeins.gmbh/docs\" rel=\"nofollow ugc noopener\" title=\"lith.zweiundeins.gmbh\">deploy guide</a> once more</p></div></li></ul><h3>What changed</h3><ol><li>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</p><ul class=\"task-list\"><li class=\"task-item\" data-checked=\"true\"><input type=\"checkbox\" aria-label=\"Done\" disabled checked><div><p>Run the browser tests in Chromium, Firefox and WebKit</p></div></li><li class=\"task-item\" data-checked=\"true\"><input type=\"checkbox\" aria-label=\"Done\" disabled checked><div><p>Check the contrast test in both themes</p></div></li><li class=\"task-item\" data-checked=\"false\"><input type=\"checkbox\" aria-label=\"Done\" disabled><div><p>Read the <a href=\"https://lith.zweiundeins.gmbh/docs\" rel=\"nofollow ugc noopener\" title=\"lith.zweiundeins.gmbh\">deploy guide</a> once more</p></div></li></ul><h3>What changed</h3><ol><li>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
