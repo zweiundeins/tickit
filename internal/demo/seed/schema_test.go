@@ -180,7 +180,7 @@ func (v *validator) node(n *pmNode, path string, blocks *int) error {
 			return fmt.Errorf("%s: an empty text node", path)
 		case len(n.Content) > 0:
 			return fmt.Errorf("%s: a text node with content", path)
-		case utf8.RuneCountInString(*n.Text) > v.s.Limits.TextLength:
+		case v.s.Limits.TextLength > 0 && utf8.RuneCountInString(*n.Text) > v.s.Limits.TextLength:
 			return fmt.Errorf("%s: a text of more than %d characters", path, v.s.Limits.TextLength)
 		}
 	} else if n.Text != nil {
