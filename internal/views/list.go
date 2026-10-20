@@ -33,6 +33,19 @@ type IssueList struct {
 	Now      time.Time
 }
 
+// faces are the people the rows show, for the region's FaceStyles.
+func (l IssueList) faces() []ui.Person {
+	var out []ui.Person
+	for _, i := range l.Results.Issues {
+		for _, id := range []string{i.Assignee, i.Reporter} {
+			if id != "" {
+				out = append(out, UIPerson(l.People[id]))
+			}
+		}
+	}
+	return out
+}
+
 // PageHref is the address of page n of the list.
 func (l IssueList) PageHref(n int) string {
 	v := url.Values{}

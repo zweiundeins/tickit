@@ -21,6 +21,7 @@ templ IssueListBody(p ListPage) {
 			</div>
 		</div>
 		<p class="list-saved" role="status" data-text="$_save.done"></p>
+		@ui.Glyphs()
 		@listForm(p)
 		if p.Unwatched {
 			<div hidden data-init={ listInit }></div>
@@ -155,6 +156,7 @@ templ IssueListRegion(l IssueList) {
 			}
 		} else {
 			<p class="list-count">{ issueCount(l.Results.Total) }</p>
+			@ui.FaceStyles(l.faces())
 			@ui.Table(ui.TableProps{Caption: "Issues", HideCaption: true, Sticky: true, Class: "list-table"}) {
 				<thead>
 					<tr>
@@ -179,15 +181,15 @@ templ IssueListRegion(l IssueList) {
 templ listRow(l IssueList, i tracker.Issue) {
 	<tr data-href={ "/" + i.Key }>
 		<td>
-			@ui.TypeIcon(ui.IssueType(i.Type))
+			@ui.TypeGlyph(ui.IssueType(i.Type))
 		</td>
 		<td class="tk-key">{ i.Key }</td>
 		<td class="tk-grow"><a href={ templ.SafeURL("/" + i.Key) } { IssueLinkAttrs(i.ID)... }>{ i.Summary }</a></td>
 		<td>
-			@ui.PriorityLabel(ui.Priority(i.Priority))
+			@ui.PriorityGlyphLabel(ui.Priority(i.Priority))
 		</td>
 		<td>
-			@ui.StatusLozenge(i.StatusName, Category(i.Category))
+			@ui.StatusGlyph(i.StatusName, Category(i.Category))
 		</td>
 		<td>
 			if i.Assignee != "" {
@@ -216,10 +218,11 @@ templ listRow(l IssueList, i tracker.Issue) {
 	</tr>
 }
 
-// personCell is a face beside a name.
+// personCell is a face beside a name, the face a mask of the region's
+// FaceStyles (NFR-37.1: 25 rows in 40 KB).
 templ personCell(p people.Person) {
 	<span class="tk-cell">
-		@ui.Avatar(ui.AvatarProps{Person: UIPerson(p), Size: ui.SizeXS, Decorative: true})
+		@ui.FaceGlyph(UIPerson(p))
 		{ p.Name }
 	</span>
 }

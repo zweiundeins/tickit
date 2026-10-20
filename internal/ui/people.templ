@@ -47,6 +47,12 @@ templ Avatar(p AvatarProps) {
 	</span>
 }
 
+// FaceGlyph is a decorative face of 1rem, drawn by the mask FaceStyles
+// writes in the same frame: for rows that repeat faces (the issue list).
+templ FaceGlyph(p Person) {
+	<i class="tk-av tk-av--xs" data-face={ FaceRef(p.Seed) }></i>
+}
+
 // personName is a name with its states, for screen readers and tooltips.
 func personName(p Person, you bool) string {
 	s := p.Name

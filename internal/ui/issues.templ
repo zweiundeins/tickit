@@ -59,6 +59,22 @@ templ StatusLozenge(name string, c StatusCategory) {
 	</span>
 }
 
+// TypeGlyph, PriorityGlyphLabel and StatusGlyph are TypeIcon,
+// PriorityLabel and StatusLozenge for rows that repeat them many times a
+// frame (the issue list, NFR-37.1): the glyph is a mask of the stylesheet
+// Glyphs writes once in the page, not an inline SVG.
+templ TypeGlyph(t IssueType) {
+	<span class="tk-tip"><i data-type={ string(t) } role="img" aria-label={ t.Name() }></i><span class="tk-tip__bubble" aria-hidden="true">{ t.Name() }</span></span>
+}
+
+templ PriorityGlyphLabel(p Priority) {
+	<span class="tk-typed tk-typed--prio" data-prio={ string(p) }><i data-prio={ string(p) }></i> { p.Name() }</span>
+}
+
+templ StatusGlyph(name string, c StatusCategory) {
+	<span class="tk-lozenge" data-cat={ c.attr() }><i data-cat={ c.attr() }></i> { name }</span>
+}
+
 // ChipState is what became of the issue a chip names.
 type ChipState string
 
