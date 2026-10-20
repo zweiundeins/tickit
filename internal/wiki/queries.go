@@ -437,10 +437,8 @@ func Resolve(ctx context.Context, q sqlite.Querier, refs doc.Refs) (doc.StaticRe
 		if err != nil {
 			return r, err
 		}
-		for id, p := range found {
-			if p.Kind != people.Deleted {
-				r.People[id] = p.Name
-			}
+		for id, p := range found { // an erased account: DeletedName (NFR-27.1)
+			r.People[id] = p.Name
 		}
 	}
 	if len(refs.Images) > 0 {
