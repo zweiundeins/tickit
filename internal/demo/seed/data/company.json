@@ -1,0 +1,63 @@
+{
+  "people": [
+    {"id": "s-priya", "name": "Priya Raman", "role": "Product manager", "hue": 11},
+    {"id": "s-tomasz", "name": "Tomasz Nowak", "role": "Engineering lead", "hue": 3},
+    {"id": "s-mateo", "name": "Mateo Silva", "role": "Backend developer", "hue": 6},
+    {"id": "s-yuki", "name": "Yuki Tanaka", "role": "Mobile and frontend developer", "hue": 9},
+    {"id": "s-amara", "name": "Amara Okafor", "role": "Product designer", "hue": 14},
+    {"id": "s-lena", "name": "Lena Brunner", "role": "QA and customer support", "hue": 1}
+  ],
+  "projects": [
+    {
+      "key": "WEB",
+      "name": "Web shop",
+      "description": "The Alpenglow storefront: catalog, search, cart, checkout and the customer account. Server-rendered pages on top of the summit API.",
+      "lead": "s-priya",
+      "components": [
+        {"name": "Catalog", "description": "Category pages, product pages, filters and the size guide."},
+        {"name": "Search", "description": "The search box, suggestions and the results page."},
+        {"name": "Cart and checkout", "description": "Cart drawer, checkout steps, vouchers and payment."},
+        {"name": "Accounts", "description": "Sign-in, the customer account, order history and returns."},
+        {"name": "Content", "description": "Landing pages, guides, banners and the trail journal."},
+        {"name": "Emails", "description": "Order, shipping and account emails."}
+      ],
+      "labels": ["checkout", "payments", "performance", "accessibility", "seo", "search", "ux", "copy", "tech-debt", "quick-win", "customer-reported", "first-snow-sale", "mobile-web"]
+    },
+    {
+      "key": "APP",
+      "name": "Mobile app",
+      "description": "The Alpenglow app for phones: browse and buy, pack lists for every trip, order tracking and back-in-stock alerts. One TypeScript codebase for both platforms.",
+      "lead": "s-yuki",
+      "components": [
+        {"name": "Onboarding", "description": "First start, sign-in and permissions."},
+        {"name": "Browse", "description": "Home feed, categories, product screens and search."},
+        {"name": "Pack lists", "description": "Packing lists for trips, templates and gear suggestions."},
+        {"name": "Orders", "description": "Cart, checkout, order tracking and returns."},
+        {"name": "Notifications", "description": "Push messages, back-in-stock alerts and the inbox."},
+        {"name": "Offline", "description": "Local storage, sync and what works without signal."},
+        {"name": "Release", "description": "Builds, store listings, review and staged rollout."}
+      ],
+      "labels": ["crash", "offline", "push", "ux", "accessibility", "release-blocker", "store-review", "performance", "quick-win", "customer-reported", "tech-debt", "pack-lists", "first-snow-sale"]
+    },
+    {
+      "key": "OPS",
+      "name": "Platform",
+      "description": "Everything behind the shop and the app: the summit API, the cairn search service, porter jobs, the database, infrastructure and on-call.",
+      "lead": "s-tomasz",
+      "components": [
+        {"name": "API", "description": "summit, the Go service that serves the shop and the app."},
+        {"name": "Search index", "description": "cairn, the search service, and its indexer."},
+        {"name": "Jobs", "description": "porter, the job runner: emails, stock sync, image resizing."},
+        {"name": "Database", "description": "PostgreSQL: schema, migrations, backups, upgrades."},
+        {"name": "Infrastructure", "description": "Servers, load balancer, CDN, certificates and deploys."},
+        {"name": "Observability", "description": "Logs, metrics, traces, alerts and dashboards."},
+        {"name": "Warehouse sync", "description": "Stock and shipment exchange with the warehouse."}
+      ],
+      "labels": ["on-call", "incident", "security", "cost", "database", "monitoring", "tech-debt", "migration", "backup", "performance", "first-snow-sale", "toil"]
+    }
+  ],
+  "spaces": [
+    {"key": "ENG", "name": "Engineering handbook", "description": "How we build and run Alpenglow: architecture, decisions, runbooks, onboarding and the way we work."},
+    {"key": "PROD", "name": "Product", "description": "What we build and why: roadmap, requirements, research, meeting notes, retrospectives and the style guide."}
+  ]
+}
