@@ -182,7 +182,7 @@ func fuzzFamily(f *testing.F, prefixes ...string) {
 }
 
 func FuzzCoreActions(f *testing.F) {
-	fuzzFamily(f, "watch", "unwatch", "login", "rename", "prefs", "list/", "filters/")
+	fuzzFamily(f, "watch", "unwatch", "login", "rename", "prefs", "list/", "filters/", "dashboards/")
 }
 func FuzzIssueActions(f *testing.F) { fuzzFamily(f, "issues/") }
 func FuzzBoardActions(f *testing.F) { fuzzFamily(f, "projects/", "board/", "backlog/", "sprints/") }
