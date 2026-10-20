@@ -189,3 +189,29 @@ func TestEditorViewByPerson(t *testing.T) {
 		t.Errorf("another person's stream got the tab's editor: %s", frame)
 	}
 }
+
+// NFR-04.2, FR-124: a cookie copied before a logout is a guest's
+// afterwards, on the streams it had open too.
+func TestLogoutEndsStreams(t *testing.T) {
+	e := webtest.Start(t)
+	e.Account(t, "ada@example.com", "correct horse battery", people.Admin)
+	c := webtest.Client(t)
+	e.Login(t, c, "ada@example.com", "correct horse battery")
+	copied := withCookie(t, e.URL, cookie(c, e.URL))
+	events := webtest.Listen(t, copied, e.URL+"/stream?tab=tab1&v=admin-demo:", nil)
+	webtest.Next(t, events, `id="admin-demo"`)
+	if code, _ := webtest.Post(t, c, e.URL+"/cmd/logout", ``); code != http.StatusOK {
+		t.Fatalf("logout: %d", code)
+	}
+	deadline := time.After(web.LoginCheck + 3*time.Second)
+	for {
+		select {
+		case _, ok := <-events:
+			if !ok {
+				return
+			}
+		case <-deadline:
+			t.Fatal("the copied cookie's stream of an admin view outlived the logout")
+		}
+	}
+}

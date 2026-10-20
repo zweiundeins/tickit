@@ -221,8 +221,39 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	// the frames they concern, in the same tick.
 	list = append(list, s.personView(actor), s.demoView(), connectedView, tabs.PrefsView(sid, tab), tabs.View(sid, tab))
 	spec := live.Spec{ID: streamID(actor, tab), Views: unique(list), Reconnect: views.StreamID, Slow: edge.SlowLink(r)}
+	if actor.Kind == people.Account { // NFR-04.2: a logout ends the login's streams too
+		ctx, stop := context.WithCancel(ctx)
+		defer stop()
+		go s.endWithLogin(ctx, stop, sid, actor)
+		r = r.WithContext(ctx)
+	}
 	if err := s.hub.Serve(w, r, spec); err != nil {
 		s.log.Debug("stream ended", "err", err)
+	}
+}
+
+// LoginCheck is how often an account's stream checks that its login
+// session still stands.
+const LoginCheck = 2 * time.Second
+
+// endWithLogin ends an account's stream, by stop, once its session no
+// longer resolves to the account as it was: after a logout, a password
+// change, an ended or expired session, a deactivation or a new site role.
+// The page reconnects, as whoever the session is now.
+func (s *Server) endWithLogin(ctx context.Context, stop context.CancelFunc, sid string, actor people.Person) {
+	t := time.NewTicker(LoginCheck)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+		p, err := people.Resolve(ctx, s.db.R, sid, time.Now())
+		if err == nil && (p.ID != actor.ID || p.Role != actor.Role || p.MustChange != actor.MustChange) {
+			stop()
+			return
+		}
 	}
 }
 
