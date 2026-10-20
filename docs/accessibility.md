@@ -26,7 +26,6 @@ The same run by hand over the other pages (backlog, projects, spaces, a space, h
 ## What axe still reports
 
 - `heading-order` (moderate) on wiki pages: a document's first heading is an h3 under the page's h1 when the page starts with a level 2 heading. The heading levels are the author's.
-- `landmark-unique` (moderate) on the 404 page, which has the header's search and its own.
 
 ## Keyboard walk
 
