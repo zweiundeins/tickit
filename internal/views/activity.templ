@@ -41,6 +41,12 @@ templ activityItem(f ActivityFeed, e activity.Entry) {
 			case activity.IssueCommented:
 				commented on { " " }
 				@activityIssue(e)
+			case activity.IssueDescribed:
+				edited the description of { " " }
+				@activityIssue(e)
+				if e.Edits > 1 {
+					{ " " + editsText(e.Edits) }
+				}
 			case activity.PageCreated:
 				created { " " }
 				@ui.PageLink(e.Subject.ID, e.Subject.Label, e.Subject.Href, false)

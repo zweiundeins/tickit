@@ -43,6 +43,7 @@ const (
 	IssueCreated   Action = "issue_created"
 	IssueMoved     Action = "issue_moved" // to another status
 	IssueCommented Action = "issue_commented"
+	IssueDescribed Action = "issue_described" // a version of its co-edited description (FR-15)
 	PageCreated    Action = "page_created"
 	PageEdited     Action = "page_edited"
 	PageCommented  Action = "page_commented"
@@ -200,7 +201,7 @@ func sourceEvents(ctx context.Context, q sqlite.Querier, after, upto int64) (map
 
 // merges reports whether an older entry joins a newer one (FR-69.3).
 func merges(newer, older Entry) bool {
-	return newer.Action == PageEdited && older.Action == PageEdited && newer.Subject.ID == older.Subject.ID &&
+	return (newer.Action == PageEdited || newer.Action == IssueDescribed) && older.Action == newer.Action && newer.Subject.ID == older.Subject.ID &&
 		newer.Actor == older.Actor && newer.Since.Sub(older.At) <= EditWindow
 }
 
