@@ -25,6 +25,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
+
+	"github.com/mbolli/tickit/internal/demo/words"
 )
 
 // Kind is what kind of person someone is.
@@ -262,6 +264,9 @@ func (c Rename) Apply(tx *writer.Tx) error {
 	name := strings.Join(strings.Fields(c.Name), " ")
 	if n := utf8.RuneCountInString(name); n < MinName || n > MaxName || strings.IndexFunc(name, unicode.IsControl) >= 0 {
 		return &fieldRefusal{field: "name", Refusal: writer.Refusal{Msg: "A name has 2 to 30 characters."}}
+	}
+	if words.Blocked(name) {
+		return &fieldRefusal{field: "name", Refusal: writer.Refusal{Msg: words.Refusal}}
 	}
 	res, err := tx.Exec(`UPDATE people SET display_name = ? WHERE id = ? AND display_name != ?`, name, c.Person, name)
 	if err != nil {

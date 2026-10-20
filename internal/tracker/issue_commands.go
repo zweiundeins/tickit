@@ -16,6 +16,7 @@ import (
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/mbolli/tickit/internal/access"
+	"github.com/mbolli/tickit/internal/demo/words"
 	"github.com/mbolli/tickit/internal/people"
 	"github.com/mbolli/tickit/internal/tabs"
 )
@@ -321,6 +322,9 @@ func labelSet(set, add, remove []string) ([]string, error) {
 			n, ok := NormalizeLabel(l)
 			if !ok {
 				return nil, tabs.Refuse(FieldLabels, "A label has 1 to 50 characters and no spaces.")
+			}
+			if words.Blocked(n) {
+				return nil, tabs.Refuse(FieldLabels, words.Refusal)
 			}
 			if !slices.Contains(out, n) {
 				out = append(out, n)
