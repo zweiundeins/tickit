@@ -84,7 +84,7 @@ Each target starts the fixture once per worker and sends what the fuzzer makes o
 
 **govulncheck v1.8.0**, 20 October 2026: no vulnerability in code tickit calls. It reports GO-2026-5932 in `golang.org/x/crypto` v0.57.0, a module tickit requires, in code tickit does not call; there is no fixed version yet.
 
-**Routes of the production build** (`go build` without `-dev`; `-dev` changes only whether static files are minified and whether `serve` seeds an empty database): 58 actions under `POST /cmd/`, the GET routes of `Server.Probes`, `/healthz` and `/readyz` outside the edge, `/metrics` on the loopback listener alone. `GET /design` is the design system's page in production too.
+**Routes of the production build** (`go build` without `-dev`; `-dev` changes only whether static files are minified and whether `serve` seeds an empty database): 62 actions under `POST /cmd/`, the GET routes of `Server.Probes`, `/healthz` and `/readyz` outside the edge, `/metrics` on the loopback listener alone. `GET /design` is the design system's page in production too.
 
 ## Findings of the review, October 2026
 

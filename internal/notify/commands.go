@@ -201,3 +201,11 @@ func recipients(tx *writer.Tx, query string, args ...any) ([]string, error) {
 	}
 	return out, rows.Err()
 }
+
+// An erased account's notifications go with it (NFR-27.1).
+func init() {
+	people.RegisterEraser(func(tx *writer.Tx, person string) error {
+		_, err := tx.Exec(`DELETE FROM notifications WHERE recipient = ?`, person)
+		return err
+	})
+}

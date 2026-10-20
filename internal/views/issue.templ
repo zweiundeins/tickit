@@ -256,6 +256,7 @@ templ issueMain(m Issue) {
 				}
 				@ui.MenuItem(ui.MenuItemProps{Label: "Link issue", Icon: "link", Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-link-key')?.focus()"}})
 				@ui.MenuSeparator()
+				@ui.MenuItem(ui.MenuItemProps{Label: "Report issue", Icon: "warning", Attrs: ReportAttrs("issue", m.ID)})
 				@ui.MenuItem(ui.MenuItemProps{Label: "Delete issue", Icon: "trash", Danger: true, Attrs: templ.Attributes{"data-on:click": "el.closest('[popover]').hidePopover(), document.getElementById('issue-delete').showModal()"}})
 			}
 		</div>

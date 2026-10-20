@@ -47,6 +47,8 @@ var pageSearch = events.NewProjector(PageStream, search.PagesProjector, search.P
 		return search.Patch(tx, search.Page, r.ID, func(d *search.Doc) { d.Labels = applySet(d.Labels, r.Data.Added, r.Data.Removed) })
 	}),
 	events.Ignore(PageWatchedType),
+	events.Ignore(VersionHiddenType),
+	events.Ignore(VersionUnhiddenType),
 	events.Handle(PageTrashedType, func(tx *writer.Tx, r events.Record[string, PageTrashed]) error {
 		return search.Hide(tx, search.Page, r.ID, true)
 	}),

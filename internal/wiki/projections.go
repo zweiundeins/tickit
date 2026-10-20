@@ -99,6 +99,12 @@ var pagesProjector = events.NewProjector(PageStream, "wiki_pages", pagesVersion,
 		}
 		return setPage(tx, r, `labels = (SELECT coalesce(json_group_array(label), '[]') FROM (SELECT label FROM page_labels WHERE page_id = pages.id ORDER BY label))`)
 	}),
+	events.Handle(VersionHiddenType, func(tx *writer.Tx, r events.Record[string, VersionHidden]) error {
+		return setPage(tx, r, `version = version`)
+	}),
+	events.Handle(VersionUnhiddenType, func(tx *writer.Tx, r events.Record[string, VersionUnhidden]) error {
+		return setPage(tx, r, `version = version`)
+	}),
 	events.Handle(PageWatchedType, func(tx *writer.Tx, r events.Record[string, PageWatched]) error {
 		q := `DELETE FROM page_watchers WHERE page_id = ? AND person_id = ?`
 		args := []any{r.ID, r.Data.Person}
@@ -206,6 +212,8 @@ var versionsProjector = events.NewProjector(PageStream, "wiki_versions", version
 	events.Ignore(PageTrashedType),
 	events.Ignore(PageRestoredType),
 	events.Ignore(PageDeletedType),
+	events.Handle(VersionHiddenType, projectVersionHidden),
+	events.Handle(VersionUnhiddenType, projectVersionUnhidden),
 	events.Handle(VersionCutType, func(tx *writer.Tx, r events.Record[string, VersionCut]) error {
 		e := r.Data
 		editors, _ := json.Marshal(nonNil(e.Editors))

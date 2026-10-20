@@ -138,12 +138,16 @@ func (c RestoreVersion) Apply(tx *writer.Tx) error {
 		return err
 	}
 	var raw, title string
-	err = tx.QueryRow(`SELECT doc, title FROM page_versions WHERE page_id = ? AND number = ?`, c.Page, c.Number).Scan(&raw, &title)
+	var hidden bool
+	err = tx.QueryRow(`SELECT doc, title, hidden_at IS NOT NULL FROM page_versions WHERE page_id = ? AND number = ?`, c.Page, c.Number).Scan(&raw, &title, &hidden)
 	if errors.Is(err, sql.ErrNoRows) {
 		return notFound("version", fmt.Sprint(c.Number))
 	}
 	if err != nil {
 		return err
+	}
+	if hidden && !access.SiteCan(c.By.Actor, access.Moderate) { // DM-07.1
+		return errVersionHidden
 	}
 	old, err := doc.ParseDoc([]byte(raw))
 	if err != nil {

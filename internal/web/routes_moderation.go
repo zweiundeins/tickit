@@ -27,6 +27,8 @@ func (s *Server) routesModeration() {
 	s.post("POST /cmd/moderation/act", s.moderate)
 	s.post("POST /cmd/moderation/block", s.block(true))
 	s.post("POST /cmd/moderation/unblock", s.block(false))
+	s.post("POST /cmd/moderation/dismiss", s.dismissReport)
+	s.post("POST /cmd/report", s.report)
 	s.views.Register("moderation", s.moderationView)
 }
 
@@ -49,7 +51,13 @@ func (s *Server) moderationState(ctx context.Context, q sqlite.Querier) (views.M
 	if m.Log, err = demo.ModerationLog(ctx, q, 30); err != nil {
 		return m, err
 	}
+	if m.Reports, err = demo.OpenReports(ctx, q, moderationLimit); err != nil {
+		return m, err
+	}
 	var ids []string
+	for _, rp := range m.Reports {
+		ids = append(ids, rp.By)
+	}
 	for _, t := range m.Items {
 		ids = append(ids, t.Author)
 	}
@@ -113,6 +121,35 @@ func (s *Server) moderate(w http.ResponseWriter, r *http.Request) {
 	}
 	res, ok := s.run(w, r, a, demo.Moderate{By: a.By, Action: req.Action, Kind: req.Kind, ID: req.ID, Reason: req.Reason})
 	s.moderated(w, res.Result, ok, req.Action)
+}
+
+// report is any visitor's report of something with a reason (DM-08),
+// which the moderation page lists first.
+func (s *Server) report(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Payload
+		Kind   string `json:"kind"`
+		ID     string `json:"id"`
+		Reason string `json:"reason"`
+	}
+	a, ok := s.decode(w, r, classComment, &req)
+	if !ok {
+		return
+	}
+	s.act(w, r, a, demo.Report{By: a.By, Kind: req.Kind, ID: req.ID, Reason: req.Reason})
+}
+
+// dismissReport closes a report that needs nothing done (DM-08).
+func (s *Server) dismissReport(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Payload
+		Report int64 `json:"report"`
+	}
+	a, ok := s.decode(w, r, classField, &req)
+	if !ok {
+		return
+	}
+	s.act(w, r, a, demo.CloseReport{By: a.By, Report: req.Report})
 }
 
 // block pauses a guest's changes for 24 hours, or lifts the block

@@ -30,6 +30,7 @@ templ WikiPage(p PageProps) {
 			@CommentsRegion(p.Comments, p.Now)
 			<p class="wk-problem" role="status" data-text="$_wk.cmod.msg" data-effect={ cmodSettled }></p>
 			@pageCommentForm(p)
+			@commentEditDialog()
 		</section>
 		if p.Activity != nil {
 			<section class="wk-activity" aria-labelledby="space-activity-title">
@@ -95,6 +96,7 @@ templ pageActions(p PageProps) {
 		}
 		@ui.Button(ui.ButtonProps{Label: "Watch", Icon: "watch", Size: ui.SizeSM, Pressed: boolText(p.Watching), Attrs: templ.Attributes{"data-page": p.Page.ID, "data-watch": "", "data-on:click": watchPage, "data-effect": watchSettled, "data-attr:aria-busy": Busy("_wk.watch.op")}})
 		@ui.Button(ui.ButtonProps{Label: "History", Icon: "history", Size: ui.SizeSM, Variant: ui.Ghost, Href: p.Head.History})
+		@ui.Button(ui.ButtonProps{Label: "Report", Icon: "warning", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: ReportAttrs("page", p.Page.ID)})
 		if p.CanEdit && p.Page.State == wiki.Current {
 			<form class="wk-addlabel" data-page={ p.Page.ID } data-on:submit__prevent={ addLabel } data-effect={ labelSettled } data-on:datastar-fetch={ labelFailed }>
 				<label class="visually-hidden" for="label-name">Add a label</label>
@@ -206,7 +208,11 @@ templ commentBody(c CommentItem, now time.Time, top bool) {
 			if top {
 				<button class="tk-btn tk-btn--ghost tk-btn--sm" type="button" data-comment={ c.ID } data-name={ c.Author.Name } data-on:click={ replyTo }>Reply</button>
 			}
+			if !c.Hidden {
+				<button class="tk-btn tk-btn--ghost tk-btn--sm wk-own" type="button" data-comment={ c.ID } data-body={ c.Text } data-on:click={ editComment } command="show-modal" commandfor="comment-edit">Edit</button>
+			}
 			<button class="tk-btn tk-btn--ghost tk-btn--sm wk-own" type="button" data-comment={ c.ID } data-on:click={ deleteComment } data-on:datastar-fetch={ cmodFailed }>Delete</button>
+			<button class="tk-btn tk-btn--ghost tk-btn--sm wk-other" type="button" { ReportAttrs("comment", c.ID)... }>Report</button>
 			<button class="tk-btn tk-btn--ghost tk-btn--sm wk-mod" type="button" data-comment={ c.ID } data-hidden={ boolText(c.Hidden) } data-on:click={ hideComment } data-on:datastar-fetch={ cmodFailed }>
 				if c.Hidden {
 					Show
@@ -232,6 +238,24 @@ templ pageCommentForm(p PageProps) {
 		}
 		@ui.Button(ui.ButtonProps{Label: "Comment", Type: "submit", Size: ui.SizeSM, Variant: ui.Primary, Attrs: templ.Attributes{"data-attr:aria-busy": Busy("_wk.comment.op")}})
 	</form>
+}
+
+// commentEditDialog edits the viewer's own comment, which its Edit
+// button names (FR-90); it sits outside the regions the stream morphs.
+templ commentEditDialog() {
+	@ui.Dialog(ui.DialogProps{ID: "comment-edit", Title: "Edit comment", Footer: commentEditFooter(), Attrs: templ.Attributes{"data-effect": ceditSettled}}) {
+		<form id="comment-edit-form" data-on:submit__prevent={ saveComment } data-on:datastar-fetch={ ceditFailed }>
+			{{ f := ui.FieldProps{ID: "comment-edit-body", Label: "Comment", HideLabel: true, ErrorAttrs: templ.Attributes{"data-text": "$_wk.cedit.msg"}} }}
+			@ui.Field(f) {
+				@ui.Textarea(ui.TextareaProps{ID: f.ID, Rows: 5, MaxLength: 10000, DescribedBy: f.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_wk.cedit.body", "data-attr:readonly": Pending("_wk.cedit.op")}})
+			}
+		</form>
+	}
+}
+
+templ commentEditFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: "comment-edit"})
+	@ui.Button(ui.ButtonProps{Label: "Save", Variant: ui.Primary, Type: "submit", Attrs: templ.Attributes{"form": "comment-edit-form", "data-attr:aria-busy": Busy("_wk.cedit.op")}})
 }
 
 // createPageDialog creates a page in the space, blank or from a template

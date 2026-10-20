@@ -50,6 +50,8 @@ type Page struct {
 	// Project is the id of the project the page belongs to, if any: the
 	// create dialog preselects it.
 	Project string
+	// Refresh loads the document again after this many seconds.
+	Refresh int
 }
 
 // errGone is what a page handler returns for something deleted: the page
@@ -65,6 +67,13 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, buil
 	ctx := r.Context()
 	if people.Actor(ctx).MustChange && r.URL.Path != PasswordPath { // FR-141.1
 		http.Redirect(w, r, PasswordPath, http.StatusSeeOther)
+		return
+	}
+	// DM-03.4: while the demo resets, and for a page read while it began
+	// or ended, the reset's page instead of a half-seeded one.
+	quiet := s.demo.Quiet()
+	if quiet%2 == 1 {
+		s.resetting(w, r)
 		return
 	}
 	var buf bytes.Buffer
@@ -93,12 +102,41 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, buil
 		s.fail(w, r, err)
 		return
 	}
+	if s.demo.Quiet() != quiet {
+		s.resetting(w, r)
+		return
+	}
+	writeDocument(w, status, buf.Bytes())
+}
+
+func writeDocument(w http.ResponseWriter, status int, body []byte) {
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
 	h.Set("Cache-Control", "no-store")    // the tab id is this document's alone
 	h.Set("Accept-CH", edge.NetworkHints) // Chromium's hints for edge.SlowLink
 	w.WriteHeader(status)
-	w.Write(buf.Bytes())
+	w.Write(body)
+}
+
+// resetting answers a page while the demo resets: 503, the reset's notice,
+// and the document loads again every 2 seconds. It reads nothing of the
+// demo's content (the create dialog stays empty), and opens no stream.
+func (s *Server) resetting(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var buf bytes.Buffer
+	err := s.db.View(ctx, func(tx *sql.Tx) error {
+		shell, err := s.shell(r, tx, Page{Title: "Resetting", Create: templ.NopComponent, Refresh: 2})
+		if err != nil {
+			return err
+		}
+		return views.Layout(shell).Render(templ.WithChildren(ctx, views.Resetting()), &buf)
+	})
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	w.Header().Set("Retry-After", "2")
+	writeDocument(w, http.StatusServiceUnavailable, buf.Bytes())
 }
 
 // shell is the document around a page, for the request's person, read in
@@ -150,6 +188,7 @@ func (s *Server) shell(r *http.Request, q sqlite.Querier, p Page) (views.Shell, 
 		Prefs:        prefs,
 		Bell:         bell,
 		Path:         path,
+		Refresh:      p.Refresh,
 	}, nil
 }
 

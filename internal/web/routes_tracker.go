@@ -417,11 +417,13 @@ func (r *docResolver) Issue(key string) (doc.Chip, bool) {
 }
 
 func (r *docResolver) Person(id string) (string, bool) {
+	// An erased account's mentions say DeletedName, not the name the
+	// document kept (NFR-27.1).
 	if p, ok := r.people[id]; ok {
-		return p.Name, p.Kind != people.Deleted
+		return p.Name, true
 	}
 	p, err := people.Get(r.ctx, r.q, id)
-	if err != nil || p.Kind == people.Deleted {
+	if err != nil {
 		return "", false
 	}
 	r.people[id] = p
