@@ -82,6 +82,25 @@ func theOracle(t testing.TB) *oracle {
 	return sharedOracle
 }
 
+var (
+	fuzzOracleMu   sync.Mutex
+	fuzzOracle     *oracle
+	fuzzOracleUses int
+)
+
+// fuzzRuntime returns an oracle that is replaced every 100 uses: goja keeps
+// what prosemirror-model's WeakMap caches hold, and a fuzz worker would grow
+// past a gigabyte in a few thousand cases.
+func fuzzRuntime(t testing.TB) *oracle {
+	fuzzOracleMu.Lock()
+	defer fuzzOracleMu.Unlock()
+	if fuzzOracle == nil || fuzzOracleUses >= 100 {
+		fuzzOracle, fuzzOracleUses = loadOracle(t), 0
+	}
+	fuzzOracleUses++
+	return fuzzOracle
+}
+
 // call runs oracle[name](args...) and returns the result as a string; a
 // JavaScript exception is the error.
 func (o *oracle) call(name string, args ...any) (string, error) {

@@ -83,7 +83,7 @@ func SafeHref(href string) (title string, ok bool) {
 		if u.Opaque != "" || u.Hostname() == "" {
 			return "", false
 		}
-		return u.Hostname(), true
+		return strings.ToLower(u.Host), true
 	case "mailto":
 		addr := u.Opaque
 		if i := strings.IndexByte(addr, '?'); i >= 0 {
@@ -182,14 +182,9 @@ func (r Rules) checkNode(n *Node, lim Limits, inCode bool) error {
 			}
 		}
 		return nil
-	case "paragraph", "heading":
-		if lim.TextLength > 0 && n.content.size > lim.TextLength {
-			return refuse("A paragraph or heading holds at most %s characters.", thousands(lim.TextLength))
-		}
-		if n.typ.name == "heading" {
-			if l, ok := n.AttrInt("level"); !ok || (len(lim.HeadingLevels) > 0 && !slices.Contains(lim.HeadingLevels, l)) {
-				return refuse("A heading has level 1, 2 or 3.")
-			}
+	case "heading":
+		if l, ok := n.AttrInt("level"); !ok || (len(lim.HeadingLevels) > 0 && !slices.Contains(lim.HeadingLevels, l)) {
+			return refuse("A heading has level 1, 2 or 3.")
 		}
 	case "code_block":
 		if len(lim.CodeLanguages) > 0 && !slices.Contains(lim.CodeLanguages, n.AttrString("language")) {

@@ -69,8 +69,7 @@
 //     refused only when a commit grows a document past them. JSON length
 //     and block counts are cached in each node, so the check costs the
 //     changed blocks only.
-//   - Text: no control characters but tab and newline in code blocks; a
-//     paragraph or heading holds at most textLength (2,000) characters.
+//   - Text: no control characters but tab and newline in code blocks.
 //   - heading.level 1, 2 or 3; code_block.language empty or one of
 //     codeLanguages; ordered_list.order a whole number from 1 to 9,999.
 //   - Tables (FR-83): 50 rows, 20 columns counted with colspans and the

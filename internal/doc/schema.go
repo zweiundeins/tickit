@@ -46,7 +46,6 @@ type Limits struct {
 	Blocks        int      `json:"blocks"`
 	TableRows     int      `json:"tableRows"`
 	TableColumns  int      `json:"tableColumns"`
-	TextLength    int      `json:"textLength"`
 	AttrLength    int      `json:"attrLength"`
 	LinkSchemes   []string `json:"linkSchemes"`
 	CodeLanguages []string `json:"codeLanguages"`

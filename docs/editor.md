@@ -14,6 +14,8 @@ How several people edit one page at once (MP-05, MP-06, MP-13, MP-14, FR-82 to F
 
 `internal/doc/schema.json` is the one source: the browser builds its ProseMirror schema from it (adding `toDOM`, `parseDOM` and node views per name), the oracle builds the same schema in goja, and the Go core reads it. Order matters: the first block type is the default, and mark order is the nesting order. The server's rules beyond the schema (step types, sizes, attribute formats, allowed link schemes, the image library) are in `internal/doc` and listed in its package documentation.
 
+The `limits` object of schema.json holds DM-05's and DM-06's numbers, which the editor's `filterTransaction` and the server's rules both read: `storedBytes` is the UTF-8 length of `JSON.stringify(doc.toJSON())` (no HTML escaping, as `internal/doc` writes it), `blocks` counts every block node but the doc, `tableRows` and `tableColumns` bound a table (columns with colspans), `attrLength` bounds every attribute string, `linkSchemes`, `codeLanguages` and `headingLevels` are allowlists. A commit whose steps all drop in the writer's rebase is still appended, with no steps, because the editor confirms a commit by finding its `ref`.
+
 ## HTML of a document
 
 The Go renderer (reader view, comments, descriptions, versions) and the browser's `toDOM` produce the same elements, so one stylesheet (`static/css/prose.css`) styles both. The container is `<div class="prose">`. `doc.RenderHTML` renders the blocks; the caller writes the container. Every text and attribute is escaped.
@@ -33,13 +35,13 @@ The Go renderer (reader view, comments, descriptions, versions) and the browser'
 | table_cell, table_header | `<td>`, `<th>`, with `colspan` and `rowspan` when not 1 |
 | image | `<figure class="doc-image"><img src="/img/lib/<imageId>" alt="…" loading="lazy"></figure>` |
 | hard_break | `<br>` |
-| issue_chip | `<a class="issue-chip" data-key="WEB-12" href="/WEB-12" data-type="bug" data-category="progress">` holding `<span class="issue-chip-type" aria-hidden="true"></span><span class="issue-chip-key">WEB-12</span> <span class="issue-chip-summary">Fix the login</span> <span class="issue-chip-status">In Review</span>`, rendered from the issue as it is at render time; a deleted or unknown key carries `data-state="deleted"` or `"unknown"` instead of the type and category and holds the key and `<span class="issue-chip-status">deleted issue</span>` (or `unknown issue`) |
-| mention | `<a class="mention" data-person="<person id>" href="/people/<person id>">@Sunny Otter</a>`; the name is the person's name now, else the node's `label`, else "someone" |
+| issue_chip | `<a class="issue-chip" data-key="WEB-12" href="/WEB-12">` holding the type icon `<svg class="tk-type" data-type="bug" viewBox="0 0 16 16" aria-hidden="true">` (two paths, `tk-type__tile` and `tk-type__glyph`), `<span class="issue-chip__key">WEB-12</span>`, `<span class="issue-chip__summary">Fix the login</span>` and `<span class="tk-lozenge issue-chip__status" data-cat="progress">In Review</span>`, from the issue as it is at render time; a deleted or unknown key carries `data-state="deleted"` or `"unknown"` and holds the key and `<span class="issue-chip__summary">deleted issue</span>` (or `unknown issue`) |
+| mention | `<a class="mention" data-person="<person id>" href="/people/<person id>">@Sunny Otter</a>`; the name is the person's name now, else the node's `label` |
 | page_link | `<a class="page-link" data-page="<page id>" href="/pages/<page id>">Title</a>`; a removed page renders `<span class="page-link" data-state="gone">a removed page</span>` |
 | strong, em, strike, code | `<strong>`, `<em>`, `<s>`, `<code>` |
 | link | `<a href="…" rel="nofollow ugc noopener" title="<host>">`; an unsafe href renders as `<span class="link-unsafe">` |
 
-A link mark around an atom renders no `<a>` around it (a chip is a link of its own). The comparison of two versions (FR-88) renders the newer one with added text in `<ins class="diff-ins">` and removed text in `<del class="diff-del">`; a block added or removed as a whole also carries `data-diff="ins"` or `data-diff="del"` on its element.
+The editor's node view of a removed page keeps its element, an `<a class="page-link" data-state="gone">` without `href`; the reader view writes the `<span>`. A link's `title` is the URL's host with its port, or the address of a `mailto` link. A link mark around an atom renders no `<a>` around it (a chip is a link of its own). The comparison of two versions (FR-88) renders the newer one with added text in `<ins class="diff-ins">` and removed text in `<del class="diff-del">`; a block added or removed as a whole also carries `data-diff="ins"` or `data-diff="del"` on its element.
 
 ## Wire format
 

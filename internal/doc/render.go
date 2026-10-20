@@ -297,10 +297,8 @@ func (w htmlWriter) leaf(n *Node) {
 	case "mention":
 		id := n.AttrString("personId")
 		name, ok := w.r.Person(id)
-		if !ok {
-			if name = n.AttrString("label"); name == "" {
-				name = "someone"
-			}
+		if !ok || name == "" {
+			name = n.AttrString("label")
 		}
 		w.s(`<a class="mention" data-person="`)
 		w.esc(id)
@@ -326,8 +324,21 @@ func (w htmlWriter) leaf(n *Node) {
 	}
 }
 
-// chip renders an issue chip: type icon, key, summary and status, or the
-// key and the state of a deleted or unknown issue (FR-100).
+// The issue type icons of the design system, as the editor's node view
+// draws them (16 grid).
+const typeTile = "M1 0h14v1h1v14h-1v1H1v-1H0V1h1z"
+
+var typeGlyphs = map[string]string{
+	"epic":    "M8 2h4v1h-4zM7 3h4v1h-4zM6 4h4v1h-4zM5 5h4v1h-4zM4 6h8v1h-8zM7 7h4v1h-4zM6 8h4v1h-4zM5 9h4v1h-4zM4 10h3v1h-3zM3 11h2v1h-2z",
+	"story":   "M4 2h8v9h-8zM4 11h3v1h-3zM9 11h3v1h-3zM4 12h2v1h-2zM10 12h2v1h-2zM4 13h1v1h-1zM11 13h1v1h-1z",
+	"task":    "M11 4h2v1h-2zM10 5h3v1h-3zM9 6h3v1h-3zM2 7h2v1h-2zM8 7h3v1h-3zM2 8h3v1h-3zM7 8h3v1h-3zM3 9h6v1h-6zM4 10h4v1h-4zM5 11h2v1h-2z",
+	"bug":     "M5 2h1v1h-1zM10 2h1v1h-1zM6 3h4v1h-4zM4 4h3v1h-3zM9 4h3v1h-3zM1 5h1v1h-1zM3 5h4v1h-4zM9 5h4v1h-4zM14 5h1v1h-1zM2 6h5v1h-5zM9 6h5v1h-5zM3 7h4v1h-4zM9 7h4v1h-4zM1 8h1v1h-1zM3 8h4v1h-4zM9 8h4v1h-4zM14 8h1v1h-1zM2 9h5v1h-5zM9 9h5v1h-5zM3 10h4v1h-4zM9 10h4v1h-4zM4 11h3v1h-3zM9 11h3v1h-3zM6 12h1v1h-1zM9 12h1v1h-1z",
+	"subtask": "M2 2h6v1h-6zM2 3h1v3h-1zM7 3h1v3h-1zM2 6h6v1h-6zM4 7h1v2h-1zM8 8h6v1h-6zM4 9h5v1h-5zM13 9h1v3h-1zM8 10h1v2h-1zM8 12h6v1h-6z",
+}
+
+// chip renders an issue chip as the editor's node view does: type icon,
+// key, summary and status, or the key and the state of a deleted or
+// unknown issue (FR-100).
 func (w htmlWriter) chip(key string) {
 	c, ok := w.r.Issue(key)
 	w.s(`<a class="issue-chip" data-key="`)
@@ -337,27 +348,40 @@ func (w htmlWriter) chip(key string) {
 	w.s(`"`)
 	switch {
 	case !ok:
-		w.s(` data-state="unknown"><span class="issue-chip-key">`)
+		w.s(` data-state="unknown"><span class="issue-chip__key">`)
 		w.esc(key)
-		w.s(`</span> <span class="issue-chip-status">unknown issue</span></a>`)
+		w.s(`</span><span class="issue-chip__summary">unknown issue</span></a>`)
 		return
 	case c.Deleted:
-		w.s(` data-state="deleted"><span class="issue-chip-key">`)
+		w.s(` data-state="deleted"><span class="issue-chip__key">`)
 		w.esc(key)
-		w.s(`</span> <span class="issue-chip-status">deleted issue</span></a>`)
+		w.s(`</span><span class="issue-chip__summary">deleted issue</span></a>`)
 		return
 	}
-	w.s(` data-type="`)
-	w.esc(c.Type)
-	w.s(`" data-category="`)
-	w.esc(c.Category)
-	w.s(`"><span class="issue-chip-type" aria-hidden="true"></span><span class="issue-chip-key">`)
+	w.s(`>`)
+	if g, ok := typeGlyphs[c.Type]; ok {
+		w.s(`<svg class="tk-type" data-type="` + c.Type + `" viewBox="0 0 16 16" aria-hidden="true"><path class="tk-type__tile" d="` + typeTile + `"></path><path class="tk-type__glyph" d="` + g + `"></path></svg>`)
+	}
+	w.s(`<span class="issue-chip__key">`)
 	w.esc(key)
-	w.s(`</span> <span class="issue-chip-summary">`)
-	w.esc(c.Summary)
-	w.s(`</span> <span class="issue-chip-status">`)
-	w.esc(c.Status)
-	w.s(`</span></a>`)
+	w.s(`</span>`)
+	if c.Summary != "" {
+		w.s(`<span class="issue-chip__summary">`)
+		w.esc(c.Summary)
+		w.s(`</span>`)
+	}
+	if c.Status != "" {
+		cat := c.Category
+		if cat == "" {
+			cat = "todo"
+		}
+		w.s(`<span class="tk-lozenge issue-chip__status" data-cat="`)
+		w.esc(cat)
+		w.s(`">`)
+		w.esc(c.Status)
+		w.s(`</span>`)
+	}
+	w.s(`</a>`)
 }
 
 // BlockCache renders documents block by block and keeps the HTML of each

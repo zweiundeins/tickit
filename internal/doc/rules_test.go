@@ -61,7 +61,6 @@ func TestRulesRefuse(t *testing.T) {
 		{inPara(`{"type":"text","text":"x","marks":[{"type":"link","attrs":{"href":"javascript:alert(1)"}}]}`), "A link must start with http://, https:// or mailto: and be at most 2,048 characters."},
 		{inPara(`{"type":"text","text":"x","marks":[{"type":"link","attrs":{"href":"https://` + strings.Repeat("a", 2050) + `"}}]}`), "A link or attribute holds at most 2,048 characters."},
 		{inPara(`{"type":"text","text":"a\u0007b"}`), "The text holds a control character."},
-		{inPara(`{"type":"text","text":"` + strings.Repeat("a", 2001) + `"}`), "A paragraph or heading holds at most 2,000 characters."},
 		{docOf(`{"type":"table","content":[` + row(cell(`{"colspan":21}`)) + `]}`), "A table cell spans 1 to 20 columns and 1 to 50 rows."},
 		{docOf(`{"type":"table","content":[` + row(cell(`{"colspan":12}`), cell(`{"colspan":9}`)) + `]}`), "A table holds at most 20 columns."},
 		{docOf(`{"type":"table","content":[` + row(cell(`{"colspan":12,"rowspan":2}`)) + `,` + row(cell(`{"colspan":9}`)) + `]}`), "A table holds at most 20 columns."},
@@ -124,7 +123,7 @@ func TestRulesCheckChangedBlocksOnly(t *testing.T) {
 func TestSafeHref(t *testing.T) {
 	for href, want := range map[string]string{
 		"https://example.com/a?b": "example.com",
-		"HTTP://Example.COM:8080": "Example.COM",
+		"HTTP://Example.COM:8080": "example.com:8080",
 		"mailto:ada@example.com":  "ada@example.com",
 	} {
 		if got, ok := SafeHref(href); !ok || got != want {

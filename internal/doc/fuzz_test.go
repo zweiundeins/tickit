@@ -3,6 +3,8 @@ package doc
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -17,7 +19,7 @@ type fuzzCaseJSON struct {
 // Go rebases the same commits and must apply the same steps (FR-82.4 and
 // MP-05: the browser and the writer drop the same steps).
 func runFuzzCase(t *testing.T, seed uint32, kb, commits, maxK, edits int) (int, int) {
-	o := theOracle(t)
+	o := fuzzRuntime(t)
 	opts := fmt.Sprintf(`{"kb":%d,"commits":%d,"maxK":%d,"edits":%d}`, kb, commits, maxK, edits)
 	raw := o.must(t, "fuzzCase", seed, opts)
 	var c fuzzCaseJSON
@@ -86,4 +88,28 @@ func FuzzRebase(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed uint32, k, edits uint8) {
 		runFuzzCase(t, seed, 1+int(seed%3), 10, int(k%16), 1+int(edits%6))
 	})
+}
+
+// The editor's fake writer (editor/test/authority/rebase.js) and the
+// oracle rebase alike: the same code, comments and layout aside. Skips
+// until the editor is in the tree.
+func TestEditorRebaseIsTheOracles(t *testing.T) {
+	ed, err := os.ReadFile("../../editor/test/authority/rebase.js")
+	if err != nil {
+		t.Skip("no editor/ in this tree")
+	}
+	code := func(b []byte) string {
+		var out []string
+		for _, l := range strings.Split(string(b), "\n") {
+			l = strings.TrimSpace(l)
+			if l == "" || strings.HasPrefix(l, "//") {
+				continue
+			}
+			out = append(out, strings.ReplaceAll(l, " ", ""))
+		}
+		return strings.Join(out, "\n")
+	}
+	if code(ed) != code(readFixture(t, "oracle/src/rebase.js")) {
+		t.Fatal("editor/test/authority/rebase.js differs from testdata/oracle/src/rebase.js")
+	}
 }
