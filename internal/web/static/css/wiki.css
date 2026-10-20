@@ -42,15 +42,22 @@
 		border-block-end: 1px solid var(--tk-border-subtle);
 	}
 
+	/* The face stays beside the words, which wrap next to it. */
 	.wk-byline {
 		display: flex;
-		flex-wrap: wrap;
 		align-items: center;
 		gap: var(--tk-space-2);
 		color: var(--tk-text-2);
 		font-size: var(--tk-text-sm);
 
+		& > .tk-av {
+			flex: none;
+			align-self: start;
+		}
+
 		& > span {
+			flex: 1 1 auto;
+			min-inline-size: 0;
 			display: inline-flex;
 			flex-wrap: wrap;
 			align-items: baseline;
