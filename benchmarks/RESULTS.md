@@ -180,6 +180,24 @@ Every run ended with identical documents in every editor and on the server, hold
     CHROME=/usr/bin/chromium LITH_CHROME_NO_SANDBOX=1 COEDIT_EDITORS=20 COEDIT_SECONDS=30 go test ./e2e -run 'TestCoEditing$' -v
     LOAD_EDITORS=20 LOAD_SECONDS=60 go test ./e2e -run TestCoEditingLoad -v                                                     # Go clients
 
+### With MP-05.3's 50 ms round trip
+
+20 October 2026, the same machine (Intel i5-13500, 14 cores, 20 threads, 62 GB, Linux 6.18 Unraid, Go 1.27.2, headless Chromium 154), the real server as above with a delaying proxy in front of it (`e2e/delay_test.go`, `COEDIT_DELAY=25ms`): every request reaches the server 25 ms after the browser sent it and every write of an answer, each frame of a stream too, reaches the browser 25 ms after the server wrote it, so a round trip of 50 ms. 20 browser editors type 5 characters a second each for 30 s into one paragraph. The breakdown splits a keystroke's way: to its commit going out (the editor sends one commit at a time, so a keystroke waits for the one in flight), from there to the frame that brings it to each other editor's Datastar (the proxy both ways, the writer, the tick, the render, the stream), and from there to the text in that editor.
+
+| Run (load average) | Keystrokes | p50 | p95 | max | Settled after the last | Keystroke to commit p50 / p95 | Commit to frame p50 / p95 | Frame to text p50 / p95 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 50 ms round trip (6) | 3,000 | 102 ms | 140 ms | 248 ms | 157 ms | 3 / 16 ms | 82 / 122 ms | 11 / 22 ms |
+| 50 ms round trip (10) | 3,000 | 104 ms | 148 ms | 302 ms | 179 ms | 3 / 18 ms | 82 / 130 ms | 11 / 23 ms |
+| loopback, for comparison (15) | 3,000 | 46 ms | 74 ms | 214 ms | 127 ms | 3 / 18 ms | 27 / 56 ms | 11 / 22 ms |
+| 50 ms round trip, 20 Go clients (18) | 2,980 | 113 ms | 117 ms | 174 ms | | | | |
+
+MP-05.3 holds on a quiet machine: p95 140 to 148 ms against 250 ms, and every editor held the same document with every character within 157 to 179 ms of the last keystroke (MP-05.4 asks 1 s). The round trip adds about 55 ms to the median: the 50 ms of the link and a little more waiting for the commit in flight. No page fell behind its stream (no `/pace`), no tick overran.
+
+The same run while other jobs on the machine ran fuzzers on all 20 threads (load average 15 to 77) gave p95 336 ms (load 15), 527 ms (20), 784 ms (21) and seconds at 46 and 77, and the breakdown says where: at load 15 the wait for the commit in flight rose to p95 103 ms, the commit to the others' frame to p95 198 ms and the frame to the text to p95 43 ms, while the Go clients through the same proxy, at the same time, stayed at p95 110 ms. The server and the protocol fit the budget; 20 browser tabs that share their CPUs with the server and a fuzzer do not. Each keystroke that waits for a commit in flight pays one more round trip and a tick, so a slower link or a busier browser adds up twice; the hub's 50 ms tick is the other half of the commit-to-frame time beside the link.
+
+    CHROME=/usr/bin/chromium LITH_CHROME_NO_SANDBOX=1 COEDIT_EDITORS=20 COEDIT_SECONDS=30 COEDIT_DELAY=25ms go test ./e2e -run 'TestCoEditing$' -v
+    LOAD_EDITORS=20 LOAD_SECONDS=30 LOAD_DELAY=25ms go test ./e2e -run TestCoEditingLoad -v                                     # Go clients
+
 The fold (NFR-43.3): `go test ./internal/wiki -run TestFoldTime -v`, a page of 116 KB with 500 commits since its creation, then a version: one `wiki.Fold` command folds 200 events (`FoldBatch`) in 3.6 ms through the writer, 8.1 ms the first time (cold statements), and the last 102 in 2.1 ms. With 500 events a command it took 9.2 ms, so `FoldBatch` is 200. A commit on that page takes 0.07 to 0.18 ms in the writer. That page's stream held 500 events; at NFR-38's load it holds 15 minutes of commits, about 92,000, and a fold command takes 24 ms whatever its batch ("Capacity" above).
 
 ## Measuring
