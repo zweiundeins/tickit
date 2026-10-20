@@ -14,7 +14,7 @@ import (
 // Away (MP-02.4): a person who has given no input in any tab for
 // AwayAfter shows as away in presence rows. Pages report input with a
 // cheap action at most every InputEvery while there is some (GET never
-// writes), into presence_input (migration 078); a presence row reads it
+// writes), into presence_input (migration 081); a presence row reads it
 // for the faces it shows. The topic AwayTopic(person) is touched when the
 // person comes back, by Input, and when they turn away, by a sweep that
 // the server runs every few seconds (web.Server.PresenceJobs), so that
