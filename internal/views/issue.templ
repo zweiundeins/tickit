@@ -200,7 +200,11 @@ templ anywayButton(f string) {
 templ issueMain(m Issue) {
 	<div id="issue-main" class="tk-issue__main" data-v={ i64(m.Version) } data-key={ m.Key } data-issue={ m.ID }>
 		@ui.Breadcrumbs(crumbs(m))
-		if !m.Deleted.IsZero() {
+		if m.Hidden {
+			@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Icon: "lock", Title: "This issue is hidden"}) {
+				<p>{ hiddenText(m) }</p>
+			}
+		} else if !m.Deleted.IsZero() {
 			@ui.Notice(ui.NoticeProps{Tone: ui.ToneDanger, Icon: "trash", Title: "This issue was deleted"}) {
 				<p>{ m.person(m.DeletedBy).Name } deleted it { ui.Ago(m.Deleted, m.Now) }. Its history stays.</p>
 			}

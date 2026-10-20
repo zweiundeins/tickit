@@ -95,7 +95,7 @@ func (s *Server) issuePage(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.fail(w, r, err)
 		return
-	case f.k.Deleted:
+	case f.k.Deleted && !(f.k.Hidden && access.SiteCan(actor, access.Moderate)):
 		s.render(w, r, http.StatusGone, func(context.Context, sqlite.Querier) (Page, error) {
 			return Page{Title: f.k.Key + " was deleted", Nav: "projects", Project: f.k.Project,
 				Body: views.IssueGone(f.k.Key, f.by, f.k.DeletedAt.In(views.Zone).Format("2 January"))}, nil

@@ -338,3 +338,13 @@ const (
 	markupHint  = "**bold**, _italic_, `code`, [a link](https://…), - lists, [[WEB-12]] for an issue, @ and a person's id to mention them."
 	commentHint = "**bold**, _italic_, `code`, links, - lists, @ to mention someone, [[WEB-12]] for an issue. Ctrl Enter sends."
 )
+
+// hiddenText says who hid an issue, when and why, to the moderators who
+// still see it.
+func hiddenText(m Issue) string {
+	s := m.person(m.DeletedBy).Name + " hid it " + ui.Ago(m.Deleted, m.Now)
+	if m.HiddenReason != "" {
+		s += ": " + m.HiddenReason
+	}
+	return s + ". Only moderators see it; the moderation page restores it."
+}

@@ -223,7 +223,11 @@ type Issue struct {
 	Resolved    time.Time // zero while not resolved (FR-38)
 	Deleted     time.Time // zero while not deleted
 	DeletedBy   string
-	Version     int64 // the version a change sends as Seen (MP-08.1)
+	// Hidden is a deletion by a moderator (moderation.go), which they
+	// may undo; Deleted and DeletedBy say when and who.
+	Hidden       bool
+	HiddenReason string
+	Version      int64 // the version a change sends as Seen (MP-08.1)
 }
 
 // Overdue reports whether an issue is past its due date on the day of
@@ -235,7 +239,7 @@ func (i Issue) Overdue(now time.Time) bool {
 const issueColumns = `i.id, i.project_id, i.project_key, p.name, i.key, i.number, i.type, i.summary, i.status, coalesce(s.name, i.status),
 	coalesce(s.position, 0), i.status_category, i.priority, i.assignee, i.reporter, i.parent_id, i.epic_id, i.labels, i.components,
 	i.due, i.points, i.estimate, i.remaining, i.rank, i.sprint, i.created_at, i.updated_at, i.resolved_at, i.deleted_at,
-	i.deleted_by, i.version`
+	i.deleted_by, i.hidden_at IS NOT NULL, i.hidden_reason, i.version`
 
 func scanIssue(r scanner) (Issue, error) {
 	var i Issue
@@ -245,7 +249,7 @@ func scanIssue(r scanner) (Issue, error) {
 	err := r.Scan(&i.ID, &i.ProjectID, &i.ProjectKey, &i.ProjectName, &i.Key, &i.Number, &i.Type, &i.Summary, &i.Status, &i.StatusName,
 		&i.StatusOrder, &i.Category, &i.Priority, &i.Assignee, &i.Reporter, &i.ParentID, &i.EpicID, &labels, &comps,
 		&i.Due, &points, &estimate, &remaining, &i.Rank, &i.Sprint, &created, &updated, &resolved, &deleted,
-		&i.DeletedBy, &i.Version)
+		&i.DeletedBy, &i.Hidden, &i.HiddenReason, &i.Version)
 	if err != nil {
 		return i, err
 	}
@@ -277,6 +281,7 @@ type KeyLookup struct {
 	Deleted   bool
 	DeletedBy string
 	DeletedAt time.Time
+	Hidden    bool // by a moderator: the deletion they may undo
 }
 
 // IssueByKey resolves an issue key, without regard to case; an unknown
@@ -289,8 +294,8 @@ func IssueByKey(ctx context.Context, q sqlite.Querier, key string) (KeyLookup, e
 	k := IssueKey(pk, n)
 	var l KeyLookup
 	var deleted sql.NullInt64
-	err := q.QueryRowContext(ctx, `SELECT i.id, i.project_id, i.key, i.deleted_at, i.deleted_by
-		FROM issue_keys k JOIN issues i ON i.id = k.issue_id WHERE k.key = ?`, k).Scan(&l.Issue, &l.Project, &l.Key, &deleted, &l.DeletedBy)
+	err := q.QueryRowContext(ctx, `SELECT i.id, i.project_id, i.key, i.deleted_at, i.deleted_by, i.hidden_at IS NOT NULL
+		FROM issue_keys k JOIN issues i ON i.id = k.issue_id WHERE k.key = ?`, k).Scan(&l.Issue, &l.Project, &l.Key, &deleted, &l.DeletedBy, &l.Hidden)
 	if errors.Is(err, sql.ErrNoRows) {
 		return KeyLookup{}, notFound("issue", key)
 	}
