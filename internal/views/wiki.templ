@@ -179,6 +179,9 @@ templ HistoryRegion(p VersionsProps) {
 							if i == 0 {
 								<span class="tk-lozenge" data-cat="done">current</span>
 							}
+							if v.Hidden {
+								<span class="tk-lozenge" data-cat="todo">hidden by a moderator</span>
+							}
 						</td>
 						<td>
 							<ul class="wk-editors" role="list">

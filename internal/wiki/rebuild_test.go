@@ -78,6 +78,7 @@ func TestRebuild(t *testing.T) {
 	e.must(TrashPage{By: e.by(rainy), Page: d})
 	e.must(DeletePage{By: e.by(admin), Page: d})
 	e.must(RestoreVersion{By: e.by(rainy), Page: a, Number: 1})
+	e.must(HideVersion{By: e.by(moderator), Page: a, Number: 2, Hidden: true, Reason: "spam"}) // DM-07.1
 	e.must(SetDocument{By: e.by(ada), Page: c, Doc: paras("Seeded", "Twice"), Message: "From the seed"})
 	cm := e.result(AddComment{By: e.by(sunny), Page: b, Body: paras("First")})["id"]
 	e.result(AddComment{By: e.by(rainy), Page: b, Parent: cm, Body: paras("Reply")})

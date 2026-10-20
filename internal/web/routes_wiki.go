@@ -705,7 +705,7 @@ func (s *Server) historyPage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return Page{}, err
 		}
-		vs, err := versionItems(ctx, q, sp, p)
+		vs, err := versionItems(ctx, q, sp, p, staff(me))
 		if err != nil {
 			return Page{}, err
 		}
@@ -718,10 +718,18 @@ func (s *Server) historyPage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func versionItems(ctx context.Context, q sqlite.Querier, sp wiki.Space, p wiki.Page) ([]views.VersionItem, error) {
+// staff is a moderator or a site admin, who sees what moderators hid.
+func staff(p people.Person) bool { return access.SiteCan(p, access.Moderate) }
+
+// versionItems are a page's versions, newest first; the hidden ones only
+// for staff (DM-07.1).
+func versionItems(ctx context.Context, q sqlite.Querier, sp wiki.Space, p wiki.Page, staff bool) ([]views.VersionItem, error) {
 	vs, err := wiki.Versions(ctx, q, p.ID)
 	if err != nil {
 		return nil, err
+	}
+	if !staff {
+		vs = slices.DeleteFunc(vs, func(v wiki.VersionInfo) bool { return v.Hidden })
 	}
 	var ids []string
 	for _, v := range vs {
@@ -747,8 +755,12 @@ func (s *Server) historyView(ctx context.Context, q sqlite.Querier, actor people
 	if err != nil {
 		return live.View{}, err
 	}
+	key, mod := "history:"+p.ID, staff(actor)
+	if mod {
+		key += ":staff" // with the versions moderators hid
+	}
 	return live.View{
-		Key:    "history:" + p.ID,
+		Key:    key,
 		Topics: []string{wiki.PageTopic(p.ID), people.Topic},
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			q := querier(ctx, tx)
@@ -760,7 +772,7 @@ func (s *Server) historyView(ctx context.Context, q sqlite.Querier, actor people
 			if err != nil {
 				return nil, err
 			}
-			vs, err := versionItems(ctx, q, sp, cur)
+			vs, err := versionItems(ctx, q, sp, cur, mod)
 			if err != nil {
 				return nil, err
 			}
@@ -808,8 +820,11 @@ func (s *Server) oldVersion(w http.ResponseWriter, r *http.Request, from, n int)
 		if err != nil {
 			return Page{}, err
 		}
+		if v.Hidden && !staff(me) { // DM-07.1
+			return Page{}, access.ErrNotFound
+		}
 		vp := views.VersionProps{PageProps: props, Newest: p.Versions, To: n}
-		items, err := versionItems(ctx, q, sp, p)
+		items, err := versionItems(ctx, q, sp, p, staff(me))
 		if err != nil {
 			return Page{}, err
 		}
@@ -821,11 +836,15 @@ func (s *Server) oldVersion(w http.ResponseWriter, r *http.Request, from, n int)
 		refs := doc.References(d)
 		var old doc.Doc
 		if from > 0 {
-			if _, old, err = wiki.Version(ctx, q, p.ID, from); err != nil {
+			var ov wiki.VersionInfo
+			if ov, old, err = wiki.Version(ctx, q, p.ID, from); err != nil {
 				return Page{}, err
 			}
+			if ov.Hidden && !staff(me) {
+				return Page{}, access.ErrNotFound
+			}
 			o := doc.References(old)
-			refs = doc.Refs{Issues: append(refs.Issues, o.Issues...), People: append(refs.People, o.People...), Pages: append(refs.Pages, o.Pages...)}
+			refs = doc.Refs{Issues: append(refs.Issues, o.Issues...), People: append(refs.People, o.People...), Pages: append(refs.Pages, o.Pages...), Images: append(refs.Images, o.Images...)}
 		}
 		res, err := wiki.Resolve(ctx, q, refs)
 		if err != nil {
@@ -970,7 +989,7 @@ func (s *Server) labelPage(w http.ResponseWriter, r *http.Request) {
 // images.json: SVG files under static/img/lib.
 func (s *Server) libraryImage(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if !wiki.ImageExists(id) {
+	if hidden, err := wiki.ImageHidden(r.Context(), s.db.R, id); !wiki.ImageExists(id) || hidden || err != nil { // DM-07.1
 		s.notFound(w, r)
 		return
 	}

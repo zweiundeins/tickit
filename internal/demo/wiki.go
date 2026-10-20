@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/zweiundeins/lith/sqlite"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/zweiundeins/tickit/internal/access"
 	"github.com/zweiundeins/tickit/internal/demo/seed"
+	"github.com/zweiundeins/tickit/internal/doc"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/wiki"
 )
@@ -56,6 +59,121 @@ func init() {
 		},
 		Newest: newestPages,
 	})
+	// DM-07.1: a version a visitor's edits cut; its id is "<page>.<number>".
+	RegisterModerated(Moderated{
+		Kind: "version", Name: "Page version",
+		Hide: func(by tabs.By, id string, hidden bool, reason string) writer.Command {
+			page, n := versionID(id)
+			return wiki.HideVersion{By: by, Page: page, Number: n, Hidden: hidden, Reason: reason}
+		},
+		Label: func(tx *writer.Tx, id string) (string, error) {
+			page, n := versionID(id)
+			if n < 1 {
+				return "", fmt.Errorf("version %s: %w", id, access.ErrNotFound)
+			}
+			return wiki.VersionLabel(tx, page, n)
+		},
+		Newest: newestVersions,
+	})
+	// DM-07.1: an image of the library, hidden in every page that shows it.
+	RegisterModerated(Moderated{
+		Kind: "image", Name: "Image",
+		Hide: func(by tabs.By, id string, hidden bool, reason string) writer.Command {
+			return wiki.HideImage{By: by, Image: id, Hidden: hidden, Reason: reason}
+		},
+		Label: func(tx *writer.Tx, id string) (string, error) {
+			for _, im := range wiki.Images() {
+				if im.ID == id {
+					return im.Title, nil
+				}
+			}
+			return "", fmt.Errorf("image %s: %w", id, access.ErrNotFound)
+		},
+		Newest: newestImages,
+	})
+}
+
+// versionID splits a version's moderation id, "<page>.<number>".
+func versionID(id string) (string, int) {
+	page, num, ok := strings.Cut(id, ".")
+	n, err := strconv.Atoi(num)
+	if !ok || err != nil || n < 1 {
+		return page, 0
+	}
+	return page, n
+}
+
+// newestVersions are the versions visitors' edits cut after a page's
+// first, newest first.
+func newestVersions(ctx context.Context, q sqlite.Querier, limit int) ([]Target, error) {
+	rows, err := q.QueryContext(ctx, `SELECT v.page_id, v.number, v.title, v.created_by, v.created_at, v.hidden_at IS NOT NULL, s.key, p.space_id
+		FROM page_versions v JOIN pages p ON p.id = v.page_id JOIN spaces s ON s.id = p.space_id
+		WHERE v.number > 1 AND v.created_by NOT LIKE 's-%' AND p.state != 'deleted' ORDER BY v.created_at DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Target
+	for rows.Next() {
+		var t Target
+		var page, key, space string
+		var n int
+		var at int64
+		if err := rows.Scan(&page, &n, &t.Label, &t.Author, &at, &t.Hidden, &key, &space); err != nil {
+			return nil, err
+		}
+		t.Kind, t.ID, t.At, t.Scope = "version", page+"."+strconv.Itoa(n), time.UnixMilli(at), access.SpaceScope(space)
+		t.Href, t.Text, t.Context = wiki.VersionURL(key, page, n), "Version "+strconv.Itoa(n), "in "+key
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
+// newestImages are the images in the versions visitors cut lately, and
+// every hidden one, so that a moderator may show it again. Visitors upload
+// no images (FR-85 is not built): they place the library's.
+func newestImages(ctx context.Context, q sqlite.Querier, limit int) ([]Target, error) {
+	titles := map[string]string{}
+	for _, im := range wiki.Images() {
+		titles[im.ID] = im.Title
+	}
+	seen := map[string]bool{}
+	var out []Target
+	hidden, err := wiki.HiddenImageList(ctx, q, limit)
+	if err != nil {
+		return nil, err
+	}
+	for _, h := range hidden {
+		seen[h.ID] = true
+		out = append(out, Target{Kind: "image", ID: h.ID, Label: titles[h.ID], Href: "/img/lib/" + h.ID, Author: h.By, At: h.At, Hidden: true, Context: "hidden in every page"})
+	}
+	rows, err := q.QueryContext(ctx, `SELECT v.doc, v.title, v.created_by, v.created_at, s.key, p.space_id
+		FROM page_versions v JOIN pages p ON p.id = v.page_id JOIN spaces s ON s.id = p.space_id
+		WHERE v.created_by NOT LIKE 's-%' AND p.state != 'deleted' AND v.doc LIKE '%"imageId"%' ORDER BY v.created_at DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var raw, title, by, key, space string
+		var at int64
+		if err := rows.Scan(&raw, &title, &by, &at, &key, &space); err != nil {
+			return nil, err
+		}
+		d, err := doc.ParseDoc([]byte(raw))
+		if err != nil {
+			continue
+		}
+		for _, id := range doc.References(d).Images {
+			if seen[id] || titles[id] == "" {
+				continue
+			}
+			seen[id] = true
+			out = append(out, Target{Kind: "image", ID: id, Label: titles[id], Href: "/img/lib/" + id, Author: by, At: time.UnixMilli(at),
+				Scope: access.SpaceScope(space), Context: "in " + key + ": " + title})
+		}
+	}
+	return out, rows.Err()
 }
 
 // newestPages are the pages visitors created, newest first.
