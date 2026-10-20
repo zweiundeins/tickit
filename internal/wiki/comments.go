@@ -27,7 +27,7 @@ func init() {
 			}
 			return access.SpaceScope(s.Space), nil
 		},
-		Topics:  func(id string) []string { return []string{PageTopic(id)} },
+		Topics:  func(id string) []string { return []string{PageTopic(id), PagesTopic} }, // PagesTopic: the feeds
 		Replies: true,
 	})
 }
