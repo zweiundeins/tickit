@@ -13,6 +13,7 @@ import (
 
 	"github.com/zweiundeins/tickit/internal/markup"
 	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/recent"
 	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/views"
 	"github.com/zweiundeins/tickit/internal/web/webtest"
@@ -245,5 +246,67 @@ func TestLinkPage(t *testing.T) {
 	// A page that is no page is refused, not linked.
 	if code, _ := act(t, e, c, "/cmd/issues/"+issue+"/pagelink", "tab1", map[string]any{"value": tracker.NewID(), "seen": 1 << 40}); code != http.StatusNoContent {
 		t.Errorf("a link to no page: %d, want 204 and a refusal", code)
+	}
+}
+
+// FR-59.1: an issue's page posts the view once as it opens (GET never
+// writes); the home page lists what the person viewed, newest first,
+// live; a person keeps the newest 20, and the sweep drops old ones.
+func TestRecentlyViewed(t *testing.T) {
+	e := newList(t)
+	c := webtest.Client(t)
+	_, page := webtest.Get(t, c, e.URL+"/WEB-2")
+	if !strings.Contains(page, `data-kind="issue" data-subject="`+e.ids["WEB-2"]+`"`) {
+		t.Fatalf("the issue page does not post its view")
+	}
+	_, home := webtest.Get(t, c, e.URL+"/")
+	if !strings.Contains(home, "Recently viewed") || !strings.Contains(home, "Issues and pages you open show here.") {
+		t.Fatalf("the home page has no empty Recently viewed")
+	}
+	ev := webtest.Listen(t, c, e.URL+"/stream?tab=htab&v=home:", nil)
+	webtest.Next(t, ev, `id="home-work"`)
+	seen := func(key string) int {
+		code, _ := act(t, e.Env, c, "/cmd/notify/seen", "tab1", map[string]any{"subject": e.ids[key], "kind": "issue"})
+		return code
+	}
+	if code := seen("WEB-2"); code != http.StatusNoContent {
+		t.Fatalf("seen: %d", code)
+	}
+	frame := webtest.Next(t, ev, "Cart 100% broken")
+	if !strings.Contains(frame, `id="home-viewed"`) {
+		t.Errorf("the home view does not list the viewed issue")
+	}
+	seen("WEB-1")
+	frame = webtest.Next(t, ev, "Fix the login")
+	if strings.Index(frame, "Fix the login") > strings.Index(frame, "Cart 100% broken") {
+		t.Errorf("the newest view is not first")
+	}
+	for _, tc := range []struct {
+		body map[string]any
+		want int
+	}{
+		{map[string]any{"subject": e.ids["WEB-1"], "kind": "board"}, http.StatusBadRequest},
+		{map[string]any{"subject": tracker.NewID(), "kind": "issue"}, http.StatusNotFound},
+		{map[string]any{"subject": tracker.NewID(), "kind": "page"}, http.StatusNotFound},
+	} {
+		if code, _ := act(t, e.Env, c, "/cmd/notify/seen", "tab1", tc.body); code != tc.want {
+			t.Errorf("%v: %d, want %d", tc.body, code, tc.want)
+		}
+	}
+	// The newest 20 stay; the sweep drops views older than 30 days.
+	for range 25 {
+		e.issue("", tracker.CreateIssue{Project: e.web, Summary: "More"})
+		e.Do(t, recent.Record{By: e.by(e.ada), Kind: recent.Issue, Subject: e.ids[""]})
+	}
+	count := func() (n int) {
+		e.DB.R.QueryRow(`SELECT count(*) FROM recent_views WHERE person_id = ?`, e.ada.ID).Scan(&n)
+		return n
+	}
+	if n := count(); n != recent.Keep {
+		t.Errorf("Ada keeps %d views, want %d", n, recent.Keep)
+	}
+	e.Do(t, recent.Sweep{At: time.Now().Add(recent.TTL + time.Hour)})
+	if n := count(); n != 0 {
+		t.Errorf("the sweep left %d old views", n)
 	}
 }

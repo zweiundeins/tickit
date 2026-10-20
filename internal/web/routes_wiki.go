@@ -23,6 +23,7 @@ import (
 	"github.com/zweiundeins/tickit/internal/access"
 	"github.com/zweiundeins/tickit/internal/doc"
 	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/recent"
 	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/ui"
 	"github.com/zweiundeins/tickit/internal/views"
@@ -295,7 +296,7 @@ func (s *Server) pageView(ctx context.Context, q sqlite.Querier, me people.Perso
 	return Page{
 		Title: p.Title, Nav: "spaces", Sidebar: sidebar, SidebarLabel: "Space",
 		Views: pageViews,
-		Body:  views.WikiPage(props),
+		Body:  templ.Join(views.WikiPage(props), views.Viewed(recent.Page, p.ID)),
 	}, nil
 }
 

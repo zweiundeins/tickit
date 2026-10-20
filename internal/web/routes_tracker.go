@@ -25,6 +25,7 @@ import (
 	"github.com/zweiundeins/tickit/internal/doc"
 	"github.com/zweiundeins/tickit/internal/markup"
 	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/recent"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/ui"
@@ -169,11 +170,11 @@ func (s *Server) issuePage(w http.ResponseWriter, r *http.Request) {
 			Nav:     "projects",
 			Project: m.ProjectID,
 			Views:   []string{"issue:" + m.ID, "issue-typing:" + m.ID},
-			Body: views.IssuePage(views.IssueFrameProps{
+			Body: templ.Join(views.IssuePage(views.IssueFrameProps{
 				Issue: &m, ID: m.ID, Key: m.Key, Me: actor.ID,
 				ReadOnly: !edit || m.Project.Archived || !m.Deleted.IsZero(), Moderates: hide,
 				Deletes: deletes(ctx, q, actor, []string{m.ProjectID}),
-			}),
+			}), views.Viewed(recent.Issue, m.ID)),
 		}, nil
 	})
 }

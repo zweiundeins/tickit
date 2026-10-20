@@ -265,6 +265,7 @@ const (
 	if (d.open) history.replaceState({issuePanel: id}, '', a.href)
 	else { $_is.back = location.href; history.pushState({issuePanel: id}, '', a.href); d.showModal() }
 	for (const v of ['issue:' + id, 'issue-typing:' + id]) @post('/cmd/watch', {payload: {tab: $_tab, view: v}, requestCancellation: 'disabled'})
+	@post('/cmd/notify/seen', {payload: {tab: $_tab, op: ` + newOp + `, subject: id, kind: 'issue'}, requestCancellation: 'disabled'})
 })(evt.target.closest?.('a[` + IssueLink + `]'))`
 	panelClose = `$_is.id && (` + panelUnwatch + `, $_is.id = '', $_is.at = 0, $_is.pop ? ($_is.pop = false) : history.state?.issuePanel ? history.back() : $_is.back && history.replaceState(null, '', $_is.back))`
 	panelPop   = `((d) => d?.open && !history.state?.issuePanel && ($_is.pop = true, d.close()))(document.getElementById('issue-panel'))`
