@@ -27,7 +27,13 @@ import (
 )
 
 // personName is the name the page's header shows.
-var personName = regexp.MustCompile(`<span id="person-name" class="person-name">([^<]*)</span>`)
+var personName = regexp.MustCompile(`<span class="tk-me__label" id="tk-me-label">([^<]*)</span>`)
+
+// nameTag is the person's name in the header, as the page and the person
+// view render it.
+func nameTag(name string) string {
+	return `<span class="tk-me__label" id="tk-me-label">` + name + `</span>`
+}
 
 // The document and its stream: the person's name, the demo notice, the
 // tab's outcomes; FR-120.1: one guest in every tab of a browser.
@@ -35,7 +41,7 @@ func TestPageAndStream(t *testing.T) {
 	e := webtest.Start(t)
 	c := webtest.Client(t)
 	code, page := webtest.Get(t, c, e.URL+"/")
-	if code != http.StatusOK || !strings.Contains(page, `<html lang="en">`) || !strings.Contains(page, `<div id="stream" hidden data-init=`) ||
+	if code != http.StatusOK || !strings.Contains(page, `<html lang="en" `) || !strings.Contains(page, `<div id="stream" hidden data-init=`) ||
 		!strings.Contains(page, "Public demo. Everything you write is visible to everyone and deleted at the nightly reset (next in ") {
 		t.Fatalf("the home page: %d\n%s", code, page)
 	}
@@ -48,7 +54,7 @@ func TestPageAndStream(t *testing.T) {
 	}
 	events := webtest.Listen(t, c, e.URL+"/stream?tab=tab1", nil)
 	var frames []string
-	for _, want := range []string{`<span id="person-name" class="person-name">` + m[1] + `</span>`, `id="demo-notice"`, `"_stale":false`, `"_outcomes":{}`} {
+	for _, want := range []string{nameTag(m[1]), `id="demo-notice"`, `"_stale":false`, `"_outcomes":{}`} {
 		frames = append(frames, webtest.Next(t, events, want))
 	}
 	// FR-120.2: the session id shows nowhere.
@@ -63,7 +69,7 @@ func TestPageAndStream(t *testing.T) {
 }
 
 // guestID is the person id the document marks as the viewer's.
-var guestID = regexp.MustCompile(`<style>\[data-who="(g-[a-z2-7]{20})"\]`)
+var guestID = regexp.MustCompile(`<style>\.tk-presence>li\[data-who="(g-[a-z2-7]{20})"\]`)
 
 // NFR-46: the page lets people zoom.
 func TestZoom(t *testing.T) {
@@ -91,7 +97,7 @@ func TestOutcomesOnTheStream(t *testing.T) {
 		}
 	}
 	rename("op1", "Ada Lovelace")
-	webtest.Next(t, events, `<span id="person-name" class="person-name">Ada Lovelace</span>`)
+	webtest.Next(t, events, nameTag("Ada Lovelace"))
 	webtest.Next(t, events, `"op1":{"ok":true,"msg":"","field":""}`)
 
 	rename("op2", "A")
@@ -233,7 +239,7 @@ func TestPresence(t *testing.T) {
 	adaName := personName.FindStringSubmatch(page)[1]
 	_, page = webtest.Get(t, bob, e.URL+"/")
 	bobName := personName.FindStringSubmatch(page)[1]
-	row := `<ul id="` + views.PresenceID("thing:1") + `" class="presence"`
+	row := `<ul id="` + views.PresenceID("thing:1") + `" class="tk-presence"`
 
 	first := webtest.Listen(t, ada, e.URL+"/stream?tab=ada1&v=thing:1", nil)
 	webtest.Next(t, first, `<p id="thing-1">thing 1</p>`)
@@ -241,11 +247,11 @@ func TestPresence(t *testing.T) {
 	bobs, closeBob := webtest.Open(t, bob, e.URL+"/stream?tab=bob1&v=thing:1", nil)
 	webtest.Next(t, bobs, row)
 	webtest.Listen(t, ada, e.URL+"/stream?tab=ada2&v=thing:1", nil)
-	both := regexp.MustCompile(`data-who="(g-[a-z2-7]{20})" title="` + regexp.QuoteMeta(adaName) + `, 2 tabs"[^>]*>.*data-who="(g-[a-z2-7]{20})" title="` + regexp.QuoteMeta(bobName) + `"`)
+	both := regexp.MustCompile(`data-who="(g-[a-z2-7]{20})".*?aria-label="` + regexp.QuoteMeta(adaName) + `, 2 tabs".*data-who="(g-[a-z2-7]{20})".*?aria-label="` + regexp.QuoteMeta(bobName) + `"`)
 	for {
 		ev := webtest.Next(t, first, row)
 		if m := both.FindStringSubmatch(ev); m != nil {
-			if strings.Count(ev, "<li data-who") != 2 || strings.Contains(ev, "ada1") || strings.Contains(ev, "bob1") {
+			if strings.Count(ev, "data-who=") != 2 || strings.Contains(ev, "ada1") || strings.Contains(ev, "bob1") {
 				t.Errorf("the row: %s", ev)
 			}
 			break

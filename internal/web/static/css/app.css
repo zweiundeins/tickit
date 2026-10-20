@@ -1,0 +1,172 @@
+/* The app's own pages around the areas: the home welcome, login, privacy,
+ * the error pages, the first-visit hint, the person's menu, and the
+ * floating notices (Reconnecting, a request that did not go through). */
+@layer components {
+	/* The first-visit hint (DM-11): a card at the end of the window. */
+	.tk-hint {
+		position: fixed;
+		inset-block-end: var(--tk-space-4);
+		inset-inline-end: var(--tk-space-4);
+		z-index: var(--tk-z-sticky);
+		max-inline-size: min(22rem, calc(100vw - 2 * var(--tk-space-4)));
+		box-shadow: var(--tk-shadow-overlay);
+	}
+
+	/* ── Home ──────────────────────────────────────────────────────── */
+	.tk-welcome {
+		display: grid;
+		gap: var(--tk-space-6);
+		max-inline-size: 52rem;
+		margin-block-start: var(--tk-space-4);
+	}
+
+	.tk-welcome h1.tk-empty__title {
+		font-size: var(--tk-text-3xl);
+	}
+
+	.tk-welcome__actions {
+		justify-content: center;
+		margin-block-start: var(--tk-space-2);
+	}
+
+	.tk-welcome__points {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+		gap: var(--tk-space-4);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+
+		& li {
+			display: flex;
+			gap: var(--tk-space-3);
+			padding: var(--tk-space-4);
+			border: 1px solid var(--tk-border-subtle);
+			border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+			background: var(--tk-surface-1);
+			color: var(--tk-text-2);
+			font-size: var(--tk-text-sm);
+		}
+
+		& .tk-icon {
+			flex: none;
+			margin-block-start: var(--tk-space-0_5);
+			color: var(--tk-accent-text);
+		}
+
+		& strong {
+			color: var(--tk-text-1);
+		}
+	}
+
+	/* ── Login ─────────────────────────────────────────────────────── */
+	.tk-login {
+		display: grid;
+		gap: var(--tk-space-4);
+		max-inline-size: 26rem;
+		margin-block-start: var(--tk-space-8);
+		padding: var(--tk-space-6);
+		border: 1px solid var(--tk-border);
+		border-radius: calc(var(--tk-radius-lg) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-1);
+		box-shadow: var(--tk-shadow-2);
+
+		& h1 {
+			font-family: var(--tk-font-display);
+			font-size: var(--tk-text-3xl);
+			font-weight: 600;
+		}
+
+		& form .tk-btn--primary {
+			align-self: start;
+		}
+	}
+
+	.tk-login__lede {
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+	}
+
+	/* ── Privacy ───────────────────────────────────────────────────── */
+	.tk-privacy h1 {
+		font-size: var(--tk-text-3xl);
+	}
+
+	/* ── 404 and 410 ───────────────────────────────────────────────── */
+	.tk-error {
+		max-inline-size: 40rem;
+		margin-block-start: var(--tk-space-8);
+
+		& .tk-eyebrow {
+			color: var(--tk-text-muted);
+		}
+	}
+
+	.tk-error__search {
+		display: flex;
+		gap: var(--tk-space-2);
+		inline-size: min(100%, 26rem);
+
+		& > .tk-input-wrap,
+		& > .tk-input {
+			flex: 1;
+			min-inline-size: 0;
+		}
+	}
+
+	/* ── The person's menu ─────────────────────────────────────────── */
+	.tk-me__body {
+		display: grid;
+		gap: var(--tk-space-3);
+		inline-size: min(18rem, calc(100vw - 2rem));
+		padding: var(--tk-space-1) var(--tk-space-2) var(--tk-space-2);
+	}
+
+	.tk-me__who {
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-xs);
+	}
+
+	.tk-rename__row {
+		display: flex;
+		gap: var(--tk-space-2);
+
+		& > .tk-input {
+			flex: 1;
+			min-inline-size: 0;
+		}
+	}
+
+	/* An empty state in a popover. */
+	.tk-empty--sm {
+		gap: var(--tk-space-2);
+		margin: var(--tk-space-3);
+		padding: var(--tk-space-6) var(--tk-space-4);
+
+		& .tk-empty__title {
+			font-size: var(--tk-text-lg);
+		}
+
+		& .tk-empty__text {
+			font-size: var(--tk-text-sm);
+		}
+	}
+
+	/* ── Floating notices ──────────────────────────────────────────── */
+	.tk-float {
+		position: fixed;
+		inset-block-end: var(--tk-space-4);
+		inset-inline: var(--tk-space-4);
+		z-index: var(--tk-z-toast);
+		display: grid;
+		justify-items: center;
+		gap: var(--tk-space-2);
+		pointer-events: none;
+
+		& > .tk-notice {
+			max-inline-size: 30rem;
+			box-shadow: var(--tk-shadow-overlay);
+			pointer-events: auto;
+		}
+	}
+}

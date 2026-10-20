@@ -208,7 +208,7 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	}
 	// Shared views first, the tab's own last: its outcomes arrive with
 	// the frames they concern, in the same tick.
-	list = append(list, s.personView(actor), s.demoView(), connectedView, tabs.View(sid, tab))
+	list = append(list, s.personView(actor), s.demoView(), connectedView, tabs.PrefsView(sid, tab), tabs.View(sid, tab))
 	spec := live.Spec{ID: streamID(actor, tab), Views: unique(list), Reconnect: views.StreamID, Slow: edge.SlowLink(r)}
 	if err := s.hub.Serve(w, r, spec); err != nil {
 		s.log.Debug("stream ended", "err", err)

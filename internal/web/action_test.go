@@ -125,7 +125,7 @@ func TestHeaders(t *testing.T) {
 		if path == "/robots.txt" && string(body) != "User-agent: *\nAllow: /$\nDisallow: /\n" {
 			t.Errorf("robots.txt: %q", body)
 		}
-		if path == "/no/such/page" && (res.StatusCode != http.StatusNotFound || !strings.Contains(string(body), "<h1>Not found</h1>")) {
+		if path == "/no/such/page" && (res.StatusCode != http.StatusNotFound || !strings.Contains(string(body), ">Not found</h1>")) {
 			t.Errorf("an unknown page: %d", res.StatusCode)
 		}
 	}
@@ -163,7 +163,7 @@ func TestLogin(t *testing.T) {
 	e.Account(t, "mod@example.com", "correct horse battery", people.Moderator)
 	c := webtest.Client(t)
 	_, page := webtest.Get(t, c, e.URL+"/login?next=/privacy")
-	if !strings.Contains(page, `<h1>Log in</h1>`) || strings.Contains(page, ">Moderation<") || !strings.Contains(page, "Log in (staff)") {
+	if !strings.Contains(page, `>Log in</h1>`) || strings.Contains(page, ">Moderation<") || !strings.Contains(page, "Log in (staff)") {
 		t.Fatalf("the login page:\n%s", page)
 	}
 	guest := cookie(c, e.URL)
@@ -186,7 +186,7 @@ func TestLogin(t *testing.T) {
 		t.Fatal("the session was not renewed")
 	}
 	_, page = webtest.Get(t, c, e.URL+"/")
-	if !strings.Contains(page, `class="person-name">mod</span>`) || !strings.Contains(page, ">Log out<") || !strings.Contains(page, `href="/moderation"`) || strings.Contains(page, `href="/admin"`) {
+	if !strings.Contains(page, nameTag("mod")) || !strings.Contains(page, ">Log out<") || !strings.Contains(page, `href="/moderation"`) || strings.Contains(page, `href="/admin"`) {
 		t.Errorf("logged in:\n%s", page)
 	}
 	if _, page := webtest.Get(t, withCookie(t, e.URL, guest), e.URL+"/"); strings.Contains(page, ">Log out<") {
@@ -263,6 +263,7 @@ func TestGetNeverWrites(t *testing.T) {
 	e.Account(t, "ada@example.com", "correct horse battery", people.Admin)
 	acted, staff := webtest.Client(t), webtest.Client(t)
 	webtest.Post(t, acted, e.URL+"/cmd/people/rename", `{"tab":"tab1","op":"op1","name":"Bob"}`)
+	webtest.Post(t, acted, e.URL+"/cmd/prefs", `{"tab":"tab1","op":"op1p","key":"theme","value":"light"}`) // a GET draws them
 	e.Login(t, staff, "ada@example.com", "correct horse battery")
 	clients := map[string]*http.Client{"no cookie": http.DefaultClient, "a guest": webtest.Client(t), "a guest who acted": acted, "an account": staff}
 	for _, c := range clients {

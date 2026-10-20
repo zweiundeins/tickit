@@ -239,7 +239,7 @@ templ Header(p HeaderProps, sidebar bool) {
 				@Menu(MenuProps{ID: "tk-me", Label: "Your menu, " + p.Me.Name, Trigger: meTrigger(p.Me), Align: "end", Class: "tk-me"}) {
 					<p class="tk-me__name">
 						@Avatar(AvatarProps{Person: p.Me, Size: SizeMD, Decorative: true})
-						<span>{ p.Me.Name }</span>
+						@MeName(p.Me.Name)
 					</p>
 					@MenuSeparator()
 					if p.MeMenu != nil {
@@ -260,7 +260,17 @@ func unreadCount(n int) string {
 
 templ meTrigger(me Person) {
 	@Avatar(AvatarProps{Person: me, Size: SizeSM, Decorative: true})
-	<span class="tk-me__label">{ me.Name }</span>
+	@MeLabel(me.Name)
+}
+
+// MeLabel is the person's name on their menu's button, and MeName in the
+// menu: a stream that renames the person patches both by their ids.
+templ MeLabel(name string) {
+	<span class="tk-me__label" id="tk-me-label">{ name }</span>
+}
+
+templ MeName(name string) {
+	<span id="tk-me-name">{ name }</span>
 }
 
 // Brand is tickit's mark and name, a link home.

@@ -28,7 +28,7 @@ func (s *Server) demoView() live.View {
 		Topics: []string{demo.Topic},
 		Every:  time.Minute,
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
-			return patch(ctx, views.DemoNotice(demo.Notice(time.Now())))
+			return patch(ctx, views.DemoNotice(demo.Remaining(time.Now()), false))
 		},
 	}
 }

@@ -59,11 +59,33 @@ Login and logout are actions too (`POST /cmd/login`, `POST /cmd/logout`), outsid
 
 ## Streams, views and topics
 
-- Each document opens one stream, `GET /stream?tab=<tab>&v=<view>,<view>`, from `data-init` on `#stream`. Each `v` names a view factory registered by an area (`issue:<id>`, `board:<projectID>`, `list:<hash>`, `page:<id>`, `tree:<spaceID>`) with `s.views.Register(kind, f)`, where `f(ctx, q, actor, arg) (live.View, error)` checks that the actor may read it (`access.ErrNotFound` answers 404, a denial 403, an unknown kind 400). Every stream also gets the person's view (`person:<id>`: name, bell, unread count), the demo view (`demo`: the reset notice), a `connected` view that hides "Reconnecting", and the tab view last. The page's views reach `openStream` as the signal `_views`, never inside an expression.
-- The stream's `Spec.ID` is `<personID>.<tab>`, so `hub.Watchers(key)` yields who watches a view without a read (MP-01, MP-02). A kind registered with `s.views.RegisterWithPresence` makes every stream that watches one of its views watch `presence:<key>` too: a shared view with `Presence: true` that lists one face per person in the order they came, with the tab count in the tooltip. The page puts `views.Presence(views.PresenceID(key), nil)` where the row goes; the document's own style puts the viewer's face first and shows at most 8.
+- Each document opens one stream, `GET /stream?tab=<tab>&v=<view>,<view>`, from `data-init` on `#stream`. Each `v` names a view factory registered by an area (`issue:<id>`, `board:<projectID>`, `list:<hash>`, `page:<id>`, `tree:<spaceID>`) with `s.views.Register(kind, f)`, where `f(ctx, q, actor, arg) (live.View, error)` checks that the actor may read it (`access.ErrNotFound` answers 404, a denial 403, an unknown kind 400). Every stream also gets the person's view (`person:<id>`: name, bell, unread count), the demo view (`demo`: the reset notice), a `connected` view that hides "Reconnecting", the session's prefs view (`prefs:<tab>`, the signal `_prefs`), and the tab view last. The page's views reach `openStream` as the signal `_views`, never inside an expression.
+- The stream's `Spec.ID` is `<personID>.<tab>`, so `hub.Watchers(key)` yields who watches a view without a read (MP-01, MP-02). A kind registered with `s.views.RegisterWithPresence` makes every stream that watches one of its views watch `presence:<key>` too: a shared view with `Presence: true` that lists one face per person in the order they came, with the tab count in the tooltip. The page puts `views.Presence(views.PresenceID(key), nil)` where the row goes (a shared `ui.PresenceRow`); the document's own style puts the viewer's face first, outlined, and shows at most 8.
 - A side panel or a tab switch adds a view to the open stream with `POST /cmd/watch` (`hub.Watch`), and records it in the tab row so that a reconnect restores it; `POST /cmd/unwatch` takes it off.
 - A view's key holds everything its render depends on. Shared views render nothing about the viewer; per-viewer parts go in `tab:<id>`, `person:<id>` or signals.
 - Topics: `project:<id>`, `projects` (any change to any project: the project list, pickers), `issue:<id>`, `issues` (any change to any issue or issue comment: lists, search, chips, open counts), `board:<projectID>` (a project's board and backlog), `filters` (saved filters), `space:<id>`, `page:<id>`, `pages` (any page change), `person:<id>`, `people` (names and faces), `tab:<id>`, `demo`. A command touches every topic whose views it changes.
+
+## Pages and the document
+
+A page handler answers with `s.render(w, r, status, build)`, where `build` reads in the request's one read transaction and returns a `web.Page`:
+
+```go
+return Page{
+	Title:      "Board",                 // the document's title adds "tickit"
+	Nav:        "projects",              // the header link marked current (ui.MainNav), or "moderation", "admin"
+	Sidebar:    ui.SideNav(sideNav),     // nil for none; SidebarLabel names it ("Project" by default)
+	Width:      "full",                  // "" (80rem), "prose" (46rem), "full"
+	Views:      []string{"board:" + id}, // the stream's views, besides the person's, the demo's, the prefs' and the tab's
+	Components: []string{"select"},      // Starbase components, loaded with what they render
+	Body:       views.Board(b),
+}, nil
+```
+
+`Query` fills the header's search box, `Scripts` loads further modules by their static name, and `Create` replaces the header's create dialog (id `views.CreateID`, a placeholder until the tracker brings one). `views.Layout` renders the rest: the head with the bundle, the favicon, the font preloads, the import map with the CSP nonce, Datastar and `newest-frame.js`; `#stream`; `ui.Shell` with the header, the demo notice, the first-visit hint (DM-11) and the footer; "Reconnecting" (MP-10.1) and `$_problem` as floating notices.
+
+Display preferences (theme `system`, `dark` or `light`; style `pixel` or `smooth`; density `comfortable` or `compact`; a dismissed demo notice; a dismissed hint) are the session's row in `prefs` (`tabs.Prefs`, `tabs.GetPrefs`). `POST /cmd/prefs {tab, op, key, value}` sets one through `tabs.Act` (`tabs.SetPref`, 400 for an unknown key or value) and touches `tabs.PrefsTopic(sid)`; every stream watches `tabs.PrefsView`, which patches `$_prefs`, and the document puts it on `<html>`, so every tab of the session follows. GET draws them from the first byte (`ui.Prefs`); no cookie carries them (NFR-31).
+
+A person's face is `ui.FaceOf(id)`, and their hue an index of 0 to 15 (`people.Person.Hue`, `data-hue`; the stylesheet turns it into degrees, times 22.5). `views.UIPerson` is the one place that makes a `ui.Person` of a `people.Person`; seeded people keep their own hue.
 
 ## Event sourcing
 

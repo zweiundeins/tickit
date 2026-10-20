@@ -28,25 +28,25 @@ func TestHome(t *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	p.Wait(t, `document.querySelector('#demo-notice') && document.querySelector('.connection').style.display === 'none'`, 5*time.Second)
+	p.Wait(t, `document.querySelector('#demo-notice') && document.getElementById('reconnecting').hidden`, 5*time.Second)
 
 	rename := func(name string) {
 		t.Helper()
 		p.Eval(t, `(() => {
-			document.querySelector('.person-menu').open = true
+			document.getElementById('tk-me').showPopover()
 			const input = document.getElementById('rename-name')
 			input.value = `+jsQuote(name)+`
 			input.dispatchEvent(new Event('input', {bubbles: true}))
-			document.querySelector('.rename button[type=submit]').click()
+			document.querySelector('.tk-rename button[type=submit]').click()
 			return true
 		})()`, nil)
 	}
 	rename("A")
-	p.Wait(t, `document.querySelector('.rename .outcome').textContent === 'A name has 2 to 30 characters.'`, 5*time.Second)
+	p.Wait(t, `document.getElementById('rename-outcome').textContent === 'A name has 2 to 30 characters.' && document.getElementById('rename-outcome').dataset.kind === 'refused'`, 5*time.Second)
 	p.Wait(t, `!document.getElementById('rename-name').readOnly`, 5*time.Second)
 	rename("Ada Browser")
-	p.Wait(t, `document.querySelector('.rename .outcome').textContent.startsWith('Saved.')`, 5*time.Second)
-	p.Wait(t, `document.getElementById('person-name').textContent === 'Ada Browser'`, 5*time.Second)
+	p.Wait(t, `document.getElementById('rename-outcome').textContent.startsWith('Saved.')`, 5*time.Second)
+	p.Wait(t, `document.getElementById('tk-me-label').textContent === 'Ada Browser' && document.getElementById('tk-me-name').textContent === 'Ada Browser'`, 5*time.Second)
 	if errs := p.Errors(); len(errs) > 0 {
 		t.Errorf("the page reported: %q", errs)
 	}
