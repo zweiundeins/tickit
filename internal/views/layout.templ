@@ -64,6 +64,7 @@ templ Layout(s Shell) {
 			} else {
 				@createPlaceholder()
 			}
+			@confirmDialog()
 		</body>
 	</html>
 }
@@ -176,4 +177,16 @@ templ createPlaceholder() {
 // with the id PresenceID of their view's key; the stream fills it.
 templ Presence(id string, list []Present) {
 	@ui.PresenceRow(ui.PresenceProps{ID: id, Label: "Here now", People: entries(list), Max: Shown, Shared: true})
+}
+
+// confirmDialog asks before an action that cannot be taken back (Ask).
+templ confirmDialog() {
+	@ui.Dialog(ui.DialogProps{ID: ConfirmID, Title: "Are you sure?", Size: ui.SizeSM, Dismissible: true, Footer: confirmFooter()}) {
+		<p class="tk-confirm__text"></p>
+	}
+}
+
+templ confirmFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: ConfirmID, Attrs: templ.Attributes{"autofocus": true}})
+	@ui.Button(ui.ButtonProps{Label: "Confirm", Variant: ui.Danger, Attrs: templ.Attributes{"data-confirm": "", "data-on:click": confirmed}})
 }

@@ -134,3 +134,20 @@ var (
 	reconnectHidden = `!$_stale`
 	problemHidden   = `!$_problem`
 )
+
+// ConfirmID is the document's dialog that asks before an action that
+// cannot be taken back (Ask).
+const ConfirmID = "tk-confirm"
+
+// Ask runs act once the person confirms question in the document's
+// confirm dialog, whose button says label. The dialog clicks the asking
+// element again, marked, and the focus goes back to it when the dialog
+// closes. question and label are constants, never a person's text.
+func Ask(question, label, act string) string {
+	return `el.dataset.asked ? (delete el.dataset.asked, ` + act + `) : ((d) => { d.querySelector('.tk-confirm__text').textContent = ` + jsString(question) +
+		`; d.querySelector('[data-confirm] .tk-btn__label').textContent = ` + jsString(label) + `; d.asker = el; d.showModal() })(document.getElementById('` + ConfirmID + `'))`
+}
+
+// confirmed is the confirm dialog's button: it closes the dialog and
+// clicks the element that asked, marked as confirmed.
+const confirmed = `((b) => { el.closest('dialog').close(); if (b?.isConnected) { b.dataset.asked = '1'; b.click() } })(el.closest('dialog').asker)`
