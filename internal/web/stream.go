@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/a-h/templ"
@@ -184,6 +185,11 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
+	release, ok := s.streams.open(w, r)
+	if !ok {
+		return
+	}
+	defer release()
 	if len(specs) > 0 && mustChange(w, actor) { // FR-141.1: the account's page alone, which has no views
 		return
 	}
@@ -230,6 +236,56 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	if err := s.hub.Serve(w, r, spec); err != nil {
 		s.log.Debug("stream ended", "err", err)
 	}
+}
+
+// Streams per client address (NFR-41): the hub's cap of all streams is
+// not for one client to take. An address may open MaxStreamsPerAddr at
+// once, which leaves room for a room of people behind one NAT, and open
+// them at StreamOpens a second after a burst of as many. A client on the
+// host itself (a probe, a load test: loopback without a proxy's header)
+// has the hub's cap alone.
+const (
+	MaxStreamsPerAddr = 40
+	StreamOpens       = 1
+)
+
+type streamLimits struct {
+	opens *edge.Limiter
+	mu    sync.Mutex
+	count map[string]int
+}
+
+func newStreamLimits() *streamLimits {
+	return &streamLimits{opens: edge.NewLimiter(StreamOpens, MaxStreamsPerAddr), count: map[string]int{}}
+}
+
+// open counts a stream of the request's address, or answers 503 (the page
+// tries again later, as for the hub's cap) or 429 and reports false.
+func (l *streamLimits) open(w http.ResponseWriter, r *http.Request) (release func(), ok bool) {
+	if edge.ClientIP(r).IsLoopback() {
+		return func() {}, true
+	}
+	addr := edge.ClientKey(r)
+	l.mu.Lock()
+	if l.count[addr] >= MaxStreamsPerAddr {
+		l.mu.Unlock()
+		http.Error(w, "Too many open pages from this address.", http.StatusServiceUnavailable)
+		return nil, false
+	}
+	if !l.opens.Allow(addr, 1, time.Now()) {
+		l.mu.Unlock()
+		http.Error(w, tooMany, http.StatusTooManyRequests)
+		return nil, false
+	}
+	l.count[addr]++
+	l.mu.Unlock()
+	return func() {
+		l.mu.Lock()
+		defer l.mu.Unlock()
+		if l.count[addr]--; l.count[addr] <= 0 {
+			delete(l.count, addr)
+		}
+	}, true
 }
 
 // LoginCheck is how often an account's stream checks that its login

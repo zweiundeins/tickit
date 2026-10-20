@@ -64,6 +64,7 @@ type Server struct {
 
 	limits  *limits         // the rate limits of actions (DM-04)
 	signIn  *edge.Limiter   // logins and logouts per address (NFR-09.1)
+	streams *streamLimits   // streams opened and open per address (NFR-41)
 	lockout *people.Lockout // failed logins per email and address (NFR-09.2)
 	metrics *metrics
 
@@ -121,6 +122,7 @@ func New(cfg Config) (*Server, error) {
 		ttl:      cfg.SessionTTL,
 		limits:   newLimits(),
 		signIn:   edge.NewLimiter(0.5, 10), // 30 a minute, 10 at once
+		streams:  newStreamLimits(),
 		lockout:  people.NewLockout(),
 		metrics:  newMetrics(cfg.DB),
 		mux:      http.NewServeMux(),

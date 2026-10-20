@@ -324,3 +324,45 @@ func TestClosedKeysStayUnknown(t *testing.T) {
 		t.Errorf("a closed project's key: %s\nan unknown key: %s", closed, unknown)
 	}
 }
+
+// NFR-41, DM-04: one address cannot take every stream: it holds 40 at
+// once and opens them at a second each after a burst of 40.
+func TestStreamsPerAddress(t *testing.T) {
+	e := webtest.Start(t)
+	c := webtest.Client(t)
+	webtest.Get(t, c, e.URL+"/")
+	from := func(addr string) http.Header { return http.Header{"X-Forwarded-For": {addr}} }
+	code := func(addr, tab string) int {
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+		defer cancel()
+		req, _ := http.NewRequestWithContext(ctx, "GET", e.URL+"/stream?tab="+tab+"&v=", nil)
+		req.Header = from(addr)
+		res, err := c.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res.StatusCode
+	}
+	var closers []func()
+	for i := range web.MaxStreamsPerAddr {
+		_, stop := webtest.Open(t, c, fmt.Sprintf("%s/stream?tab=t%d&v=", e.URL, i), from("203.0.113.7"))
+		closers = append(closers, stop)
+	}
+	if got := code("203.0.113.7", "one-more"); got != http.StatusServiceUnavailable {
+		t.Errorf("a stream past the address's cap: %d", got)
+	}
+	if got := code("198.51.100.9", "elsewhere"); got != http.StatusOK {
+		t.Errorf("a stream from another address: %d", got)
+	}
+	for _, stop := range closers {
+		stop()
+	}
+	limited := false
+	for i := 0; i < web.MaxStreamsPerAddr+5 && !limited; i++ {
+		limited = code("192.0.2.4", fmt.Sprintf("r%d", i)) == http.StatusTooManyRequests
+	}
+	if !limited {
+		t.Error("an address opened streams without a limit")
+	}
+}
