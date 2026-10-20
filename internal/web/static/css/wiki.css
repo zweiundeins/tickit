@@ -420,9 +420,11 @@
 			border-block-end-color: var(--tk-border);
 		}
 
+		/* Focus: the line under the title, 2px in the focus colour. */
 		&:focus-visible {
 			outline: none;
-			border-block-end-color: var(--tk-accent);
+			border-block-end-color: var(--tk-focus);
+			box-shadow: 0 1px 0 var(--tk-focus);
 		}
 	}
 
