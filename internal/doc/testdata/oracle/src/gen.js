@@ -20,7 +20,7 @@ export function rng(seed) {
 }
 
 const words = 'the quick brown fox jumps over lazy dog release plan sprint issue page editor server writer step version cut fold table list task review deploy schema'.split(' ')
-const people = ['s-ada', 's-grace', 's-linus', 's-sunny-otter', 'g-mfrggzdfmztwq2lknnwg23tp', 'a-0192f0c4-7b1e-7cc3-9d2a-5f6e7a8b9c0d']
+const people = ['s-ada', 's-grace', 's-linus', 's-sunny-otter', 'g-mfrggzdfmztwq2lknnwg', 'a-0192f0c4-7b1e-7cc3-9d2a-5f6e7a8b9c0d']
 const languages = ['', 'go', 'js', 'sql', 'text', 'bash']
 const typed = Array.from('abcdefghijklmnopqrstuvwxyz  .,é😀ß')
 
