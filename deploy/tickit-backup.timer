@@ -1,9 +1,10 @@
-# /etc/systemd/system/tickit-backup.timer
+# /etc/systemd/system/tickit-backup.timer: every day at 03:30 Zurich time,
+# half an hour before the demo's nightly reset, which the app runs itself.
 [Unit]
-Description=Back up the tickit database every six hours
+Description=Back up the tickit database every day
 
 [Timer]
-OnCalendar=*-*-* 00/6:17:00
+OnCalendar=*-*-* 03:30:00 Europe/Zurich
 Persistent=true
 
 [Install]

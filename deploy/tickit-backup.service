@@ -1,6 +1,8 @@
 # /etc/systemd/system/tickit-backup.service: a consistent copy of the database
-# (VACUUM INTO) while the server runs. The backup command keeps the newest 28
-# copies in /var/lib/tickit/backups: a week at four a day.
+# (VACUUM INTO) while the server runs, checked with PRAGMA integrity_check.
+# The backup command keeps the newest 30 copies in /var/lib/tickit/backups, a
+# month at one a day. A copy that fails the check stays as .bad, no copy is
+# deleted, and the unit fails.
 [Unit]
 Description=Back up the tickit database
 
@@ -9,7 +11,10 @@ Type=oneshot
 User=tickit
 Group=tickit
 StateDirectory=tickit
-ExecStart=/opt/tickit/tickit backup -db /var/lib/tickit/tickit.db -backups /var/lib/tickit/backups -keep 28
+StateDirectoryMode=0700
+ExecStart=/opt/tickit/tickit backup -db /var/lib/tickit/tickit.db -backups /var/lib/tickit/backups -keep 30
+Nice=10
+IOSchedulingClass=idle
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes

@@ -1,47 +1,61 @@
-# /etc/systemd/system/tickit.service
+# /etc/systemd/system/tickit.service: tickit on tickitdemo.zweiundeins.gmbh.
 [Unit]
-Description=tickit (Go, Datastar, SQLite)
+Description=tickit (issue tracker and wiki demo, Go, Datastar, SQLite)
+Documentation=https://github.com/mbolli/tickit/blob/master/docs/deploy.md
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 User=tickit
 Group=tickit
-# /var/lib/tickit holds the database and its backups, /run/tickit the socket.
+# /var/lib/tickit holds the database and its backups, the only state.
 StateDirectory=tickit
-RuntimeDirectory=tickit
-RuntimeDirectoryMode=0755
+StateDirectoryMode=0700
 WorkingDirectory=/var/lib/tickit
-# Optional: TICKIT_* settings the command line leaves out, and secrets.
+# Optional, mode 0600: TICKIT_* settings the command line leaves out.
 EnvironmentFile=-/etc/tickit/tickit.env
+# The site on 127.0.0.1:7105 for Caddy, /metrics on 127.0.0.1:7205 (port +
+# 100) for Prometheus only. -secure: Caddy serves HTTPS, so a __Host- cookie
+# and HSTS. Logs: slog text on stderr, into the journal.
 ExecStart=/opt/tickit/tickit serve \
-	-addr unix:/run/tickit/tickit.sock \
+	-addr 127.0.0.1:7105 \
+	-metrics 127.0.0.1:7205 \
 	-db /var/lib/tickit/tickit.db \
 	-secure \
 	-streams 200
 Restart=always
 RestartSec=1
-# SIGTERM: the streams end (pages reconnect to the next process), actions
-# finish, the writer commits what is queued.
+# SIGTERM: the streams end with sse.Reconnect, requests get 10 s to finish
+# and still reach the writer, the projectors stop, the writer commits what
+# is queued, the database closes. 30 s covers that with room to spare.
 KillSignal=SIGTERM
-TimeoutStopSec=20
+TimeoutStopSec=30
 LimitNOFILE=65536
 
-# An open stream holds up to 2 MiB of compressor state, so -streams 200 needs
-# about 400 MiB on top of the process. GOMEMLIMIT makes the garbage collector
-# work harder before MemoryHigh throttles. Change the four together.
+# Memory, from lith's template for -streams 200. The hub gives the streams
+# half of GOMEMLIMIT, 224 MiB, for their encoders, 32 KiB each and the views'
+# frames: about 129 streams at zstd 2^19 and about 250 once the budget moves
+# them to 2^18 with low memory, so 200 fit. The other half is the process and
+# the garbage between collections. GOMEMLIMIT makes the collector work harder
+# before MemoryHigh throttles and MemoryMax ends the process. Change these
+# and -streams together.
 Environment=GOMEMLIMIT=448MiB
 MemoryHigh=512M
 MemoryMax=640M
 TasksMax=256
+# Half the weight of the host's other units when the cores are busy.
+CPUWeight=50
 
-# Caddy reaches the socket. The service itself may not reach localhost,
-# where other services listen (Caddy's admin API, databases); DNS goes
-# through systemd-resolved's stub. To listen on a loopback port instead:
-# -addr 127.0.0.1:8080, drop IPAddressDeny, and point tickit.caddy there.
-IPAddressDeny=localhost
-IPAddressAllow=127.0.0.53 127.0.0.54
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# Network: loopback only, both ways. Caddy and Prometheus connect from
+# 127.0.0.1; tickit itself connects nowhere (it sends no mail). It may bind
+# its two ports and no other. Not IPAddressDeny=localhost, the template's
+# setting for a Unix socket: on a loopback port it would shut Caddy out too.
+IPAddressDeny=any
+IPAddressAllow=localhost
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SocketBindAllow=tcp:7105
+SocketBindAllow=tcp:7205
+SocketBindDeny=any
 
 NoNewPrivileges=yes
 ProtectSystem=strict
