@@ -47,6 +47,8 @@ type Limits struct {
 	TableRows     int      `json:"tableRows"`
 	TableColumns  int      `json:"tableColumns"`
 	AttrLength    int      `json:"attrLength"`
+	ListFilter    int      `json:"listFilter"` // characters of an issue list's filter (FR-104)
+	ListRows      int      `json:"listRows"`   // rows an issue list shows at most
 	LinkSchemes   []string `json:"linkSchemes"`
 	CodeLanguages []string `json:"codeLanguages"`
 	HeadingLevels []int    `json:"headingLevels"`

@@ -171,6 +171,7 @@ var secCases = []secCase{
 	{name: "pages/comment/edit", pattern: "POST /cmd/pages/comment/edit", need: ownComment, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/comment/edit", "comment", "@pcomment", "body", "Edited")},
 	{name: "pages/comment/delete", pattern: "POST /cmd/pages/comment/delete", need: ownComment, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/comment/delete", "comment", "@pcomment")},
 	{name: "pages/comment/hide", pattern: "POST /cmd/pages/comment/hide", need: admin, guard: true, outcome: true, by: wOwner, req: at("/cmd/pages/comment/hide", "comment", "@pcomment", "hidden", true)},
+	{name: "pages/issue", pattern: "POST /cmd/pages/issue", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/issue", "page", "@page", "project", "@proj", "summary", "From the page", "find", "The plan", "block", 0, "nth", 0)},
 	{name: "pages/open", pattern: "POST /cmd/pages/{id}/open", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/{page}/open", "base", 0, "client", "0123456789ab")},
 	{name: "pages/commit", pattern: "POST /cmd/pages/{id}/commit", need: edit, guard: true, by: wMember, req: commitReq},
 	{name: "pages/presence", pattern: "POST /cmd/pages/{id}/presence", need: self, guard: true, by: wMember, noop: true, req: func(f *fixture, open bool) (string, map[string]any) {

@@ -1,0 +1,127 @@
+package views
+
+import (
+	"strconv"
+
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/ui"
+)
+
+// IssueListEmbed is the inside of an issue list on a page (FR-104): its
+// description, then key, summary, status and assignee of each issue, as
+// the issue list has them now, and a link to the whole list.
+templ IssueListEmbed(l EmbeddedList) {
+	@templ.Raw(l.Desc)
+	if l.Note != "" {
+		<p class="issue-list__note">{ l.Note }</p>
+	}
+	switch {
+		case l.Missing != "":
+			<p class="issue-list__empty">{ l.Missing }</p>
+		case len(l.Results.Issues) == 0:
+			<p class="issue-list__empty">No issue matches this filter.</p>
+		default:
+			<table class="issue-list__table">
+				<thead>
+					<tr><th scope="col">Key</th><th scope="col">Summary</th><th scope="col">Status</th><th scope="col">Assignee</th></tr>
+				</thead>
+				<tbody>
+					for _, i := range l.Shown() {
+						<tr data-key={ i.Key }>
+							<td class="issue-list__key">
+								<a href={ templ.SafeURL("/" + i.Key) }>
+									@ui.TypeIcon(ui.IssueType(i.Type))
+									<span>{ i.Key }</span>
+								</a>
+							</td>
+							<td>{ i.Summary }</td>
+							<td>
+								@ui.StatusLozenge(i.StatusName, uiCat(i.Category))
+							</td>
+							<td>
+								if p, ok := l.People[i.Assignee]; ok && i.Assignee != "" {
+									<span class="issue-list__person">
+										@ui.Avatar(ui.AvatarProps{Person: UIPerson(p), Size: ui.SizeXS, Decorative: true})
+										{ p.Name }
+									</span>
+								} else {
+									<span class="issue-list__none">Unassigned</span>
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+	}
+	if l.Missing == "" {
+		<p class="issue-list__more">
+			<a href={ templ.SafeURL(l.Href) }>
+				if l.Results.Total > len(l.Shown()) {
+					{ "All " + strconv.Itoa(l.Results.Total) + " issues in the issue list" }
+				} else {
+					Open in the issue list
+				}
+			</a>
+		</p>
+	}
+}
+
+// PageListsRegion is the editor page's lists element (ListsID): hidden,
+// it holds the saved filters and every issue list's rows for the editor's
+// node views, which copy them (FR-104).
+templ PageListsRegion(p PageListsProps) {
+	<div id={ ListsID } hidden>
+		<ul data-filters>
+			for _, f := range p.Filters {
+				<li data-id={ f.ID }>{ f.Name }</li>
+			}
+		</ul>
+		for _, l := range p.Lists {
+			<div data-list={ l.Key }>
+				@templ.Raw(l.HTML)
+			</div>
+		}
+	</div>
+}
+
+// PageIssueUI is "Create issue" on a selection of the page's text
+// (FR-105): the button that follows the selection and the dialog with
+// the project and the summary.
+templ PageIssueUI(p PageIssueProps) {
+	if len(p.Projects) > 0 {
+		<div class="wk-sel" hidden data-init={ selWatch }>
+			@ui.Button(ui.ButtonProps{Label: "Create issue", Icon: "plus", Size: ui.SizeSM, Variant: ui.Primary, Attrs: templ.Attributes{"data-on:mousedown": keepSelection, "data-on:click": selCreate}})
+		</div>
+		<p class="wk-problem wk-issue-done" role="status" data-text="$_pissue.done"></p>
+		@ui.Dialog(ui.DialogProps{ID: PageIssueID, Title: "Create an issue from the selection", Size: ui.SizeSM, Footer: pageIssueFooter(p.Page), Attrs: templ.Attributes{
+			"data-signals":           pageIssueSignals(p.Project),
+			"data-effect":            pageIssueSettled + "; " + pageIssueDone,
+			"data-on:datastar-fetch": pageIssueFailed,
+			"data-on:close":          pageIssueClosed,
+		}}) {
+			<div class="stack">
+				{{ fp := ui.FieldProps{ID: "page-issue-project", Label: "Project", Required: true} }}
+				@ui.Field(fp) {
+					<span class="tk-select">
+						<select id={ fp.ID } data-bind="_pissue.project" required>
+							for _, pr := range p.Projects {
+								<option value={ pr.ID } selected?={ pr.ID == p.Project }>{ pr.Name + " (" + pr.Key + ")" }</option>
+							}
+						</select>
+						@ui.Icon("chevron-down")
+					</span>
+				}
+				{{ fs := ui.FieldProps{ID: "page-issue-summary", Label: "Summary", Required: true, Hint: "The selected text. The issue links back to this page."} }}
+				@ui.Field(fs) {
+					@ui.Input(ui.InputProps{ID: fs.ID, Required: true, MaxLength: tracker.MaxSummary, DescribedBy: fs.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_pissue.summary", "data-attr:readonly": Pending("_pissue.op")}})
+				}
+				<p class="tk-field__error" role="status" data-text="$_pissue.msg"></p>
+			</div>
+		}
+	}
+}
+
+templ pageIssueFooter(page string) {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: PageIssueID})
+	@ui.Button(ui.ButtonProps{Label: "Create issue", Icon: "plus", Variant: ui.Primary, Attrs: templ.Attributes{"data-page": page, "data-on:click": pageIssueCreate, "data-attr:aria-busy": Busy("_pissue.op")}})
+}

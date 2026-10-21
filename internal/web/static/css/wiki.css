@@ -540,4 +540,19 @@
 			accent-color: var(--tk-accent);
 		}
 	}
+
+	/* "Create issue" under a selection of the page's text (FR-105). */
+	.wk-sel {
+		position: absolute;
+		z-index: var(--tk-z-dropdown);
+		padding: var(--tk-space-1);
+		border: 1px solid var(--tk-border-strong);
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-overlay);
+		box-shadow: var(--tk-shadow-2);
+
+		&[hidden] {
+			display: none;
+		}
+	}
 }

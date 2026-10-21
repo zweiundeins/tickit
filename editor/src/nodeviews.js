@@ -1,10 +1,11 @@
 // Node views for the atoms whose text the server knows (FR-100, FR-103,
-// FR-67), the clickable task checkbox and images with alt text (FR-84).
+// FR-67), the clickable task checkbox, images with alt text (FR-84) and
+// issue lists with their filter form and rows (FR-104).
 // Chips, mentions and page links read the editor's chips attribute:
 //   {"WEB-12": {summary, status, category, type} | {state: "deleted"|"unknown"},
 //    "people": {"<id>": {name}}, "pages": {"<id>": {title} | {state: "gone"}}}
 // so a changed issue shows in every open editor with the next frame.
-import { imageSrc } from './schema.js'
+import { imageSrc, limits, listAttrs, listDescription } from './schema.js'
 
 // The issue type icons of the design system (design.md 7.5), 16 grid.
 const TILE = 'M1 0h14v1h1v14h-1v1H1v-1H0V1h1z'
@@ -216,5 +217,104 @@ export class ImageView {
 	}
 	ignoreMutation() {
 		return true
+	}
+}
+
+// issue_list: an atom block with a form for its filter (a saved filter, or
+// one typed as the issue list's query string, and a row cap) whose changes
+// are attr steps, and the rows the server renders for it now into the
+// page's lists element (ctx.list), which a stream view keeps live.
+export class IssueListView {
+	constructor(node, view, getPos, ctx) {
+		this.node = node
+		this.view = view
+		this.getPos = getPos
+		this.ctx = ctx
+		ctx.lists.add(this)
+		const field = (text, input) => el('label', { class: 'issue-list__field' }, el('span', {}, text), input)
+		this.saved = el('select', { 'aria-label': 'Saved filter' })
+		this.filter = el('input', { type: 'text', 'aria-label': 'Filter', placeholder: 'status=todo&project=WEB', maxlength: String(limits.listFilter), autocomplete: 'off', spellcheck: 'false' })
+		this.limit = el('input', { type: 'number', 'aria-label': 'Rows', min: '1', max: String(limits.listRows), step: '1' })
+		this.form = el('div', { class: 'issue-list__form' }, field('Saved filter', this.saved), field('or a filter', this.filter), field('Rows', this.limit))
+		this.desc = el('p', { class: 'issue-list__desc' })
+		this.rows = el('div', { class: 'issue-list__rows' })
+		this.dom = el('div', { class: 'issue-list issue-list--edit', contenteditable: 'false' }, this.desc, this.form, this.rows)
+		this.saved.addEventListener('change', () => this.set({ savedFilter: this.saved.value, filter: this.saved.value ? '' : this.node.attrs.filter }))
+		let timer = 0
+		this.filter.addEventListener('input', () => {
+			clearTimeout(timer)
+			timer = setTimeout(() => this.set({ filter: this.filter.value, savedFilter: '' }), 500)
+		})
+		this.filter.addEventListener('change', () => (clearTimeout(timer), this.set({ filter: this.filter.value, savedFilter: '' })))
+		this.limit.addEventListener('change', () => this.set({ limit: this.limit.value }))
+		this.form.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') e.preventDefault(), e.target.dispatchEvent(new Event('change'))
+			if (e.key === 'Escape') e.preventDefault(), view.focus()
+		})
+		// A row's link opens with Ctrl or Cmd, as a chip's does.
+		this.rows.addEventListener('click', (e) => {
+			const a = e.target.closest('a[href]')
+			if (!a) return
+			e.preventDefault()
+			if (e.ctrlKey || e.metaKey) window.open(a.href, '_blank', 'noopener')
+		})
+		this.render()
+		if (ctx.focusList) (ctx.focusList = false), requestAnimationFrame(() => this.filter.focus())
+	}
+	// set changes the node's attributes, one attr step each.
+	set(changes) {
+		const pos = this.getPos()
+		if (pos == null || !this.ctx.editable()) return
+		const next = listAttrs({ ...this.node.attrs, ...changes })
+		const tr = this.view.state.tr
+		for (const k of ['filter', 'savedFilter', 'limit']) if (next[k] !== this.node.attrs[k]) tr.setNodeAttribute(pos, k, next[k])
+		if (tr.docChanged) this.view.dispatch(tr)
+	}
+	render() {
+		const a = this.node.attrs
+		const filters = this.ctx.filters()
+		const active = document.activeElement
+		const opts = [['', 'None']].concat(filters.map((f) => [f.id, f.name]))
+		if (a.savedFilter && !filters.some((f) => f.id === a.savedFilter)) opts.push([a.savedFilter, 'A saved filter'])
+		const sig = JSON.stringify(opts)
+		if (sig !== this.optsSig) {
+			this.optsSig = sig
+			this.saved.replaceChildren(...opts.map(([v, t]) => new Option(t, v)))
+		}
+		this.saved.value = a.savedFilter
+		if (active !== this.filter) this.filter.value = a.filter
+		if (active !== this.limit) this.limit.value = String(a.limit)
+		const off = !this.ctx.editable()
+		for (const i of [this.saved, this.filter, this.limit]) i.disabled = off
+		const name = filters.find((f) => f.id === a.savedFilter)?.name ?? ''
+		this.desc.replaceChildren(...listDescription(a, name).map((p) => (typeof p === 'string' ? p : el(p[0], {}, p[1]))))
+		const src = this.ctx.list(this.key())
+		if (src) this.rows.replaceChildren(...[...src.childNodes].map((n) => n.cloneNode(true)))
+		else this.rows.replaceChildren(el('p', { class: 'issue-list__wait muted' }, this.ctx.listsShown() ? 'Loading the issues…' : 'The issues show when the page is read.'))
+	}
+	key() {
+		const a = this.node.attrs
+		return a.savedFilter + '|' + a.filter + '|' + a.limit
+	}
+	update(node) {
+		if (node.type !== this.node.type) return false
+		this.node = node
+		this.render()
+		return true
+	}
+	selectNode() {
+		this.dom.classList.add('ProseMirror-selectednode')
+	}
+	deselectNode() {
+		this.dom.classList.remove('ProseMirror-selectednode')
+	}
+	stopEvent(e) {
+		return this.form.contains(e.target) || (e.type === 'click' && this.rows.contains(e.target))
+	}
+	ignoreMutation() {
+		return true
+	}
+	destroy() {
+		this.ctx.lists.delete(this)
 	}
 }

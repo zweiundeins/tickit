@@ -156,6 +156,7 @@ rocket('sb-rich-editor', {
 		readonly: bool.docs({ description: 'Present: the person cannot edit (the attribute is boolean; readonly="false" is still read-only).' }),
 		images: string.default('[]').docs({ description: 'JSON [{id, alt}]: the image library the Image button offers.' }),
 		label: string.default('Page content').docs({ description: 'Accessible name of the editing area.' }),
+		lists: string.docs({ description: 'Id of the page element whose [data-list] children hold the issue lists\' rows and whose [data-filters] the saved filters (FR-104).' }),
 	}),
 	manifest: {
 		slots: [{ name: 'default', description: 'The server-rendered <script type="application/json" data-ignore-morph> and <div class="pm-mount prose" data-ignore-morph data-ignore>.' }],
@@ -168,6 +169,7 @@ rocket('sb-rich-editor', {
 			{ name: 'sb-refused', kind: 'custom-event', bubbles: true, composed: true, description: '{page, ref, message, dropped}.' },
 			{ name: 'sb-limit', kind: 'custom-event', bubbles: true, composed: true, description: '{page, limit, max, value, message}: input stopped at a DM-05 limit.' },
 			{ name: 'sb-insert-image', kind: 'custom-event', bubbles: true, composed: true, description: 'Image button without an images library; cancel it and call insertImage(id, alt).' },
+			{ name: 'sb-select', kind: 'custom-event', bubbles: true, composed: true, description: '{page, empty, text, top, left, bottom}: where a selection of text is, in viewport pixels (FR-105).' },
 		],
 	},
 	renderOnPropChange: false,
@@ -179,7 +181,7 @@ rocket('sb-rich-editor', {
 			peek(() => ({
 				page: props.page, epoch: props.epoch, client: props.client, tab: props.tab, base: props.base, head: props.head,
 				batches: props.batches, carets: props.carets, chips: props.chips, state: props.state, refusal: props.refusal,
-				readonly: props.readonly, images: props.images, label: props.label,
+				readonly: props.readonly, images: props.images, label: props.label, lists: props.lists,
 			}))
 		// One sync for a morph's burst of attribute writes.
 		let queued = false
@@ -220,6 +222,10 @@ rocket('sb-rich-editor', {
 		defineHostProp('insertChip', { value: (key) => call('insertNode', 'issue_chip', { key }) })
 		defineHostProp('insertMention', { value: (personId, label) => call('insertNode', 'mention', { personId, label }) })
 		defineHostProp('insertPageLink', { value: (pageId) => call('insertNode', 'page_link', { pageId }) })
+		defineHostProp('insertIssueList', { value: (attrs) => call('insertIssueList', attrs) })
+		defineHostProp('selectionText', { value: () => call('selectionText') ?? '' })
+		defineHostProp('track', { value: (id) => call('track', id) })
+		defineHostProp('chipTracked', { value: (id, key) => call('chipTracked', id, key) })
 		defineHostProp('focus', { value: () => live.get(host)?.ed?.view.focus() })
 		defineHostProp('html', { value: () => call('html') })
 		defineHostProp('text', { value: () => call('text') })

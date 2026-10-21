@@ -14,7 +14,7 @@ import { schema, limits, ISSUE_KEY, ID, normalizeHref, setLabelHooks, imageSrc, 
 import { collab, collabState, getVersion, makeCommit, batchTransaction, receiveTransaction, REMOTE } from './collab.js'
 import { limitsPlugin } from './limits.js'
 import { caretPlugin, Carets } from './carets.js'
-import { IssueChipView, MentionView, PageLinkView, TaskItemView, ImageView } from './nodeviews.js'
+import { IssueChipView, MentionView, PageLinkView, TaskItemView, ImageView, IssueListView } from './nodeviews.js'
 import { COMMANDS, rules, keymaps, inTable, inCode, setLanguage, shortcutText } from './commands.js'
 import { documentCSS } from './styles.js'
 
@@ -131,6 +131,9 @@ class Editor {
 		this.atoms = new Set()
 		this.handledRefusals = new Set()
 		this.offer = null // {from, to, target}
+		this.listViews = new Set()
+		this.tracked = new Map() // id to {from, to}: selections an issue's chip will replace (FR-105)
+		this.selSig = ''
 		this.stats = { resyncs: 0, resends: 0, commits: 0, received: 0, refused: 0 }
 		this.presenceAt = 0
 		this.presenceTimer = 0
@@ -144,12 +147,17 @@ class Editor {
 			start = schema.topNodeType.createAndFill()
 			this.broken = true
 		}
-		const ctx = {
+		const ctx = (this.ctx = {
 			chips: () => this.chips,
 			atoms: this.atoms,
 			editable: () => this.editable(),
 			editAlt: (pos) => this.openAlt(pos),
-		}
+			lists: this.listViews,
+			list: (key) => this.listRows(key),
+			filters: () => this.savedFilters(),
+			listsShown: () => !!this.listsRoot(),
+			focusList: false,
+		})
 		const nodeView = (V) => (node, view, getPos) => new V(node, view, getPos, ctx)
 		const state = EditorState.create({
 			doc: start,
@@ -178,6 +186,7 @@ class Editor {
 					page_link: nodeView(PageLinkView),
 					task_item: nodeView(TaskItemView),
 					image: nodeView(ImageView),
+					issue_list: nodeView(IssueListView),
 				},
 				handleClick: (view, pos, event) => {
 					// Ctrl or Cmd and a click follows a link.
@@ -204,6 +213,12 @@ class Editor {
 		const before = this.view.state
 		const state = before.apply(tr)
 		this.view.updateState(state)
+		if (tr.docChanged)
+			for (const [id, t] of this.tracked) {
+				const from = tr.mapping.map(t.from, 1)
+				this.tracked.set(id, { from, to: Math.max(from, tr.mapping.map(t.to, -1)) })
+			}
+		if (tr.docChanged || tr.selectionSet) this.selectionChanged()
 		if (this.offer && tr.docChanged) {
 			this.offer.from = tr.mapping.map(this.offer.from, 1)
 			this.offer.to = tr.mapping.map(this.offer.to, -1)
@@ -256,6 +271,7 @@ class Editor {
 			this.carets.set(parseJSON(p.carets, []), p.client)
 		}
 		this.view.setProps({}) // editable may have changed
+		this.watchLists()
 		if (applied) {
 			const ack = getVersion(this.view.state)
 			this.emit('sb-ack', { page: this.page, epoch: this.epoch, ack })
@@ -733,6 +749,109 @@ class Editor {
 		return true
 	}
 
+	// --- Issue lists (FR-104): rows from the page's lists element ---------
+
+	// listsRoot is the element the page's lists view patches with every
+	// issue list's rows ([data-list] by key) and the saved filters
+	// ([data-filters] > [data-id]); the host's lists attribute names it.
+	listsRoot() {
+		const id = this.p.lists
+		return (id && document.getElementById(id)) || null
+	}
+
+	watchLists() {
+		const root = this.listsRoot()
+		if (!root || root === this.listsObserved) return
+		this.listsObserver?.disconnect()
+		this.listsObserved = root
+		this.listsObserver = new MutationObserver(() => {
+			if (this.listsFrame) return
+			this.listsFrame = requestAnimationFrame(() => {
+				this.listsFrame = 0
+				this.filtersCache = null
+				for (const v of this.listViews) v.render()
+			})
+		})
+		this.listsObserver.observe(root, { childList: true, subtree: true, characterData: true, attributes: true })
+		this.filtersCache = null
+		for (const v of this.listViews) v.render()
+	}
+
+	listRows(key) {
+		const root = this.listsRoot()
+		if (!root) return null
+		for (const e of root.querySelectorAll(':scope > [data-list]')) if (e.getAttribute('data-list') === key) return e
+		return null
+	}
+
+	savedFilters() {
+		if (this.filtersCache) return this.filtersCache
+		const root = this.listsRoot()
+		const list = root ? [...root.querySelectorAll(':scope > [data-filters] > [data-id]')].map((e) => ({ id: e.getAttribute('data-id'), name: e.textContent.trim() })) : []
+		return (this.filtersCache = list)
+	}
+
+	insertIssueList(attrs = {}) {
+		this.ctx.focusList = true
+		const ok = this.insertNode('issue_list', attrs)
+		if (!ok) this.ctx.focusList = false
+		return ok
+	}
+
+	// --- Create an issue from the selection (FR-105) -----------------------
+
+	// selectionText is the selected text as an issue's summary: chips by
+	// key, whitespace folded.
+	selectionText() {
+		const { from, to } = this.view.state.selection
+		return this.view.state.doc.textBetween(from, to, ' ', (n) => (n.type.name === 'issue_chip' ? n.attrs.key : n.type.name === 'mention' ? '@' + n.attrs.label : ' ')).replace(/\s+/g, ' ').trim()
+	}
+
+	// selectionChanged tells the page where a selection of text is, at most
+	// once a frame: sb-select {page, empty, text, top, left, bottom}.
+	selectionChanged() {
+		if (this.selFrame) return
+		this.selFrame = requestAnimationFrame(() => {
+			this.selFrame = 0
+			if (this.destroyed) return
+			const sel = this.view.state.selection
+			const text = sel.empty || !(sel instanceof TextSelection) || !this.editable() ? '' : this.selectionText()
+			let detail = { page: this.page, empty: true, text: '', top: 0, left: 0, bottom: 0 }
+			if (text) {
+				const a = this.view.coordsAtPos(sel.from), b = this.view.coordsAtPos(sel.to)
+				detail = { page: this.page, empty: false, text, top: Math.min(a.top, b.top), left: a.left, bottom: Math.max(a.bottom, b.bottom) }
+			}
+			const sig = detail.empty ? '' : `${sel.from}:${sel.to}:${detail.top}:${detail.left}`
+			if (sig === this.selSig) return
+			this.selSig = sig
+			this.emit('sb-select', detail)
+		})
+	}
+
+	// track keeps the selection under id, mapped through every change, for
+	// chipTracked.
+	track(id) {
+		const { from, to, empty } = this.view.state.selection
+		if (empty || !id) return false
+		if (this.tracked.size >= 20) this.tracked.delete(this.tracked.keys().next().value)
+		this.tracked.set(String(id), { from, to })
+		return true
+	}
+
+	// chipTracked replaces the selection kept under id with key's chip, as
+	// a commit of this editor: wherever the selection went meanwhile.
+	chipTracked(id, key) {
+		const t = this.tracked.get(String(id))
+		this.tracked.delete(String(id))
+		if (!t || !this.editable() || !ISSUE_KEY.test(String(key))) return false
+		const chip = schema.nodes.issue_chip.create({ key: String(key) })
+		const { doc } = this.view.state
+		const $from = doc.resolve(t.from)
+		if (!$from.parent.inlineContent) return false
+		this.view.dispatch(this.view.state.tr.replaceWith(t.from, t.from === t.to ? t.from : t.to, chip))
+		return true
+	}
+
 	html() {
 		const div = document.createElement('div')
 		div.append(DOMSerializer.fromSchema(schema).serializeFragment(this.view.state.doc.content))
@@ -775,6 +894,9 @@ class Editor {
 		if (this.inflight) clearTimeout(this.inflight.timer)
 		clearTimeout(this.presenceTimer)
 		cancelAnimationFrame(this.toolbarFrame)
+		cancelAnimationFrame(this.selFrame)
+		cancelAnimationFrame(this.listsFrame)
+		this.listsObserver?.disconnect()
 		this.carets.destroy()
 		for (const f of this.unwire ?? []) f()
 		this.view.destroy()

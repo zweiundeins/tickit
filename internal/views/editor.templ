@@ -53,6 +53,7 @@ const (
 	// the field (FR-86.2: a refused title stays as typed).
 	titleSync = `$_wkTitle && !$_title.focus && $_title.msg === '' && ($_title.value = $_wkTitle)`
 
+	insertList = `document.getElementById('` + EditorID + `').insertIssueList()`
 	pickOpen   = `$_pick.kind = el.dataset.kind, $_pick.label = el.dataset.label, $_pick.q = '', document.getElementById('pick').showModal(), ` + pickSearch
 	pickSearch = `@get('/wiki/pick?kind=' + $_pick.kind + '&q=' + encodeURIComponent($_pick.q))`
 	pickInsert = `((ed) => el.dataset.kind === 'page' ? ed.insertPageLink(el.dataset.id) : el.dataset.kind === 'person' ? ed.insertMention(el.dataset.id, el.dataset.label) : ed.insertChip(el.dataset.id))` +
@@ -129,11 +130,14 @@ templ EditorPage(p EditorProps) {
 			@ui.Button(ui.ButtonProps{Label: "Issue", Icon: "issues", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-kind": "issue", "data-label": "Find an issue", "data-on:click": pickOpen}})
 			@ui.Button(ui.ButtonProps{Label: "Mention", Icon: "user", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-kind": "person", "data-label": "Find a person", "data-on:click": pickOpen}})
 			@ui.Button(ui.ButtonProps{Label: "Page link", Icon: "page", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-kind": "page", "data-label": "Find a page by its title", "data-on:click": pickOpen}})
+			@ui.Button(ui.ButtonProps{Label: "Issue list", Icon: "table", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-on:click": insertList}})
 		</div>
 		<div class="wk-editarea">
 			@EditorHostEl(p.Host)
+			@PageIssueUI(p.Issue)
 			@editorCopy(p.Page.ID)
 		</div>
+		@PageListsRegion(PageListsProps{})
 		@pickDialog()
 		@saveVersionDialog(p.Page.ID)
 		<p class="wk-problem" role="status" data-text="$_wk.version.msg"></p>
@@ -158,6 +162,7 @@ templ EditorHostEl(h EditorHost) {
 		refusal={ h.Refusal }
 		images={ h.Images }
 		label={ h.label() }
+		lists={ h.lists() }
 		data-cmd={ h.cmd() }
 		if h.Readonly {
 			readonly
