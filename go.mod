@@ -15,9 +15,9 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/klauspost/compress v1.20.3
 	github.com/prometheus/client_golang v1.25.0
-	github.com/zweiundeins/lith v0.4.1
-	github.com/zweiundeins/lith/minify v0.4.1
-	github.com/zweiundeins/lith/prom v0.4.1
+	github.com/zweiundeins/lith v0.4.2
+	github.com/zweiundeins/lith/minify v0.4.2
+	github.com/zweiundeins/lith/prom v0.4.2
 	golang.org/x/crypto v0.57.0
 	golang.org/x/image v0.45.0
 )

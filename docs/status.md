@@ -255,7 +255,7 @@ No Must or Should requirements.
 | NFR-40 | Search speed | Should | done | internal/web/perf_test.go: TestSearchSpeed | 10,000 issues and 2,000 pages, p95 under 200 ms, recorded in benchmarks/RESULTS.md; pages go into the index through its hook, not the wiki's commands. |
 | NFR-41 | Bounded resources | Must | done | internal/tabs/tabs_test.go: TestSweep; internal/demo/reset_test.go: TestReset; cmd/tickit-load (go tool task load) | The 201st stream answers 503, and an address holds 40 streams (the hub's per-client cap, 429 beyond); anonymous memory at most 530 MiB under MemoryMax 640M, though above MemoryHigh 512M, where systemd throttles. |
 | NFR-42 | Reconnect after a deploy | Must | done | internal/web/stream_test.go: TestReconnect; e2e/editor_reconnect_test.go: TestEditorReconnect (Chromium); cmd/tickit-load (go tool task load) | All 200 streams back with current frames 1.0 s after /healthz. |
-| NFR-43 | Growth of the event log from co-editing | Must | partly | internal/wiki/bench_test.go: TestFoldTime; internal/wiki/commands_test.go: TestFold; internal/wiki/commands_test.go: TestCommits; internal/tracker/description_test.go: TestDescriptionFold; cmd/tickit-load (go tool task load) (-sustain; tickit-load fold) | The fold keeps up and co-editing adds about 76 MB a day, but the issue changes of NFR-38 add 620 MB a day, and each fold command holds the writer 24 ms, not 5 (lith's Compact scans the page's stream). |
+| NFR-43 | Growth of the event log from co-editing | Must | partly | internal/wiki/bench_test.go: TestFoldTime; internal/wiki/commands_test.go: TestFold; internal/wiki/commands_test.go: TestCommits; internal/tracker/description_test.go: TestDescriptionFold; cmd/tickit-load (go tool task load) (-sustain; tickit-load fold) | The fold keeps up and co-editing adds about 76 MB a day; on lith v0.4.2 a fold command holds the writer p50 0.7 to 2.6 ms at 10 to 100 events (tickit-load fold on a sustained run's database), under 5. But the issue changes of NFR-38 add 620 MB a day. |
 | NFR-44 | Search stays right through rebuilds | Must | done | internal/search/search_test.go: TestRebuild |  |
 
 ## Non-functional: Accessibility
@@ -311,7 +311,7 @@ No Must or Should requirements.
 
 The Must requirements that are partly done, most important first. No Must requirement is entirely not done.
 
-- NFR-43 Growth of the event log: each fold command holds the writer about 24 ms at NFR-38's load (NFR-43.3), since lith's events.Compact walks the page's whole stream; and 24 hours of NFR-38's issue changes alone exceed 500 MB (NFR-43.2).
+- NFR-43 Growth of the event log: 24 hours of NFR-38's issue changes alone exceed 500 MB (NFR-43.2).
 - NFR-35 From commit to screen: at NFR-38's load the median is a few milliseconds over 50 ms and 0.38 % of ticks overrun (asks under 0.1 %).
 - NFR-39 Page load: a stream's first frames arrive with the next tick plus its render, up to 74 ms after the request.
 - NFR-38 Capacity: met for streams, data and actions, but not with NFR-35 as it asks.
