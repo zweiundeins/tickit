@@ -32,6 +32,7 @@ func a11yPages(t *testing.T, e *webtest.Env) []struct{ name, path, before string
 		{"issue", "/WEB-2", ""},
 		{"issue list", "/issues?sort=key&dir=asc", ""},
 		{"page", wiki.PageURL("ENG", page, "Deploy to production"), ""},
+		{"page, Move open", wiki.PageURL("ENG", page, "Deploy to production"), `customElements.get('sb-tree') && (document.getElementById('move').open || document.querySelector('[commandfor=move]').click(), document.getElementById('move').open)`},
 		{"page edit", wiki.EditURL("ENG", page), `document.getElementById('editor')?.view`},
 		{"search", "/search?q=checkout", ""},
 		{"notifications", "/", `(document.querySelector('[popovertarget=tk-notifications]').click(), true)`},

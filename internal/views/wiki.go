@@ -3,6 +3,7 @@ package views
 import (
 	"context"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/a-h/templ"
@@ -126,6 +127,39 @@ type CommentItem struct {
 type MoveTarget struct {
 	Value, Label string
 	Depth        int
+}
+
+// moveFrom is the target a page is under now.
+func moveFrom(p wiki.Page) string {
+	if p.Parent == "" {
+		return "space:" + p.Space
+	}
+	return "page:" + p.Parent
+}
+
+// moveTree nests the targets by their depth, with the branches above the
+// selected one open.
+func moveTree(targets []MoveTarget, selected string) []ui.TreeItem {
+	var build func(i, depth int) ([]ui.TreeItem, int, bool)
+	build = func(i, depth int) ([]ui.TreeItem, int, bool) {
+		var out []ui.TreeItem
+		found := false
+		for i < len(targets) && targets[i].Depth >= depth {
+			t := targets[i]
+			it := ui.TreeItem{ID: t.Value, Label: t.Label}
+			if strings.HasPrefix(t.Value, "space:") {
+				it.Icon = "space"
+			}
+			var under bool
+			it.Children, i, under = build(i+1, t.Depth+1)
+			it.Expanded = under
+			found = found || under || t.Value == selected
+			out = append(out, it)
+		}
+		return out, i, found
+	}
+	items, _, _ := build(0, 0)
+	return items
 }
 
 // EditorProps is the editor's page (FR-86, docs/editor.md).

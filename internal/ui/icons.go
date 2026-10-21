@@ -116,6 +116,12 @@ func LabeledIcon(name, label string) templ.Component {
 	return raw(iconSVG(name, "tk-icon", label))
 }
 
+// treeIconSVG is an icon sb-tree copies into its rows (data-icon), where
+// the page's styles do not reach: its second shade is an attribute.
+func treeIconSVG(name string) string {
+	return strings.Replace(strings.Replace(iconSVG(name, "tk-icon", ""), "<svg ", "<svg data-icon ", 1), `class="tk-icon__2"`, `class="tk-icon__2" opacity="0.45"`, 1)
+}
+
 func iconSVG(name, class, label string) string {
 	g, ok := icons[name]
 	if !ok {

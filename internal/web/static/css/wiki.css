@@ -275,6 +275,16 @@
 		margin-block-end: var(--tk-space-2);
 	}
 
+	/* The Move dialog's places: a box of its own that scrolls. */
+	.wk-move__tree {
+		max-block-size: min(20rem, 50dvb);
+		overflow-y: auto;
+		padding: var(--tk-space-1);
+		border: 1px solid var(--tk-border);
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-1);
+	}
+
 	/* ── Spaces (FR-75) ────────────────────────────────────────────── */
 	.wk-spacelist {
 		display: grid;

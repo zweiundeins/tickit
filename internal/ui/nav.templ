@@ -165,90 +165,100 @@ templ Pagination(p PaginationProps) {
 	</nav>
 }
 
-// TreeItem is a node of a Tree: a page and its children.
+// TreeItem is a node of a Tree: a page and its children, or with no Href
+// a plain item to select.
 type TreeItem struct {
 	ID    string
 	Label string
 	Href  string
 	Icon  string
 	// Current is the page shown: highlighted, aria-current, and the item
-	// in the tab order.
+	// in the tab order; the branches above it open.
 	Current bool
-	// Expanded shows the children; the person opens and closes nodes in
-	// the page (data-preserve-attr keeps that through frames).
+	// Expanded opens the branch; the person opens and closes them in the
+	// page, which sb-tree keeps through frames.
 	Expanded bool
 	// Meta shows after the label, muted: a count, "draft".
 	Meta     string
 	Children []TreeItem
 }
 
-// TreeProps is a page tree.
+// TreeProps is a tree of pages or of items to choose from.
 type TreeProps struct {
+	ID string
 	// Label names the tree: "Pages in Engineering".
 	Label string
 	Items []TreeItem
+	// Name and Value make a tree of plain items one to choose from: the
+	// selected item's ID, sent with sb-change {name, value}.
+	Name  string
+	Value string
 	Class string
 	Attrs templ.Attributes
 }
 
-// Tree is the ARIA tree pattern, rendered by the server (NFR-47.2): links
-// as tree items, Up and Down through the visible ones, Right and Left to
-// open and close, Enter to follow. The twisty opens and closes by pointer.
+// Tree is Starbase's sb-tree on the server's nested lists (NFR-47.2):
+// links stay links (Enter, a middle click, a new tab), Up and Down move,
+// Right and Left open and close, Home and End. Before its bundle runs it
+// is the lists themselves. Load its bundle on the page ("tree").
 templ Tree(p TreeProps) {
-	<ul
+	<sb-tree
+		if p.ID != "" {
+			id={ p.ID }
+		}
 		class={ classes("tk-tree", p.Class) }
-		role="tree"
-		aria-label={ p.Label }
-		data-on:keydown={ treeKeys }
-		data-on:click={ treeToggle }
+		label={ p.Label }
+		if p.Name != "" {
+			name={ p.Name }
+			value={ p.Value }
+		} else {
+			selection="none"
+		}
 		{ p.Attrs... }
 	>
-		@treeItems(p.Items, 1, focusID(p.Items))
-	</ul>
+		<ul>
+			@treeItems(p.Items)
+		</ul>
+	</sb-tree>
 }
 
-templ treeItems(items []TreeItem, level int, focus string) {
+templ treeItems(items []TreeItem) {
 	for _, it := range items {
-		<li role="none">
-			<a
-				class="tk-tree__item"
-				role="treeitem"
-				href={ templ.SafeURL(it.Href) }
-				title={ it.Label }
-				aria-level={ strconv.Itoa(level) }
-				if it.ID == focus {
-					tabindex="0"
-				} else {
-					tabindex="-1"
-				}
-				if it.Current {
-					aria-current="page"
-					aria-selected="true"
-				}
-				if len(it.Children) > 0 {
-					aria-expanded={ boolString(it.Expanded) }
-					data-preserve-attr="aria-expanded tabindex"
-				} else {
-					data-preserve-attr="tabindex"
-				}
-			>
-				<span class="tk-tree__twisty" aria-hidden="true">
-					if len(it.Children) > 0 {
-						@Icon("chevron-right")
+		<li
+			data-id={ it.ID }
+			if it.Expanded {
+				data-open
+			}
+		>
+			if it.Href != "" {
+				<a
+					href={ templ.SafeURL(it.Href) }
+					title={ it.Label }
+					if it.Current {
+						aria-current="page"
 					}
+				>
+					@treeItemBody(it)
+				</a>
+			} else {
+				<span>
+					@treeItemBody(it)
 				</span>
-				@Icon(iconOr(it.Icon, "page"))
-				<span class="tk-tree__label">{ it.Label }</span>
-				if it.Meta != "" {
-					<span class="tk-tree__meta">{ it.Meta }</span>
-				}
-			</a>
+			}
 			if len(it.Children) > 0 {
-				<ul role="group">
-					@treeItems(it.Children, level+1, focus)
+				<ul>
+					@treeItems(it.Children)
 				</ul>
 			}
 		</li>
+	}
+}
+
+templ treeItemBody(it TreeItem) {
+	@raw(treeIconSVG(iconOr(it.Icon, "page")))
+	{ it.Label }
+	if it.Meta != "" {
+		<span data-meta>{ it.Meta }</span>
 	}
 }
 
@@ -259,25 +269,3 @@ func iconOr(name, def string) string {
 	return name
 }
 
-// focusID is the item in the tab order: the current one, else the first.
-func focusID(items []TreeItem) string {
-	var find func([]TreeItem) string
-	find = func(list []TreeItem) string {
-		for _, it := range list {
-			if it.Current {
-				return it.ID
-			}
-			if id := find(it.Children); id != "" {
-				return id
-			}
-		}
-		return ""
-	}
-	if id := find(items); id != "" {
-		return id
-	}
-	if len(items) > 0 {
-		return items[0].ID
-	}
-	return ""
-}

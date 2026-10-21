@@ -1370,111 +1370,88 @@
 		color: var(--tk-text-muted);
 	}
 
-	/* ── Tree ──────────────────────────────────────────────────────── */
-	/* One column no wider than the tree's place, so long titles cut
-	 * rather than push the tree out of the sidebar. */
-	.tk-tree,
-	.tk-tree [role="group"] {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr);
+	/* ── Tree: sb-tree on the server's nested lists. ───────────────── */
+	.tk-tree {
 		min-inline-size: 0;
-		gap: 1px;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.tk-tree [role="group"] {
-		margin-inline-start: 0.6875rem;
-		padding-inline-start: 0.5rem;
-		border-inline-start: 1px solid var(--tk-border-subtle);
-	}
-
-	.tk-tree__item {
-		position: relative;
-		display: flex;
-		align-items: center;
-		gap: var(--tk-space-1);
-		min-block-size: var(--tk-row-height);
-		padding: var(--tk-space-0_5) var(--tk-space-2) var(--tk-space-0_5) 0;
-		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
-		color: var(--tk-text-2);
 		font-size: var(--tk-text-sm);
-		text-decoration: none;
 
-		& > .tk-icon {
+		/* One column no wider than the tree, so long titles cut rather
+		 * than push it out of the sidebar. */
+		&::part(tree) {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		&::part(item) {
+			min-block-size: var(--tk-row-height);
+			color: var(--tk-text-2);
+		}
+
+		&::part(item):hover {
+			color: var(--tk-text-1);
+		}
+
+		&::part(current) {
+			color: var(--tk-accent-text);
+			font-weight: var(--tk-weight-semibold);
+		}
+
+		&::part(icon) {
 			color: var(--tk-text-muted);
 		}
 
-		&:hover {
-			background: var(--tk-surface-hover);
-			color: var(--tk-text-1);
+		&::part(meta) {
+			font-family: var(--tk-font-mono);
+			font-size: var(--tk-text-2xs);
+		}
+	}
+
+	/* Before its bundle runs: the lists, closed branches shut. */
+	sb-tree.tk-tree:not(:defined) {
+		display: block;
+
+		& ul {
+			display: grid;
+			gap: 1px;
+			margin: 0;
+			padding: 0;
+			list-style: none;
 		}
 
-		&:focus-visible {
-			outline-offset: -2px;
+		& ul ul {
+			padding-inline-start: 1.25rem;
 		}
 
-		&[aria-current="page"] {
-			background: var(--tk-accent-subtle);
-			color: var(--tk-accent-text);
-			font-weight: var(--tk-weight-semibold);
-
-			& > .tk-icon {
-				color: currentColor;
-			}
-
-			&::before {
-				content: "";
-				position: absolute;
-				inset-block: 4px;
-				inset-inline-start: -2px;
-				inline-size: 3px;
-				background: var(--tk-accent);
-			}
-		}
-
-		&[aria-expanded="false"] + [role="group"] {
+		& li:not([data-open]) > ul {
 			display: none;
 		}
 
-		&[aria-expanded="true"] .tk-tree__twisty .tk-icon {
-			rotate: 90deg;
+		& :is(a, li > span) {
+			display: flex;
+			align-items: center;
+			gap: var(--tk-space-1);
+			min-block-size: var(--tk-row-height);
+			padding-inline: var(--tk-space-2);
+			overflow: hidden;
+			color: var(--tk-text-2);
+			text-decoration: none;
+			white-space: nowrap;
 		}
-	}
 
-	.tk-tree__twisty {
-		display: grid;
-		place-items: center;
-		flex: none;
-		inline-size: 1.375rem;
-		block-size: 1.375rem;
-		border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
-		color: var(--tk-text-muted);
+		& [aria-current] {
+			color: var(--tk-accent-text);
+			font-weight: var(--tk-weight-semibold);
+		}
 
 		& .tk-icon {
-			transition: rotate var(--tk-dur-2) var(--tk-ease-snap);
+			color: var(--tk-text-muted);
 		}
 
-		&:hover:has(.tk-icon) {
-			background: var(--tk-border-subtle);
-			color: var(--tk-text-1);
+		& [data-meta] {
+			margin-inline-start: auto;
+			color: var(--tk-text-muted);
+			font-family: var(--tk-font-mono);
+			font-size: var(--tk-text-2xs);
 		}
-	}
-
-	.tk-tree__label {
-		flex: 1;
-		min-inline-size: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.tk-tree__meta {
-		color: var(--tk-text-muted);
-		font-family: var(--tk-font-mono);
-		font-size: var(--tk-text-2xs);
-		font-weight: var(--tk-weight-regular);
 	}
 
 	/* ── Tables: plain tables, 2rem rows. ──────────────────────────── */
@@ -2403,7 +2380,6 @@
 			background: Highlight;
 		}
 
-		.tk-tree__item[aria-current="page"],
 		.tk-table tbody tr[aria-selected="true"] {
 			outline: 2px solid Highlight;
 			outline-offset: -2px;

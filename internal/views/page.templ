@@ -303,11 +303,8 @@ templ moveDialog(p PageProps) {
 		<form id="move-form" class="stack" data-page={ p.Page.ID } data-on:submit__prevent={ movePage } data-effect={ movePageSettled } data-on:datastar-fetch={ movePageFailed }>
 			{{ f := ui.FieldProps{ID: "move-target", Label: "Under", ErrorAttrs: templ.Attributes{"data-text": "$_wk.move.msg"}} }}
 			@ui.Field(f) {
-				<select id={ f.ID } class="tk-select" data-bind="_wk.move.target" aria-describedby={ f.DescribedBy() }>
-					for _, t := range p.Targets {
-						<option value={ t.Value } data-depth={ itoa(t.Depth) }>{ indent(t.Depth) + t.Label }</option>
-					}
-				</select>
+				@ui.Tree(ui.TreeProps{ID: f.ID, Label: "Under", Name: "target", Value: moveFrom(p.Page), Items: moveTree(p.Targets, moveFrom(p.Page)), Class: "wk-move__tree",
+					Attrs: templ.Attributes{"aria-describedby": f.DescribedBy(), "data-init": "$_wk.move.target = el.getAttribute('value')", "data-on:sb-change": "$_wk.move.target = evt.detail.value"}})
 			}
 			{{ pl := ui.FieldProps{ID: "move-place", Label: "Place"} }}
 			@ui.Field(pl) {
@@ -315,14 +312,6 @@ templ moveDialog(p PageProps) {
 			}
 		</form>
 	}
-}
-
-func indent(depth int) string {
-	s := ""
-	for range depth {
-		s += "   "
-	}
-	return s
 }
 
 templ moveFooter() {

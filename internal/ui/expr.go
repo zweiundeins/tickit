@@ -21,33 +21,6 @@ const menuKeys = `['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(evt.key) && (
 	items[evt.key === 'Home' ? 0 : evt.key === 'End' ? n - 1 : (i + (evt.key === 'ArrowDown' ? 1 : n - 1)) % n]?.focus()
 })([...el.querySelectorAll('.tk-menu__item:not([disabled]):not([aria-disabled="true"]):not([hidden])')])`
 
-// treeKeys is the keyboard of the ARIA tree pattern (NFR-47.2): Up and
-// Down move through the visible items, Right opens an item or goes to its
-// first child, Left closes it or goes to its parent, Home and End go to the
-// ends. One item at a time is in the tab order (roving tabindex). Enter
-// follows the item's link. On the tree.
-const treeKeys = `['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(evt.key) && evt.target.matches('[role=treeitem]') && ((t) => {
-	evt.preventDefault()
-	const items = [...el.querySelectorAll('[role=treeitem]')].filter(i => i.offsetParent !== null)
-	const i = items.indexOf(t), open = t.getAttribute('aria-expanded')
-	let next
-	if (evt.key === 'ArrowDown') next = items[i + 1]
-	else if (evt.key === 'ArrowUp') next = items[i - 1]
-	else if (evt.key === 'Home') next = items[0]
-	else if (evt.key === 'End') next = items[items.length - 1]
-	else if (evt.key === 'ArrowRight') open === 'false' ? t.setAttribute('aria-expanded', 'true') : open === 'true' && (next = items[i + 1])
-	else if (open === 'true') t.setAttribute('aria-expanded', 'false')
-	else next = t.parentElement.closest('[role=group]')?.parentElement.querySelector(':scope > [role=treeitem]')
-	if (next) { items.forEach(x => x.tabIndex = -1); next.tabIndex = 0; next.focus() }
-})(evt.target)`
-
-// treeToggle opens or closes an item when its twisty is clicked, without
-// following the link. On the tree.
-const treeToggle = `evt.target.closest('.tk-tree__twisty') && ((t) => {
-	evt.preventDefault()
-	t.setAttribute('aria-expanded', t.getAttribute('aria-expanded') === 'true' ? 'false' : 'true')
-})(evt.target.closest('[role=treeitem]'))`
-
 // toolbarKeys moves the focus along a toolbar's buttons with Left, Right,
 // Home and End (the ARIA toolbar pattern). On the toolbar.
 const toolbarKeys = `['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(evt.key) && ((items) => {
