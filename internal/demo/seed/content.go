@@ -170,6 +170,16 @@ type PageComment struct {
 	At      When          `json:"at"`
 	Body    Text          `json:"body"`
 	Replies []PageComment `json:"replies"`
+	// On makes it an inline comment (FR-91) on the first text of the page
+	// that holds On, as the page is then; Resolved resolves it.
+	On       string      `json:"on,omitempty"`
+	Resolved *Resolution `json:"resolved,omitempty"`
+}
+
+// Resolution is who resolved an inline comment, and when.
+type Resolution struct {
+	By string `json:"by"`
+	At When   `json:"at"`
 }
 
 // Template is a page template for every space (FR-92).

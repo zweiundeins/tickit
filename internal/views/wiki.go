@@ -19,6 +19,7 @@ const (
 	PageBodyID  = "page-body"
 	PageRefsID  = "page-refs"
 	CommentsID  = "page-comments"
+	InlineID    = "page-inline"
 	TreeID      = "page-tree"
 	EditorID    = "editor"
 	HistoryID   = "page-history"
@@ -54,9 +55,11 @@ type PageProps struct {
 	// Head is the shared head: breadcrumbs, title, labels, byline.
 	Head PageHead
 	// Body is the document's HTML for the first paint.
-	Body     string
+	Body     PageBody
 	Refs     PageRefs
 	Comments []CommentItem
+	// Inline are the page's inline comments (FR-91).
+	Inline []InlineItem
 	// Spaces and Pages are the targets of the Move dialog.
 	Spaces    []wiki.Space
 	Targets   []MoveTarget
@@ -91,6 +94,25 @@ type PageRefs struct {
 	LinkedFrom []wiki.PageRef
 }
 
+// PageBody is the document as readers see it, with the version and epoch
+// of the document it renders: a selection in it is at that version
+// (FR-91).
+type PageBody struct {
+	HTML  string
+	V     int64
+	Epoch string
+}
+
+// InlineItem is an inline comment's thread beside the text (FR-91).
+type InlineItem struct {
+	CommentItem
+	Quote      string
+	Detached   bool
+	Resolved   bool
+	ResolvedAt time.Time
+	ResolvedBy people.Person
+}
+
 // CommentItem is a comment with its author and replies (FR-90).
 type CommentItem struct {
 	wiki.Comment
@@ -119,8 +141,10 @@ type EditorHost struct {
 	Page, Epoch, Client, State string
 	Base, Head                 int64
 	Batches, Chips, Refusal    string
-	Images                     string
-	Readonly                   bool
+	// Comments are the inline comments' highlights at Head (FR-91).
+	Comments string
+	Images   string
+	Readonly bool
 	// Doc is the document at Base, for the GET only; frames leave the
 	// script empty and the morph keeps it.
 	Doc string

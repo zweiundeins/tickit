@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -308,8 +309,33 @@ type Comment struct {
 }
 
 // Comments lists a page's comments in the order they came, each with its
-// replies.
+// replies; the inline ones are InlineComments'.
 func Comments(ctx context.Context, q sqlite.Querier, page string) ([]Comment, error) {
+	list, err := allComments(ctx, q, page)
+	if err != nil {
+		return nil, err
+	}
+	inline := map[string]bool{}
+	rows, err := q.QueryContext(ctx, `SELECT comment_id FROM page_inline WHERE page_id = ?`, page)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		inline[id] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return slices.DeleteFunc(list, func(c Comment) bool { return inline[c.ID] }), nil
+}
+
+// allComments are a page's comments, inline ones too.
+func allComments(ctx context.Context, q sqlite.Querier, page string) ([]Comment, error) {
 	rows, err := q.QueryContext(ctx, `SELECT c.id, coalesce(t.parent_id, ''), c.author, coalesce(c.body, ''), c.created_at, coalesce(c.edited_at, 0),
 		c.deleted_at IS NOT NULL, c.hidden_at IS NOT NULL
 		FROM comments c LEFT JOIN page_comment_threads t ON t.comment_id = c.id

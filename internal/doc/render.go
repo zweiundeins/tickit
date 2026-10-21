@@ -92,8 +92,9 @@ func (s StaticResolver) Person(id string) (string, bool) { n, ok := s.People[id]
 func (s StaticResolver) Page(id string) (string, bool) { t, ok := s.Pages[id]; return t, ok }
 
 type htmlWriter struct {
-	b *strings.Builder
-	r Resolver
+	b  *strings.Builder
+	r  Resolver
+	hl *hlState // nil: no highlights
 }
 
 func (w htmlWriter) s(s string) { w.b.WriteString(s) }
@@ -141,7 +142,7 @@ func RenderHTML(d Doc, r Resolver) string {
 // RenderBlock renders one block.
 func RenderBlock(n *Node, r Resolver) string {
 	var b strings.Builder
-	htmlWriter{&b, resolverOrNone(r)}.block(n)
+	htmlWriter{b: &b, r: resolverOrNone(r)}.block(n)
 	return b.String()
 }
 
@@ -153,7 +154,7 @@ func resolverOrNone(r Resolver) Resolver {
 }
 
 func renderBlocks(b *strings.Builder, nodes []*Node, r Resolver) {
-	w := htmlWriter{b, resolverOrNone(r)}
+	w := htmlWriter{b: b, r: resolverOrNone(r)}
 	for _, n := range nodes {
 		w.block(n)
 	}
@@ -165,14 +166,24 @@ func (w htmlWriter) blocks(n *Node) {
 	}
 }
 
-func (w htmlWriter) block(n *Node) { w.wrap(n, "", nil) }
+func (w htmlWriter) block(n *Node) {
+	if w.hl == nil {
+		w.wrap(n, "", nil)
+		return
+	}
+	start := w.hl.pos
+	w.hl.pos = start + 1
+	w.wrap(n, "", nil)
+	w.hl.pos = start + n.size
+}
 
 // body renders a node's content the default way.
 func (w htmlWriter) body(n *Node) {
 	switch {
 	case n.typ.code:
 		for _, t := range n.content.nodes {
-			w.esc(t.text)
+			w.text(t)
+			w.advance(t)
 		}
 	case n.typ.inlineContent:
 		w.inline(n.content.nodes)
@@ -354,6 +365,7 @@ func (w htmlWriter) inline(nodes []*Node) {
 			active = append(active, openMark{m, w.openMark(m)})
 		}
 		w.leaf(n)
+		w.advance(n)
 	}
 	for i := len(active) - 1; i >= 0; i-- {
 		w.s(active[i].close)
@@ -394,7 +406,7 @@ func (w htmlWriter) openMark(m *Mark) string {
 func (w htmlWriter) leaf(n *Node) {
 	switch n.typ.name {
 	case "text":
-		w.esc(n.text)
+		w.text(n)
 	case "hard_break":
 		w.s("<br>")
 	case "issue_chip":
@@ -507,29 +519,40 @@ type BlockCache struct {
 	m  map[*Node]cachedBlock
 }
 
+// cachedBlock is a block's HTML and the highlights inside it, relative to
+// its start, that it was rendered with.
 type cachedBlock struct {
-	html string
-	live bool // holds an issue list: rendered every time (FR-104)
+	html, marks string
+	live        bool // holds an issue list: rendered every time (FR-104)
 }
 
 // Render renders the document, reusing the HTML of unchanged blocks, and
 // forgets blocks the document no longer holds. A block that holds an
 // issue list renders every time.
-func (c *BlockCache) Render(d Doc, r Resolver) string {
+func (c *BlockCache) Render(d Doc, r Resolver) string { return c.RenderHighlighted(d, r, nil) }
+
+// RenderHighlighted renders as Render does, with the highlights of
+// RenderHighlighted; a block renders again when the highlights inside it
+// change.
+func (c *BlockCache) RenderHighlighted(d Doc, r Resolver, hs []Highlight) string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	hs = sortHighlights(hs)
 	next := make(map[*Node]cachedBlock, len(d.content.nodes))
 	var b strings.Builder
+	pos := 0
 	for _, n := range d.content.nodes {
+		marks := highlightsIn(hs, pos, pos+n.size)
 		e, ok := c.m[n]
 		if !ok {
 			e.live = hasList(n)
 		}
-		if !ok || e.live {
-			e.html = RenderBlock(n, r)
+		if !ok || e.live || e.marks != marks {
+			e.html, e.marks = renderBlockAt(n, r, pos, hs), marks
 		}
 		next[n] = e
 		b.WriteString(e.html)
+		pos += n.size
 	}
 	c.m = next
 	return b.String()

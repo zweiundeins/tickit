@@ -51,6 +51,7 @@ The page loads `/static/editor/sb-rich-editor.min.<hash>.js` (from `static.URL("
 | `head` | Stream version of the newest commit. |
 | `batches` | JSON `[{v, ref, client, steps}]`: every commit after the version the tab acknowledged, as the writer applied it, at most 500. The editor applies them in version order and waits at a gap for the next frame. |
 | `carets` | JSON `[{id, name, hue, v, anchor, head, idle}]`. `hue` is the face's index, 0 to 15. Positions are at version `v`. |
+| `comments` | JSON `{v, list: [{id, from, to}]}`: the ranges of a page's inline comments at version `v` (FR-91), drawn as `<mark class="tk-ic" data-c="<id>">` and mapped like carets. |
 | `chips` | JSON. Issue keys map to `{summary, status, category, type}`, or to `{state: "deleted"}` or `{state: "unknown"}`. Optional maps `"people": {id: {name}}` and `"pages": {id: {title}}` or `{state: "gone"}` name mentions and page links. Issue keys cannot collide with those two names. |
 | `state` | `ok`, `gap`, `reset`, `gone` or `readonly`. |
 | `refusal` | JSON `{"ref": "…", "message": "…"}` for a commit the writer refused (the editor takes its steps out and shows the message), or plain text to show. Each ref is handled once, so the row may keep it. |
@@ -90,6 +91,7 @@ All bubble and are composed. The detail never goes into a signal; commits and pr
 | `insertIssueList(attrs)` | Inserts an issue list at the selection and puts the focus in its filter field. |
 | `selectionText()`, `track(id)`, `chipTracked(id, key)` | The selected text as a summary; keep the selection under id, mapped through every change; replace it with key's chip as a commit (FR-105). |
 | `focus()`, `html()`, `text()`, `json()` | Focus, and the current content. |
+| `commentRange()` | The selection as an inline comment's range `{v, epoch, from, to, text}`: at the confirmed version, mapped back through the unconfirmed steps, with the characters of its text nodes; `null` without selected text. |
 | `view`, `editor` | The ProseMirror view and the editor object, for tests. |
 
 ## Wiring the page

@@ -89,9 +89,6 @@ templ PageListsRegion(p PageListsProps) {
 // the project and the summary.
 templ PageIssueUI(p PageIssueProps) {
 	if len(p.Projects) > 0 {
-		<div class="wk-sel" hidden data-init={ selWatch }>
-			@ui.Button(ui.ButtonProps{Label: "Create issue", Icon: "plus", Size: ui.SizeSM, Variant: ui.Primary, Attrs: templ.Attributes{"data-on:mousedown": keepSelection, "data-on:click": selCreate}})
-		</div>
 		<p class="wk-problem wk-issue-done" role="status" data-text="$_pissue.done"></p>
 		@ui.Dialog(ui.DialogProps{ID: PageIssueID, Title: "Create an issue from the selection", Size: ui.SizeSM, Footer: pageIssueFooter(p.Page), Attrs: templ.Attributes{
 			"data-signals":           pageIssueSignals(p.Project),

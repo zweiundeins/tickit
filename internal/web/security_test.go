@@ -183,6 +183,8 @@ var secCases = []secCase{
 	{name: "pages/comment/edit", pattern: "POST /cmd/pages/comment/edit", need: ownComment, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/comment/edit", "comment", "@pcomment", "body", "Edited")},
 	{name: "pages/comment/delete", pattern: "POST /cmd/pages/comment/delete", need: ownComment, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/comment/delete", "comment", "@pcomment")},
 	{name: "pages/comment/hide", pattern: "POST /cmd/pages/comment/hide", need: admin, guard: true, outcome: true, by: wOwner, req: at("/cmd/pages/comment/hide", "comment", "@pcomment", "hidden", true)},
+	{name: "pages/comment/inline", pattern: "POST /cmd/pages/comment/inline", need: read, guard: true, outcome: true, by: wViewer, req: inlineReq},
+	{name: "pages/comment/resolve", pattern: "POST /cmd/pages/comment/resolve", need: read, guard: true, outcome: true, by: wViewer, req: at("/cmd/pages/comment/resolve", "comment", "@icomment", "resolved", true)},
 	{name: "pages/issue", pattern: "POST /cmd/pages/issue", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/issue", "page", "@page", "project", "@proj", "summary", "From the page", "find", "The plan", "block", 0, "nth", 0)},
 	{name: "pages/open", pattern: "POST /cmd/pages/{id}/open", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/{page}/open", "base", 0, "client", "0123456789ab")},
 	{name: "pages/commit", pattern: "POST /cmd/pages/{id}/commit", need: edit, guard: true, by: wMember, req: commitReq},
@@ -289,6 +291,14 @@ func commitReq(f *fixture, open bool) (string, map[string]any) {
 	f.e.DB.View(context.Background(), func(tx *sql.Tx) (err error) { h, err = wiki.HeadOf(context.Background(), tx, page); return err })
 	return "/cmd/pages/" + page + "/commit", map[string]any{"epoch": h.Epoch, "base": h.Version, "ref": fmt.Sprintf("r%d", f.n.Add(1)), "client": "0123456789ab",
 		"steps": []any{map[string]any{"stepType": "replace", "from": 1, "to": 1, "slice": map[string]any{"content": []any{map[string]any{"type": "text", "text": "x"}}}}}}
+}
+
+// inlineReq is an inline comment on "words" of the page as it is (FR-91).
+func inlineReq(f *fixture, open bool) (string, map[string]any) {
+	page := f.id("page", open)
+	var h wiki.Head
+	f.e.DB.View(context.Background(), func(tx *sql.Tx) (err error) { h, err = wiki.HeadOf(context.Background(), tx, page); return err })
+	return "/cmd/pages/comment/inline", map[string]any{"page": page, "epoch": h.Epoch, "base": h.Version, "from": 13, "to": 18, "text": "words", "body": "On the words"}
 }
 
 // descCommitReq is a commit of one character on the issue's description

@@ -117,7 +117,7 @@ func TestReset(t *testing.T) {
 	}
 	// A rebuild of every tracker table equals the live ones.
 	tables := []string{"projects", "statuses", "components", "issues", "issue_labels", "labels", "issue_links", "issue_watchers", "comments",
-		"spaces", "pages", "page_labels", "page_watchers", "page_versions", "page_chips", "page_links", "page_comment_threads"}
+		"spaces", "pages", "page_labels", "page_watchers", "page_versions", "page_chips", "page_links", "page_comment_threads", "page_inline"}
 	live := map[string]string{}
 	for _, tb := range tables {
 		live[tb] = dump(t, e, `SELECT * FROM `+tb+` ORDER BY 1, 2`)

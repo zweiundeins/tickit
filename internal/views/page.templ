@@ -12,7 +12,7 @@ import (
 // its editors marked, and the actions of the viewer.
 templ WikiPage(p PageProps) {
 	@ownStyle(p.Me, p.CanAdmin, p.CanEdit)
-	<article class="wk-page" data-signals={ wikiSignals } data-page={ p.Page.ID }>
+	<article class="wk-page wk-page--inline" data-signals={ wikiSignals } data-page={ p.Page.ID }>
 		<div class="wk-page__top">
 			@PageHeadRegion(p.Head)
 			@ui.PresenceRow(ui.PresenceProps{ID: PagePresenceID(p.Page.ID), Label: "People on this page", Shared: true})
@@ -23,7 +23,11 @@ templ WikiPage(p PageProps) {
 			}
 		}
 		@pageActions(p)
-		@PageBodyRegion(p.Body)
+		<div class="wk-docgrid">
+			@PageBodyRegion(p.Body)
+			@InlinePanel(p.Page.ID, p.Page.State == wiki.Current, p.Inline, p.Now)
+			@SelectionBar(p.Page.State == wiki.Current, len(p.Issue.Projects) > 0)
+		</div>
 		@PageIssueUI(p.Issue)
 		@PageRefsRegion(p.Refs)
 		<section class="wk-comments" aria-labelledby="comments-title">
@@ -123,10 +127,11 @@ func boolText(b bool) string {
 }
 
 // PageBodyRegion is the document as readers see it (FR-80.3, Q18): the
-// shared reader view patches it with every commit.
-templ PageBodyRegion(html string) {
-	<div id={ PageBodyID } class="prose wk-body">
-		@templ.Raw(html)
+// shared reader view patches it with every commit. data-v and data-epoch
+// say which document a selection in it is on (FR-91).
+templ PageBodyRegion(b PageBody) {
+	<div id={ PageBodyID } class="prose wk-body" data-v={ i64(b.V) } data-epoch={ b.Epoch }>
+		@templ.Raw(b.HTML)
 	</div>
 }
 

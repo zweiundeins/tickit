@@ -81,7 +81,9 @@ func TestIssueListAndCreateFromPage(t *testing.T) {
 	a.Eval(t, `(() => { const v = document.getElementById('editor').view, $h = v.state.selection.$head;
 		v.dispatch(v.state.tr.setSelection(v.state.selection.constructor.create(v.state.doc, $h.pos - 'signing keys'.length, $h.pos))); return true })()`, nil)
 	a.Wait(t, `!document.querySelector('.wk-sel').hidden`, 5*time.Second)
-	a.Eval(t, `document.querySelector('.wk-sel button').click(), true`, nil)
+	// One bar under the selection: Comment (FR-91) beside Create issue.
+	a.Wait(t, `document.querySelectorAll('.wk-sel').length === 1 && document.querySelector('.wk-sel #wk-ic-add') && document.querySelector('.wk-sel [data-sel-issue]')`, 5*time.Second)
+	a.Eval(t, `document.querySelector('.wk-sel [data-sel-issue]').click(), true`, nil)
 	a.Wait(t, `document.getElementById('page-issue').open && document.getElementById('page-issue-summary').value === 'signing keys'`, 5*time.Second)
 	a.Eval(t, `[...document.querySelectorAll('#page-issue button')].find(b => b.textContent.includes('Create issue')).click(), true`, nil)
 	a.Wait(t, `document.querySelector('.wk-issue-done')?.textContent.startsWith('Created ')`, 10*time.Second)

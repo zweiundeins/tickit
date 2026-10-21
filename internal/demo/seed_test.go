@@ -211,8 +211,9 @@ func (f *fakePages) PageSteps(r *demo.Run) ([]demo.Step, error) {
 // page ids that issues link to.
 func TestPageSeeder(t *testing.T) {
 	f := &fakePages{}
+	prev := demo.PageSeederOf()
 	demo.RegisterPageSeeder(f)
-	t.Cleanup(func() { demo.RegisterPageSeeder(nil) })
+	t.Cleanup(func() { demo.RegisterPageSeeder(prev) })
 	e, n := seeded(t)
 	if n.PageSteps != 1 || f.before == 0 {
 		t.Fatalf("the page step: %+v, %d events before it", n, f.before)
@@ -225,5 +226,17 @@ func TestPageSeeder(t *testing.T) {
 	}
 	if !tracker.ValidID(f.id) || f.id != demo.NewRun(content(t), run, 1).PageID("ENG", content(t).Pages[0].Title) {
 		t.Errorf("page id %q", f.id)
+	}
+}
+
+// FR-91, DM-02: the seed's inline comments, on the deploy runbook: one
+// open with a reply, one resolved, both on their text.
+func TestSeedInlineComments(t *testing.T) {
+	e, _ := seeded(t)
+	got := dump(t, e, `SELECT i.quote || '|' || (i.resolved_at IS NOT NULL) || '|' || a.detached || '|' || (SELECT count(*) FROM page_comment_threads r WHERE r.parent_id = i.comment_id)
+		FROM page_inline i JOIN page_anchors a ON a.comment_id = i.comment_id JOIN pages p ON p.id = i.page_id
+		WHERE p.title = 'Deploy to production' ORDER BY i.created_at`)
+	if want := "[\"Not on Friday after 15:00|0|0|1\"]\n[\"about two minutes|1|0|1\"]\n"; got != want {
+		t.Errorf("inline comments:\n%s\nwant\n%s", got, want)
 	}
 }

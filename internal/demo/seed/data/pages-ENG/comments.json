@@ -87,5 +87,37 @@
     "at": "-4d 09:30",
     "body": "If the window moves after the sale, can we put the new date here? People ask me.",
     "replies": []
+  },
+  {
+    "page": "Deploy to production",
+    "by": "s-priya",
+    "at": "-6d 10:00",
+    "on": "Not on Friday after 15:00",
+    "body": "Does this hold for hotfixes too? Last month we shipped one on a Friday evening and it went fine.",
+    "replies": [
+      {
+        "by": "s-tomasz",
+        "at": "-6d 10:20",
+        "body": "Hotfixes are fine with a second person watching the dashboard. I'll add a line for that."
+      }
+    ]
+  },
+  {
+    "page": "Deploy to production",
+    "by": "s-mateo",
+    "at": "-5d 09:00",
+    "on": "about two minutes",
+    "body": "Measured during last week's rollback: 3 minutes 10 seconds, the new image is bigger.",
+    "replies": [
+      {
+        "by": "s-lena",
+        "at": "-5d 09:40",
+        "body": "The image shrank again with yesterday's build. Back to two minutes."
+      }
+    ],
+    "resolved": {
+      "by": "s-mateo",
+      "at": "-4d 16:00"
+    }
   }
 ]

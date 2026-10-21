@@ -148,6 +148,14 @@ func newFixture(t testing.TB) *fixture {
 		e.Do(t, wiki.CreatePage{By: by(admin), ID: nid(scope + "tpage"), Space: space, Parent: home, Title: "Old notes"})
 		e.Do(t, wiki.TrashPage{By: by(admin), Page: f.ids[scope+"tpage"]})
 		e.Do(t, wiki.AddComment{By: by(writer_), ID: nid(scope + "pcomment"), Page: f.ids[scope+"page"], Body: doc("A page comment")})
+		// An inline comment on "plan" (FR-91).
+		e.Do(t, wiki.SetDocument{By: by(admin), Page: f.ids[scope+"page"], Doc: doc("The plan in words"), Message: "Words"})
+		var h wiki.Head
+		e.DB.View(context.Background(), func(tx *sql.Tx) (err error) {
+			h, err = wiki.HeadOf(context.Background(), tx, f.ids[scope+"page"])
+			return err
+		})
+		e.Do(t, wiki.AddInlineComment{By: by(writer_), ID: nid(scope + "icomment"), Page: f.ids[scope+"page"], Epoch: h.Epoch, Base: h.Version, From: 5, To: 9, Text: "plan", Body: doc("On the plan")})
 	}
 	// A saved filter and a notification of member's.
 	e.Do(t, tracker.SaveFilter{By: by(wMember), ID: nid("filter"), Name: "Mine", Filter: tracker.Filter{Projects: []string{"SEC"}}})

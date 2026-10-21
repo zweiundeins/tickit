@@ -541,7 +541,151 @@
 		}
 	}
 
-	/* "Create issue" under a selection of the page's text (FR-105). */
+	/* ── Inline comments (FR-91) ───────────────────────────────────── */
+	/* The text and its comments: side by side on a wide page, the
+	   comments below the text on a narrow one. */
+	.wk-page--inline {
+		max-inline-size: calc(var(--tk-prose-max) + 20rem + var(--tk-space-6));
+	}
+
+	.wk-docgrid {
+		position: relative;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--tk-space-6);
+		align-items: start;
+	}
+
+	@container page (width >= 64rem) {
+		.wk-docgrid {
+			grid-template-columns: minmax(0, 1fr) 18rem;
+		}
+
+		.wk-ic-panel {
+			position: sticky;
+			inset-block-start: calc(var(--tk-header-height) + var(--tk-space-3));
+			max-block-size: calc(100vh - var(--tk-header-height) - var(--tk-space-6));
+			overflow-y: auto;
+		}
+	}
+
+	.wk-ic-panel {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--tk-space-3);
+		min-inline-size: 0;
+
+		& > .wk-section-title {
+			margin-block: 0;
+		}
+	}
+
+	.wk-ic-hint {
+		font-size: var(--tk-text-sm);
+	}
+
+	.wk-ic-form {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--tk-space-2);
+
+		& .tk-field {
+			inline-size: 100%;
+		}
+	}
+
+	.wk-ic-form__about {
+		font-size: var(--tk-text-sm);
+		color: var(--tk-text-2);
+		overflow-wrap: anywhere;
+	}
+
+	.wk-ic-list,
+	.wk-ic-group {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--tk-space-3);
+	}
+
+	.wk-ic-group {
+		padding-block-start: var(--tk-space-3);
+		border-block-start: 1px solid var(--tk-border-subtle);
+
+		& > summary {
+			cursor: pointer;
+		}
+	}
+
+	.wk-ic {
+		padding: var(--tk-space-2) var(--tk-space-3);
+		border: 1px solid var(--tk-border-subtle);
+		border-radius: var(--tk-radius-sm);
+		background: var(--tk-surface-1);
+
+		&[data-state="detached"],
+		&[data-state="resolved"] {
+			background: var(--tk-surface-2);
+		}
+
+		& .wk-comment__body,
+		& .wk-comment__gone,
+		& .wk-comment__actions {
+			padding-inline-start: 0;
+		}
+
+		& .wk-replies {
+			padding-inline-start: var(--tk-space-3);
+		}
+	}
+
+	.wk-ic__quote {
+		margin: 0;
+		padding: 0 0 0 var(--tk-space-2);
+		border: 0;
+		border-inline-start: 3px solid var(--tk-ic-edge);
+		background: none;
+		color: var(--tk-text-2);
+		font: inherit;
+		font-size: var(--tk-text-sm);
+		text-align: start;
+		overflow-wrap: anywhere;
+	}
+
+	button.wk-ic__quote {
+		cursor: pointer;
+
+		&:hover,
+		&:focus-visible {
+			color: var(--tk-text-1);
+		}
+	}
+
+	.wk-ic[data-state="detached"] .wk-ic__quote {
+		border-inline-start-color: var(--tk-border-strong);
+		text-decoration: line-through;
+	}
+
+	.wk-ic__resolved {
+		font-size: var(--tk-text-sm);
+	}
+
+	.wk-ic__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-1);
+	}
+
+	/* The highlights, in the reader and in the editor (wiki/inline.js
+	   marks the chosen one). */
+	mark.tk-ic {
+		background: var(--tk-ic-bg);
+		color: inherit;
+		border-block-end: 2px solid var(--tk-ic-edge);
+		cursor: pointer;
+	}
+
+	/* The bar under a selection of the page's text: Comment (FR-91) and
+	   Create issue (FR-105). */
 	.wk-sel {
 		position: absolute;
 		z-index: var(--tk-z-dropdown);
@@ -550,9 +694,20 @@
 		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
 		background: var(--tk-surface-overlay);
 		box-shadow: var(--tk-shadow-2);
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-1);
 
 		&[hidden] {
 			display: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		mark.tk-ic {
+			forced-color-adjust: none;
+			background: Mark;
+			color: MarkText;
 		}
 	}
 }

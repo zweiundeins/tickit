@@ -151,6 +151,7 @@ rocket('sb-rich-editor', {
 		head: number.docs({ description: 'Stream version of the newest commit on the server.' }),
 		batches: string.default('[]').docs({ description: 'JSON [{v, ref, client, steps}]: every commit after the version the tab acknowledged, as the writer applied it.' }),
 		carets: string.default('[]').docs({ description: 'JSON [{id, name, hue, v, anchor, head, idle}]: other editors\' selections at version v.' }),
+		comments: string.docs({ description: 'JSON {v, list: [{id, from, to}]}: the inline comments\' ranges at version v, highlighted (FR-91).' }),
 		chips: string.default('{}').docs({ description: 'JSON: issue keys to {summary, status, category, type} or {state}; "people" and "pages" maps for names and titles.' }),
 		state: string.default('ok').docs({ description: 'ok, gap, reset, gone or readonly. Anything but ok stops sending.' }),
 		refusal: string.docs({ description: 'JSON {ref, message} of a refused commit (its steps are taken out), or plain text to show.' }),
@@ -183,7 +184,7 @@ rocket('sb-rich-editor', {
 		const read = () =>
 			peek(() => ({
 				page: props.page, epoch: props.epoch, client: props.client, tab: props.tab, base: props.base, head: props.head,
-				batches: props.batches, carets: props.carets, chips: props.chips, state: props.state, refusal: props.refusal,
+				batches: props.batches, carets: props.carets, comments: props.comments, chips: props.chips, state: props.state, refusal: props.refusal,
 				readonly: props.readonly, images: props.images, upload: props.upload, label: props.label, lists: props.lists,
 			}))
 		// One sync for a morph's burst of attribute writes.
@@ -232,6 +233,7 @@ rocket('sb-rich-editor', {
 		defineHostProp('focus', { value: () => live.get(host)?.ed?.view.focus() })
 		defineHostProp('html', { value: () => call('html') })
 		defineHostProp('text', { value: () => call('text') })
+		defineHostProp('commentRange', { value: () => live.get(host)?.ed?.commentRange() ?? null })
 		defineHostProp('json', { value: () => live.get(host)?.ed?.view.state.doc.toJSON() })
 		// For tests and the page: the ProseMirror view, the collab version, unsaved steps.
 		defineHostProp('view', { get: () => live.get(host)?.ed?.view })
