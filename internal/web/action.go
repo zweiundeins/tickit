@@ -75,7 +75,7 @@ var (
 	classEditBatch   = class{name: "edit-batch", every: time.Second / 10, burst: 50, separate: true, body: 256 << 10}
 	classCaret       = class{name: "caret", every: time.Second / 15, burst: 30, separate: true, body: 2 << 10}
 	classCreateScope = class{name: "create-scope", window: 24 * time.Hour, burst: 2, body: 8 << 10}
-	classUpload      = class{name: "upload", every: 30 * time.Second, burst: 3, body: 8 << 10}
+	classUpload      = class{name: "upload", every: 30 * time.Second, burst: 3, body: 6 << 20}
 	// classBulk is a bulk edit of up to 100 issues (FR-58), which would
 	// take five times the field class's burst at once.
 	classBulk = class{name: "bulk", every: 10 * time.Second, burst: 3, body: 16 << 10}
@@ -138,7 +138,13 @@ func (s *Server) decode(w http.ResponseWriter, r *http.Request, c class, v paylo
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return action{}, false
 	}
-	p := v.payload()
+	return s.actionOf(w, r, v.payload())
+}
+
+// actionOf is the action of a request whose payload p was read: 400
+// without valid tab and op ids, 403 for an account that must change its
+// password first.
+func (s *Server) actionOf(w http.ResponseWriter, r *http.Request, p *Payload) (action, bool) {
 	actor := people.Actor(r.Context())
 	if !validID(p.Tab) || !validID(p.Op) || actor.IsZero() {
 		http.Error(w, "bad request", http.StatusBadRequest)

@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -263,6 +264,43 @@ func Post(t testing.TB, c *http.Client, url, body string) (int, string) {
 	defer res.Body.Close()
 	b, _ := io.ReadAll(res.Body)
 	return res.StatusCode, string(b)
+}
+
+// Upload sends an image upload as the editor does (FR-85): a multipart
+// body of fields and the file, from the page's own site.
+func Upload(t testing.TB, c *http.Client, url string, fields map[string]string, file []byte) (int, string) {
+	t.Helper()
+	body, ctype := Multipart(fields, file)
+	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", ctype)
+	req.Header.Set("Datastar-Request", "true")
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
+	res, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	b, _ := io.ReadAll(res.Body)
+	return res.StatusCode, string(b)
+}
+
+// Multipart is a multipart body of fields and, unless nil, file as the
+// part "file", with its Content-Type.
+func Multipart(fields map[string]string, file []byte) ([]byte, string) {
+	var b bytes.Buffer
+	mw := multipart.NewWriter(&b)
+	for k, v := range fields {
+		mw.WriteField(k, v)
+	}
+	if file != nil {
+		fw, _ := mw.CreateFormFile("file", "image")
+		fw.Write(file)
+	}
+	mw.Close()
+	return b.Bytes(), mw.FormDataContentType()
 }
 
 // Listen opens a stream, with header on its request, and sends each of its

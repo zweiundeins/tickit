@@ -136,9 +136,9 @@ func newestVersions(ctx context.Context, q sqlite.Querier, limit int) ([]Target,
 	return out, rows.Err()
 }
 
-// newestImages are the images in the versions visitors cut lately, and
-// every hidden one, so that a moderator may show it again. Visitors upload
-// no images (FR-85 is not built): they place the library's.
+// newestImages are the library's images in the versions visitors cut
+// lately, and every hidden one, so that a moderator may show it again.
+// Uploaded images are a kind of their own (images.go).
 func newestImages(ctx context.Context, q sqlite.Querier, limit int) ([]Target, error) {
 	titles := map[string]string{}
 	for _, im := range wiki.Images() {
@@ -151,6 +151,9 @@ func newestImages(ctx context.Context, q sqlite.Querier, limit int) ([]Target, e
 		return nil, err
 	}
 	for _, h := range hidden {
+		if titles[h.ID] == "" {
+			continue // an uploaded one
+		}
 		seen[h.ID] = true
 		out = append(out, Target{Kind: "image", ID: h.ID, Label: titles[h.ID], Href: "/img/lib/" + h.ID, Author: h.By, At: h.At, Hidden: true, Context: "hidden in every page"})
 	}

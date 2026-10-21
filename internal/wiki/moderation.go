@@ -13,6 +13,7 @@ import (
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/zweiundeins/tickit/internal/access"
+	"github.com/zweiundeins/tickit/internal/images"
 	"github.com/zweiundeins/tickit/internal/tabs"
 )
 
@@ -22,7 +23,7 @@ import (
 // version is the page as it is and is not hidden: restore an older one
 // first. A hidden image of the library shows as "Image hidden by a
 // moderator" in every page that shows it, from the next frame of their
-// readers on, and /img/lib/ no longer serves it.
+// readers on, and /img/lib/ no longer serves it; so does an uploaded one.
 
 // VersionHidden hides version Number of a page; VersionUnhidden shows it
 // again.
@@ -107,9 +108,9 @@ func projectVersionUnhidden(tx *writer.Tx, r events.Record[string, VersionUnhidd
 // errVersionHidden refuses a hidden version to everyone but staff.
 var errVersionHidden = &writer.Refusal{Msg: "A moderator hid this version."}
 
-// HideImage hides an image of the library in every page, or shows it
-// again when Hidden is false: a moderator's or a site admin's right. The
-// readers of every page render again (ImagesTopic).
+// HideImage hides an image of the library or an uploaded one (FR-85.2) in
+// every page, or shows it again when Hidden is false: a moderator's or a
+// site admin's right. The readers of every page render again (ImagesTopic).
 type HideImage struct {
 	By     tabs.By
 	Image  string
@@ -123,14 +124,17 @@ func (c HideImage) Apply(tx *writer.Tx) error {
 	if err := access.Require(tx, c.By.Actor, access.Moderate, access.Scope{}); err != nil {
 		return err
 	}
-	if !ImageExists(c.Image) {
+	uploaded, err := images.Exists(tx.Context(), tx, c.Image)
+	if err != nil {
+		return err
+	}
+	if !ImageExists(c.Image) && !uploaded {
 		return notFound("image", c.Image)
 	}
 	reason, ok := text(c.Reason, 0, 200)
 	if !ok {
 		return tabs.Refuse("reason", "A reason has at most 200 characters.")
 	}
-	var err error
 	if c.Hidden {
 		_, err = tx.Exec(`INSERT INTO hidden_images (image_id, hidden_at, hidden_by, reason) VALUES (?, ?, ?, ?)
 			ON CONFLICT (image_id) DO NOTHING`, c.Image, millis(at(c.By)), c.By.Actor.ID, reason)
@@ -142,7 +146,7 @@ func (c HideImage) Apply(tx *writer.Tx) error {
 }
 
 // ImagesTopic is touched when an image is hidden or shown again.
-const ImagesTopic = "images"
+const ImagesTopic = images.Topic
 
 // chipsBelow touches every page's chips topic, which its reader and
 // editor views list: a hidden image is in any of them.

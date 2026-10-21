@@ -76,7 +76,7 @@ tasks:
       FUZZTIME: '{{.FUZZTIME | default "30s"}}'
     cmds:
       - go test -count=1 ./...
-      - for: [FuzzCoreActions, FuzzIssueActions, FuzzBoardActions, FuzzWikiActions, FuzzEditorActions, FuzzNotifyActions, FuzzStaffActions]
+      - for: [FuzzCoreActions, FuzzIssueActions, FuzzBoardActions, FuzzWikiActions, FuzzEditorActions, FuzzNotifyActions, FuzzStaffActions, FuzzUploads]
         cmd: go test -run '^$' -fuzz '^{{.ITEM}}$' -fuzztime {{.FUZZTIME}} ./internal/web/
       - bash deploy/security-smoke.sh ./{{.BIN}}
       - go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
