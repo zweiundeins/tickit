@@ -32,7 +32,7 @@ Open [tickit.zweiundeins.gmbh](https://tickit.zweiundeins.gmbh) in two windows, 
 
 ## Develop
 
-You need Go 1.27.2 (`go` fetches it with `GOTOOLCHAIN=auto`). No Node: the editor's bundle is committed.
+You need Go 1.27.3 (`go` fetches it with `GOTOOLCHAIN=auto`). No Node: the editor's bundle is committed.
 
 ```sh
 go tool task dev     # http://127.0.0.1:8080, seeded on first start, rebuilt on every change
