@@ -343,8 +343,8 @@ type LaneProps struct {
 	CreateAttrs templ.Attributes
 	// Lean draws the head's marker and "+" from Glyphs, with the button's
 	// name as its title: for a board's frame (NFR-37.1).
-	Lean bool
-	Attrs       templ.Attributes
+	Lean  bool
+	Attrs templ.Attributes
 }
 
 func (p LaneProps) all() int { return max(p.Count, p.Total) }

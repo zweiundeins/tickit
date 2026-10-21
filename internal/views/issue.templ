@@ -46,6 +46,8 @@ templ issueFrame(p IssueFrameProps) {
 		data-effect={ issueSettle }
 		data-on:datastar-fetch={ issueFailed }
 		data-on:click={ issueClick }
+		data-on:sb-change={ issuePick }
+		data-on:focusin={ issuePickFocus }
 		data-on:keydown={ issueKeys }
 		data-on:focusout={ issueFocusOut }
 		data-on:input__throttle.2s={ issueTyping }
@@ -220,8 +222,7 @@ templ issueMain(m Issue) {
 		<p class="cluster tk-issue__key">
 			@ui.TypeLabel(uiType(m.Type))
 			<span class="mono">{ m.Key }</span>
-			@ui.Button(ui.ButtonProps{Label: "Copy link to " + m.Key, Icon: "link", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": copyLink}})
-			<span class="tk-issue__copied" role="status" data-text="$_is.copied ? 'Link copied' : ''"></span>
+			@ui.CopyButton(ui.CopyProps{Label: "Copy link to " + m.Key, Path: "/" + m.Key, Copied: "Link copied"})
 		</p>
 		<div class="tk-issue__titlerow" { showIf(fieldExpr(editHidden, "summary"))... }>
 			<h1 class="tk-issue__title" data-act="edit" data-field="summary" data-src="issue-summary-text"><span id="issue-summary-text">{ m.Summary }</span></h1>
@@ -551,12 +552,7 @@ templ issueSide(m Issue) {
 			}
 			if m.canHaveParent() {
 				@prop("Epic") {
-					@ui.Menu(ui.MenuProps{ID: "issue-epic", Label: "Epic: " + epicName(m), Trigger: epicTrigger(m), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("parent")}) {
-						@ui.MenuItem(ui.MenuItemProps{Label: "No epic", Checked: ui.Pressed(m.Parent == nil), Autofocus: true, Attrs: choice("parent", "", "")})
-						for _, e := range m.Epics {
-							@ui.MenuItem(ui.MenuItemProps{Label: e.Key + " " + e.Summary, Checked: ui.Pressed(m.Parent != nil && m.Parent.ID == e.ID), Attrs: choice("parent", e.ID, "")})
-						}
-					}
+					@ui.Picker(ui.PickerProps{ID: "issue-epic", Label: "Epic", HideLabel: true, Name: "parent", Options: epicOptions(m), Value: parentValue(m), Placeholder: "No epic", Searchable: true, Clearable: true, Confirm: true, Size: ui.SizeSM, Attrs: picker("parent")})
 					@issueNote("parent")
 				}
 			}
@@ -575,7 +571,11 @@ templ issueSide(m Issue) {
 				@issueNote("sprint")
 			}
 			@prop("Due date") {
-				@editable(m, "due", "date", m.Due, dueDisplay(m))
+				@ui.DatePicker(ui.DatePickerProps{ID: "issue-due", Label: "Due date", HideLabel: true, Name: "due", Value: m.Due, Confirm: true, Size: ui.SizeSM, Attrs: picker("due")})
+				if m.Overdue(m.Now) {
+					@ui.Due(dueTime(m.Due), m.Now, true)
+				}
+				@issueNote("due")
 			}
 			@prop("Story points") {
 				@editable(m, "points", "number", intp(m.Points), textDisplay(intp(m.Points)))
@@ -619,30 +619,17 @@ templ personLine(p people.Person) {
 	</span>
 }
 
+// assigneeMenu is the assignee picker (FR-17.1): type a name to find a
+// person; "Assign to me" beside it, which the viewer's style hides once
+// the issue is theirs.
 templ assigneeMenu(m Issue) {
-	@ui.Menu(ui.MenuProps{ID: "issue-assignee", Label: "Assignee: " + assigneeName(m), Trigger: assigneeTrigger(m), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("assignee")}) {
-		<div class="tk-issue__menusearch" data-ignore-morph>
-			<label class="visually-hidden" for="issue-assignee-q">Find a person</label>
-			<input id="issue-assignee-q" class="tk-input tk-input--sm" type="search" placeholder="Find a person" autocomplete="off" data-bind="_is.aq" autofocus/>
-		</div>
-		@ui.MenuItem(ui.MenuItemProps{Label: "Assign to me", Icon: "user", Attrs: choice("assignee", "me", "")})
-		@ui.MenuItem(ui.MenuItemProps{Label: "Unassigned", Checked: ui.Pressed(m.Assignee == ""), Attrs: choice("assignee", "", "")})
-		@ui.MenuSeparator()
-		for _, p := range m.Assignable {
-			<button type="button" class="tk-menu__item" data-name={ p.Name } aria-pressed={ boolStr(p.ID == m.Assignee) } { merge(choice("assignee", p.ID, ""), showIf(assigneeMatch))... }>
-				@ui.Avatar(ui.AvatarProps{Person: UIPerson(p), Size: ui.SizeXS, Decorative: true})
-				<span>{ p.Name }</span>
-			</button>
+	<div class="tk-issue__assignee" data-assignee={ m.Assignee }>
+		if m.Assignee != "" {
+			@ui.Avatar(ui.AvatarProps{Person: UIPerson(m.person(m.Assignee)), Size: ui.SizeSM, Decorative: true})
 		}
-	}
-}
-
-templ assigneeTrigger(m Issue) {
-	if m.Assignee == "" {
-		<span class="muted">Unassigned</span>
-	} else {
-		@personLine(m.person(m.Assignee))
-	}
+		@ui.Picker(ui.PickerProps{ID: "issue-assignee", Label: "Assignee", HideLabel: true, Name: "assignee", Options: assigneeOptions(m), Value: m.Assignee, Placeholder: "Unassigned", Searchable: true, Clearable: true, Confirm: true, Size: ui.SizeSM, Attrs: picker("assignee")})
+	</div>
+	<button type="button" class="tk-issue__me" { merge(locked, pending("assignee"), choice("assignee", "me", ""))... }>Assign to me</button>
 }
 
 templ componentsTrigger(m Issue) {
@@ -653,17 +640,6 @@ templ componentsTrigger(m Issue) {
 	}
 }
 
-templ epicTrigger(m Issue) {
-	if m.Parent == nil {
-		<span class="muted">None</span>
-	} else {
-		<span class="tk-cell">
-			@ui.TypeIcon(uiType(m.Parent.Type))
-			<span class="mono">{ m.Parent.Key }</span>
-			<span class="truncate">{ m.Parent.Summary }</span>
-		</span>
-	}
-}
 
 templ sprintTrigger(m Issue) {
 	if m.Sprint == "" {
@@ -673,13 +649,6 @@ templ sprintTrigger(m Issue) {
 	}
 }
 
-templ dueDisplay(m Issue) {
-	if m.Due == "" {
-		<span class="muted">None</span>
-	} else {
-		@ui.Due(dueTime(m.Due), m.Now, m.Overdue(m.Now))
-	}
-}
 
 templ textDisplay(s string) {
 	if s == "" {

@@ -78,7 +78,7 @@ type DayPair struct {
 templ DayChart(caption string, days []DayPair) {
 	{{ top, created, resolved := 0, 0, 0 }}
 	for _, d := range days {
-		{{ top, created, resolved = max(top, d.Created, d.Resolved), created + d.Created, resolved + d.Resolved }}
+		{{ top, created, resolved = max(top, d.Created, d.Resolved), created+d.Created, resolved+d.Resolved }}
 	}
 	<figure class="tk-days">
 		<ul class="tk-days__legend" aria-hidden="true">

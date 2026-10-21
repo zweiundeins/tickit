@@ -38,9 +38,9 @@ func issueSignals(id, key, me string, readOnly, moderates bool) string {
 		"id": id, "key": key, "me": me, "ro": readOnly, "mod": moderates,
 		"edit": "", "val": "", "orig": "", "seen": 0, "ref": "", "desc": false,
 		"ops": per(""), "last": per(""), "msg": per(""), "fail": per(""), "conflict": per(false), "want": per(""), "sent": per(0), "refs": per(""),
-		"aq": "", "lq": "", "pq": "", "mseen": 0, "sub": "", "link": map[string]any{"type": "blocks", "key": ""},
+		"lq": "", "pq": "", "mseen": 0, "sub": "", "link": map[string]any{"type": "blocks", "key": ""},
 		"draft": "", "mq": false, "cedit": "", "ctext": "",
-		"tab": "comments", "at": 0, "max": 1, "copied": false, "back": "", "pop": false,
+		"tab": "comments", "at": 0, "max": 1, "back": "", "pop": false,
 	}})
 	return string(b)
 }
@@ -63,6 +63,16 @@ const menuOpened = `$_is.mseen = ` + curVersion
 // holds ("@s-ada"): the names of the people the picker offers and the
 // texts mention, longest first (FR-67.2).
 const mentionIDs = `((s) => { const m = new Map(); document.querySelectorAll('#issue-mentions [data-id]').forEach((e) => m.has(e.dataset.name) || m.set(e.dataset.name, e.dataset.id)); for (const n of [...m.keys()].sort((a, b) => b.length - a.length)) s = s.split('@' + n).join('@' + m.get(n)); return s })`
+
+// issuePick sends what a Starbase picker of the side column (assignee,
+// epic, due date) committed, on the frame's sb-change: with the version
+// the page showed when the picker took the focus (issuePickFocus), as a
+// menu keeps the one it opened at (MP-08.2). A pick while the field waits
+// for an outcome goes back to the server's value.
+const issuePick = `((t) => { if (!t) return; const f = t.dataset.field; if ($_is.ro || $_is.ops[f] !== '') return t.revert?.(); ` + issueSendFn + `(f, evt.detail.value ?? '', $_is.mseen || ` + curVersion + `, '') })(evt.target.closest?.('[data-act=pick]'))`
+
+// issuePickFocus keeps the version a picker showed when it took the focus.
+const issuePickFocus = `evt.target.closest?.('[data-act=pick]') && !evt.target.contains(evt.relatedTarget) && ($_is.mseen = ` + curVersion + `)`
 
 // issueRetry sends field f's request that reached no outcome again with
 // its op id, so that it applies once (MP-09.3, MP-09.4).
@@ -169,6 +179,9 @@ const issueSettle = `Object.keys($_is.ops).forEach(f => {
 	} else {
 		$_is.msg[f] = o.msg || 'This was refused.'
 		$_is.conflict[f] = o.data && o.data.kind === 'conflict' ? o.data : false
+		// A refused pick shows the server's value again; after a conflict
+		// the person's stays, for "Use it anyway" (MP-08.3).
+		$_is.conflict[f] || document.querySelector('#issue [data-act=pick][data-field=' + f + ']')?.revert?.()
 	}
 })`
 
@@ -222,12 +235,7 @@ const (
 // A comment being edited shows its editor (FR-66.1).
 const commentEditing = `$_is.cedit === el.dataset.comment`
 
-// The assignee picker's search (FR-17.1), and what copies the issue's link.
-const (
-	assigneeMatch = `$_is.aq === '' || el.dataset.name.toLowerCase().includes($_is.aq.toLowerCase())`
-	issueDelete   = issueSendFn + `('delete', '', 0, '')`
-	copyLink      = `navigator.clipboard?.writeText(location.origin + '/' + $_is.key).then(() => { $_is.copied = true; setTimeout(() => $_is.copied = false, 1500) })`
-)
+const issueDelete = issueSendFn + `('delete', '', 0, '')`
 
 // PagePickID is the list of pages that "Link page" offers for its search
 // (FR-102), which GET /issues/link-page patches; pagePick asks for it.
@@ -286,7 +294,7 @@ const (
 	if ($_is.id && $_is.id !== id) ` + panelUnwatch + `
 	$_is.id = id
 	$_is.key = (a.getAttribute('href') || '').replace(/^\//, '')
-	$_is.edit = ''; $_is.at = 0; $_is.max = 1; $_is.tab = 'comments'; $_is.cedit = ''; $_is.mq = false; $_is.aq = ''; $_is.lq = ''; $_is.sub = ''
+	$_is.edit = ''; $_is.at = 0; $_is.max = 1; $_is.tab = 'comments'; $_is.cedit = ''; $_is.mq = false; $_is.lq = ''; $_is.sub = ''
 	Object.keys($_is.msg).forEach(f => { $_is.msg[f] = ''; $_is.fail[f] = ''; $_is.conflict[f] = false })
 	try { $_is.draft = sessionStorage.getItem('tickit-draft:' + id) || '' } catch (e) { $_is.draft = '' }
 	` + panelRegions + `
@@ -315,7 +323,7 @@ const (
 	createKeys   = `(evt.ctrlKey || evt.metaKey) && evt.key === 'Enter' && (evt.preventDefault(), ` + createSubmit + `)`
 	// CreateWithStatus opens the create dialog for a board column's "+":
 	// on a button with data-status (a status id) and data-project.
-	CreateWithStatus = `$_new.status = el.dataset.status || '', $_new.where = document.querySelector('.tk-lane[data-lane="' + $_new.status + '"]')?.dataset.name || '', el.dataset.project && ($_new.project = el.dataset.project), document.getElementById('` + CreateID + `').showModal(), setTimeout(() => document.getElementById('create-summary')?.focus())`
+	CreateWithStatus = `$_new.status = el.dataset.status || '', $_new.where = document.querySelector('.tk-lane[data-lane="' + $_new.status + '"]')?.dataset.name || '', el.dataset.project && ($_new.project = el.dataset.project, (document.getElementById('create-project') || {}).value = el.dataset.project), document.getElementById('` + CreateID + `').showModal(), setTimeout(() => document.getElementById('create-summary')?.focus())`
 	// createClosed forgets a column's status, so the header's Create puts
 	// the next issue at the start again.
 	createClosed = `$_new.status = '', $_new.where = ''`

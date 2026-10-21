@@ -566,7 +566,11 @@ templ RadioGroup(p RadioGroupProps) {
 // PickerProps is a searchable list of choices: Starbase's sb-select, for
 // assignees, labels, epics. Load its bundle on the page ("select").
 type PickerProps struct {
-	Label       string
+	ID    string
+	Label string
+	// HideLabel keeps the label for screen readers only, where the page
+	// names the field already (a row of the issue's details).
+	HideLabel   bool
 	Name        string
 	Options     []Option
 	Value       string // for Multiple, a JSON array or a comma list
@@ -580,8 +584,10 @@ type PickerProps struct {
 	// Confirm marks a value the server has not confirmed (:state(pending)).
 	Confirm  bool
 	Disabled bool
-	Class    string
-	Attrs    templ.Attributes
+	// Size SizeSM is a control as tall as the small buttons beside it.
+	Size  Size
+	Class string
+	Attrs templ.Attributes
 }
 
 type pickerOption struct {
@@ -600,18 +606,21 @@ func pickerOptions(opts []Option) string {
 }
 
 // Picker is sb-select with tickit's tokens. Its label is its own (inside
-// the component), so it takes no Field.
+// the component), so it takes no Field. The value attribute is always
+// there: a frame that clears it sends value="", since sb-select ignores a
+// removed attribute.
 templ Picker(p PickerProps) {
 	<sb-select
-		class={ classes("tk-picker", p.Class) }
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class={ classes("tk-picker", when(p.HideLabel, "tk-picker--bare"), when(p.Size == SizeSM, "tk-picker--sm"), p.Class) }
 		label={ p.Label }
 		if p.Name != "" {
 			name={ p.Name }
 		}
 		options={ pickerOptions(p.Options) }
-		if p.Value != "" {
-			value={ p.Value }
-		}
+		value={ p.Value }
 		if p.Placeholder != "" {
 			placeholder={ p.Placeholder }
 		}
@@ -633,6 +642,7 @@ templ Picker(p PickerProps) {
 		if p.Disabled {
 			disabled
 		}
+		data-on:focusin={ pickerSelect }
 		{ p.Attrs... }
 	></sb-select>
 }
@@ -640,28 +650,32 @@ templ Picker(p PickerProps) {
 // DatePickerProps is a date field with a calendar: sb-date-picker. Load
 // its bundle on the page ("date-picker").
 type DatePickerProps struct {
-	Label    string
-	Name     string
-	Value    string // ISO: 2026-10-20
-	Min, Max string
-	Confirm  bool
-	Disabled bool
-	Class    string
-	Attrs    templ.Attributes
+	ID        string
+	Label     string
+	HideLabel bool
+	Name      string
+	Value     string // ISO: 2026-10-20
+	Min, Max  string
+	Confirm   bool
+	Disabled  bool
+	Size      Size
+	Class     string
+	Attrs     templ.Attributes
 }
 
 // DatePicker is sb-date-picker in English.
 templ DatePicker(p DatePickerProps) {
 	<sb-date-picker
-		class={ classes("tk-date", p.Class) }
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class={ classes("tk-date", when(p.HideLabel, "tk-picker--bare"), when(p.Size == SizeSM, "tk-picker--sm"), p.Class) }
 		label={ p.Label }
 		lang="en"
 		if p.Name != "" {
 			name={ p.Name }
 		}
-		if p.Value != "" {
-			value={ p.Value }
-		}
+		value={ p.Value }
 		if p.Min != "" {
 			min={ p.Min }
 		}
@@ -676,4 +690,37 @@ templ DatePicker(p DatePickerProps) {
 		}
 		{ p.Attrs... }
 	></sb-date-picker>
+}
+
+// CopyProps is a button that copies a text: Starbase's sb-copy-button,
+// which says "Copied" beside itself in a polite status. Load
+// "copy-button".
+type CopyProps struct {
+	Label  string // the button's accessible name: "Copy link to WEB-12"
+	Value  string // the text; Path instead copies this page's origin and the path
+	Path   string
+	Copied string // what it says once copied, "Copied" by default
+	Class  string
+	Attrs  templ.Attributes
+}
+
+// copyOrigin puts the page's origin before data-path: a shared view
+// renders the path alone, since it knows no host.
+const copyOrigin = `location.origin + el.dataset.path`
+
+// CopyButton is sb-copy-button with tickit's tokens.
+templ CopyButton(p CopyProps) {
+	<sb-copy-button
+		class={ classes("tk-copy", p.Class) }
+		label={ p.Label }
+		copied-label={ iconOr(p.Copied, "Copied") }
+		if p.Path != "" {
+			data-path={ p.Path }
+			data-attr:value={ copyOrigin }
+			data-preserve-attr="value"
+		} else {
+			value={ p.Value }
+		}
+		{ p.Attrs... }
+	></sb-copy-button>
 }

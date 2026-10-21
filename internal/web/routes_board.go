@@ -389,7 +389,7 @@ func (s *Server) boardPage(w http.ResponseWriter, r *http.Request) {
 			labels = labels[:30]
 		}
 		return Page{
-			Title: p.Name + " board", Nav: "projects", Width: "full", Project: p.ID,
+			Title: p.Name + " board", Nav: "projects", Width: "full", Project: p.ID, Components: issueComponents,
 			Views: []string{"board:" + views.BoardArg(p.Key, quick, savedID, group), "boardhead:" + p.Key},
 			Body: views.Board(views.BoardPage{Project: p, Filter: quick, Saved: saved, Applied: applied, Labels: labels, Lanes: lanes, Head: head,
 				CanEdit: can(ctx, q, me, access.EditIssues, p.ID), Admin: can(ctx, q, me, access.Configure, p.ID), CreateStatus: create, Group: group,
@@ -651,7 +651,7 @@ func (s *Server) backlogPage(w http.ResponseWriter, r *http.Request) {
 			return Page{}, err
 		}
 		return Page{
-			Title: p.Name + " backlog", Nav: "projects", Project: p.ID, Views: []string{"backlog:" + p.Key},
+			Title: p.Name + " backlog", Nav: "projects", Project: p.ID, Views: []string{"backlog:" + p.Key}, Components: issueComponents,
 			Body: views.Backlog(views.BacklogPage{Project: p, Data: d, CanEdit: can(ctx, q, me, access.EditIssues, p.ID), Admin: can(ctx, q, me, access.Configure, p.ID),
 				Me: me.ID, Moderates: access.SiteCan(me, access.Moderate), Deletes: deletes(ctx, q, me, []string{p.ID})}),
 		}, nil
