@@ -26,7 +26,8 @@ templ IssueListBody(p ListPage) {
 		if p.Unwatched {
 			<div hidden data-init={ listInit }></div>
 		}
-		<div class="list-live" data-on:click={ listClick } data-on:datastar-fetch={ listFailed }>
+		@bulkBar(p)
+		<div class="list-live" data-on:click={ listClick } data-on:datastar-fetch={ listFailed } data-init={ bulkInit } data-on:change={ bulkPick } data-effect={ bulkSync }>
 			@IssueListRegion(p.List)
 		</div>
 		@saveDialog()
@@ -161,6 +162,7 @@ templ IssueListRegion(l IssueList) {
 			@ui.Table(ui.TableProps{Caption: "Issues", HideCaption: true, Sticky: true, Class: "list-table"}) {
 				<thead>
 					<tr>
+						<th class="list-select" scope="col"><input class="tk-check__box list-check-all" type="checkbox" aria-label="Select the issues on this page"/></th>
 						for _, c := range listColumns {
 							@ui.SortHeader(ui.SortProps{Label: c.Label, Dir: l.dir(c.By), Align: c.Align, Attrs: templ.Attributes{"data-sort": c.By}})
 						}
@@ -178,9 +180,11 @@ templ IssueListRegion(l IssueList) {
 }
 
 // listRow is an issue's row. A click on it opens the issue in the side
-// panel (FR-50.3, FR-13.2), as a click on its summary does.
+// panel (FR-50.3, FR-13.2), as a click on its summary does; its box
+// selects it for a bulk edit (FR-58.1).
 templ listRow(l IssueList, i tracker.Issue) {
 	<tr data-href={ "/" + i.Key }>
+		<td class="list-select"><input class="tk-check__box list-check" type="checkbox" aria-label={ "Select " + i.Key } data-i={ i.ID }/></td>
 		<td>
 			@ui.TypeGlyph(ui.IssueType(i.Type))
 		</td>

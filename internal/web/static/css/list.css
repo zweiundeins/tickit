@@ -125,6 +125,44 @@
 		color: var(--tk-text-2);
 	}
 
+	/* ── Bulk edit (FR-58) ─────────────────────────────────────────── */
+	.list-bulk {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--tk-space-2);
+		margin-block-end: var(--tk-space-3);
+	}
+
+	.list-bulk__count {
+		flex: 1 1 12rem;
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+	}
+
+	.list-bulk__labels {
+		min-inline-size: 16rem;
+	}
+
+	/* What a bulk edit did: one line per refused issue. */
+	.list-bulk__msg {
+		margin-block-end: var(--tk-space-3);
+		white-space: pre-line;
+
+		&[hidden] {
+			display: none;
+		}
+	}
+
+	.list-table .list-select {
+		inline-size: 2rem;
+	}
+
+	.list-table tbody tr:has(.list-check:checked) {
+		background: var(--tk-surface-selected);
+		box-shadow: inset 3px 0 0 var(--tk-accent);
+	}
+
 	/* ── Saved filters ─────────────────────────────────────────────── */
 	.filters-what {
 		max-inline-size: 28rem;

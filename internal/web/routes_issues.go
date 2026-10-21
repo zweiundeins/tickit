@@ -48,6 +48,7 @@ func (s *Server) routesIssues() {
 	s.get("GET /issues.csv", http.HandlerFunc(s.issueCSV), "/issues.csv", "/issues.csv?assignee=me&sort=key&dir=asc")
 	s.views.Register("list", s.listViewOf)
 	s.post("POST /cmd/list/view", s.listChange)
+	s.routesBulk()
 	s.filterRoutes()
 }
 
