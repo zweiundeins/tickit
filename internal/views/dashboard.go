@@ -59,8 +59,16 @@ type DashboardGrid struct {
 	Now       time.Time
 }
 
-// DashboardGridID is the id of a dashboard's shared region.
-const DashboardGridID = "dashboard-grid"
+// DashboardGridID and DashboardHeadID are the ids of a dashboard's shared
+// regions: its gadgets, and its name and owner.
+const (
+	DashboardGridID = "dashboard-grid"
+	DashboardHeadID = "dashboard-head"
+)
+
+// DashboardPresence is the key of a dashboard's presence row, one for
+// everyone on it whatever they read.
+func DashboardPresence(id string) string { return "dashboard:" + id }
 
 // Gadget is one gadget as the grid renders it.
 type Gadget struct {

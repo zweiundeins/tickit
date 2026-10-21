@@ -200,6 +200,22 @@
 		border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
 	}
 
+	/* The name and owner, a region of the grid's view, beside the
+	 * presence row. */
+	.tk-dash__head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: var(--tk-space-3) var(--tk-space-6);
+		margin-block-end: var(--tk-space-5);
+
+		& > .tk-pagehead {
+			flex: 1 1 auto;
+			margin-block-end: 0;
+		}
+	}
+
 	.tk-dash__grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
