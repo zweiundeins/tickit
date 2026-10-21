@@ -220,6 +220,10 @@ var secCases = []secCase{
 		return c
 	}(),
 	{name: "issues/typing", pattern: "POST /cmd/issues/{id}/{field}", need: read, guard: true, by: wViewer, req: at("/cmd/issues/{issue}/typing", "field", "comment")},
+	{name: "issues/bulk", pattern: "POST /cmd/issues/bulk", need: edit, guard: true, outcome: true, by: wMember, req: bulkReq("status", "inprogress", "")},
+	{name: "issues/bulk/labels", pattern: "POST /cmd/issues/bulk", need: edit, guard: true, outcome: true, by: wMember, req: bulkReq("labels", "urgent", "add")},
+	{name: "issues/bulk/assignee", pattern: "POST /cmd/issues/bulk", need: edit, guard: true, outcome: true, by: wMember, req: bulkReq("assignee", "me", "")},
+	{name: "issues/bulk/delete", pattern: "POST /cmd/issues/bulk", need: admin, guard: true, outcome: true, by: wOwner, req: bulkReq("delete", "", "")},
 
 	{name: "list/view", pattern: "POST /cmd/list/view", need: self, by: wViewer, noop: true, req: at("/cmd/list/view", "view", "", "query", "project=SEC")},
 	{name: "filters/save", pattern: "POST /cmd/filters/save", need: self, guard: true, outcome: true, by: wViewer, req: at("/cmd/filters/save", "name", "Mine too", "query", "assignee=me")},
@@ -254,6 +258,13 @@ var secCases = []secCase{
 				}
 			}
 		}},
+}
+
+// bulkReq is a bulk edit of the scope's two issues (FR-58).
+func bulkReq(field, value, ref string) func(*fixture, bool) (string, map[string]any) {
+	return func(f *fixture, open bool) (string, map[string]any) {
+		return "/cmd/issues/bulk", map[string]any{"issues": []any{f.id("issue", open), f.id("issue2", open)}, "field": field, "value": value, "ref": ref}
+	}
 }
 
 // commitReq is a commit of one character on the page as it is.

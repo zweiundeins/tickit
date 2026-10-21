@@ -7,7 +7,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | Area | Must done | Must partly | Must not done | Should done | Should partly | Should not done |
 | --- | --- | --- | --- | --- | --- | --- |
 | Projects | 1 | 0 | 0 | 1 | 0 | 0 |
-| Issues | 8 | 1 | 0 | 8 | 0 | 0 |
+| Issues | 9 | 0 | 0 | 8 | 0 | 0 |
 | Workflows and statuses | 1 | 0 | 0 | 1 | 0 | 0 |
 | Boards, backlog and sprints | 2 | 0 | 0 | 2 | 0 | 0 |
 | Search, filters, bulk edit and dashboards | 7 | 0 | 0 | 2 | 0 | 0 |
@@ -29,7 +29,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | Non-functional: Deployment on the shared host | 8 | 0 | 0 | 0 | 0 | 0 |
 | Non-functional: Backups | 2 | 0 | 0 | 1 | 0 | 0 |
 | Non-functional: Observability | 3 | 0 | 0 | 1 | 0 | 0 |
-| **All** | **101** | **8** | **0** | **49** | **2** | **0** |
+| **All** | **102** | **7** | **0** | **49** | **2** | **0** |
 
 ## Projects
 
@@ -48,7 +48,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | FR-13 | View an issue | Must | done | e2e/issue_test.go: TestIssuePanel (Chromium); e2e/issue_test.go: TestIssueTwoPeople (Chromium) | No test checks every field of FR-13.1, but the issue page renders all of them with names and faces. |
 | FR-14 | Edit summary and description | Must | done | e2e/issue_test.go: TestIssueEditInPlace (Chromium); internal/tracker/decide_test.go: TestEditIssue; internal/tracker/commands_test.go: TestFieldConflicts; internal/web/issue_actions_test.go: TestIssueActionsAccepted; internal/web/issue_actions_test.go: TestIssueActionsRefused |  |
 | FR-15 | Rich-text description | Should | done | internal/tracker/description_test.go: TestDescriptionCommits; internal/tracker/description_test.go: TestDescriptionVersions; internal/tracker/description_test.go: TestDescriptionFold; internal/tracker/description_test.go: TestDescriptionReset; internal/tracker/decide_test.go: TestCutDescription; internal/notify/notify_test.go: TestMentions; internal/activity/activity_test.go: TestFeeds; internal/web/desc_test.go: TestDescriptionLive; internal/web/desc_test.go: TestDescriptionAnswers; e2e/desc_coedit_test.go: TestDescriptionCoEditing (Chromium) | The description is a co-edited document in the page editor (docs/editor.md, "Issue descriptions"), whose versions are cut as issue.description_changed; the create dialog still takes text markup. In the issue panel, Edit opens the issue's page with the editor. |
-| FR-16 | Change status | Must | partly | internal/tracker/issuepage_test.go: TestProjectWorkflow; internal/web/issue_actions_test.go: TestIssueActionsAccepted; internal/web/board_test.go: TestBoardMoveAccepted | Status changes from the menu and the board work live, but the bulk edit path of FR-16.1 is missing because FR-58 (a Could) is not built. |
+| FR-16 | Change status | Must | done | internal/tracker/issuepage_test.go: TestProjectWorkflow; internal/web/issue_actions_test.go: TestIssueActionsAccepted; internal/web/board_test.go: TestBoardMoveAccepted; internal/tracker/bulk_test.go: TestBulkEdit; internal/web/bulk_test.go: TestBulkStatus; e2e/bulk_test.go: TestBulkStatusLive (Chromium) | Status changes from the menu, the board and the issue list's bulk edit (FR-58) work live; a bulk edit runs each issue's change through the menu's command, so the workflow's rules apply to it too. |
 | FR-17 | Assign and unassign | Must | done | internal/tracker/commands_test.go: TestAssign; internal/tracker/decide_test.go: TestEditIssue; internal/notify/notify_test.go: TestAssignment |  |
 | FR-18 | Change priority | Must | done | internal/ui/ui_test.go: TestIcons; internal/web/issue_actions_test.go: TestIssueActionsAccepted |  |
 | FR-19 | Issue types | Must | done | internal/tracker/commands_test.go: TestEpicsAndSubtasks; internal/tracker/decide_test.go: TestEditIssue; internal/web/issue_actions_test.go: TestIssueActionsRefused |  |
@@ -316,4 +316,3 @@ The Must requirements that are partly done, most important first. No Must requir
 - NFR-55 Supported browsers: the browser tests pass in Chromium and Firefox 158; nothing runs Safari, iOS, Android or Edge.
 - NFR-28 Log retention: the app's logs hold no content (tested), and Caddy and Loki keep 30 days, but the journal on libretto is capped by size, not by 30 days.
 - NFR-31 One cookie and a privacy page: the legal check of the wording (Q25) is not recorded.
-- FR-16 Change status: status changes by bulk edit are missing, since bulk edit (FR-58, a Could) is not built.
