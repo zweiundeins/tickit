@@ -6,6 +6,7 @@ import (
 	"github.com/a-h/templ"
 
 	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/ui"
 )
 
 // Bulk edit in the issue list (FR-58): the selection is the tab's, the
@@ -37,6 +38,24 @@ func bulkOff() templ.Attributes { return templ.Attributes{"data-attr:disabled": 
 func bulkChoice(field, value string) templ.Attributes {
 	return templ.Attributes{"data-bulk": field, "data-value": value}
 }
+
+// bulkPeople are the bulk Assign picker's choices: Me, Unassigned, then
+// the people of the list's options.
+func bulkPeople(p ListPage) []ui.Option {
+	out := []ui.Option{{Value: tracker.Me, Label: "Me"}, {Value: tracker.Unassigned, Label: "Unassigned"}}
+	for _, id := range p.Options.People {
+		out = append(out, ui.Option{Value: id, Label: p.People[id].Name})
+	}
+	return out
+}
+
+// bulkAssign sends the picked assignee for the selection through the
+// bar's handler, gives the focus back to Assign and empties the picker.
+var bulkAssign = `evt.detail.value && ((b) => { b.dataset.value = evt.detail.value === '` + tracker.Unassigned + `' ? '' : evt.detail.value; document.querySelector('[popovertarget=bulk-assign]').focus(); b.click(); el.value = '' })(document.getElementById('bulk-assign-go'))`
+
+// bulkAssignToggle marks the button open, and puts the focus in the
+// picker when the popover opens.
+var bulkAssignToggle = listToggle + `; evt.newState === 'open' && requestAnimationFrame(() => el.querySelector('sb-select').shadowRoot?.querySelector('input')?.focus())`
 
 // bulkLabel adds the label typed in #bulk-label, or removes it (ref).
 func bulkLabel(ref string) templ.Attributes {

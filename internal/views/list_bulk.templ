@@ -25,16 +25,14 @@ templ bulkBar(p ListPage) {
 				@ui.MenuItem(ui.MenuItemProps{Label: s.Name, Autofocus: i == 0, Attrs: bulkChoice(tracker.FieldStatus, s.ID)})
 			}
 		}
-		@ui.Menu(ui.MenuProps{ID: "bulk-assignee", Label: "Assign", Caret: true, Size: ui.SizeSM, Variant: ui.Secondary, Attrs: bulkOff()}) {
-			@ui.MenuItem(ui.MenuItemProps{Label: "Me", Autofocus: true, Attrs: bulkChoice(tracker.FieldAssignee, "me")})
-			@ui.MenuItem(ui.MenuItemProps{Label: "Unassigned", Attrs: bulkChoice(tracker.FieldAssignee, "")})
-			if len(p.Options.People) > 0 {
-				@ui.MenuSeparator()
-			}
-			for _, id := range p.Options.People {
-				@ui.MenuItem(ui.MenuItemProps{Label: p.People[id].Name, Attrs: bulkChoice(tracker.FieldAssignee, id)})
-			}
-		}
+		@ui.Button(ui.ButtonProps{Label: "Assign", IconEnd: "chevron-down", Size: ui.SizeSM, Variant: ui.Secondary, PopoverTarget: "bulk-assign", Attrs: bulkOff()})
+		<div id="bulk-assign" class="tk-menu list-bulk__labels" popover data-on:toggle={ bulkAssignToggle }>
+			<div class="list-filters__set">
+				@ui.Picker(ui.PickerProps{ID: "bulk-assignee", Label: "Assign to", Name: "assignee", Options: bulkPeople(p), Placeholder: "Type a name", Searchable: true, Size: ui.SizeSM,
+					Attrs: templ.Attributes{"data-on:sb-change": bulkAssign}})
+				<button id="bulk-assign-go" type="button" hidden { bulkChoice(tracker.FieldAssignee, "")... }></button>
+			</div>
+		</div>
 		@ui.Menu(ui.MenuProps{ID: "bulk-priority", Label: "Set priority", Caret: true, Size: ui.SizeSM, Variant: ui.Secondary, Attrs: bulkOff()}) {
 			for i := len(tracker.Priorities) - 1; i >= 0; i-- {
 				@ui.MenuItem(ui.MenuItemProps{Label: tracker.Priorities[i].Name(), Autofocus: i == len(tracker.Priorities)-1, Attrs: bulkChoice(tracker.FieldPriority, string(tracker.Priorities[i]))})

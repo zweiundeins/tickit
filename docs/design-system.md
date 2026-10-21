@@ -304,14 +304,14 @@ Where the app uses them (the styleguide shows them all):
 
 | Component | Wrapper | Pages |
 | --- | --- | --- |
-| sb-select | `ui.Picker` | an issue's assignee and epic (page and panel), the create dialog's project and assignee, the issue list's Assignee and Reporter filters (several, in their popovers), a project's lead and the member to add in its settings, a dashboard gadget's project and saved filter |
+| sb-select | `ui.Picker` | an issue's assignee and epic (page and panel), the create dialog's project and assignee, the issue list's Assignee and Reporter filters (several, in their popovers) and its bulk bar's Assign (in a popover, emptied after each choice), a project's lead and the member to add in its settings, a dashboard gadget's project and saved filter |
 | sb-date-picker | `ui.DatePicker` | an issue's due date, the issue list's Due, Created and Resolved ranges (From and To), a sprint's start and end |
 | sb-copy-button | `ui.CopyButton` | "Copy link" on an issue (page and panel) and on a page in view |
 | sb-toast | `ui.Toasts` | the issue list: a saved filter, once its dialog closed |
 | sb-dropdown | `ui.ActionMenu` | `/design` only |
 | sb-context-menu | `ui.ContextMenuButton` | the accounts' row menu in admin: one menu for every row, the row's role checked, Reactivate, Deactivate and Erase as they apply (a page of 50 accounts went from 472 KB to 67 KB) |
 
-Native selects stay for short fixed lists: priority, type, category, roles, a workflow's statuses and columns. The other hand-made menus stay. The board's card menu is one menu for every card already (NFR-37, `TestBoardFrameSize`), and the columns a card may not go to come from the rules the lanes carry, which sb-context-menu would need on every card as `data-menu-hidden`. The issue's status, priority, type, sprint and components menus show a pixel icon or a lozenge per item and the current value checked; sb-dropdown's icons are text and its trigger a slot, so they would look and read differently from every other menu. The saved filters' menus are links in `ui.Menu` already. The bulk bar's menus are one per list, not per row.
+Native selects stay for short fixed lists: priority, type, category, roles, a workflow's statuses and columns. The other hand-made menus stay. The board's card menu is one menu for every card already (NFR-37, `TestBoardFrameSize`), and the columns a card may not go to come from the rules the lanes carry, which sb-context-menu would need on every card as `data-menu-hidden`. The issue's status, priority, type, sprint and components menus show a pixel icon or a lozenge per item and the current value checked; sb-dropdown's icons are text and its trigger a slot, so they would look and read differently from every other menu. The saved filters' menus are links in `ui.Menu` already. The bulk bar's other menus are one per list, not per row, and short.
 
 The issue's pickers sit in the frame of the shared view `issue:<id>`: a frame updates their `value` and `options` attributes, which never touches the open list, the typed search or the focus inside the shadow root (MP-03.3). The frame's `sb-change` handler sends the field with the version the page showed when the picker took the focus (MP-08.2); a refusal reverts the picker, a conflict keeps the person's value for "Use it anyway".
 

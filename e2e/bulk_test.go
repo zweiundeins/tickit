@@ -113,3 +113,35 @@ func TestBulkStatusLive(t *testing.T) {
 		t.Errorf("the message shows as %q, not on two lines", lines)
 	}
 }
+
+// FR-58.1, NFR-47: the bulk bar's Assign is a picker: Enter on Assign
+// opens it with the focus in its search, a typed name and Enter assign
+// the selected issues, and the picker is empty again for the next time.
+func TestBulkAssignByTyping(t *testing.T) {
+	e := webtest.Start(t)
+	issueData(t, e)
+	p := browsertest.Start(t).NewPage(t, 1280, 900)
+	p.Navigate(t, e.URL+"/issues?sort=key&dir=asc")
+	p.Wait(t, `document.getElementById('reconnecting')?.hidden && customElements.get('sb-select') && `+rowKeys+`.length >= 2`, 10*time.Second)
+	var keys []string
+	p.Eval(t, rowKeys, &keys)
+	p.Eval(t, `(`+rowOf(keys[0])+`.querySelector('.list-check').click(), `+rowOf(keys[1])+`.querySelector('.list-check').click(), true)`, nil)
+	p.Wait(t, `document.querySelector('.list-bulk__count').textContent === '2 issues selected'`, 5*time.Second)
+
+	pick := `document.getElementById('bulk-assignee')`
+	p.Eval(t, `(document.querySelector('[popovertarget=bulk-assign]').focus(), true)`, nil)
+	enter(t, p)
+	p.Wait(t, `document.getElementById('bulk-assign').matches(':popover-open') && document.activeElement === `+pick+` && `+pick+`.shadowRoot.activeElement?.localName === 'input'`, 5*time.Second)
+	typeKeys(t, p, "tom")
+	p.Wait(t, pick+`.shadowRoot.querySelector('[popover]').matches(':popover-open') && [...`+pick+`.shadowRoot.querySelectorAll('[role=option]')].filter((o) => o.checkVisibility()).map((o) => o.textContent.trim()).join() === 'Tomasz Nowak'`, 2*time.Second)
+	shoot(t, p, "bulk-assign")
+	enter(t, p)
+	p.Wait(t, `!document.getElementById('bulk-assign').matches(':popover-open') && document.querySelector('.list-bulk__msg').textContent === '2 issues changed.'`, 5*time.Second)
+	p.Wait(t, rowOf(keys[0])+`.textContent.includes('Tomasz Nowak') && `+rowOf(keys[1])+`.textContent.includes('Tomasz Nowak')`, 5*time.Second)
+	var left string
+	p.Eval(t, pick+`.value`, &left)
+	if left != "" {
+		t.Errorf("the picker kept %q", left)
+	}
+	noErrors(t, p)
+}
