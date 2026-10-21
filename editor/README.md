@@ -11,7 +11,7 @@ The browser side of co-editing pages (docs/editor.md): a Rocket component that w
 | `src/schema.js` | The schema from `internal/doc/schema.json` (bundled at build time) plus `toDOM` and `parseDOM` per node and mark. |
 | `src/collab.js` | The commit protocol, after `@stepwisehq/prosemirror-collab-commit` 1.0.5 (MIT). |
 | `src/carets.js` | Remote carets and selections (MP-06). |
-| `src/nodeviews.js` | Node views: issue chips, mentions, page links, task items, images. |
+| `src/nodeviews.js` | Node views: issue chips, mentions, page links, task items, images, issue lists with their filter form. |
 | `src/commands.js` | Toolbar commands, input rules, keymaps. |
 | `src/limits.js` | DM-05's limits as a `filterTransaction`. |
 | `src/styles.js` | Structural CSS for the light-DOM editor. |
@@ -56,6 +56,7 @@ The page loads `/static/editor/sb-rich-editor.min.<hash>.js` (from `static.URL("
 | `readonly` | Boolean attribute: present means read-only. `readonly="false"` is read-only too (Rocket reads booleans as HTML does). |
 | `images` | JSON `[{id, alt}]`: the image library the Image button offers. Without it, the button fires `sb-insert-image`. |
 | `label` | Accessible name of the text area (default "Page content"). |
+| `lists` | Optional: the id of the page's element whose `[data-list]` children hold each issue list's rows by `savedFilter|filter|limit` and whose `[data-filters] > [data-id]` the saved filters (FR-104). Without it an issue list shows no rows. |
 
 ## Events
 
@@ -72,6 +73,7 @@ All bubble and are composed. The detail never goes into a signal; commits and pr
 | `sb-limit` | `{page, limit, max, value, message}` | Input stopped at a DM-05 limit: `size`, `blocks`, `table-rows`, `table-columns`. |
 | `sb-paste-offer` | `{page, kind}` | A pasted issue key or tickit URL got an offer (`chip` or `page`). |
 | `sb-insert-image` | `{page}` | Image button without `images`. Cancel it (`preventDefault`) and call `insertImage`. |
+| `sb-select` | `{page, empty, text, top, left, bottom}` | The selection of text changed, at most once a frame: its text and where it is in viewport pixels, for "Create issue" (FR-105). |
 | `sb-ready` | `{page}` | The editor mounted. |
 | `sb-copied` | `{page, ok}` | The copy button ran. |
 
@@ -82,6 +84,8 @@ All bubble and are composed. The detail never goes into a signal; commits and pr
 | `posted(ref, ok, status?)` | The page calls it when the `@post` of commit `ref` settled. `ok` false means a network failure: the commit goes out again after 1 s, then 2, 4, 8 and 15 s. `ok` true means the server answered; the frame confirms. With a `status`: 429 and 5xx back off and resend, 409 and 422 wait for the frame that says why. |
 | `copy()` | Puts the content on the clipboard as HTML and text (MP-13). |
 | `insertImage(id, alt)`, `insertChip(key)`, `insertMention(personId, label)`, `insertPageLink(pageId)` | Insert at the selection. |
+| `insertIssueList(attrs)` | Inserts an issue list at the selection and puts the focus in its filter field. |
+| `selectionText()`, `track(id)`, `chipTracked(id, key)` | The selected text as a summary; keep the selection under id, mapped through every change; replace it with key's chip as a commit (FR-105). |
 | `focus()`, `html()`, `text()`, `json()` | Focus, and the current content. |
 | `view`, `editor` | The ProseMirror view and the editor object, for tests. |
 

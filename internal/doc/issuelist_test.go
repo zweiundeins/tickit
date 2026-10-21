@@ -143,3 +143,39 @@ func TestIssueListHTML(t *testing.T) {
 		t.Errorf("Text: %q", txt)
 	}
 }
+
+// FR-105: a reader's selection is found in its top-level block, within
+// one textblock, white space folded, never across an atom; ChipStep puts
+// the chip in its place.
+func TestFindInBlock(t *testing.T) {
+	d := mustDoc(t, docOf(para, `{"type":"blockquote","content":[{"type":"paragraph","content":[`+text("Fix the  login, then the login 😀 page")+`,{"type":"issue_chip","attrs":{"key":"WEB-1"}},`+text(" page")+`]}]}`))
+	for _, c := range []struct {
+		find     string
+		nth      int
+		from, to int
+		ok       bool
+	}{
+		{"the login", 0, 10, 20, true},
+		{"the login", 1, 27, 36, true},
+		{"login 😀 page", 0, 31, 44, true},
+		{"the login", 2, 0, 0, false},
+		{"page page", 0, 0, 0, false},
+		{"hi", 0, 0, 0, false},
+	} {
+		from, to, ok := FindInBlock(d, 1, c.find, c.nth)
+		if ok != c.ok || ok && (from != c.from || to != c.to) {
+			t.Errorf("%q #%d: %d %d %v, want %d %d %v", c.find, c.nth, from, to, ok, c.from, c.to, c.ok)
+		}
+	}
+	st, err := ChipStep(27, 36, "WEB-2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	next, err := st.Apply(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := Text(next); !strings.Contains(got, "Fix the  login, then WEB-2 😀 page") {
+		t.Errorf("after the chip: %q", got)
+	}
+}

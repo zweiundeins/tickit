@@ -52,7 +52,7 @@ func newList(t *testing.T) *listEnv {
 
 func (e *listEnv) by(p people.Person) tabs.By {
 	e.n++
-	return tabs.By{Actor: p, Op: fmt.Sprint("seed", e.n), At: time.Now().Add(time.Duration(e.n-1000) * time.Minute)}
+	return tabs.By{Actor: p, Op: fmt.Sprint("seed", e.n), At: time.Now().Add(time.Duration(e.n-1000) * time.Second)}
 }
 
 func (e *listEnv) result(cmd writer.ResultCommand) string {

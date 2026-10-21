@@ -87,7 +87,7 @@ func TestIssueListAndCreateFromPage(t *testing.T) {
 	a.Wait(t, `document.querySelector('.wk-issue-done')?.textContent.startsWith('Created ')`, 10*time.Second)
 	var made string
 	a.Eval(t, `document.querySelector('.wk-issue-done').textContent.split(' ')[1].replace(',', '')`, &made)
-	co.Wait(t, `[...document.querySelectorAll('.pm-mount a.issue-chip')].some(c => c.dataset.key === `+jsonString(made)+`) && document.querySelector('.pm-mount').textContent.includes('Rotate the ') && !document.querySelector('.pm-mount').textContent.includes('signing keys')`, 10*time.Second)
+	co.Wait(t, `[...document.querySelectorAll('.pm-mount a.issue-chip')].some(c => c.dataset.key === `+jsonString(made)+`) && JSON.stringify(document.getElementById('editor').json()).includes('{"type":"text","text":"Rotate the "},{"type":"issue_chip","attrs":{"key":'+JSON.stringify(`+jsonString(made)+`)+'}}]')`, 10*time.Second)
 	var linked int
 	if err := s.db.View(context.Background(), func(tx *sql.Tx) error {
 		return tx.QueryRow(`SELECT count(*) FROM issue_pages p JOIN issues i ON i.id = p.issue_id WHERE i.key = ? AND i.summary = 'signing keys' AND p.page_id = ?`, made, page).Scan(&linked)
