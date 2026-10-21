@@ -72,13 +72,9 @@ function setup(host) {
 		pending = i
 		host.scrollToIndex(i, { block: 'nearest' })
 	}
-	// The entry with the focus, by key: the morph patches entries in place, so
-	// until the component's refocus a frame later the focused one may show another.
-	let focused = ''
-	host.addEventListener('focusin', (evt) => (focused = evt.target.closest?.('article')?.dataset.key || ''))
 	host.addEventListener('keydown', (evt) => {
 		if ((evt.key !== 'PageDown' && evt.key !== 'PageUp') || evt.altKey || evt.ctrlKey || evt.metaKey || evt.shiftKey) return
-		const art = (focused && items().find((a) => a.dataset.key === focused)) || evt.target.closest?.('article')
+		const art = evt.target.closest?.('article')
 		const at = art ? +art.getAttribute('aria-posinset') - 1 : Math.floor(scroller.scrollTop / size()) - (evt.key === 'PageDown' ? 1 : 0)
 		const next = at + (evt.key === 'PageDown' ? 1 : -1)
 		if (next < 0 || next >= (+host.getAttribute('total') || 0)) return

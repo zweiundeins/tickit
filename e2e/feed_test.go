@@ -139,6 +139,47 @@ func TestHomeFeedScrolls(t *testing.T) {
 	p.Press(t, "PageUp")
 	p.Wait(t, `+document.activeElement?.getAttribute('aria-posinset') === `+fmt.Sprint(want), 5*time.Second)
 
+	// A key pressed as a window lands, before the next frame: the focus is on
+	// the entry it was on, and Page Down moves on from that one.
+	p.Eval(t, `(() => {
+		const h = document.getElementById('activity-home-list'), art = () => document.activeElement?.closest?.('article')
+		let key = art()?.dataset.key
+		window.landed = []
+		h.addEventListener('focusin', () => (key = art()?.dataset.key))
+		window.landing = new MutationObserver(() => queueMicrotask(() => {
+			const a = art()
+			if (!a || !h.contains(a)) return
+			const was = {key, on: a.dataset.key, pos: +a.getAttribute('aria-posinset')}
+			if (!h.querySelector('[aria-posinset="' + (was.pos + 1) + '"]')) return
+			a.dispatchEvent(new KeyboardEvent('keydown', {key: 'PageDown', bubbles: true, composed: true}))
+			window.landed.push({...was, next: +art()?.getAttribute('aria-posinset')})
+		}))
+		window.landing.observe(h, {attributeFilter: ['offset']})
+		return true
+	})()`, nil)
+	for i := 0; i < 200; i++ {
+		var n int
+		p.Eval(t, `window.landed.length`, &n)
+		if n >= 3 {
+			break
+		}
+		p.Press(t, "PageDown")
+		time.Sleep(15 * time.Millisecond)
+	}
+	var landed []struct {
+		Key, On   string
+		Pos, Next int
+	}
+	p.Eval(t, `(window.landing.disconnect(), window.landed)`, &landed)
+	if len(landed) < 3 {
+		t.Errorf("only %d windows landed under the focus", len(landed))
+	}
+	for _, l := range landed {
+		if l.On != l.Key || l.Next != l.Pos+1 {
+			t.Errorf("as a window landed the focus was on %s (want %s), and Page Down went from %d to %d", l.On, l.Key, l.Pos, l.Next)
+		}
+	}
+
 	// Newer activity leads back to the top, where the newest entry is.
 	p.Eval(t, `(document.querySelector('#activity-home .tk-vfeed__newer').click(), true)`, nil)
 	p.Wait(t, `document.activeElement?.getAttribute('aria-posinset') === '1' && document.activeElement.textContent.includes('Arrived while focused')`, 10*time.Second)
