@@ -125,6 +125,19 @@
 		color: var(--tk-text-2);
 	}
 
+	.sg-virtual {
+		block-size: 10rem;
+		border: 1px solid var(--tk-border-subtle);
+	}
+
+	.sg-virtual__row {
+		margin: 0;
+		padding-inline: var(--tk-space-3);
+		border-block-end: 1px solid var(--tk-border-subtle);
+		font-size: var(--tk-text-sm);
+		line-height: var(--tk-row);
+	}
+
 	.sg-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(100%, 30rem), 1fr));

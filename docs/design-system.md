@@ -165,7 +165,20 @@ Variants are `Primary` (one per view), `Secondary`, `Ghost` and `Danger`. `Comma
 @ui.Tree(ui.TreeProps{Label: "Pages in Engineering", Items: items})
 ```
 
-`Tree` is the ARIA tree pattern rendered by the server: links as tree items, one tab stop, Up and Down through visible items, Right and Left to open and close, Home and End, Enter to follow. Expand the ancestors of the current page in `Items`. Open and closed state survives frames (`data-preserve-attr`).
+`Tabs` is sb-tabs: the panels are light-DOM children in slots, so live regions inside them still morph by id; the issue's Comments, History and Activity bind `selected` to a signal (`data-attr:selected`) and set it from `sb-tab-change`. Real tabs only: navigation between pages with their own URL is `TabNav` (a project's tabs, admin's).
+
+`Tree` is the ARIA tree pattern rendered by the server: links as tree items, one tab stop, Up and Down through visible items, Right and Left to open and close, Home and End, Enter to follow. Expand the ancestors of the current page in `Items`. Open and closed state survives frames (`data-preserve-attr`). It stays tickit's own rather than sb-tree, whose items are not links (no Enter to follow, no new tab, nothing before its bundle runs), whose icons are text glyphs and which has no `aria-current` and no meta after the label.
+
+### Long lists
+
+```templ
+@ui.VirtualList(ui.VirtualProps{ID: "activity-home-list", Label: "Recent activity", Role: "feed", Total: total, Offset: from,
+	ItemSize: views.FeedRow, Attrs: windowAttrs}) {
+	…one element per item of the window, each one row high…
+}
+```
+
+`VirtualList` is sb-virtual-scroll: a box that scrolls a list of `Total` rows of which the server rendered the window from `Offset`. Every item is exactly one row (`ItemSize` px; the page may measure it again, and `data-preserve-attr` keeps what it set). When the reader scrolls past the window the component emits `sb-window {offset, count}`, and the feature answers with a frame of another window. `Role: "feed"` hands the semantics to the host (articles with `aria-posinset` and `aria-setsize`, the ARIA feed pattern); without a role it is a list named by `Label`. Before the bundle defines it, the window scrolls as a plain box. The activity feeds use it through `views.FeedWindow` (docs/architecture.md, "Activity and the home page"): rows of `--tk-feed-row` in a box of `--tk-feed-height`, one line of who did what with the subject cut short, one of the time and the quote. Short lists stay plain (`ui.Feed`, tables, `ui.Pagination` for search results).
 
 ### Tables
 
@@ -203,7 +216,7 @@ Plain tables (NFR-50). In cells: `.tk-key` for keys, `.tk-grow` for the column t
 @ui.Progress(5, 8, "Board v1")
 ```
 
-`IssueChip`, `Mention` and `PageLink` render the same elements as documents (`a.issue-chip[data-key]`, `a.mention[data-person]`, `a.page-link[data-page]`, see docs/editor.md), so one stylesheet serves both. A chip of a deleted or unknown issue says so (`State: ui.ChipDeleted`).
+`IssueChipProps.Glyph` draws the type as a mask of `ui.Glyphs`, for rows that repeat chips (a feed's window). `IssueChip`, `Mention` and `PageLink` render the same elements as documents (`a.issue-chip[data-key]`, `a.mention[data-person]`, `a.page-link[data-page]`, see docs/editor.md), so one stylesheet serves both. A chip of a deleted or unknown issue says so (`State: ui.ChipDeleted`).
 
 ### Board
 
@@ -275,11 +288,17 @@ The toolbar is `role=toolbar` with one tab stop and Left and Right along it; eve
 go tool task vendor-starbase STARBASE=/develop/starbase
 ```
 
-Vendored: `copy-button`, `date-picker`, `dropdown`, `popover`, `select`, `tabs`, `toast`, `tree`, `virtual-scroll`. The modules stay as Starbase wrote them; `edge.Static` minifies them in production. A page loads a component as a module after its import map:
+Vendored: `copy-button`, `date-picker`, `dropdown`, `popover`, `select`, `tabs`, `toast`, `tree`, `virtual-scroll`. The modules stay as Starbase wrote them; `edge.Static` minifies them in production. A page loads a component by naming it in `Page.Components` (`web.StarbaseScripts` adds the modules it renders, in order, after the import map); `/design` loads them all.
 
-```go
-scripts, err := web.StarbaseScripts(files, "select", "tabs") // with the modules they render, in order
-```
+Where the app uses them:
+
+| Component | `internal/ui` | Used on |
+| --- | --- | --- |
+| sb-tabs | `ui.Tabs` | the issue's Comments, History and Activity, on its page and in the side panel (the issue page, board, backlog, issue list, search: `web.panelComponents`) |
+| sb-virtual-scroll | `ui.VirtualList` | the activity feeds of the home page, a project's Activity tab and a space's overview (`views.FeedWindow`, `web.feedComponents`) |
+| sb-tree | | not used: the page tree is `ui.Tree` (see Navigation) |
+
+The other lists stay plain on purpose: a person's page and a dashboard's activity gadget show 20 and 10 entries, the moderation page the newest 50, search results are pages of a ranked result with numbered links, and an issue's History and Activity are part of the issue's one view, which renders them whole.
 
 Not vendored, on purpose: dialogs and the side panel are native `<dialog>`s (sb-modal, sb-drawer), tooltips are CSS with an Escape hush (sb-tooltip), disclosures are `<details>` (sb-details), notices are markup (sb-alert), and sb-relative-time's title lacks the time zone NFR-51 asks for. Starbase's components read `--sb-*`, which `starbase.css` maps onto tickit's tokens, so themes and the smooth style reach them.
 

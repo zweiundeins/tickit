@@ -97,6 +97,11 @@
 		min-block-size: calc(var(--tk-control-md) + 1.25rem);
 	}
 
+	sb-virtual-scroll:not(:defined) {
+		display: block;
+		overflow: auto;
+	}
+
 	sb-tabs:not(:defined) {
 		display: block;
 

@@ -191,7 +191,7 @@ func TestHomeAndReactions(t *testing.T) {
 	}
 	project := result(tracker.CreateProject{By: by(them, "p1"), Key: "WEB", Name: "Website", Open: true})
 	result(tracker.CreateIssue{By: by(me, "p2"), Project: project, Type: tracker.Task, Summary: "Mine to start"})
-	home := webtest.Listen(t, c, e.URL+"/stream?tab=tab1&v=home:,activity-home:1", nil)
+	home := webtest.Listen(t, c, e.URL+"/stream?tab=tab1&v=home:,activity-home:0", nil)
 	webtest.Next(t, home, `id="home-work"`)
 	issue := result(tracker.CreateIssue{By: by(them, "p3"), Project: project, Type: tracker.Bug, Summary: "Broken login"})
 	e.Do(t, tracker.Assign{By: by(them, "p4"), Issue: issue, Seen: 1 << 40, Assignee: me.ID})

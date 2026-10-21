@@ -227,7 +227,7 @@ func (s *Server) spaceHome(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return Page{}, err
 		}
-		return s.pageView(ctx, q, me, p, sp, "home")
+		return s.pageView(ctx, q, me, p, sp, "home", feedFrom(r))
 	})
 }
 
@@ -241,7 +241,7 @@ func (s *Server) pagePage(w http.ResponseWriter, r *http.Request) {
 		if url := wiki.PageURL(sp.Key, p.ID, p.Title); r.URL.Path != url {
 			return Page{}, errRedirect{url}
 		}
-		return s.pageView(ctx, q, me, p, sp, "")
+		return s.pageView(ctx, q, me, p, sp, "", 0)
 	})
 }
 
@@ -268,7 +268,7 @@ func (s *Server) pageRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 // pageView is a page in view (FR-80), and the views its stream watches.
-func (s *Server) pageView(ctx context.Context, q sqlite.Querier, me people.Person, p wiki.Page, sp wiki.Space, section string) (Page, error) {
+func (s *Server) pageView(ctx context.Context, q sqlite.Querier, me people.Person, p wiki.Page, sp wiki.Space, section string, from int) (Page, error) {
 	props, err := s.pageProps(ctx, q, me, p, sp)
 	if err != nil {
 		return Page{}, err
@@ -294,19 +294,23 @@ func (s *Server) pageView(ctx context.Context, q sqlite.Querier, me people.Perso
 		return Page{}, err
 	}
 	pageViews := []string{"page:" + p.ID, "pagedoc:" + p.ID, "inline:" + p.ID, "pagepeople:" + p.ID, "tree:" + p.ID}
+	scripts := []string{inlineScript}
+	var components []string
 	if section == "home" {
-		feed, err := s.ScopeActivity(ctx, q, access.SpaceScope(sp.ID), time.Now())
+		feed, err := s.ScopeActivity(ctx, q, access.SpaceScope(sp.ID), from, time.Now())
 		if err != nil {
 			return Page{}, err
 		}
 		props.Activity = views.Activity(feed)
-		pageViews = append(pageViews, "activity-space:"+sp.ID)
+		pageViews = append(pageViews, views.FeedSpec(feed.Kind, feed.Scope, feed.From))
+		scripts, components = append(scripts, views.FeedScript), feedComponents
 	}
 	return Page{
 		Title: p.Title, Nav: "spaces", Sidebar: sidebar, SidebarLabel: "Space",
-		Views:   pageViews,
-		Scripts: []string{inlineScript},
-		Body:    templ.Join(views.WikiPage(props), views.Viewed(recent.Page, p.ID)),
+		Views:      pageViews,
+		Scripts:    scripts,
+		Components: components,
+		Body:       templ.Join(views.WikiPage(props), views.Viewed(recent.Page, p.ID)),
 	}, nil
 }
 

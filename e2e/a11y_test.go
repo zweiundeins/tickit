@@ -25,6 +25,9 @@ func a11yPages(t *testing.T, e *webtest.Env) []struct{ name, path, before string
 	}
 	return []struct{ name, path, before string }{
 		{"home", "/", ""},
+		{"home, further down", "/?from=50", ""},
+		{"project activity", "/projects/WEB/activity", ""},
+		{"space", "/spaces/ENG", ""},
 		{"board", "/projects/WEB/board", ""},
 		{"issue", "/WEB-2", ""},
 		{"issue list", "/issues?sort=key&dir=asc", ""},

@@ -135,6 +135,7 @@ func tabName(current string) string {
 // newest first, live (FR-01.2, FR-69.1).
 templ ProjectActivity(p ProjectPage) {
 	@ProjectHead(p.Project, "activity", p.Admin)
+	@ui.Glyphs()
 	@Activity(p.Feed)
 }
 

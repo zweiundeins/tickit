@@ -390,7 +390,7 @@ func (s *Server) boardPage(w http.ResponseWriter, r *http.Request) {
 		}
 		return Page{
 			Title: p.Name + " board", Nav: "projects", Width: "full", Project: p.ID,
-			Views: []string{"board:" + views.BoardArg(p.Key, quick, savedID, group), "boardhead:" + p.Key},
+			Views: []string{"board:" + views.BoardArg(p.Key, quick, savedID, group), "boardhead:" + p.Key}, Components: panelComponents,
 			Body: views.Board(views.BoardPage{Project: p, Filter: quick, Saved: saved, Applied: applied, Labels: labels, Lanes: lanes, Head: head,
 				CanEdit: can(ctx, q, me, access.EditIssues, p.ID), Admin: can(ctx, q, me, access.Configure, p.ID), CreateStatus: create, Group: group,
 				Me: me.ID, Moderates: access.SiteCan(me, access.Moderate), Deletes: deletes(ctx, q, me, []string{p.ID})}),
@@ -651,7 +651,7 @@ func (s *Server) backlogPage(w http.ResponseWriter, r *http.Request) {
 			return Page{}, err
 		}
 		return Page{
-			Title: p.Name + " backlog", Nav: "projects", Project: p.ID, Views: []string{"backlog:" + p.Key},
+			Title: p.Name + " backlog", Nav: "projects", Project: p.ID, Views: []string{"backlog:" + p.Key}, Components: panelComponents,
 			Body: views.Backlog(views.BacklogPage{Project: p, Data: d, CanEdit: can(ctx, q, me, access.EditIssues, p.ID), Admin: can(ctx, q, me, access.Configure, p.ID),
 				Me: me.ID, Moderates: access.SiteCan(me, access.Moderate), Deletes: deletes(ctx, q, me, []string{p.ID})}),
 		}, nil
@@ -822,11 +822,12 @@ func (s *Server) activityPage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return Page{}, err
 		}
-		feed, err := s.ScopeActivity(ctx, q, access.ProjectScope(p.ID), time.Now())
+		feed, err := s.ScopeActivity(ctx, q, access.ProjectScope(p.ID), feedFrom(r), time.Now())
 		if err != nil {
 			return Page{}, err
 		}
-		return Page{Title: p.Name + " activity", Nav: "projects", Project: p.ID, Views: []string{"activity-project:" + p.ID},
+		return Page{Title: p.Name + " activity", Nav: "projects", Project: p.ID, Views: []string{views.FeedSpec(feed.Kind, feed.Scope, feed.From)},
+			Components: feedComponents, Scripts: []string{views.FeedScript},
 			Body: views.ProjectActivity(views.ProjectPage{Project: p, Admin: can(ctx, q, me, access.Configure, p.ID), Feed: feed})}, nil
 	})
 }

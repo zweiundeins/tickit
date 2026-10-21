@@ -576,10 +576,10 @@ func jsQuote(s string) string {
 }
 
 // Press sends a key press (down and up) to the focused element: "Escape",
-// "Enter", "Tab".
+// "Enter", "Tab", "PageDown", the arrows.
 func (p *Page) Press(t testing.TB, key string) {
 	t.Helper()
-	codes := map[string]int{"Escape": 27, "Enter": 13, "Tab": 9}
+	codes := map[string]int{"Escape": 27, "Enter": 13, "Tab": 9, "PageUp": 33, "PageDown": 34, "End": 35, "Home": 36, "ArrowLeft": 37, "ArrowUp": 38, "ArrowRight": 39, "ArrowDown": 40}
 	if p.b.ff != nil {
 		v := keyValue(key)
 		if err := p.focus(); err != nil {

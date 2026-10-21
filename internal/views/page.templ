@@ -40,6 +40,7 @@ templ WikiPage(p PageProps) {
 		if p.Activity != nil {
 			<section class="wk-activity" aria-labelledby="space-activity-title">
 				<h2 class="wk-section-title" id="space-activity-title">Recent activity in { p.Space.Name }</h2>
+				@ui.Glyphs()
 				@p.Activity
 			</section>
 		}

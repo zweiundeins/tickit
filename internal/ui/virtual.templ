@@ -1,0 +1,57 @@
+package ui
+
+import "strconv"
+
+// VirtualProps is Starbase's sb-virtual-scroll: a long list of which the
+// server renders a window, one fixed-height row per item. Load its bundle
+// ("virtual-scroll").
+type VirtualProps struct {
+	ID string
+	// Label names the list: "Recent activity".
+	Label string
+	// Role hands the list's semantics to the host: "feed" for articles that
+	// arrive as the reader scrolls; empty for a plain list.
+	Role string
+	// Total is how many items the whole list has, as far as the server
+	// knows; Offset the index of the first child in it.
+	Total, Offset int
+	// ItemSize is the row's height in px; the page may measure it again
+	// (data-preserve-attr keeps what it set). Buffer is how far a window
+	// reaches past the viewport, in px.
+	ItemSize, Buffer int
+	Hidden           bool
+	Class            string
+	Attrs            templ.Attributes
+}
+
+// VirtualList is sb-virtual-scroll; the children are the window's items,
+// in order. The component asks for another window with sb-window
+// {offset, count}, which the feature answers with a frame. Before the
+// bundle defines it, the window scrolls as a plain box.
+templ VirtualList(p VirtualProps) {
+	<sb-virtual-scroll
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class={ classes("tk-virtual", p.Class) }
+		if p.Role != "" {
+			role={ p.Role }
+			aria-label={ p.Label }
+		} else {
+			label={ p.Label }
+		}
+		total={ strconv.Itoa(p.Total) }
+		offset={ strconv.Itoa(p.Offset) }
+		item-size={ strconv.Itoa(max(1, p.ItemSize)) }
+		if p.Buffer > 0 {
+			buffer={ strconv.Itoa(p.Buffer) }
+		}
+		data-preserve-attr="item-size buffer"
+		if p.Hidden {
+			hidden
+		}
+		{ p.Attrs... }
+	>
+		{ children... }
+	</sb-virtual-scroll>
+}
