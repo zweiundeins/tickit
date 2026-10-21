@@ -29,7 +29,7 @@ type Props struct {
 }
 
 // Components are the Starbase components /design loads.
-var Components = []string{"copy-button", "date-picker", "dropdown", "select", "tabs", "toast"}
+var Components = []string{"copy-button", "date-picker", "dropdown", "select", "tabs", "toast", "virtual-scroll"}
 
 var (
 	sunny  = ui.Person{Seed: "g-sunny-otter", Name: "Sunny Otter"}

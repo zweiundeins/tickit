@@ -149,6 +149,9 @@
 		--tk-panel-width: 40rem;
 		--tk-lane-width: 17rem;
 		--tk-lane-min: 260px;
+		/* A long feed's rows (sb-virtual-scroll) and its box. */
+		--tk-feed-row: 3.75rem;
+		--tk-feed-height: min(36rem, 70dvh);
 
 		/* Motion: each curve has one job. */
 		--tk-dur-1: 120ms;

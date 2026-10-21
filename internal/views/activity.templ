@@ -1,71 +1,157 @@
 package views
 
 import (
+	"strconv"
+
 	"github.com/zweiundeins/tickit/internal/activity"
 	"github.com/zweiundeins/tickit/internal/ui"
 )
 
 // Activity is a feed of recent changes (FR-69): who did what to which
-// issue or page, and when, newest first, with a link to more. Its live
-// view patches it by its id.
+// issue or page, and when, newest first. Its live view patches it by its
+// id. A feed with a Kind is a window of a long feed (FeedWindow); one
+// without is a short list (a person's page, a dashboard's gadget).
 templ Activity(f ActivityFeed) {
-	<div id={ f.ID } class="tk-activity">
-		if len(f.Entries) == 0 {
-			@ui.EmptyState(ui.EmptyProps{Icon: "history", Title: "Nothing yet", Text: "Issues created, moved and commented on, and pages written, show here as they happen.", Class: "tk-empty--sm"})
-		} else {
-			@ui.Feed(f.label()) {
-				for _, e := range f.Entries {
-					@activityItem(f, e)
+	if f.Kind != "" {
+		@FeedWindow(f)
+	} else {
+		<div id={ f.ID } class="tk-activity">
+			if len(f.Entries) == 0 {
+				@activityEmpty()
+			} else {
+				@ui.Feed(f.label()) {
+					for _, e := range f.Entries {
+						@activityItem(f, e)
+					}
 				}
 			}
+		</div>
+	}
+}
+
+templ activityEmpty() {
+	@ui.EmptyState(ui.EmptyProps{Icon: "history", Title: "Nothing yet", Text: "Issues created, moved and commented on, and pages written, show here as they happen.", Class: "tk-empty--sm"})
+}
+
+// FeedWindow is a window of a long feed in sb-virtual-scroll (the ARIA
+// feed pattern): one article per entry, each one row of FeedRow high, with
+// its place in the feed (aria-posinset, aria-setsize), and the faces and
+// glyphs as masks, so a window of 50 stays a small frame (NFR-37). The
+// page needs ui.Glyphs once, the "virtual-scroll" component and
+// FeedScript; the button that leads to newer entries is the tab's own, so
+// frames keep its hidden.
+templ FeedWindow(f ActivityFeed) {
+	<div id={ f.ID } class="tk-activity tk-activity--window">
+		if len(f.Entries) == 0 && f.From == 0 {
+			@activityEmpty()
 		}
-		if f.More != "" {
-			<p class="tk-activity__more"><a href={ templ.SafeURL(f.More) }>Show older activity</a></p>
+		@ui.FaceStyles(f.faces())
+		<div class="tk-vfeed">
+			<span class="tk-vfeed__probe" aria-hidden="true"></span>
+			@ui.VirtualList(ui.VirtualProps{ID: f.ID + "-list", Label: f.label(), Role: "feed", Total: f.Total, Offset: f.From,
+				ItemSize: FeedRow, Buffer: 12 * FeedRow, Hidden: len(f.Entries) == 0 && f.From == 0, Class: "tk-vfeed__list", Attrs: f.listAttrs()}) {
+				for i, e := range f.Entries {
+					@feedEntry(f, i, e)
+				}
+			}
+			<button type="button" class="tk-vfeed__newer" hidden data-preserve-attr="hidden">
+				@ui.Icon("arrow-up")
+				Newer activity
+			</button>
+		</div>
+		if f.newer() != "" || f.older() != "" {
+			<nav class="tk-activity__more cluster" aria-label={ f.label() + ", more" }>
+				if f.newer() != "" {
+					<a href={ templ.SafeURL(f.newer()) }>Newer activity</a>
+				}
+				if f.older() != "" {
+					<a href={ templ.SafeURL(f.older()) }>Older activity</a>
+				}
+			</nav>
 		}
 	</div>
+}
+
+templ feedEntry(f ActivityFeed, i int, e activity.Entry) {
+	{{ who := f.person(e.Actor) }}
+	{{ id := f.entryID(e) }}
+	<article
+		class="tk-vfeed__item"
+		id={ id }
+		tabindex="-1"
+		aria-posinset={ strconv.Itoa(f.From + i + 1) }
+		aria-setsize={ f.setSize() }
+		aria-labelledby={ id + "-t" }
+		aria-describedby={ id + "-m" }
+	>
+		<i class="tk-av tk-av--sm" data-face={ ui.FaceRef(UIPerson(who).Seed) }></i>
+		<div class="tk-vfeed__body">
+			<p class="tk-vfeed__text" id={ id + "-t" }>
+				@activityText(e, who.Name, true)
+			</p>
+			<p class="tk-vfeed__meta" id={ id + "-m" }>
+				<a href={ templ.SafeURL(e.Subject.Href) }>
+					@ui.RelativeTime(e.At, f.Now)
+				</a>
+				if e.Text != "" {
+					<q class="tk-activity__quote">{ e.Text }</q>
+				}
+			</p>
+		</div>
+	</article>
 }
 
 templ activityItem(f ActivityFeed, e activity.Entry) {
 	{{ who := f.person(e.Actor) }}
 	@ui.FeedItem(ui.FeedItemProps{Person: UIPerson(who), At: e.At, Now: f.Now, Href: e.Subject.Href}) {
-		<b>{ who.Name }</b> { " " }
-		switch e.Action {
-			case activity.IssueCreated:
-				created { " " }
-				@activityIssue(e)
-			case activity.IssueMoved:
-				moved { " " }
-				@activityIssue(e)
-				{ " to " }
-				@ui.StatusLozenge(e.Status, uiCategory(e.Category))
-			case activity.IssueCommented:
-				commented on { " " }
-				@activityIssue(e)
-			case activity.IssueDescribed:
-				edited the description of { " " }
-				@activityIssue(e)
-				if e.Edits > 1 {
-					{ " " + editsText(e.Edits) }
-				}
-			case activity.PageCreated:
-				created { " " }
-				@ui.PageLink(e.Subject.ID, e.Subject.Label, e.Subject.Href, false)
-			case activity.PageEdited:
-				edited { " " }
-				@ui.PageLink(e.Subject.ID, e.Subject.Label, e.Subject.Href, false)
-				if e.Edits > 1 {
-					{ " " + editsText(e.Edits) }
-				}
-			case activity.PageCommented:
-				commented on { " " }
-				@ui.PageLink(e.Subject.ID, e.Subject.Label, e.Subject.Href, false)
-		}
+		@activityText(e, who.Name, false)
 		if e.Text != "" {
 			<q class="tk-activity__quote">{ e.Text }</q>
 		}
 	}
 }
 
-templ activityIssue(e activity.Entry) {
-	@ui.IssueChip(ui.IssueChipProps{Key: e.Subject.Label, Summary: e.Subject.Summary, Type: ui.IssueType(e.Subject.Type), Href: e.Subject.Href})
+// activityText says who did what: glyph draws the issue's type and the
+// status as masks of ui.Glyphs.
+templ activityText(e activity.Entry, name string, glyph bool) {
+	<b>{ name }</b> { " " }
+	switch e.Action {
+		case activity.IssueCreated:
+			created { " " }
+			@activityIssue(e, glyph)
+		case activity.IssueMoved:
+			moved { " " }
+			@activityIssue(e, glyph)
+			{ " to " }
+			if glyph {
+				@ui.StatusGlyph(e.Status, uiCategory(e.Category))
+			} else {
+				@ui.StatusLozenge(e.Status, uiCategory(e.Category))
+			}
+		case activity.IssueCommented:
+			commented on { " " }
+			@activityIssue(e, glyph)
+		case activity.IssueDescribed:
+			edited the description of { " " }
+			@activityIssue(e, glyph)
+			if e.Edits > 1 {
+				{ " " + editsText(e.Edits) }
+			}
+		case activity.PageCreated:
+			created { " " }
+			@ui.PageLink(e.Subject.ID, e.Subject.Label, e.Subject.Href, false)
+		case activity.PageEdited:
+			edited { " " }
+			@ui.PageLink(e.Subject.ID, e.Subject.Label, e.Subject.Href, false)
+			if e.Edits > 1 {
+				{ " " + editsText(e.Edits) }
+			}
+		case activity.PageCommented:
+			commented on { " " }
+			@ui.PageLink(e.Subject.ID, e.Subject.Label, e.Subject.Href, false)
+	}
+}
+
+templ activityIssue(e activity.Entry, glyph bool) {
+	@ui.IssueChip(ui.IssueChipProps{Key: e.Subject.Label, Summary: e.Subject.Summary, Type: ui.IssueType(e.Subject.Type), Href: e.Subject.Href, Glyph: glyph})
 }

@@ -1,6 +1,7 @@
 package styleguide
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/zweiundeins/tickit/internal/ui"
@@ -209,6 +210,13 @@ templ navigation(p Props) {
 			}
 			@spec("Pagination", "@ui.Pagination(ui.PaginationProps{Page: 2, Pages: 7, Total: 312, Noun: \"issues\", Href: href})") {
 				@ui.Pagination(ui.PaginationProps{Page: 4, Pages: 7, Total: 312, Noun: "issues", Href: func(int) string { return "#navigation" }})
+			}
+			@spec("A long list: sb-virtual-scroll, one window from the server", "@ui.VirtualList(ui.VirtualProps{Label: \"Recent activity\", Role: \"feed\", Total: n, Offset: from, ItemSize: 60}) { ...one row each... }") {
+				@ui.VirtualList(ui.VirtualProps{Label: "Rows of the example", Total: 40, ItemSize: 32, Class: "sg-virtual"}) {
+					for i := range 40 {
+						<p class="sg-virtual__row">Row { strconv.Itoa(i + 1) } of 40</p>
+					}
+				}
 			}
 			@spec("Page tree (ARIA tree)", "@ui.Tree(ui.TreeProps{Label: \"Pages in Engineering\", Items: []ui.TreeItem{...}})") {
 				@ui.Tree(ui.TreeProps{Label: "Pages in Engineering", Items: pageTree()})

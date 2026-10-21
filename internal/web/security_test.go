@@ -101,6 +101,7 @@ func issueCase(field string, n need, by who, kv ...any) secCase {
 // secCases is every action. The issue fields are issueCommand's.
 var secCases = []secCase{
 	{name: "watch", pattern: "POST /cmd/watch", need: read, by: wViewer, noop: true, req: at("/cmd/watch", "view", "issue:@issue")},
+	{name: "feed/window", pattern: "POST /cmd/feed/window", need: read, by: wViewer, noop: true, req: at("/cmd/feed/window", "feed", "activity-project:@proj", "views", "")},
 	{name: "unwatch", pattern: "POST /cmd/unwatch", need: self, by: wViewer, noop: true, req: at("/cmd/unwatch", "view", "issue:@issue")},
 	{name: "login", pattern: "POST /cmd/login", need: public, by: wGuest, mustOK: true, req: at("/cmd/login", "email", "nobody@example.com", "password", "not the password")},
 	{name: "logout", pattern: "POST /cmd/logout", need: public, by: wViewer, mustOK: true, req: at("/cmd/logout")},

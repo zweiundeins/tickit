@@ -95,6 +95,9 @@ type IssueChipProps struct {
 	State    ChipState
 	// Compact leaves the summary out (dense lists, link targets).
 	Compact bool
+	// Glyph draws the type as a mask of Glyphs, for rows that repeat
+	// chips many times a frame (a feed's window, NFR-37).
+	Glyph bool
 }
 
 // IssueChip is the chip documents render (a.issue-chip, docs/editor.md):
@@ -109,7 +112,9 @@ templ IssueChip(p IssueChipProps) {
 			data-state={ string(p.State) }
 		}
 	>
-		if p.State == ChipLive {
+		if p.State == ChipLive && p.Glyph {
+			<i data-type={ string(p.Type) } role="img" aria-label={ p.Type.Name() }></i>
+		} else if p.State == ChipLive {
 			@raw(typeSVG(p.Type, "tk-type", p.Type.Name()))
 		} else {
 			@raw(typeSVG("", "tk-type", ""))

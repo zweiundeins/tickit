@@ -90,24 +90,19 @@ templ issueFrame(p IssueFrameProps) {
 				}
 				<p class="tk-typing" id="issue-typing-description" aria-live="off"></p>
 				@region(p, "issue-related", "section")
-				<div class="tk-issue__tabs">
-					<div class="tk-issue__tablist" role="tablist" aria-label="Comments and history" data-on:keydown={ tabKeys }>
-						@issueTab("comments", "Comments")
-						@issueTab("history", "History")
-						@issueTab("activity", "Activity")
-					</div>
-					<div class="tk-issue__panel" id="issue-tab-comments" role="tabpanel" aria-labelledby="issue-tabbtn-comments" { showIf(`$_is.tab === 'comments'`)... }>
+				@ui.Tabs(ui.TabsProps{Labels: issueTabLabels, Class: "tk-issue__tabs", Attrs: issueTabsAttrs}) {
+					@ui.TabPanel("Comments") {
 						@region(p, "issue-comments", "div")
 						<p class="tk-typing" id="issue-typing-comment" aria-live="off"></p>
 						@commentForm(p)
-					</div>
-					<div class="tk-issue__panel" id="issue-tab-history" role="tabpanel" aria-labelledby="issue-tabbtn-history" { showIf(`$_is.tab === 'history'`)... }>
+					}
+					@ui.TabPanel("History") {
 						@region(p, "issue-history", "div")
-					</div>
-					<div class="tk-issue__panel" id="issue-tab-activity" role="tabpanel" aria-labelledby="issue-tabbtn-activity" { showIf(`$_is.tab === 'activity'`)... }>
+					}
+					@ui.TabPanel("Activity") {
 						@region(p, "issue-activity", "div")
-					</div>
-				</div>
+					}
+				}
 			</div>
 			@region(p, "issue-side", "aside")
 		</div>
@@ -150,19 +145,6 @@ templ region(p IssueFrameProps, id, tag string) {
 			}
 		</div>
 	}
-}
-
-templ issueTab(name, label string) {
-	<button
-		type="button"
-		role="tab"
-		class="tk-issue__tab"
-		id={ "issue-tabbtn-" + name }
-		aria-controls={ "issue-tab-" + name }
-		data-attr:aria-selected={ "$_is.tab === '" + name + "'" }
-		data-attr:tabindex={ "$_is.tab === '" + name + "' ? 0 : -1" }
-		data-on:click={ "$_is.tab = '" + name + "'" }
-	>{ label }</button>
 }
 
 // IssueRegions is the live view's render: every region, each by its id.

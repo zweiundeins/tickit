@@ -256,7 +256,7 @@ func (s *Server) issueList(w http.ResponseWriter, r *http.Request) {
 		if spec != "" {
 			names = append(names, spec)
 		}
-		return Page{Title: "Issues", Width: "full", Views: names, Body: views.IssueListBody(p)}, nil
+		return Page{Title: "Issues", Width: "full", Views: names, Components: panelComponents, Body: views.IssueListBody(p)}, nil
 	})
 }
 

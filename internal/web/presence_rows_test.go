@@ -60,7 +60,7 @@ func TestHomeAndDashboardPresence(t *testing.T) {
 		}
 		t.Errorf("%s: the row never shows both people", row)
 	}
-	both("/stream?tab=adahome&v=home:,activity-home:1", home)
+	both("/stream?tab=adahome&v=home:,activity-home:0", home)
 
 	code, body := act(t, e, admin, "/cmd/dashboards/create", "root0", map[string]any{"name": "Release"})
 	m := dashGoto.FindStringSubmatch(body)

@@ -89,10 +89,17 @@ func (s *Server) wanted(ctx context.Context, st *openStream) (map[string]live.Vi
 		if err != nil {
 			return err
 		}
+		feed, err := tabs.Load[feedState](row, feedArea)
+		if err != nil {
+			return err
+		}
 		var specs []string
 		for _, spec := range st.specs {
 			if strings.HasPrefix(spec, "list:") && list.Query != "" {
 				spec, _ = listSpec(list.Query) // the list it moved to (/cmd/list/view)
+			}
+			if sameFeed(spec, feed.Spec) {
+				spec = feed.Spec // the window it moved to (/cmd/feed/window)
 			}
 			specs = append(specs, spec)
 		}
@@ -130,7 +137,7 @@ func (s *Server) shows(ctx context.Context, keys []string, project string) bool 
 				return true
 			}
 		case "activity":
-			if rest == "project:"+project {
+			if strings.HasPrefix(rest, "project:"+project+":") {
 				return true
 			}
 		case "issue", "issue-typing":

@@ -3,6 +3,8 @@ package views
 import (
 	"encoding/json"
 	"strings"
+
+	"github.com/a-h/templ"
 )
 
 // The issue page's and the issue panel's Datastar expressions. Like every
@@ -236,8 +238,17 @@ const (
 	pagePick   = `$_is.pq.trim().length < 2 ? document.getElementById('` + PagePickID + `').replaceChildren() : @get('/issues/link-page?q=' + encodeURIComponent($_is.pq.trim()), {requestCancellation: 'auto'})`
 )
 
-// The tabs of the issue's page: Comments, History, Activity (FR-68).
-const tabKeys = `['ArrowRight', 'ArrowLeft'].includes(evt.key) && ((tabs) => { const i = tabs.indexOf(document.activeElement), n = tabs.length, t = tabs[(i + (evt.key === 'ArrowRight' ? 1 : n - 1)) % n]; t.focus(); t.click() })([...el.querySelectorAll('[role=tab]')])`
+// The tabs of the issue's page (FR-68), sb-tabs: $_is.tab names the
+// selected one, which the as-of bar reads and an issue opened in the panel
+// sets back to Comments.
+var (
+	issueTabLabels = []string{"Comments", "History", "Activity"}
+	issueTabsAttrs = templ.Attributes{
+		"aria-label":            "Comments and history",
+		"data-attr:selected":    `['comments', 'history', 'activity'].indexOf($_is.tab)`,
+		"data-on:sb-tab-change": `$_is.tab = ['comments', 'history', 'activity'][evt.detail.index]`,
+	}
+)
 
 // The as-of slider (FR-70): the version it is at, 0 for now, watched as
 // the view issue-at:<id>.<v> instead of the live one; "Now" goes back.

@@ -374,50 +374,11 @@
 		display: none;
 	}
 
-	/* Tabs: Comments, History, Activity (FR-68). */
-	.tk-issue__tabs {
+	/* Tabs: Comments, History, Activity (FR-68), sb-tabs. */
+	.tk-issue__tabs .tk-tabs__panel {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		gap: var(--tk-space-3);
-	}
-
-	.tk-issue__tablist {
-		display: flex;
-		gap: var(--tk-space-1);
-		border-block-end: 1px solid var(--tk-border);
-	}
-
-	.tk-issue__tab {
-		padding: var(--tk-space-2) var(--tk-space-3);
-		margin-block-end: -1px;
-		border: 0;
-		border-block-end: 2px solid transparent;
-		background: none;
-		color: var(--tk-text-2);
-		font-family: var(--tk-font-mono);
-		font-size: var(--tk-text-xs);
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		cursor: pointer;
-
-		&:hover {
-			color: var(--tk-text-1);
-		}
-
-		&[aria-selected="true"] {
-			color: var(--tk-accent-text);
-			border-block-end-color: var(--tk-accent);
-		}
-	}
-
-	.tk-issue__panel {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr);
-		gap: var(--tk-space-3);
-
-		&[hidden] {
-			display: none;
-		}
 	}
 
 	.tk-issue__thread {
