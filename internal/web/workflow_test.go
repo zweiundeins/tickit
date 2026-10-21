@@ -160,3 +160,32 @@ func TestBoardSwimlanes(t *testing.T) {
 	}
 	webtest.Next(t, events, `"m1":{"ok":true`)
 }
+
+// FR-58.2, FR-37.1: a bulk status change goes through each issue's
+// decider: the issue the rule forbids is refused with the rule's
+// sentence, the allowed one changes; the bulk menu offers the statuses
+// the visible projects' workflows hold (FR-36.1).
+func TestBulkStatusRule(t *testing.T) {
+	e := newList(t)
+	e.Do(t, tracker.SetTransitionRule{By: e.by(e.ada), Project: e.web, Status: tracker.StatusDone, From: []string{tracker.StatusInReview}})
+	e.Do(t, tracker.AddStatus{By: e.by(e.ada), Project: e.web, Name: "In QA", Category: tracker.InProgress})
+	c := webtest.Client(t)
+	_, page := webtest.Get(t, c, e.URL+"/issues")
+	if i := strings.Index(page, `id="bulk-status"`); i < 0 || !strings.Contains(page[i:], "In QA") {
+		t.Error("the bulk menu does not offer the new status")
+	}
+	me := e.open(t, c, "tab1", "")
+	if code := e.bulk(t, me, "op1", "status", tracker.StatusDone, "", "WEB-1", "WEB-2"); code != http.StatusNoContent {
+		t.Fatalf("the bulk edit: %d", code)
+	}
+	o := webtest.Next(t, me.events, `"op1":{`)
+	if !strings.Contains(o, `"op1":{"ok":true,"msg":"1 issue changed. 1 was not:\nWEB-1: Done can only follow In Review."`) {
+		t.Errorf("the outcome: %s", o)
+	}
+	if d := e.detail(t, "WEB-2"); d.Status != tracker.StatusDone {
+		t.Errorf("WEB-2 is in %s", d.Status)
+	}
+	if d := e.detail(t, "WEB-1"); d.Status != tracker.StatusToDo {
+		t.Errorf("WEB-1 is in %s", d.Status)
+	}
+}
