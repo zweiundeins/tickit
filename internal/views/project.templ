@@ -147,7 +147,7 @@ templ SettingsPage(s Settings) {
 	<div
 		class="tk-settings stack"
 		data-project={ s.Project.Key }
-		data-signals={ `{_pd: {op: '', msg: '', name: ` + jsString(s.Project.Name) + `, description: ` + jsString(s.Project.Description) + `, lead: ` + jsString(s.Project.Lead) + `}, _ar: {op: '', msg: ''}, _ms: {op: '', msg: '', person: '', role: 'member'}, _cs: {op: '', msg: '', name: '', description: ''}}` }
+		data-signals={ `{_pd: {op: '', msg: '', field: '', name: ` + jsString(s.Project.Name) + `, description: ` + jsString(s.Project.Description) + `, lead: ` + jsString(s.Project.Lead) + `}, _ar: {op: '', msg: ''}, _ms: {op: '', msg: '', person: '', role: 'member'}, _cs: {op: '', msg: '', name: '', description: ''}}` }
 	>
 		@ProjectHead(s.Project, "settings", true)
 		<span hidden data-effect={ detailsSettled }></span>
@@ -165,13 +165,13 @@ templ SettingsPage(s Settings) {
 				@ui.Field(desc) {
 					@ui.Textarea(ui.TextareaProps{ID: desc.ID, Rows: 3, MaxLength: tracker.MaxDescription, Attrs: map[string]any{"data-bind": "_pd.description", "data-attr:readonly": Pending("_pd.op")}})
 				}
-				{{ lead := ui.FieldProps{ID: "pd-lead", Label: "Lead", Optional: true} }}
-				@ui.Field(lead) {
-					@ui.Select(ui.SelectProps{ID: lead.ID, Options: personOptions(s.Leads, s.Project.Lead, "Nobody"), Attrs: map[string]any{"data-bind": "_pd.lead"}})
-				}
+				<div class="tk-field">
+					@ui.Picker(ui.PickerProps{ID: "pd-lead", Label: "Lead (optional)", Name: "lead", Options: pickPeople(s.Leads), Value: s.Project.Lead, Placeholder: "Nobody", Searchable: true, Clearable: true, Attrs: map[string]any{"data-on:sb-change": "$_pd.lead = evt.detail.value"}})
+					<p class="tk-field__error" aria-live="polite" data-text="$_pd.field === 'lead' ? $_pd.msg : ''"></p>
+				</div>
 				<div class="cluster">
 					@ui.Button(ui.ButtonProps{Label: "Save", Variant: ui.Primary, Type: "submit", Attrs: map[string]any{"data-attr:aria-busy": Busy("_pd.op")}})
-					<p class="tk-outcome" role="status" data-text="$_pd.msg"></p>
+					<p class="tk-outcome" role="status" data-text="$_pd.field === 'lead' ? '' : $_pd.msg"></p>
 				</div>
 				<p class="muted">The key { s.Project.Key } stays: issue keys and links never change.</p>
 			</form>
@@ -180,7 +180,7 @@ templ SettingsPage(s Settings) {
 		<section class="tk-settings__part" aria-labelledby="set-add-member">
 			<h2 id="set-add-member">Add a member</h2>
 			<form class="cluster" data-on:submit__prevent={ addMember } data-on:datastar-fetch={ Failed("_ms.op") }>
-				@ui.Select(ui.SelectProps{ID: "ms-person", Options: personOptions(s.Candidates, "", "Choose a person"), Attrs: map[string]any{"data-bind": "_ms.person", "aria-label": "Person"}})
+				@ui.Picker(ui.PickerProps{ID: "ms-person", Label: "Person", HideLabel: true, Name: "person", Options: pickPeople(s.Candidates), Placeholder: "Choose a person", Searchable: true, Class: "tk-settings__person", Attrs: map[string]any{"data-on:sb-change": "$_ms.person = evt.detail.value"}})
 				@ui.Select(ui.SelectProps{ID: "ms-role", Options: roleOptions(access.Member), Attrs: map[string]any{"data-bind": "_ms.role", "aria-label": "Role"}})
 				@ui.Button(ui.ButtonProps{Label: "Add", Type: "submit", Attrs: map[string]any{"data-attr:aria-busy": Busy("_ms.op")}})
 				<p class="tk-outcome" role="status" data-text="$_ms.msg"></p>

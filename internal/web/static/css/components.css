@@ -791,10 +791,21 @@
 		display: block;
 		inline-size: 100%;
 
-		/* The input grows into the control; its own width (20 characters)
-		 * would push the control past a narrow column. */
+		/* As tall as the other fields. The input grows into the control;
+		 * its own width (20 characters) would push the control past a
+		 * narrow column. */
+		&::part(control) {
+			min-block-size: var(--tk-control-md);
+			padding-block: 0;
+		}
+
 		&::part(input) {
 			inline-size: 0;
+			block-size: calc(var(--tk-control-md) - 2px);
+		}
+
+		&::part(button) {
+			block-size: calc(var(--tk-control-md) - 4px);
 		}
 	}
 

@@ -77,6 +77,7 @@ templ listForm(p ListPage) {
 		method="get"
 		data-on:submit__prevent={ listSubmit }
 		data-on:input__throttle.300ms.trailing={ listInput }
+		data-on:sb-change={ listInput }
 		data-on:popstate__window={ listPop }
 		data-on:datastar-fetch={ listFailed }
 	>
@@ -116,15 +117,21 @@ templ filterMenu(g filterGroup) {
 		<span class="tk-count" data-count={ g.Name } hidden?={ g.count() == 0 }>{ countText(g.count()) }</span>
 	}
 	<div id={ g.ID } class="tk-menu list-filters__menu" popover data-on:toggle={ listToggle }>
-		<fieldset class="list-filters__set">
-			<legend class="tk-eyebrow">{ g.Label }</legend>
-			if len(g.Options) == 0 {
-				<p class="muted">None yet</p>
-			}
-			for _, o := range g.Options {
-				@ui.Checkbox(ui.CheckboxProps{Name: g.Name, Value: o.Value, Label: o.Label, Checked: o.Checked, Attrs: templ.Attributes{"data-in": g.Name}})
-			}
-		</fieldset>
+		if g.People {
+			<div class="list-filters__set list-filters__people">
+				@ui.Picker(ui.PickerProps{ID: g.ID + "-pick", Label: g.Label, Name: g.Name, Options: g.pickerOptions(), Value: g.pickerValue(), Placeholder: "Type a name", Multiple: true, Searchable: true, Clearable: true, Size: ui.SizeSM, Attrs: templ.Attributes{"data-in": g.Name}})
+			</div>
+		} else {
+			<fieldset class="list-filters__set">
+				<legend class="tk-eyebrow">{ g.Label }</legend>
+				if len(g.Options) == 0 {
+					<p class="muted">None yet</p>
+				}
+				for _, o := range g.Options {
+					@ui.Checkbox(ui.CheckboxProps{Name: g.Name, Value: o.Value, Label: o.Label, Checked: o.Checked, Attrs: templ.Attributes{"data-in": g.Name}})
+				}
+			</fieldset>
+		}
 	</div>
 }
 
@@ -136,12 +143,8 @@ templ rangeMenu(id, label, name, from, to string) {
 	<div id={ id } class="tk-menu list-filters__menu" popover data-on:toggle={ listToggle }>
 		<fieldset class="list-filters__set list-filters__range">
 			<legend class="tk-eyebrow">{ label }</legend>
-			@ui.Field(ui.FieldProps{ID: id + "-from", Label: "From"}) {
-				@ui.Input(ui.InputProps{ID: id + "-from", Name: name + "_from", Type: "date", Value: from, Size: ui.SizeSM, Attrs: templ.Attributes{"data-in": name}})
-			}
-			@ui.Field(ui.FieldProps{ID: id + "-to", Label: "To"}) {
-				@ui.Input(ui.InputProps{ID: id + "-to", Name: name + "_to", Type: "date", Value: to, Size: ui.SizeSM, Attrs: templ.Attributes{"data-in": name}})
-			}
+			@ui.DatePicker(ui.DatePickerProps{ID: id + "-from", Label: "From", Name: name + "_from", Value: from, Size: ui.SizeSM, Attrs: templ.Attributes{"data-in": name}})
+			@ui.DatePicker(ui.DatePickerProps{ID: id + "-to", Label: "To", Name: name + "_to", Value: to, Size: ui.SizeSM, Attrs: templ.Attributes{"data-in": name}})
 		</fieldset>
 	</div>
 }

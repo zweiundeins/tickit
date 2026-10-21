@@ -878,7 +878,7 @@ func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request) {
 			}
 			leads = append(slices.Clip(leads), lead)
 		}
-		return Page{Title: p.Name + " settings", Nav: "projects", Views: []string{"settings:" + p.Key},
+		return Page{Title: p.Name + " settings", Nav: "projects", Views: []string{"settings:" + p.Key}, Components: []string{"select"},
 			Body: views.SettingsPage(views.Settings{Project: p, Live: live, Workflow: wf, Leads: leads, Candidates: humans})}, nil
 	})
 }
