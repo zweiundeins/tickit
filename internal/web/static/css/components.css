@@ -849,6 +849,18 @@
 		padding-inline-end: calc(var(--tk-space-8) + var(--tk-space-6));
 	}
 
+	/* A small picker in a narrow column shows the clear button while it
+	 * has the focus only, so the value gets the room otherwise. */
+	sb-select.tk-picker--sm[clearable]:not([multiple]):not(:focus-within) {
+		&::part(control) {
+			padding-inline-end: var(--tk-space-8);
+		}
+
+		&::part(clear) {
+			display: none;
+		}
+	}
+
 	/* A value sent and not yet confirmed: dashed, as a pending field is. */
 	.tk-picker:state(pending)::part(control),
 	.tk-date:state(pending)::part(control) {
