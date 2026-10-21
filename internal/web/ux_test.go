@@ -24,9 +24,10 @@ import (
 func TestListResolved(t *testing.T) {
 	e := newList(t)
 	c := webtest.Client(t)
-	today := time.Now().UTC().Format(time.DateOnly)
-	if got := e.list(c, "resolved_from="+today+"&resolved_to="+today); !slices.Equal(got, []string{"WEB-3"}) {
-		t.Errorf("resolved today: %v, want WEB-3", got)
+	// newList's issues are made up to 1000 minutes ago, so WEB-3 resolved today or yesterday.
+	from, to := time.Now().UTC().AddDate(0, 0, -1).Format(time.DateOnly), time.Now().UTC().Format(time.DateOnly)
+	if got := e.list(c, "resolved_from="+from+"&resolved_to="+to); !slices.Equal(got, []string{"WEB-3"}) {
+		t.Errorf("resolved since yesterday: %v, want WEB-3", got)
 	}
 	if got := e.list(c, "resolved_to=2000-01-01"); len(got) != 0 {
 		t.Errorf("resolved before 2000: %v, want none", got)
