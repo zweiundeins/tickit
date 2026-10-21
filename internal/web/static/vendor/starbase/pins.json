@@ -1,6 +1,7 @@
 {
   "repo": "github.com/zweiundeins/starbase",
   "components": [
+    "context-menu",
     "copy-button",
     "date-picker",
     "dropdown",
