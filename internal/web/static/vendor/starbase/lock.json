@@ -1,7 +1,7 @@
 {
   "repo": "github.com/zweiundeins/starbase",
-  "commit": "48367bef495e79869f56d49d3443e1ec357f9439",
-  "date": "2026-10-21T09:45:57Z",
+  "commit": "0beef86aecb9c4c5a524f00697d1b24f04f9c5a9",
+  "date": "2026-10-21T10:41:48Z",
   "license": "MIT",
   "datastar": "sha384-mvTnynHaljKNMleD0bj6/rWROnluHlNmbc5rOQTd+fQH3YBDYhlvHdNquEX99by5",
   "fonts": {
@@ -89,7 +89,7 @@
       "pinned": true,
       "entry": "virtual-scroll.js",
       "files": {
-        "virtual-scroll.js": "sha384-IVl+N3gnCLIvha3on4fzJXBMtVKTIn5tf5tGDnUmpwl5omcgmVzxukF7AZ2k7uTf"
+        "virtual-scroll.js": "sha384-uL3uOCmaYgPNFrJtY5bAr5GSt+/rVqYIeupI51PmGyXyLskIQnk/KukZb04zZ9ps"
       }
     }
   ]
