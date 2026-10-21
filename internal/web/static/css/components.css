@@ -791,16 +791,13 @@
 		display: block;
 		inline-size: 100%;
 
-		/* As tall as the other fields. The input grows into the control;
-		 * its own width (20 characters) would push the control past a
-		 * narrow column. */
+		/* As tall as the other fields. */
 		&::part(control) {
 			min-block-size: var(--tk-control-md);
 			padding-block: 0;
 		}
 
 		&::part(input) {
-			inline-size: 0;
 			block-size: calc(var(--tk-control-md) - 2px);
 		}
 
@@ -841,12 +838,6 @@
 
 	sb-date-picker.tk-picker--sm::part(input) {
 		padding-inline: var(--tk-space-2);
-	}
-
-	/* Room for the clear button beside the arrow, so a long value ends
-	 * before it. */
-	sb-select.tk-picker[clearable]:not([multiple])::part(control) {
-		padding-inline-end: calc(var(--tk-space-8) + var(--tk-space-6));
 	}
 
 	/* A small picker in a narrow column shows the clear button while it

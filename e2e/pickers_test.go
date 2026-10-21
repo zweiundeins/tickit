@@ -58,8 +58,8 @@ func TestPickAssigneeByTyping(t *testing.T) {
 	a.Wait(t, faces, 3*time.Second)
 	a.Wait(t, `customElements.get('sb-select') && document.getElementById('issue-assignee').value === 's-priya'`, 3*time.Second)
 
-	// Tab into the picker, as the keyboard would: its text is selected, so
-	// a typed name replaces "Priya Raman".
+	// Tab into the picker, as the keyboard would: typing searches the typed
+	// name alone, not "Priya Raman" with it.
 	focusIn(t, a, "issue-assignee", "input")
 	typeKeys(t, a, "tom")
 	open := `document.getElementById('issue-assignee').shadowRoot`
@@ -74,9 +74,10 @@ func TestPickAssigneeByTyping(t *testing.T) {
 	a.Wait(t, `document.getElementById('issue-assignee').getAttribute('value') === 's-tomasz' && !document.getElementById('issue-assignee').matches(':state(pending)')`, 3*time.Second)
 	a.Wait(t, open+`.querySelector('input').value === 'Tomasz Nowak'`, time.Second)
 
-	// Escape on an open list closes it and leaves the value.
-	a.Eval(t, `(`+open+`.querySelector('input').select(), true)`, nil)
+	// After an Enter pick, typing searches the typed text alone too; Escape
+	// on an open list closes it and leaves the value.
 	typeKeys(t, a, "pri")
+	a.Wait(t, open+`.querySelector('[popover]').matches(':popover-open') && `+open+`.querySelector('input').value === 'pri'`, 2*time.Second)
 	key(t, a, "Escape")
 	a.Wait(t, `!`+open+`.querySelector('[popover]').matches(':popover-open') && document.getElementById('issue-assignee').value === 's-tomasz'`, time.Second)
 	noErrors(t, a, b)
