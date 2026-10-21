@@ -1,7 +1,7 @@
 {
   "repo": "github.com/zweiundeins/starbase",
-  "commit": "2264313cccdf2976720cf0ac33a1df8efd6e879b",
-  "date": "2026-10-12T15:25:37Z",
+  "commit": "48367bef495e79869f56d49d3443e1ec357f9439",
+  "date": "2026-10-21T09:45:57Z",
   "license": "MIT",
   "datastar": "sha384-mvTnynHaljKNMleD0bj6/rWROnluHlNmbc5rOQTd+fQH3YBDYhlvHdNquEX99by5",
   "fonts": {
@@ -26,7 +26,7 @@
       "pinned": true,
       "entry": "date-picker.js",
       "files": {
-        "date-picker.js": "sha384-vaorfFqtVDbsqLgCi08zG41lcxDtlEw60MQuy7pP9vZmPxIdOz2qSdUYEv8U1kSo"
+        "date-picker.js": "sha384-BgoE4Rhgw/yKAOAO9XhGHIRNsDjKFWoqg0n9l/GnAdie5JEprj7LcTXaVSfvjHlu"
       }
     },
     {
@@ -35,7 +35,7 @@
       "pinned": true,
       "entry": "dropdown.js",
       "files": {
-        "dropdown.js": "sha384-QeqH2ZKvXMD9Ir2dxqRunzHI8mmDPRqcQpDFd+jlW7QsqBoY4/zMmUlILT05E92X"
+        "dropdown.js": "sha384-JA8Y5IAoOQ2VADQfgJhy0oYhYJ1xYmOeiSBawYAdQt2Cnihrpv1NxxSag89DHz/X"
       }
     },
     {
@@ -44,7 +44,7 @@
       "pinned": true,
       "entry": "popover.js",
       "files": {
-        "popover.js": "sha384-dCUuz89wqUDIwSnisA+RkLt7LNzVnAimVyrx9P7d9OCl//uyI8VWnJmacVCm8j5n"
+        "popover.js": "sha384-AaKeLIT5tGRrUfHkFiYcQYFsBN90wAncHQassY45APAqxfXAno0uxgNS4N7nCQ9P"
       }
     },
     {
@@ -53,7 +53,7 @@
       "pinned": true,
       "entry": "select.js",
       "files": {
-        "select.js": "sha384-jt4yjPEMbf/ALR/N29ZpxD2VOytH2JIki18nd1cPCqgWpM6miWv2HvASdVF/LtIv"
+        "select.js": "sha384-yOUkFgz3qaADRKfBTwDeMkFtLEupfiWou8aSvSNO6Fyk/VuHBK/X2MH3LLicJzfW"
       }
     },
     {
@@ -71,7 +71,7 @@
       "pinned": true,
       "entry": "toast.js",
       "files": {
-        "toast.js": "sha384-y9d4aapjF3EMcPRx8C98dZYCP6k03MQ8YydLcsPgBsWhh99F+4Ql9esF1i6mTHlu"
+        "toast.js": "sha384-clZS5kgwkt7AQUT/sZz1smhFil7Gm1KJN8c5k7FrjQITvC3zzWDv7GXBASzNMy+W"
       }
     },
     {
@@ -80,7 +80,7 @@
       "pinned": true,
       "entry": "tree.js",
       "files": {
-        "tree.js": "sha384-knzoi2q88h3X1meYffp3EE81g2CibKtF9f77gsZBZJg83SAl9AXvT0f/FwJV2ADn"
+        "tree.js": "sha384-8Y7xjMXN2AEk2SHcZuJVGdK7jkbuDBFkMCoJgtAHcsyjEosRQ3gnq4Fm2tQHtvtY"
       }
     },
     {
@@ -89,7 +89,7 @@
       "pinned": true,
       "entry": "virtual-scroll.js",
       "files": {
-        "virtual-scroll.js": "sha384-UKij9Z+27W7N1Cw7vQ1O+GEENY6p44mZH04JvV0ipfDi6N3mMbKvntiaq94eETog"
+        "virtual-scroll.js": "sha384-IVl+N3gnCLIvha3on4fzJXBMtVKTIn5tf5tGDnUmpwl5omcgmVzxukF7AZ2k7uTf"
       }
     }
   ]
