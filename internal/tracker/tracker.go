@@ -32,7 +32,7 @@
 //
 // Queries take a sqlite.Querier (a GET's transaction, a render's, a
 // command's) and read the projections: ProjectByKey, ProjectByID,
-// Projects, Readable, Statuses, Components, Sprints, IssueByKey,
+// Projects, Readable, Statuses (with WorkflowOf), BoardColumns, Components, Sprints, IssueByKey,
 // IssueDetail, Watchers, EpicChildren, Epics, Board, Backlog, Search,
 // Comments, Labels, Assignable, SavedFilters, RefByKey, Typing,
 // IssuesByID, SearchAll and ListOptions (the list's filter values);

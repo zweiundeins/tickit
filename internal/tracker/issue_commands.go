@@ -1234,15 +1234,17 @@ func (c UnlinkIssues) Apply(tx *writer.Tx) error {
 }
 
 // Move moves a card on the board or in the backlog (FR-41, FR-45): to
-// Status (empty: the status it has), between the cards After and Before
-// (issue ids; either may be empty: the top or the bottom). Status and
-// rank change in one event. A card someone else moved after Seen refuses
+// Status, or to the board column Column, which picks the status there the
+// workflow allows (FR-43.1; both empty: the status it has), between the
+// cards After and Before (issue ids; either may be empty: the top or the
+// bottom). Status and rank change in one event. A card someone else moved after Seen refuses
 // the move with a *Conflict of the field "move": "Sunny Otter moved
 // WEB-12 to In Review first." (MP-04.3).
 type Move struct {
 	By     tabs.By
 	Issue  string
 	Status string
+	Column string
 	Before string
 	After  string
 	Seen   int64
@@ -1252,9 +1254,11 @@ func (c Move) Validate() error { return checkBy(c.By) }
 
 type move struct {
 	Status       string
+	Column       string
 	Seen         int64
 	lower, upper string
 	wf           Workflow
+	board        []BoardColumn
 	own          []string
 }
 
@@ -1266,6 +1270,19 @@ func decideMove(c move, s IssueState) ([]IssueEvent, error) {
 		return nil, errNoIssue
 	case s.Deleted:
 		return nil, errDeleted
+	}
+	if c.Column != "" {
+		i := slices.IndexFunc(c.board, func(b BoardColumn) bool { return b.ID == c.Column })
+		if i < 0 {
+			return nil, tabs.Refuse(FieldMove, "The board has no such column.")
+		}
+		var err error
+		if c.Status, err = columnStatus(c.wf, c.board[i], s.Status); err != nil {
+			return nil, err
+		}
+	}
+	if c.Status == "" {
+		c.Status = s.Status
 	}
 	st, ok := c.wf.Status(c.Status)
 	if !ok {
@@ -1309,10 +1326,7 @@ func (c Move) Apply(tx *writer.Tx) error {
 	if err != nil {
 		return err
 	}
-	m := move{Status: c.Status, Seen: c.Seen, wf: p.Workflow}
-	if m.Status == "" {
-		m.Status = s.Status
-	}
+	m := move{Status: c.Status, Column: c.Column, Seen: c.Seen, wf: p.Workflow, board: p.Board}
 	if m.lower, m.upper, err = neighbours(tx, s.Project, c.Issue, c.Before, c.After); err != nil {
 		return err
 	}

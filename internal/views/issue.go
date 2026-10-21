@@ -25,7 +25,7 @@ type Issue struct {
 	tracker.Detail
 	People     map[string]people.Person
 	Workflow   tracker.Workflow
-	Statuses   []tracker.Column
+	Statuses   []tracker.WorkflowStatus
 	Sprints    []tracker.Sprint
 	Components []tracker.Component // the project's
 	Assignable []people.Person
@@ -164,8 +164,8 @@ func dueTime(d string) time.Time {
 
 // transitions are the statuses the workflow lets the issue go to, in
 // workflow order, its own first (FR-16.1).
-func (m Issue) transitions() []tracker.Column {
-	var out []tracker.Column
+func (m Issue) transitions() []tracker.WorkflowStatus {
+	var out []tracker.WorkflowStatus
 	for _, c := range m.Statuses {
 		if c.ID == m.Status || m.Workflow.Allows(m.Status, c.ID) {
 			out = append(out, c)

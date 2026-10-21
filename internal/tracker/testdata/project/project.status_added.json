@@ -1,0 +1,8 @@
+{
+  "status": {
+    "id": "in-qa",
+    "name": "In QA",
+    "category": "inprogress"
+  },
+  "column": "c12"
+}

@@ -1,7 +1,6 @@
 package views
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/zweiundeins/tickit/internal/access"
@@ -31,22 +30,21 @@ type ProjectsPage struct {
 }
 
 // Settings is a project's settings page (FR-03, FR-04, FR-05, FR-24,
-// FR-43).
+// FR-36, FR-37, FR-43).
 type Settings struct {
 	Project    tracker.Project
-	Columns    []tracker.Column // the board's columns, with their limits
 	Live       SettingsLive
+	Workflow   WorkflowLive
 	Candidates []people.Person // whom the lead and the members' pickers offer
 }
 
 // SettingsLive is the settings' shared region: the members with their
-// roles, the components, the limits as set now.
+// roles and the components.
 type SettingsLive struct {
 	Project    tracker.Project
 	Members    []tracker.Member
 	People     map[string]people.Person
 	Components []tracker.Component
-	Columns    []tracker.Column
 }
 
 // SettingsID is the id of the settings' region.
@@ -87,13 +85,6 @@ func personOptions(list []people.Person, current string, none string) []ui.Optio
 		out = append(out, ui.Option{Value: p.ID, Label: p.Name, Selected: p.ID == current})
 	}
 	return out
-}
-
-func wipValue(n int) string {
-	if n == 0 {
-		return ""
-	}
-	return strconv.Itoa(n)
 }
 
 func since(t time.Time) string { return t.Format("2 Jan 2006") }

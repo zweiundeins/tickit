@@ -51,7 +51,8 @@ templ BoardCard(p CardProps) {
 		for _, l := range p.Labels {
 			@Label(l, labelHref(p.LabelHref, l))
 		}
-		if p.Assignee != nil {
+		if p.InRow {
+		} else if p.Assignee != nil {
 			<i class="tk-av" data-face={ FaceRef(p.Assignee.Seed) } role="img" title={ p.Assignee.Name }></i>
 		} else {
 			<i class="tk-card__nobody" role="img" aria-label="Unassigned"></i>

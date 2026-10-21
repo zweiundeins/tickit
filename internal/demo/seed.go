@@ -230,6 +230,7 @@ func Seed(ctx context.Context, w *writer.Writer, c *seed.Content, run time.Time,
 	}
 	n.Moves = len(moves)
 	steps = append(steps, moves...)
+	steps = append(steps, r.workflowSteps(steps[len(steps)-1].At)...)
 	first := Step{At: r.At.AddDate(0, 0, -31), Name: "people", Cmd: people.SeedPeople{At: r.At.AddDate(0, 0, -31)}}
 	steps = append([]Step{first}, steps...)
 	n.Steps = len(steps)
@@ -264,6 +265,20 @@ func runSteps(ctx context.Context, w *writer.Writer, steps []Step) error {
 		}))
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// workflowSteps give OPS a transition rule once its history is written
+// (FR-37): its issues reach Done only from In Review. The other projects
+// keep the default workflow.
+func (r *Run) workflowSteps(last time.Time) []Step {
+	for _, p := range r.Content.Projects {
+		if p.Key == "OPS" {
+			at := last.Add(time.Second)
+			return []Step{{At: at, Phase: PhaseChange, Name: "OPS rule of Done", Cmd: tracker.SetTransitionRule{By: r.By(p.Lead, at),
+				Project: r.ProjectID(p.Key), Status: tracker.StatusDone, From: []string{tracker.StatusInReview}}}}
 		}
 	}
 	return nil

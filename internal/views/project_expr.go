@@ -28,7 +28,4 @@ var (
 	addComponent      = `$_cs.name.trim() && ` + Act("_cs.op", "/cmd/projects/component", "project: "+settingsProject+", name: $_cs.name, description: $_cs.description")
 	removeComponent   = Act("_cs.op", "/cmd/projects/component/remove", "project: "+settingsProject+", name: el.dataset.name")
 	componentsSettled = Settle("_cs.op", "o.ok ? ($_cs.msg = 'Saved.', $_cs.name = '', $_cs.description = '') : ($_cs.msg = o.msg)")
-
-	setWIP     = Act("_wip.op", "/cmd/projects/wip", "project: "+settingsProject+", status: el.dataset.status, limit: +(document.getElementById('wip-' + el.dataset.status).value || 0)")
-	wipSettled = Settle("_wip.op", "$_wip.msg = o.ok ? 'Saved.' : o.msg")
 )

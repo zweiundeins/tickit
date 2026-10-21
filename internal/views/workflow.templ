@@ -1,0 +1,171 @@
+package views
+
+import "github.com/zweiundeins/tickit/internal/ui"
+
+// WorkflowRegion is the workflow's and the board's shared region in a
+// project's settings: the statuses in order, each with its category, the
+// statuses it may follow, its column and its issues (FR-36, FR-37), and
+// the board's columns with their statuses and limits (FR-43). Its
+// controls change one thing each at once; the dialogs are the page's.
+templ WorkflowRegion(w WorkflowLive) {
+	<div id={ WorkflowID } class="stack">
+		<section class="tk-settings__part tk-wf" aria-labelledby="set-workflow">
+			<h2 id="set-workflow">Workflow</h2>
+			<p class="muted">Menus, lists and the board show statuses in this order. Issues keep a status by its id, so a rename changes none of them.</p>
+			@ui.Table(ui.TableProps{Caption: "Statuses", HideCaption: true}) {
+				<thead><tr><th scope="col" class="tk-grow">Status</th><th scope="col">Category</th><th scope="col">May follow</th><th scope="col">Board column</th><th scope="col" class="tk-num">Issues</th><th scope="col"><span class="visually-hidden">Change</span></th></tr></thead>
+				<tbody id="wf-statuses">
+					for i, st := range w.Statuses {
+						<tr
+							data-status={ st.ID }
+							data-name={ st.Name }
+							data-held={ itoa(w.Held[st.ID]) }
+							data-follows={ joinIDs(st.Follows) }
+							if st.Any {
+								data-any
+							}
+						>
+							<td class="tk-grow">
+								@ui.StatusLozenge(st.Name, category(st.Category))
+							</td>
+							<td>
+								@ui.Select(ui.SelectProps{ID: "wf-cat-" + st.ID, Size: ui.SizeSM, Options: categoryOptions(st.Category),
+									Attrs: map[string]any{"aria-label": "Category of " + st.Name, "data-on:change": wfCategory, "data-attr:disabled": Pending("_wf.op")}})
+							</td>
+							<td class="tk-wf__follows">{ followsText(w, st) }</td>
+							<td>
+								@ui.Select(ui.SelectProps{ID: "wf-col-" + st.ID, Size: ui.SizeSM, Options: columnOptions(w.Columns, st.Column),
+									Attrs: map[string]any{"aria-label": "Board column of " + st.Name, "data-on:change": wfMap, "data-attr:disabled": Pending("_wf.op")}})
+							</td>
+							<td class="tk-num">{ itoa(w.Held[st.ID]) }</td>
+							<td>
+								<span class="tk-wf__actions">
+									@ui.Button(ui.ButtonProps{Label: "Move " + st.Name + " up", Icon: "arrow-up", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Disabled: i == 0,
+										Attrs: map[string]any{"data-earlier": "1", "data-on:click": wfMove, "data-attr:aria-busy": Busy("_wf.op")}})
+									@ui.Button(ui.ButtonProps{Label: "Move " + st.Name + " down", Icon: "arrow-down", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Disabled: i == len(w.Statuses)-1,
+										Attrs: map[string]any{"data-on:click": wfMove, "data-attr:aria-busy": Busy("_wf.op")}})
+									@ui.Button(ui.ButtonProps{Label: "Rename " + st.Name, Icon: "edit", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: map[string]any{"data-on:click": wfRenameOpen}})
+									@ui.Button(ui.ButtonProps{Label: "Which statuses " + st.Name + " may follow", Icon: "filter", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: map[string]any{"data-on:click": wfRuleOpen}})
+									@ui.Button(ui.ButtonProps{Label: "Remove " + st.Name, Icon: "trash", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Disabled: len(w.Statuses) == 1, Attrs: map[string]any{"data-on:click": wfRemoveOpen}})
+								</span>
+							</td>
+						</tr>
+					}
+				</tbody>
+			}
+		</section>
+		<section class="tk-settings__part tk-wf" aria-labelledby="set-columns">
+			<h2 id="set-columns">Board columns</h2>
+			<p class="muted">A column shows one or more statuses; a card dropped in it takes the first of them its rules allow. A column over its limit shows it in colour and words; nothing stops a move.</p>
+			@ui.Table(ui.TableProps{Caption: "Board columns", HideCaption: true}) {
+				<thead><tr><th scope="col" class="tk-grow">Column</th><th scope="col">Statuses</th><th scope="col" class="tk-num">Limit</th><th scope="col"><span class="visually-hidden">Change</span></th></tr></thead>
+				<tbody id="wf-columns">
+					for i, c := range w.Columns {
+						<tr data-column={ c.ID } data-name={ c.Name } data-limit={ itoa(c.WIP) }>
+							<td class="tk-grow"><strong>{ c.Name }</strong></td>
+							<td class="tk-wf__follows">{ columnStatuses(c) }</td>
+							<td class="tk-num">
+								if c.WIP > 0 {
+									{ itoa(c.WIP) }
+								} else {
+									<span class="muted">None</span>
+								}
+							</td>
+							<td>
+								<span class="tk-wf__actions">
+									@ui.Button(ui.ButtonProps{Label: "Move " + c.Name + " left", Icon: "arrow-left", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Disabled: i == 0,
+										Attrs: map[string]any{"data-earlier": "1", "data-on:click": wfColMove, "data-attr:aria-busy": Busy("_wf.op")}})
+									@ui.Button(ui.ButtonProps{Label: "Move " + c.Name + " right", Icon: "arrow-right", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Disabled: i == len(w.Columns)-1,
+										Attrs: map[string]any{"data-on:click": wfColMove, "data-attr:aria-busy": Busy("_wf.op")}})
+									@ui.Button(ui.ButtonProps{Label: "Edit " + c.Name, Icon: "edit", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: map[string]any{"data-on:click": wfColumnOpen}})
+									@ui.Button(ui.ButtonProps{Label: "Remove " + c.Name, Icon: "trash", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Disabled: len(w.Columns) == 1,
+										Attrs: map[string]any{"data-on:click": wfColRemove, "data-attr:aria-busy": Busy("_wf.op")}})
+								</span>
+							</td>
+						</tr>
+					}
+				</tbody>
+			}
+		</section>
+	</div>
+}
+
+// workflowForms are the page's parts of the workflow's settings: the
+// forms that add a status and a column, and the dialogs the region's
+// rows open. They keep what the person types; no frame touches them.
+templ workflowForms() {
+	<div class="stack" data-signals={ wfSignals } data-on:datastar-fetch={ wfFailed }>
+		<span hidden data-effect={ wfSettled }></span>
+		<section class="tk-settings__part" aria-labelledby="set-add-status">
+			<h2 id="set-add-status">Add a status</h2>
+			<form class="cluster" data-on:submit__prevent={ wfAddStatus }>
+				@ui.Input(ui.InputProps{ID: "wf-sname", Placeholder: "Name", MaxLength: 40, Required: true, Attrs: map[string]any{"data-bind": "_wf.sname", "aria-label": "Status name", "data-attr:readonly": Pending("_wf.op")}})
+				@ui.Select(ui.SelectProps{ID: "wf-scat", Options: categoryOptions("todo"), Attrs: map[string]any{"data-bind": "_wf.scat", "aria-label": "Category"}})
+				@ui.Button(ui.ButtonProps{Label: "Add", Type: "submit", Attrs: map[string]any{"data-attr:aria-busy": Busy("_wf.op")}})
+			</form>
+			<p class="muted">A new status gets a board column of its own, and may follow any status until you say otherwise.</p>
+		</section>
+		<section class="tk-settings__part" aria-labelledby="set-add-column">
+			<h2 id="set-add-column">Add a board column</h2>
+			<form class="cluster" data-on:submit__prevent={ wfAddColumn }>
+				@ui.Input(ui.InputProps{ID: "wf-cname", Placeholder: "Name", MaxLength: 40, Required: true, Attrs: map[string]any{"data-bind": "_wf.cname", "aria-label": "Column name", "data-attr:readonly": Pending("_wf.op")}})
+				@ui.Button(ui.ButtonProps{Label: "Add", Type: "submit", Attrs: map[string]any{"data-attr:aria-busy": Busy("_wf.op")}})
+			</form>
+		</section>
+		@ui.Outcome(ui.OutcomeProps{Kind: ui.OutcomeRefused, Attrs: map[string]any{"data-text": "$_wf.msg", "hidden": true, "data-attr:hidden": "!$_wf.msg"}})
+		@ui.Dialog(ui.DialogProps{ID: "wf-rename", Title: "Rename a status", Class: "tk-wf-dialog", Footer: wfFooter("wf-rename", "Rename", "wf-rename-form")}) {
+			<form id="wf-rename-form" class="stack" data-on:submit__prevent={ wfRename }>
+				{{ f := ui.FieldProps{ID: "wf-name", Label: "Name", Hint: "Columns named as it was follow."} }}
+				@ui.Field(f) {
+					@ui.Input(ui.InputProps{ID: f.ID, MaxLength: 40, Required: true, DescribedBy: f.DescribedBy(), Attrs: map[string]any{"data-bind": "_wf.name", "autofocus": true}})
+				}
+				@wfMsg()
+			</form>
+		}
+		@ui.Dialog(ui.DialogProps{ID: "wf-rule", Title: "Which statuses it may follow", Class: "tk-wf-dialog", Footer: wfFooter("wf-rule", "Save", "wf-rule-form")}) {
+			<form id="wf-rule-form" class="stack" data-on:submit__prevent={ wfRule }>
+				<p>An issue comes to <strong data-text="$_wf.was"></strong> only from the statuses you tick. Menus and the board offer only those moves.</p>
+				@ui.Checkbox(ui.CheckboxProps{ID: "wf-any", Label: "Any status", Attrs: map[string]any{"data-bind": "_wf.any"}})
+				<fieldset class="tk-wf__from" data-attr:disabled="$_wf.any">
+					<legend class="visually-hidden">May follow</legend>
+					<div id="wf-rule-from" class="stack"></div>
+				</fieldset>
+				@wfMsg()
+			</form>
+		}
+		@ui.Dialog(ui.DialogProps{ID: "wf-remove", Title: "Remove a status", Class: "tk-wf-dialog", Footer: wfFooter("wf-remove", "Remove", "wf-remove-form")}) {
+			<form id="wf-remove-form" class="stack" data-on:submit__prevent={ wfRemove }>
+				<p><strong data-text="$_wf.was"></strong> leaves the workflow and the board. <span data-text={ wfRemoveText }></span></p>
+				<div data-show="$_wf.held">
+					{{ f := ui.FieldProps{ID: "wf-move-to", Label: "Move its issues to"} }}
+					@ui.Field(f) {
+						@ui.Select(ui.SelectProps{ID: f.ID, Attrs: map[string]any{"data-bind": "_wf.to"}})
+					}
+				</div>
+				@wfMsg()
+			</form>
+		}
+		@ui.Dialog(ui.DialogProps{ID: "wf-column", Title: "Edit a column", Class: "tk-wf-dialog", Footer: wfFooter("wf-column", "Save", "wf-column-form")}) {
+			<form id="wf-column-form" class="stack" data-on:submit__prevent={ wfColumn }>
+				{{ n := ui.FieldProps{ID: "wf-cedit-name", Label: "Name"} }}
+				@ui.Field(n) {
+					@ui.Input(ui.InputProps{ID: n.ID, MaxLength: 40, Required: true, Attrs: map[string]any{"data-bind": "_wf.name", "autofocus": true}})
+				}
+				{{ l := ui.FieldProps{ID: "wf-cedit-limit", Label: "Work-in-progress limit", Hint: "Empty or 0: no limit.", Optional: true} }}
+				@ui.Field(l) {
+					@ui.Input(ui.InputProps{ID: l.ID, Type: "number", DescribedBy: l.DescribedBy(), Attrs: map[string]any{"data-bind": "_wf.limit", "min": "0", "max": "999", "inputmode": "numeric"}})
+				}
+				@wfMsg()
+			</form>
+		}
+	</div>
+}
+
+templ wfMsg() {
+	@ui.Outcome(ui.OutcomeProps{Kind: ui.OutcomeRefused, Attrs: map[string]any{"data-text": "$_wf.msg", "hidden": true, "data-attr:hidden": "!$_wf.msg"}})
+}
+
+templ wfFooter(id, label, form string) {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: id})
+	@ui.Button(ui.ButtonProps{Label: label, Variant: ui.Primary, Type: "submit", Attrs: map[string]any{"form": form, "data-attr:aria-busy": Busy("_wf.op")}})
+}

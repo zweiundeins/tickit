@@ -206,8 +206,10 @@ type CardProps struct {
 	Key, Summary, Href string
 	Type               IssueType
 	Priority           Priority
-	// Assignee is nil when nobody is assigned.
+	// Assignee is nil when nobody is assigned. InRow leaves the face and
+	// "Unassigned" out, for a row that names its person (FR-44).
 	Assignee *Person
+	InRow    bool
 	Labels   []string
 	// LabelHref links a label to the issues that carry it (FR-23.2); nil
 	// draws labels as text.
@@ -372,37 +374,96 @@ templ Lane(p LaneProps) {
 		}
 		{ p.Attrs... }
 	>
-		<header class="tk-lane__head">
-			if p.Lean {
-				<i data-cat={ p.Category.attr() }></i>
-			} else {
-				@raw(catSVG(p.Category))
-			}
-			<h2 class="tk-lane__name" id={ p.ID + "-name" }>{ p.Name }</h2>
-			if p.Total > 0 && p.Total != p.Count {
-				<span class="tk-count" aria-label={ strconv.Itoa(p.Count) + " of " + issues(p.Total) }>{ strconv.Itoa(p.Count) } of { strconv.Itoa(p.Total) }</span>
-			} else {
-				<span class="tk-count" aria-label={ issues(p.Count) }>{ strconv.Itoa(p.Count) }</span>
-			}
-			if p.WIP > 0 {
-				<span class="tk-lane__wip">
-					if p.all() > p.WIP {
-						@Icon("warning")
-						Over limit of { strconv.Itoa(p.WIP) }
-					} else {
-						Limit { strconv.Itoa(p.WIP) }
-					}
-				</span>
-			}
-			if p.CreateAttrs != nil && p.Lean {
-				<button class="tk-btn tk-btn--ghost tk-btn--sm tk-btn--icon tk-lane__add" type="button" title={ "Create issue in " + p.Name } { p.CreateAttrs... }><i class="tk-icon-glyph" data-icon="plus"></i></button>
-			} else if p.CreateAttrs != nil {
-				@Button(ButtonProps{Label: "Create issue in " + p.Name, Icon: "plus", IconOnly: true, Variant: Ghost, Size: SizeSM, Class: "tk-lane__add", Attrs: p.CreateAttrs})
-			}
-		</header>
+		@laneHead(p)
 		<ol class="tk-lane__cards" role="list">
 			{ children... }
 		</ol>
+	</section>
+}
+
+templ laneHead(p LaneProps) {
+	<header class="tk-lane__head">
+		if p.Lean {
+			<i data-cat={ p.Category.attr() }></i>
+		} else {
+			@raw(catSVG(p.Category))
+		}
+		<h2 class="tk-lane__name" id={ p.ID + "-name" }>{ p.Name }</h2>
+		if p.Total > 0 && p.Total != p.Count {
+			<span class="tk-count" aria-label={ strconv.Itoa(p.Count) + " of " + issues(p.Total) }>{ strconv.Itoa(p.Count) } of { strconv.Itoa(p.Total) }</span>
+		} else {
+			<span class="tk-count" aria-label={ issues(p.Count) }>{ strconv.Itoa(p.Count) }</span>
+		}
+		if p.WIP > 0 {
+			<span class="tk-lane__wip">
+				if p.all() > p.WIP {
+					@Icon("warning")
+					Over limit of { strconv.Itoa(p.WIP) }
+				} else {
+					Limit { strconv.Itoa(p.WIP) }
+				}
+			</span>
+		}
+		if p.CreateAttrs != nil && p.Lean {
+			<button class="tk-btn tk-btn--ghost tk-btn--sm tk-btn--icon tk-lane__add" type="button" title={ "Create issue in " + p.Name } { p.CreateAttrs... }><i class="tk-icon-glyph" data-icon="plus"></i></button>
+		} else if p.CreateAttrs != nil {
+			@Button(ButtonProps{Label: "Create issue in " + p.Name, Icon: "plus", IconOnly: true, Variant: Ghost, Size: SizeSM, Class: "tk-lane__add", Attrs: p.CreateAttrs})
+		}
+	</header>
+}
+
+// LaneHead is a column's head alone, above a board of swimlanes (FR-44),
+// whose rows hold the column's cards in LaneCells: its name, its count
+// across the rows and its limit.
+templ LaneHead(p LaneProps) {
+	<section
+		class="tk-lane tk-lane--head"
+		data-cat={ p.Category.attr() }
+		if p.WIP > 0 && p.all() > p.WIP {
+			data-over
+		}
+		{ p.Attrs... }
+	>
+		@laneHead(p)
+	</section>
+}
+
+// LaneCell is a column's part of a swimlane (FR-44): its cards there,
+// and the place a card drops into. Name, the column's, labels its list.
+templ LaneCell(p LaneProps) {
+	<div class="tk-lane" { p.Attrs... }>
+		<ol class="tk-lane__cards" role="list" aria-label={ p.Name }>
+			{ children... }
+		</ol>
+	</div>
+}
+
+// SwimProps is a row of a board of swimlanes (FR-44): the epic or the
+// person it groups by, and its cards' count.
+type SwimProps struct {
+	Name  string
+	Count int
+	Attrs templ.Attributes
+}
+
+// Swim is a row of a board of swimlanes: its head, then one LaneCell per
+// column. Put LaneHeads in a Swim without a Name, first.
+templ Swim(p SwimProps) {
+	<section
+		if p.Name == "" {
+			class="tk-swim tk-swim--heads"
+		} else {
+			class="tk-swim"
+			aria-label={ p.Name }
+		}
+		{ p.Attrs... }
+	>
+		if p.Name != "" {
+			<h3 class="tk-swim__head">{ p.Name } <span class="tk-count" aria-label={ issues(p.Count) }>{ strconv.Itoa(p.Count) }</span></h3>
+		}
+		<div class="tk-swim__row">
+			{ children... }
+		</div>
 	</section>
 }
 
@@ -439,6 +500,9 @@ type CardMenuProps struct {
 	// chosen (data-lane, data-move, data-open) and which card opened it
 	// (the data-card of its invoker).
 	Attrs templ.Attributes
+	// LanesAttrs go on the group of the "Move to" items, which has the
+	// id ID-lanes: a live view patches it when the columns change.
+	LanesAttrs templ.Attributes
 }
 
 // CardMenu is the board's card menu: Move to each lane, Move up, Move
@@ -453,11 +517,25 @@ templ CardMenu(p CardMenuProps) {
 		{ p.Attrs... }
 	>
 		@MenuLabel("Move to")
+		@CardMenuLanes(p)
+		@MenuSeparator()
+		@MenuItem(MenuItemProps{Label: "Move up", Icon: "arrow-up", Attrs: templ.Attributes{"data-move": "up"}})
+		@MenuItem(MenuItemProps{Label: "Move down", Icon: "arrow-down", Attrs: templ.Attributes{"data-move": "down"}})
+		@MenuSeparator()
+		@MenuItem(MenuItemProps{Label: "Open", Icon: "external", Attrs: templ.Attributes{"data-open": true}})
+	</div>
+}
+
+// CardMenuLanes are the card menu's "Move to" items, one per lane; the
+// board hides those a card may not go to (FR-37.1).
+templ CardMenuLanes(p CardMenuProps) {
+	<div id={ p.ID + "-lanes" } class="tk-menu__group" role="none" { p.LanesAttrs... }>
 		for i, l := range p.Lanes {
 			<button
 				class="tk-menu__item"
 				type="button"
 				data-lane={ l.ID }
+				data-preserve-attr="hidden aria-disabled"
 				if i == 0 {
 					autofocus
 				}
@@ -466,10 +544,5 @@ templ CardMenu(p CardMenuProps) {
 				<span class="tk-menu__label">{ l.Name }</span>
 			</button>
 		}
-		@MenuSeparator()
-		@MenuItem(MenuItemProps{Label: "Move up", Icon: "arrow-up", Attrs: templ.Attributes{"data-move": "up"}})
-		@MenuItem(MenuItemProps{Label: "Move down", Icon: "arrow-down", Attrs: templ.Attributes{"data-move": "down"}})
-		@MenuSeparator()
-		@MenuItem(MenuItemProps{Label: "Open", Icon: "external", Attrs: templ.Attributes{"data-open": true}})
 	</div>
 }

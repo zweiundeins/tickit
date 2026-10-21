@@ -342,10 +342,11 @@ func TestMoveDecider(t *testing.T) {
 	s.When(move{Status: StatusToDo, Seen: 1, lower: "a4", upper: "a6", wf: wf}).Then(t) // where it is: nothing
 	s.When(move{Status: "closed", Seen: 1, wf: wf}).ThenError(t, refuse(FieldMove, "This project's workflow has no such status."))
 	strict := wf
-	strict.Transitions = map[string][]string{StatusToDo: {StatusInProgress}}
+	strict.Follows = map[string][]string{StatusDone: nil}
 	s.When(move{Status: StatusDone, Seen: 1, wf: strict}).ThenError(t, refuse(FieldMove, "Nothing can move to Done."))
-	strict.Transitions[StatusInReview] = []string{StatusDone}
+	strict.Follows[StatusDone] = []string{StatusInReview}
 	s.When(move{Status: StatusDone, Seen: 1, wf: strict}).ThenError(t, refuse(FieldMove, "Done can only follow In Review.")) // FR-37
+	s.When(move{Status: StatusInProgress, Seen: 1, wf: strict, lower: "a6"}).Then(t, Moved{FromStatus: StatusToDo, Status: StatusInProgress, Category: InProgress, FromRank: "a5", Rank: "a7"})
 
 	moved := s.Given(Moved{FromStatus: StatusToDo, Status: StatusInReview, Category: InProgress, FromRank: "a5", Rank: "a3"})
 	moved.When(move{Status: StatusDone, Seen: 1, wf: wf}).ThenError(t, &conflictErr{Field: FieldMove, Version: 2, Yours: StatusDone})

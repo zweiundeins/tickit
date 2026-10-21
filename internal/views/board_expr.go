@@ -26,7 +26,31 @@ B.slot = (key) => key ? document.getElementById('c-' + key) : null
 B.keyOf = (li) => li.id.slice(2)
 B.laneOf = (li) => li.closest('.tk-lane')
 B.list = (lane) => lane.querySelector('.tk-lane__cards')
-B.lane = (status) => el.querySelector('.tk-lane[data-lane="' + status + '"]')
+B.name = (lane) => lane.dataset.name || B.list(lane).getAttribute('aria-label')
+// A card moves within its swimlane (FR-44): its row, or the whole board.
+B.scope = (li) => li?.closest('.tk-swim') || el
+B.lane = (column, li) => B.scope(li).querySelector('.tk-lane[data-lane="' + column + '"]')
+// The columns a card may go to (FR-37.1), from the rules the lanes carry
+// when the workflow has any: null for every one.
+B.allowed = (li) => {
+	const r = B.board().dataset.rules
+	if (!r || !li) return null
+	const R = JSON.parse(r), c = R.c[B.laneOf(li).dataset.lane] || []
+	return R.t[c.length === 1 ? c[0] : li.dataset.s] || []
+}
+B.forbid = (li) => {
+	B.forbidden = []
+	const ok = B.allowed(li)
+	if (!ok) return
+	el.querySelectorAll('.tk-lane[data-lane], .tk-lane[data-col]').forEach((l) => {
+		const c = l.dataset.lane || l.dataset.col
+		if (!ok.includes(c)) { B.forbidden.includes(c) || B.forbidden.push(c); l.setAttribute('data-forbidden', '') }
+	})
+}
+B.unforbid = () => {
+	B.forbidden = []
+	el.querySelectorAll('[data-forbidden]').forEach((l) => l.removeAttribute('data-forbidden'))
+}
 B.cards = (lane, but) => [...B.list(lane).children].filter((c) => c.classList.contains('tk-card') && c !== but)
 B.say = (t) => { $_board.say = $_board.say === t ? t + ' ' : t }
 B.paint = (c, state) => {
@@ -41,13 +65,17 @@ B.mark = (li, state) => {
 }
 // A card's move state is the page's: the frames know nothing of it, and
 // a morph that drops it gets it back before the next paint.
+B.forbidden = []
 B.keep = new MutationObserver(() => {
 	for (const id in B.states) {
 		const c = document.getElementById(id)
 		c ? B.paint(c, B.states[id]) : delete B.states[id]
 	}
+	for (const c of B.forbidden) {
+		el.querySelectorAll('.tk-lane[data-lane="' + c + '"]:not([data-forbidden]), .tk-lane[data-col="' + c + '"]:not([data-forbidden])').forEach((l) => l.setAttribute('data-forbidden', ''))
+	}
 })
-B.keep.observe(B.board(), {subtree: true, childList: true, attributes: true, attributeFilter: ['data-state']})
+B.keep.observe(B.board(), {subtree: true, childList: true, attributes: true, attributeFilter: ['data-state', 'data-forbidden']})
 B.put = (list, li, before) => { 'moveBefore' in list ? list.moveBefore(li, before) : list.insertBefore(li, before) }
 B.sibling = (li, dir) => { let s = li[dir]; while (s && !s.classList.contains('tk-card')) s = s[dir]; return s }
 B.clearNote = () => {
@@ -69,7 +97,7 @@ B.aimAt = (x, y, li) => {
 	const box = B.board().getBoundingClientRect()
 	if (x < box.left - 48 || x > box.right + 48 || y < box.top - 64 || y > box.bottom + 96) { B.unaim(); return }
 	let lane = null, best = Infinity
-	for (const l of el.querySelectorAll('.tk-lane[data-lane]')) {
+	for (const l of B.scope(li).querySelectorAll('.tk-lane[data-lane]')) {
 		const r = l.getBoundingClientRect()
 		const dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0
 		const dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0
@@ -93,6 +121,7 @@ B.lift = () => {
 	p.lifted = true
 	B.clearNote()
 	B.mark(p.li, 'dragged')
+	B.forbid(p.li)
 	$_board.drag = B.keyOf(p.li)
 	const g = el.querySelector('.tk-bd__ghost')
 	const copy = p.li.cloneNode(true)
@@ -112,6 +141,7 @@ B.endDrag = () => {
 	const p = B.press, aim = B.aim
 	B.press = null
 	B.unaim()
+	B.unforbid()
 	el.querySelector('.tk-bd__ghost').hidden = true
 	$_board.drag = ''
 	if (p && p.li.isConnected) B.mark(p.li, '')
@@ -130,11 +160,11 @@ B.move = (li, lane, before, glide) => {
 	go()
 	B.mark(li, 'pending')
 	const prev = B.sibling(li, 'previousElementSibling'), next = B.sibling(li, 'nextElementSibling')
-	$_board.move = {issue: key, status: lane.dataset.lane, before: next ? B.keyOf(next) : '', after: prev ? B.keyOf(prev) : '', seen: +li.dataset.v}
+	$_board.move = {issue: key, column: lane.dataset.lane, before: next ? B.keyOf(next) : '', after: prev ? B.keyOf(prev) : '', seen: +li.dataset.v}
 	$_board.pcard = key
 	$_board.problem = ''
 	$_board.op = ` + newOp + `
-	B.say('Moving ' + key + ' to ' + lane.dataset.name + '.')
+	B.say('Moving ' + key + ' to ' + B.name(lane) + '.')
 	return true
 }
 B.back = (li) => {
@@ -151,19 +181,19 @@ B.pick = (item) => {
 	if (!li || !li.isConnected) return false
 	if (item.dataset.open !== undefined) { li.querySelector('.tk-card__title').click(); return false }
 	if (item.getAttribute('aria-disabled') === 'true') return false
-	if (item.dataset.lane) return B.move(li, B.lane(item.dataset.lane), null, true)
+	if (item.dataset.lane) return B.move(li, B.lane(item.dataset.lane, li), null, true)
 	const lane = B.laneOf(li)
 	if (item.dataset.move === 'up') {
 		const prev = B.sibling(li, 'previousElementSibling')
-		if (!prev) { B.say(B.keyOf(li) + ' is first in ' + lane.dataset.name + '.'); return false }
+		if (!prev) { B.say(B.keyOf(li) + ' is first in ' + B.name(lane) + '.'); return false }
 		return B.move(li, lane, prev, true)
 	}
 	const next = B.sibling(li, 'nextElementSibling')
-	if (!next) { B.say(B.keyOf(li) + ' is last in ' + lane.dataset.name + '.'); return false }
+	if (!next) { B.say(B.keyOf(li) + ' is last in ' + B.name(lane) + '.'); return false }
 	return B.move(li, lane, B.sibling(next, 'nextElementSibling'), true)
 }
 B.retry = () => {
-	const m = $_board.move, li = B.slot(m.issue), lane = B.lane(m.status)
+	const m = $_board.move, li = B.slot(m.issue), lane = B.lane(m.column, li)
 	if (!li || !lane) return false
 	B.origin = {list: li.parentElement, next: B.sibling(li, 'nextElementSibling'), key: m.issue}
 	B.rev = B.board().dataset.rev
@@ -187,6 +217,7 @@ B.arg = () => {
 	for (const x of words($_bf.labels).map(B.b64).sort()) a += '.l' + x
 	const q = $_bf.q.trim().split(/\s+/).join(' ')
 	if (q) a += '.q' + B.b64([...q].slice(0, 60).join(''))
+	if ($_bf.group) a += '.g' + $_bf.group[0]
 	if ($_bf.saved) a += '.f' + $_bf.saved
 	return a
 }
@@ -198,6 +229,7 @@ B.query = () => {
 	words($_bf.labels).forEach((x) => u.append('label', x))
 	$_bf.q.trim() && u.set('q', $_bf.q.trim())
 	$_bf.saved && u.set('filter', $_bf.saved)
+	$_bf.group && u.set('lanes', $_bf.group)
 	return u.toString()
 }
 B.applied = el.dataset.arg
@@ -215,7 +247,7 @@ window.tkQuietTransitions = true`
 // tab's id replaces the old one on the server.
 const boardRefilter = `const B = el.closest('.tk-bd')?.bd
 if (!B) return
-$_bf.mine; $_bf.who; $_bf.types; $_bf.labels; $_bf.q; $_bf.saved
+$_bf.mine; $_bf.who; $_bf.types; $_bf.labels; $_bf.q; $_bf.saved; $_bf.group
 const arg = B.arg()
 if (arg === B.applied) return
 B.applied = arg
@@ -257,7 +289,7 @@ el.bd.scrollEdge(evt.clientX)`
 
 // post sends the move in hand: requestCancellation 'disabled', so that a
 // move never cancels one before it to the same URL.
-const boardPost = `@post('/cmd/board/move', {payload: {tab: $_tab, op: $_board.op, issue: $_board.move.issue, status: $_board.move.status, before: $_board.move.before, after: $_board.move.after, seen: $_board.move.seen}, requestCancellation: 'disabled'})`
+const boardPost = `@post('/cmd/board/move', {payload: {tab: $_tab, op: $_board.op, issue: $_board.move.issue, column: $_board.move.column, before: $_board.move.before, after: $_board.move.after, seen: $_board.move.seen}, requestCancellation: 'disabled'})`
 
 // boardRelease drops the card where the drag aims.
 const boardRelease = `const p = el.bd.press
@@ -289,9 +321,14 @@ if (!b || !el.contains(b)) return
 if (b.parentElement?.matches('#` + BoardLanesID + ` .tk-card')) {
 	const menu = document.getElementById('` + CardMenuID + `')
 	B.menuFor = b.parentElement
-	const lane = B.laneOf(B.menuFor).dataset.lane
-	menu.querySelectorAll('[data-lane]').forEach((i) => i.setAttribute('aria-disabled', i.dataset.lane === lane ? 'true' : 'false'))
-	menu.matches(':popover-open') ? menu.hidePopover() : menu.showPopover({source: b})
+	const lane = B.laneOf(B.menuFor).dataset.lane, ok = B.allowed(B.menuFor)
+	menu.querySelectorAll('[data-lane]').forEach((i) => {
+		i.setAttribute('aria-disabled', i.dataset.lane === lane ? 'true' : 'false')
+		i.hidden = !!ok && i.dataset.lane !== lane && !ok.includes(i.dataset.lane)
+	})
+	if (menu.matches(':popover-open')) { menu.hidePopover(); return }
+	menu.showPopover({source: b})
+	if (!menu.contains(document.activeElement) || document.activeElement.hidden) menu.querySelector('.tk-menu__item:not([hidden])')?.focus()
 	return
 }
 if (b.classList.contains('tk-lane__add')) { ` + strings.NewReplacer("el.dataset.status", "b.dataset.status", "el.dataset.project", "el.dataset.pid").Replace(CreateWithStatus) + `; return }
@@ -302,6 +339,7 @@ if (b.dataset.filter) {
 	else if (k === 'who') $_bf.who = B.toggle($_bf.who, v)
 	else if (k === 'types') $_bf.types = B.toggle($_bf.types, v)
 	else if (k === 'labels') $_bf.labels = B.toggle($_bf.labels, v)
+	else if (k === 'group') { b.closest('[popover]')?.hidePopover(); $_bf.group = v }
 	else if (k === 'clear') { $_bf.mine = false; $_bf.who = ''; $_bf.types = ''; $_bf.labels = ''; $_bf.text = ''; $_bf.q = ''; $_bf.saved = ''; $_bf.sname = '' }
 	else if (k === 'saved') {
 		b.closest('[popover]')?.hidePopover()
@@ -333,7 +371,7 @@ const B = el.bd, li = B.slot($_board.pcard)
 B.mark(li, '')
 if (o.ok) {
 	const lane = li && B.laneOf(li)
-	B.say($_board.pcard + ' is in ' + (lane ? lane.dataset.name : 'its new place') + '.')
+	B.say($_board.pcard + ' is in ' + (lane ? B.name(lane) : 'its new place') + '.')
 } else {
 	// A frame that came with the outcome may still wait in its view
 	// transition: the card goes back only once the lanes are up to date
@@ -377,6 +415,8 @@ const (
 	anyFilter = `$_bf.mine || $_bf.who || $_bf.types || $_bf.labels || $_bf.q.trim() || $_bf.saved`
 	// savedOn marks the saved filter the board applies (FR-56.2).
 	savedOn = `$_bf.saved === el.dataset.v ? 'true' : 'false'`
+	// groupOn marks the tab's swimlanes (FR-44).
+	groupOn = `$_bf.group === el.dataset.v ? 'true' : 'false'`
 	// textApply copies the text box to the filter 300 ms after the last
 	// keystroke (FR-52.2).
 	textApply = `$_bf.q = $_bf.text`
@@ -387,3 +427,6 @@ var (
 	completeSprint  = Act("_done.op", "/cmd/sprints/complete", "project: el.closest('dialog').dataset.project, sprint: el.closest('dialog').dataset.sprint, move_to: $_done.to")
 	completeSettled = Settle("_done.op", "o.ok ? ($_done.msg = '', el.close()) : ($_done.msg = o.msg)")
 )
+
+// groups are the swimlanes the board's menu offers (FR-44).
+var groups = []struct{ v, name string }{{LanesNone, "None"}, {LanesEpic, "By epic"}, {LanesAssignee, "By assignee"}}

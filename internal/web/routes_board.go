@@ -49,6 +49,7 @@ func (s *Server) routesBoard() {
 	s.post("POST /cmd/projects/component", s.defineComponent)
 	s.post("POST /cmd/projects/component/remove", s.removeComponent)
 	s.post("POST /cmd/projects/wip", s.setWIP)
+	s.routesWorkflow()
 	s.post("POST /cmd/projects/member", s.setMember)
 	s.post("POST /cmd/projects/member/remove", s.removeMember)
 	s.post("POST /cmd/board/move", s.moveCard)
@@ -280,6 +281,8 @@ func (s *Server) removeComponent(w http.ResponseWriter, r *http.Request) {
 
 var statusPattern = regexp.MustCompile(`^[a-z0-9_-]{1,40}$`)
 
+// setWIP sets a board column's limit (FR-43.1): status names the
+// column, whose id is its status's on the default board.
 func (s *Server) setWIP(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		projectRequest
@@ -352,6 +355,7 @@ func (s *Server) boardPage(w http.ResponseWriter, r *http.Request) {
 	me := people.Actor(r.Context())
 	quick := views.QuickFilterOf(r.URL.Query())
 	savedID := views.SavedOf(r.URL.Query())
+	group := views.LanesOf(r.URL.Query())
 	create := r.URL.Query().Get("create")
 	if !statusPattern.MatchString(create) {
 		create = ""
@@ -369,7 +373,7 @@ func (s *Server) boardPage(w http.ResponseWriter, r *http.Request) {
 			return len(sf.Filter.Projects) > 0 && !slices.Contains(sf.Filter.Projects, p.Key) && sf.ID != savedID
 		})
 		applied, f := boardFilter(saved, savedID, quick)
-		lanes, err := readLanes(ctx, q, p.ID, f.Normalize(me.ID))
+		lanes, err := readLanes(ctx, q, p.ID, f.Normalize(me.ID), group)
 		if err != nil {
 			return Page{}, err
 		}
@@ -386,9 +390,9 @@ func (s *Server) boardPage(w http.ResponseWriter, r *http.Request) {
 		}
 		return Page{
 			Title: p.Name + " board", Nav: "projects", Width: "full", Project: p.ID,
-			Views: []string{"board:" + views.BoardArg(p.Key, quick, savedID), "boardhead:" + p.Key},
+			Views: []string{"board:" + views.BoardArg(p.Key, quick, savedID, group), "boardhead:" + p.Key},
 			Body: views.Board(views.BoardPage{Project: p, Filter: quick, Saved: saved, Applied: applied, Labels: labels, Lanes: lanes, Head: head,
-				CanEdit: can(ctx, q, me, access.EditIssues, p.ID), Admin: can(ctx, q, me, access.Configure, p.ID), CreateStatus: create,
+				CanEdit: can(ctx, q, me, access.EditIssues, p.ID), Admin: can(ctx, q, me, access.Configure, p.ID), CreateStatus: create, Group: group,
 				Me: me.ID, Moderates: access.SiteCan(me, access.Moderate), Deletes: deletes(ctx, q, me, []string{p.ID})}),
 		}, nil
 	})
@@ -405,13 +409,14 @@ func boardFilter(saved []tracker.SavedFilter, id string, quick tracker.Filter) (
 	return nil, quick
 }
 
-// readLanes reads a board for a quick filter normalized for its viewer.
-func readLanes(ctx context.Context, q sqlite.Querier, project string, f tracker.Filter) (views.Lanes, error) {
+// readLanes reads a board for a quick filter normalized for its viewer,
+// in its swimlanes (FR-44).
+func readLanes(ctx context.Context, q sqlite.Querier, project string, f tracker.Filter, group string) (views.Lanes, error) {
 	b, err := tracker.Board(ctx, q, project, f)
 	if err != nil {
 		return views.Lanes{}, err
 	}
-	l := views.Lanes{Board: b, Now: time.Now()}
+	l := views.Lanes{Board: b, Now: time.Now(), Group: group}
 	if !f.IsZero() {
 		if l.Totals, err = tracker.BoardCounts(ctx, q, project); err != nil {
 			return l, err
@@ -460,7 +465,7 @@ func lanesFrame(ctx context.Context, l views.Lanes) ([]byte, error) {
 // boardView is a project's lanes for a quick filter: one view for every
 // tab whose filter selects the same cards for the same person (MP-11).
 func (s *Server) boardView(ctx context.Context, q sqlite.Querier, actor people.Person, arg string) (live.View, error) {
-	key, f, savedID, err := views.ParseBoardArg(arg)
+	key, f, savedID, group, err := views.ParseBoardArg(arg)
 	if err != nil {
 		return live.View{}, fmt.Errorf("%w: %v", errBadView, err)
 	}
@@ -478,10 +483,10 @@ func (s *Server) boardView(ctx context.Context, q sqlite.Querier, actor people.P
 	}
 	f = f.Normalize(actor.ID)
 	return live.View{
-		Key:    views.BoardKey(p.ID, f),
+		Key:    views.BoardKey(p.ID, f, group),
 		Topics: []string{tracker.BoardTopic(p.ID), people.Topic},
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
-			l, err := readLanes(ctx, querier(ctx, tx), p.ID, f)
+			l, err := readLanes(ctx, querier(ctx, tx), p.ID, f, group)
 			if err != nil {
 				return nil, err
 			}
@@ -490,10 +495,15 @@ func (s *Server) boardView(ctx context.Context, q sqlite.Querier, actor people.P
 	}, nil
 }
 
-// readHead reads a board's head: the project, its active sprint and the
-// people with cards on it.
+// readHead reads a board's head: the project, its active sprint, the
+// people with cards on it and the columns the card menu moves to.
 func readHead(ctx context.Context, q sqlite.Querier, p tracker.Project) (views.BoardHead, error) {
 	h := views.BoardHead{Project: p, Now: time.Now()}
+	cols, err := tracker.BoardColumns(ctx, q, p.ID)
+	if err != nil {
+		return h, err
+	}
+	h.Lanes = views.LaneRefs(cols)
 	sprints, err := tracker.Sprints(ctx, q, p.ID)
 	if err != nil {
 		return h, err
@@ -548,7 +558,7 @@ func (s *Server) boardHeadView(ctx context.Context, q sqlite.Querier, actor peop
 			if err != nil {
 				return nil, err
 			}
-			return patches(ctx, views.BoardHeadRegion(h), views.BoardFaces(h))
+			return patches(ctx, views.BoardHeadRegion(h), views.BoardFaces(h), views.CardMenuLanes(h))
 		},
 	}, nil
 }
@@ -595,6 +605,7 @@ type moveRequest struct {
 	Payload
 	Issue  string `json:"issue"`
 	Status string `json:"status"`
+	Column string `json:"column"` // the board's column, whose status the workflow picks (FR-43.1)
 	Before string `json:"before"`
 	After  string `json:"after"`
 	Seen   int64  `json:"seen"`
@@ -602,7 +613,8 @@ type moveRequest struct {
 
 func (m moveRequest) valid() bool {
 	key := func(k string, optional bool) bool { return optional && k == "" || keyPattern.MatchString(k) }
-	return key(m.Issue, false) && key(m.Before, true) && key(m.After, true) && statusPattern.MatchString(m.Status) && m.Seen >= 0
+	status := m.Column == "" && statusPattern.MatchString(m.Status) || m.Status == "" && statusPattern.MatchString(m.Column)
+	return key(m.Issue, false) && key(m.Before, true) && key(m.After, true) && status && m.Seen >= 0
 }
 
 // moveCard moves a card to a column and between two others (FR-41.1).
@@ -622,7 +634,7 @@ func (s *Server) moveCard(w http.ResponseWriter, r *http.Request) {
 		s.failAction(w, r, err)
 		return
 	}
-	s.act(w, r, a, tracker.Move{By: a.By, Issue: ids[0], Status: req.Status, Before: ids[1], After: ids[2], Seen: req.Seen})
+	s.act(w, r, a, tracker.Move{By: a.By, Issue: ids[0], Status: req.Status, Column: req.Column, Before: ids[1], After: ids[2], Seen: req.Seen})
 }
 
 // ── The backlog and sprints ───────────────────────────────────────────
@@ -843,6 +855,10 @@ func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return Page{}, err
 		}
+		wf, err := readWorkflow(ctx, q, p.ID)
+		if err != nil {
+			return Page{}, err
+		}
 		cands, err := tracker.Assignable(ctx, q, p.ID, "", time.Now())
 		if err != nil {
 			return Page{}, err
@@ -854,7 +870,7 @@ func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		return Page{Title: p.Name + " settings", Nav: "projects", Views: []string{"settings:" + p.Key},
-			Body: views.SettingsPage(views.Settings{Project: p, Columns: live.Columns, Live: live, Candidates: humans})}, nil
+			Body: views.SettingsPage(views.Settings{Project: p, Live: live, Workflow: wf, Candidates: humans})}, nil
 	})
 }
 
@@ -867,9 +883,6 @@ func readSettings(ctx context.Context, q sqlite.Querier, p tracker.Project) (vie
 	if l.Components, err = tracker.Components(ctx, q, p.ID); err != nil {
 		return l, err
 	}
-	if l.Columns, err = tracker.Statuses(ctx, q, p.ID); err != nil {
-		return l, err
-	}
 	ids := make([]string, len(l.Members))
 	for i, m := range l.Members {
 		ids[i] = m.Person
@@ -878,8 +891,28 @@ func readSettings(ctx context.Context, q sqlite.Querier, p tracker.Project) (vie
 	return l, err
 }
 
-// settingsView is a project's members, components and limits, for those
-// who may configure it.
+// readWorkflow reads a project's workflow and board columns for its
+// settings (FR-36, FR-37, FR-43).
+func readWorkflow(ctx context.Context, q sqlite.Querier, project string) (views.WorkflowLive, error) {
+	var w views.WorkflowLive
+	var err error
+	if w.Statuses, err = tracker.Statuses(ctx, q, project); err != nil {
+		return w, err
+	}
+	if w.Columns, err = tracker.BoardColumns(ctx, q, project); err != nil {
+		return w, err
+	}
+	counts, err := tracker.StatusCounts(ctx, q, project)
+	w.Held = map[string]int{}
+	for _, c := range counts {
+		w.Held[c.Status] = c.Count
+	}
+	return w, err
+}
+
+// settingsView is a project's members, components, workflow and board
+// columns, for those who may configure it. It listens to the board too:
+// the issues each status holds.
 func (s *Server) settingsView(ctx context.Context, q sqlite.Querier, actor people.Person, arg string) (live.View, error) {
 	p, err := readableProject(ctx, q, actor, arg)
 	if err != nil {
@@ -890,7 +923,7 @@ func (s *Server) settingsView(ctx context.Context, q sqlite.Querier, actor peopl
 	}
 	return live.View{
 		Key:    "settings:" + p.ID,
-		Topics: []string{tracker.ProjectTopic(p.ID), people.Topic},
+		Topics: []string{tracker.ProjectTopic(p.ID), tracker.BoardTopic(p.ID), people.Topic},
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			q := querier(ctx, tx)
 			pr, err := tracker.ProjectByID(ctx, q, p.ID)
@@ -901,7 +934,11 @@ func (s *Server) settingsView(ctx context.Context, q sqlite.Querier, actor peopl
 			if err != nil {
 				return nil, err
 			}
-			return patch(ctx, views.SettingsRegion(l))
+			wf, err := readWorkflow(ctx, q, p.ID)
+			if err != nil {
+				return nil, err
+			}
+			return patches(ctx, views.SettingsRegion(l), views.WorkflowRegion(wf))
 		},
 	}, nil
 }
