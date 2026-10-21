@@ -814,7 +814,7 @@ func BoardLanes(l Lanes) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = ui.FaceStyles(facesOf(l.Board, l.People)).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = ui.FaceStyles(facesOf(l)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -897,7 +897,7 @@ func BoardLanes(l Lanes) templ.Component {
 								}
 								ctx = templ.InitializeContext(ctx)
 								for _, c := range sw.Cards[i] {
-									templ_7745c5c3_Err = ui.BoardCard(cardProps(c, l.People, l.Now, CardMenuID, laneStatus(l, col, c))).Render(ctx, templ_7745c5c3_Buffer)
+									templ_7745c5c3_Err = ui.BoardCard(rowCard(l, col, c)).Render(ctx, templ_7745c5c3_Buffer)
 									if templ_7745c5c3_Err != nil {
 										return templ_7745c5c3_Err
 									}

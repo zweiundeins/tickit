@@ -206,8 +206,10 @@ type CardProps struct {
 	Key, Summary, Href string
 	Type               IssueType
 	Priority           Priority
-	// Assignee is nil when nobody is assigned.
+	// Assignee is nil when nobody is assigned. InRow leaves the face and
+	// "Unassigned" out, for a row that names its person (FR-44).
 	Assignee *Person
+	InRow    bool
 	Labels   []string
 	// LabelHref links a label to the issues that carry it (FR-23.2); nil
 	// draws labels as text.
@@ -427,9 +429,9 @@ templ LaneHead(p LaneProps) {
 }
 
 // LaneCell is a column's part of a swimlane (FR-44): its cards there,
-// and the place a card drops into. Name is the column's.
+// and the place a card drops into. Name, the column's, labels its list.
 templ LaneCell(p LaneProps) {
-	<div class="tk-lane tk-lane--cell" data-cat={ p.Category.attr() } { p.Attrs... }>
+	<div class="tk-lane" { p.Attrs... }>
 		<ol class="tk-lane__cards" role="list" aria-label={ p.Name }>
 			{ children... }
 		</ol>

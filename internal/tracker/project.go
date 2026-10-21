@@ -146,20 +146,20 @@ type Sprint struct {
 // ProjectState is what a project's commands decide on, folded from its
 // stream.
 type ProjectState struct {
-	Exists      bool           `json:"exists"`
-	Key         string         `json:"key"`
-	Name        string         `json:"name"`
-	Description string         `json:"description,omitempty"`
-	Lead        string         `json:"lead,omitempty"`
-	Open        bool           `json:"open"`
-	Archived    bool           `json:"archived,omitempty"`
-	Workflow    Workflow       `json:"workflow"`
-	Board       []BoardColumn  `json:"board,omitempty"`
-	Retired     []string       `json:"retired,omitempty"` // the ids of removed statuses, never given again
-	Last        int64          `json:"last"`              // the highest number given
-	Components  []Component    `json:"components,omitempty"`
-	Sprints     []Sprint       `json:"sprints,omitempty"`
-	Version     int64          `json:"version"`
+	Exists      bool          `json:"exists"`
+	Key         string        `json:"key"`
+	Name        string        `json:"name"`
+	Description string        `json:"description,omitempty"`
+	Lead        string        `json:"lead,omitempty"`
+	Open        bool          `json:"open"`
+	Archived    bool          `json:"archived,omitempty"`
+	Workflow    Workflow      `json:"workflow"`
+	Board       []BoardColumn `json:"board,omitempty"`
+	Retired     []string      `json:"retired,omitempty"` // the ids of removed statuses, never given again
+	Last        int64         `json:"last"`              // the highest number given
+	Components  []Component   `json:"components,omitempty"`
+	Sprints     []Sprint      `json:"sprints,omitempty"`
+	Version     int64         `json:"version"`
 }
 
 // Component returns the component with the name, if the project has it.

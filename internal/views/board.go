@@ -2,8 +2,8 @@ package views
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"net/url"
 	"slices"
@@ -301,9 +301,23 @@ func headProps(l Lanes, col tracker.Column) ui.LaneProps {
 	return p
 }
 
-// cellProps is a column's cell in a swimlane: the drop target.
+// cellProps is a column's cell in a swimlane: the drop target, named by
+// its list's label.
 func cellProps(col tracker.Column) ui.LaneProps {
-	return ui.LaneProps{Name: col.Name, Category: category(col.Category), Attrs: map[string]any{"data-lane": col.ID, "data-name": col.Name}}
+	return ui.LaneProps{Name: col.Name, Attrs: map[string]any{"data-lane": col.ID}}
+}
+
+// rowCard is a card in a swimlane: its row names its epic or its
+// assignee, so the card leaves that out (NFR-37.1).
+func rowCard(l Lanes, col tracker.Column, c tracker.Card) ui.CardProps {
+	p := cardProps(c, l.People, l.Now, CardMenuID, laneStatus(l, col, c))
+	switch l.Group {
+	case LanesEpic:
+		p.Epic = ""
+	case LanesAssignee:
+		p.Assignee, p.InRow = nil, true
+	}
+	return p
 }
 
 // laneStatus is the status a card's markup names: only in a column of
@@ -448,8 +462,13 @@ func cardProps(c tracker.Card, who map[string]people.Person, now time.Time, menu
 	return p
 }
 
-// facesOf are the faces a board's frame refers to.
-func facesOf(b tracker.BoardView, who map[string]people.Person) []ui.Person {
+// facesOf are the faces a board's frame refers to: none in rows by
+// assignee.
+func facesOf(l Lanes) []ui.Person {
+	b, who := l.Board, l.People
+	if l.Group == LanesAssignee {
+		return nil
+	}
 	var out []ui.Person
 	seen := map[string]bool{}
 	for _, col := range b.Columns {

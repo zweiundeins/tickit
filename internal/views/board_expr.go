@@ -26,6 +26,7 @@ B.slot = (key) => key ? document.getElementById('c-' + key) : null
 B.keyOf = (li) => li.id.slice(2)
 B.laneOf = (li) => li.closest('.tk-lane')
 B.list = (lane) => lane.querySelector('.tk-lane__cards')
+B.name = (lane) => lane.dataset.name || B.list(lane).getAttribute('aria-label')
 // A card moves within its swimlane (FR-44): its row, or the whole board.
 B.scope = (li) => li?.closest('.tk-swim') || el
 B.lane = (column, li) => B.scope(li).querySelector('.tk-lane[data-lane="' + column + '"]')
@@ -163,7 +164,7 @@ B.move = (li, lane, before, glide) => {
 	$_board.pcard = key
 	$_board.problem = ''
 	$_board.op = ` + newOp + `
-	B.say('Moving ' + key + ' to ' + lane.dataset.name + '.')
+	B.say('Moving ' + key + ' to ' + B.name(lane) + '.')
 	return true
 }
 B.back = (li) => {
@@ -184,11 +185,11 @@ B.pick = (item) => {
 	const lane = B.laneOf(li)
 	if (item.dataset.move === 'up') {
 		const prev = B.sibling(li, 'previousElementSibling')
-		if (!prev) { B.say(B.keyOf(li) + ' is first in ' + lane.dataset.name + '.'); return false }
+		if (!prev) { B.say(B.keyOf(li) + ' is first in ' + B.name(lane) + '.'); return false }
 		return B.move(li, lane, prev, true)
 	}
 	const next = B.sibling(li, 'nextElementSibling')
-	if (!next) { B.say(B.keyOf(li) + ' is last in ' + lane.dataset.name + '.'); return false }
+	if (!next) { B.say(B.keyOf(li) + ' is last in ' + B.name(lane) + '.'); return false }
 	return B.move(li, lane, B.sibling(next, 'nextElementSibling'), true)
 }
 B.retry = () => {
@@ -370,7 +371,7 @@ const B = el.bd, li = B.slot($_board.pcard)
 B.mark(li, '')
 if (o.ok) {
 	const lane = li && B.laneOf(li)
-	B.say($_board.pcard + ' is in ' + (lane ? lane.dataset.name : 'its new place') + '.')
+	B.say($_board.pcard + ' is in ' + (lane ? B.name(lane) : 'its new place') + '.')
 } else {
 	// A frame that came with the outcome may still wait in its view
 	// transition: the card goes back only once the lanes are up to date

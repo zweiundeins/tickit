@@ -149,7 +149,7 @@ func savedIcon(starred bool) string {
 // transition scoped to the region.
 templ BoardLanes(l Lanes) {
 	@ui.Board(ui.BoardProps{Label: "Board of " + l.Board.Project.Name, Class: boardClass(l), Attrs: lanesAttrs(l)}) {
-		@ui.FaceStyles(facesOf(l.Board, l.People))
+		@ui.FaceStyles(facesOf(l))
 		if l.Group == LanesNone {
 			for _, col := range l.Board.Columns {
 				@ui.Lane(laneProps(l, col)) {
@@ -169,7 +169,7 @@ templ BoardLanes(l Lanes) {
 					for i, col := range l.Board.Columns {
 						@ui.LaneCell(cellProps(col)) {
 							for _, c := range sw.Cards[i] {
-								@ui.BoardCard(cardProps(c, l.People, l.Now, CardMenuID, laneStatus(l, col, c)))
+								@ui.BoardCard(rowCard(l, col, c))
 							}
 						}
 					}

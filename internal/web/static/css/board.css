@@ -1059,7 +1059,6 @@
 		}
 	}
 
-	.tk-settings__wip,
 	.tk-settings__components {
 		display: grid;
 		gap: var(--tk-space-2);
@@ -1068,15 +1067,107 @@
 		list-style: none;
 	}
 
-	.tk-settings__wipname {
-		min-inline-size: 12rem;
+	/* A column a dragged card may not go to (FR-37.1): dimmed and
+	 * hatched. A drop there still asks, and the refusal says why. */
+	.tk-lane[data-forbidden] {
+		& > .tk-lane__cards,
+		& > .tk-lane__head {
+			opacity: 0.45;
+		}
+
+		&::before {
+			background:
+				repeating-linear-gradient(135deg, color-mix(in oklch, var(--tk-border-subtle) 80%, transparent) 0 2px, transparent 2px 8px),
+				var(--tk-surface-inset);
+		}
 	}
 
-	.tk-settings__wipinput {
-		inline-size: 6rem;
+	/* Swimlanes (FR-44): the columns' heads once, then a row per epic or
+	 * person, each a row of the columns' cells. */
+	.tk-board--swim .tk-board__lanes {
+		grid-auto-flow: row;
+		grid-auto-columns: auto;
+		gap: var(--tk-space-2);
+	}
+
+	.tk-swim__row {
+		display: grid;
+		grid-auto-flow: column;
+		grid-auto-columns: minmax(var(--tk-lane-min), var(--tk-lane-width));
+		gap: var(--tk-space-3);
+		align-items: stretch;
+	}
+
+	.tk-swim {
+		display: grid;
+		gap: var(--tk-space-1);
+	}
+
+	.tk-swim__head {
+		position: sticky;
+		inset-inline-start: 0;
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-1_5);
+		inline-size: max-content;
+		max-inline-size: 100cqi;
+		margin: var(--tk-space-2) 0 0;
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+		font-weight: var(--tk-weight-semibold);
+	}
+
+	.tk-board--swim .tk-lane {
+		min-block-size: 4rem;
+	}
+
+	.tk-board--swim .tk-swim__row > .tk-lane:not(.tk-lane--head) {
+		padding-block-start: var(--tk-space-2);
+	}
+
+	.tk-lane--head {
+		min-block-size: 0;
+		grid-template-rows: auto;
+	}
+
+	/* The card menu's "Move to" items as one group the board patches. */
+	.tk-menu__group {
+		display: contents;
+	}
+
+	/* The workflow's settings (FR-36, FR-43). */
+	.tk-wf {
+		max-inline-size: none;
+	}
+
+	.tk-wf__actions {
+		display: inline-flex;
+		gap: var(--tk-space-0_5);
+	}
+
+	.tk-wf__follows {
+		max-inline-size: 18rem;
+		color: var(--tk-text-2);
+		font-size: var(--tk-text-sm);
+	}
+
+	.tk-wf__from {
+		display: grid;
+		gap: var(--tk-space-2);
+		margin: 0;
+		padding: 0;
+		border: 0;
+
+		&:disabled {
+			opacity: 0.55;
+		}
 	}
 
 	@media (forced-colors: active) {
+		.tk-lane[data-forbidden] {
+			outline: 2px dashed GrayText;
+		}
+
 		.tk-lane[data-target] {
 			outline: 2px solid Highlight;
 		}

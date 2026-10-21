@@ -3,8 +3,8 @@ package tracker
 import (
 	"cmp"
 	"encoding/json"
-	"maps"
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
