@@ -37,9 +37,11 @@ type listEnv struct {
 	ada, bo  people.Person
 }
 
-func newList(t *testing.T) *listEnv {
+func newList(t *testing.T) *listEnv { return newListOn(t, webtest.Start(t)) }
+
+func newListOn(t *testing.T, w *webtest.Env) *listEnv {
 	t.Helper()
-	e := &listEnv{Env: webtest.Start(t), t: t, ids: map[string]string{}, ada: people.Seeded[0], bo: people.Seeded[1]}
+	e := &listEnv{Env: w, t: t, ids: map[string]string{}, ada: people.Seeded[0], bo: people.Seeded[1]}
 	e.Do(t, people.SeedPeople{At: time.Now()})
 	e.web = e.result(tracker.CreateProject{By: e.by(e.ada), Key: "WEB", Name: "Website", Open: true})
 	e.app = e.result(tracker.CreateProject{By: e.by(e.ada), Key: "APP", Name: "App", Open: true})
@@ -52,7 +54,7 @@ func newList(t *testing.T) *listEnv {
 
 func (e *listEnv) by(p people.Person) tabs.By {
 	e.n++
-	return tabs.By{Actor: p, Op: fmt.Sprint("seed", e.n), At: time.Now().Add(time.Duration(e.n-1000) * time.Second)}
+	return tabs.By{Actor: p, Op: fmt.Sprint("seed", e.n), At: time.Now().Add(time.Duration(e.n-1000) * time.Minute)}
 }
 
 func (e *listEnv) result(cmd writer.ResultCommand) string {

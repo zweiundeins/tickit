@@ -174,6 +174,7 @@ var secCases = []secCase{
 	{name: "pages/issue", pattern: "POST /cmd/pages/issue", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/issue", "page", "@page", "project", "@proj", "summary", "From the page", "find", "The plan", "block", 0, "nth", 0)},
 	{name: "pages/open", pattern: "POST /cmd/pages/{id}/open", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/{page}/open", "base", 0, "client", "0123456789ab")},
 	{name: "pages/commit", pattern: "POST /cmd/pages/{id}/commit", need: edit, guard: true, by: wMember, req: commitReq},
+	{name: "pages/image", pattern: "POST /cmd/pages/{id}/image", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/{page}/image", "file", uploadPNG())},
 	{name: "pages/presence", pattern: "POST /cmd/pages/{id}/presence", need: self, guard: true, by: wMember, noop: true, req: func(f *fixture, open bool) (string, map[string]any) {
 		return "/cmd/pages/" + f.id("page", open) + "/presence", map[string]any{"epoch": epochOf(f, f.id("page", open)), "ack": 0, "v": 0, "anchor": 1, "head": 1, "seq": 1}
 	}},
@@ -186,6 +187,7 @@ var secCases = []secCase{
 			f.e.Do(f.t, tracker.OpenDescription{By: f.by(wMember), Session: f.sid(wMember), Tab: "sec", Issue: f.id("issue", false), Client: "0123456789ab"})
 		}},
 	{name: "issues/description/commit", pattern: "POST /cmd/issues/{id}/description/commit", need: edit, guard: true, by: wMember, req: descCommitReq},
+	{name: "issues/description/image", pattern: "POST /cmd/issues/{id}/description/image", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/issues/{issue}/description/image", "file", uploadPNG())},
 	{name: "issues/description/presence", pattern: "POST /cmd/issues/{id}/description/presence", need: self, guard: true, by: wMember, noop: true, req: func(f *fixture, open bool) (string, map[string]any) {
 		return "/cmd/issues/" + f.id("issue", open) + "/description/presence", map[string]any{"epoch": descEpochOf(f, f.id("issue", open)), "ack": 0, "v": 0, "anchor": 1, "head": 1, "seq": 1}
 	}},
@@ -221,6 +223,10 @@ var secCases = []secCase{
 		return c
 	}(),
 	{name: "issues/typing", pattern: "POST /cmd/issues/{id}/{field}", need: read, guard: true, by: wViewer, req: at("/cmd/issues/{issue}/typing", "field", "comment")},
+	{name: "issues/bulk", pattern: "POST /cmd/issues/bulk", need: edit, guard: true, outcome: true, by: wMember, req: bulkReq("status", "inprogress", "")},
+	{name: "issues/bulk/labels", pattern: "POST /cmd/issues/bulk", need: edit, guard: true, outcome: true, by: wMember, req: bulkReq("labels", "urgent", "add")},
+	{name: "issues/bulk/assignee", pattern: "POST /cmd/issues/bulk", need: edit, guard: true, outcome: true, by: wMember, req: bulkReq("assignee", "me", "")},
+	{name: "issues/bulk/delete", pattern: "POST /cmd/issues/bulk", need: admin, guard: true, outcome: true, by: wOwner, req: bulkReq("delete", "", "")},
 
 	{name: "list/view", pattern: "POST /cmd/list/view", need: self, by: wViewer, noop: true, req: at("/cmd/list/view", "view", "", "query", "project=SEC")},
 	{name: "filters/save", pattern: "POST /cmd/filters/save", need: self, guard: true, outcome: true, by: wViewer, req: at("/cmd/filters/save", "name", "Mine too", "query", "assignee=me")},
@@ -255,6 +261,13 @@ var secCases = []secCase{
 				}
 			}
 		}},
+}
+
+// bulkReq is a bulk edit of the scope's two issues (FR-58).
+func bulkReq(field, value, ref string) func(*fixture, bool) (string, map[string]any) {
+	return func(f *fixture, open bool) (string, map[string]any) {
+		return "/cmd/issues/bulk", map[string]any{"issues": []any{f.id("issue", open), f.id("issue2", open)}, "field": field, "value": value, "ref": ref}
+	}
 }
 
 // commitReq is a commit of one character on the page as it is.

@@ -13,6 +13,7 @@ templ Home(w Work, feed ActivityFeed) {
 			<h1>Your work</h1>
 		</div>
 		<p class="tk-home__lead muted">Open a board, an issue or a page in two windows to see others arrive and their changes appear as they happen.</p>
+		@Presence(PresenceID(HomePresence), nil)
 	</div>
 	<div class="tk-home">
 		@HomeWork(w)
@@ -38,23 +39,7 @@ templ HomeWork(w Work) {
 					<a href={ templ.SafeURL(assignedHref) }>All { openIssues(w.Total) }</a>
 				}
 			</header>
-			if len(w.Assigned) == 0 {
-				<p class="muted">Nothing is assigned to you. Issues someone assigns to you show here, and the bell tells you.</p>
-			} else {
-				<ul class="tk-worklist" role="list">
-					for _, i := range w.Assigned {
-						<li>
-							@ui.TypeIcon(ui.IssueType(i.Type))
-							<span class="tk-key mono">{ i.Key }</span>
-							<a class="truncate" href={ templ.SafeURL("/" + i.Key) }>{ i.Summary }</a>
-							if i.Due != "" {
-								@ui.Due(dueDate(i.Due, w.Now), w.Now, i.Overdue(w.Now))
-							}
-							@ui.StatusLozenge(i.StatusName, uiCategory(string(i.Category)))
-						</li>
-					}
-				</ul>
-			}
+			@IssueWorklist(w.Assigned, len(w.Assigned), w.Now, "Nothing is assigned to you. Issues someone assigns to you show here, and the bell tells you.")
 		</section>
 		<section class="tk-box tk-home__wide" aria-labelledby="home-recent">
 			<header>

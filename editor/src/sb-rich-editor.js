@@ -64,7 +64,8 @@ const MARKUP = `<div class="toolbar" part="toolbar" role="toolbar" aria-label="F
 <div class="actions"><button value="apply">Apply</button><button value="cancel">Cancel</button></div>
 </form>
 <div class="dialog" id="image-dialog" part="dialog" role="dialog" aria-label="Insert an image" hidden>
-<div class="images"></div><div class="actions"><button type="button" value="cancel">Cancel</button></div>
+<div class="images"></div><input type="file" id="image-file" class="vh" tabindex="-1" aria-hidden="true" accept="image/png,image/jpeg,image/webp">
+<div class="actions"><button type="button" value="upload">Upload an image</button><button type="button" value="cancel">Cancel</button></div>
 </div>
 <div class="body" part="body"><slot></slot></div>
 <div class="statusbar" part="status">
@@ -155,6 +156,7 @@ rocket('sb-rich-editor', {
 		refusal: string.docs({ description: 'JSON {ref, message} of a refused commit (its steps are taken out), or plain text to show.' }),
 		readonly: bool.docs({ description: 'Present: the person cannot edit (the attribute is boolean; readonly="false" is still read-only).' }),
 		images: string.default('[]').docs({ description: 'JSON [{id, alt}]: the image library the Image button offers.' }),
+		upload: string.docs({ description: 'Optional: the URL image files go to (FR-85), with the tab attribute. Without it, files are not uploaded.' }),
 		label: string.default('Page content').docs({ description: 'Accessible name of the editing area.' }),
 		lists: string.docs({ description: 'Id of the page element whose [data-list] children hold the issue lists\' rows and whose [data-filters] the saved filters (FR-104).' }),
 	}),
@@ -168,7 +170,8 @@ rocket('sb-rich-editor', {
 			{ name: 'sb-stopped', kind: 'custom-event', bubbles: true, composed: true, description: '{page, state, unsaved}: the editor stopped sending (reset, gone, gap, readonly, diverged).' },
 			{ name: 'sb-refused', kind: 'custom-event', bubbles: true, composed: true, description: '{page, ref, message, dropped}.' },
 			{ name: 'sb-limit', kind: 'custom-event', bubbles: true, composed: true, description: '{page, limit, max, value, message}: input stopped at a DM-05 limit.' },
-			{ name: 'sb-insert-image', kind: 'custom-event', bubbles: true, composed: true, description: 'Image button without an images library; cancel it and call insertImage(id, alt).' },
+			{ name: 'sb-insert-image', kind: 'custom-event', bubbles: true, composed: true, description: 'Image button without an images library or upload; cancel it and call insertImage(id, alt).' },
+			{ name: 'sb-uploaded', kind: 'custom-event', bubbles: true, composed: true, description: '{page, id, width, height}: an uploaded image went into the document.' },
 			{ name: 'sb-select', kind: 'custom-event', bubbles: true, composed: true, description: '{page, empty, text, top, left, bottom}: where a selection of text is, in viewport pixels (FR-105).' },
 		],
 	},
@@ -181,7 +184,7 @@ rocket('sb-rich-editor', {
 			peek(() => ({
 				page: props.page, epoch: props.epoch, client: props.client, tab: props.tab, base: props.base, head: props.head,
 				batches: props.batches, carets: props.carets, chips: props.chips, state: props.state, refusal: props.refusal,
-				readonly: props.readonly, images: props.images, label: props.label, lists: props.lists,
+				readonly: props.readonly, images: props.images, upload: props.upload, label: props.label, lists: props.lists,
 			}))
 		// One sync for a morph's burst of attribute writes.
 		let queued = false

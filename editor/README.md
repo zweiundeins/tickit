@@ -14,6 +14,7 @@ The browser side of co-editing pages (docs/editor.md): a Rocket component that w
 | `src/nodeviews.js` | Node views: issue chips, mentions, page links, task items, images, issue lists with their filter form. |
 | `src/commands.js` | Toolbar commands, input rules, keymaps. |
 | `src/limits.js` | DM-05's limits as a `filterTransaction`. |
+| `src/uploads.js` | Image uploads (FR-85): the placeholder while a file travels, the multipart post. |
 | `src/styles.js` | Structural CSS for the light-DOM editor. |
 | `build.mjs` | The esbuild build; prints the sizes. |
 | `test/authority/` | The fake writer: `rebase.js` (the rebase the Go core must match), `authority.js`, `worker.js` (a SharedWorker for the browser tests). |
@@ -45,7 +46,7 @@ The page loads `/static/editor/sb-rich-editor.min.<hash>.js` (from `static.URL("
 | `page` | Page id. It goes into every event. |
 | `epoch` | The epoch of the page's stream. A value other than the one the editor started with stops it as `reset`. |
 | `client` | This tab as others see it (12 hex digits of SHA-256 of the tab id). Its own entry in `carets` is left out. |
-| `tab` | Optional. When set, `sb-commit` and `sb-presence` carry it; otherwise the page adds the tab to the payload. |
+| `tab` | Optional. When set, `sb-commit` and `sb-presence` carry it, and uploads need it; otherwise the page adds the tab to the payload. tickit sets it from `$_tab` (`data-attr:tab`, kept through frames by `data-preserve-attr`). |
 | `base` | Stream version of the document in the script. Read once, at mount. |
 | `head` | Stream version of the newest commit. |
 | `batches` | JSON `[{v, ref, client, steps}]`: every commit after the version the tab acknowledged, as the writer applied it, at most 500. The editor applies them in version order and waits at a gap for the next frame. |
@@ -54,7 +55,8 @@ The page loads `/static/editor/sb-rich-editor.min.<hash>.js` (from `static.URL("
 | `state` | `ok`, `gap`, `reset`, `gone` or `readonly`. |
 | `refusal` | JSON `{"ref": "…", "message": "…"}` for a commit the writer refused (the editor takes its steps out and shows the message), or plain text to show. Each ref is handled once, so the row may keep it. |
 | `readonly` | Boolean attribute: present means read-only. `readonly="false"` is read-only too (Rocket reads booleans as HTML does). |
-| `images` | JSON `[{id, alt}]`: the image library the Image button offers. Without it, the button fires `sb-insert-image`. |
+| `images` | JSON `[{id, alt}]`: the image library the Image button offers. Without it and without `upload`, the button fires `sb-insert-image`. |
+| `upload` | Optional. The URL image files go to (FR-85): a file pasted, dropped or chosen with the Image dialog's "Upload an image" is posted there as `multipart/form-data` with `tab`, `op` and `file`, and the header `Datastar-Request: true`. Needs `tab`. A placeholder shows the progress where the image goes; the answer `{id, width, height}` puts the image there, any other answer's text shows as a refusal. |
 | `label` | Accessible name of the text area (default "Page content"). |
 | `lists` | Optional: the id of the page's element whose `[data-list]` children hold each issue list's rows by `savedFilter|filter|limit` and whose `[data-filters] > [data-id]` the saved filters (FR-104). Without it an issue list shows no rows. |
 
@@ -72,7 +74,8 @@ All bubble and are composed. The detail never goes into a signal; commits and pr
 | `sb-refused` | `{page, ref, message, dropped}` | A refusal arrived; `dropped` counts the steps taken out. |
 | `sb-limit` | `{page, limit, max, value, message}` | Input stopped at a DM-05 limit: `size`, `blocks`, `table-rows`, `table-columns`. |
 | `sb-paste-offer` | `{page, kind}` | A pasted issue key or tickit URL got an offer (`chip` or `page`). |
-| `sb-insert-image` | `{page}` | Image button without `images`. Cancel it (`preventDefault`) and call `insertImage`. |
+| `sb-insert-image` | `{page}` | Image button without `images` and `upload`. Cancel it (`preventDefault`) and call `insertImage`. |
+| `sb-uploaded` | `{page, id, width, height}` | An uploaded image went into the document. While uploads travel, `sb-status` says `saving` and counts them in `unsaved`. |
 | `sb-select` | `{page, empty, text, top, left, bottom}` | The selection of text changed, at most once a frame: its text and where it is in viewport pixels, for "Create issue" (FR-105). |
 | `sb-ready` | `{page}` | The editor mounted. |
 | `sb-copied` | `{page, ok}` | The copy button ran. |

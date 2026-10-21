@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/a-h/templ"
 	"github.com/zweiundeins/lith/live"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/sse"
@@ -39,8 +41,9 @@ import (
 func (s *Server) routesDashboards() {
 	s.get("GET /dashboards", http.HandlerFunc(s.dashboardsPage))
 	s.get("GET /dashboards/{id}", http.HandlerFunc(s.dashboardPage), "/dashboards/"+ProbeDashboard, "/dashboards/nope", "/dashboards/01920000-0000-7000-8000-00000000dddd")
+	s.probes = append(s.probes, "/stream?tab=probe&v=dashboards:,dashboard:"+ProbeDashboard+",dashme:"+ProbeDashboard)
 	s.views.Register("dashboards", s.dashboardsView)
-	s.views.Register("dashboard", s.dashboardView)
+	s.views.RegisterWithPresenceOf("dashboard", s.dashboardView, dashboardPresence)
 	s.views.Register("dashme", s.dashmeView)
 	s.post("POST /cmd/dashboards/create", s.createDashboard)
 	s.post("POST /cmd/dashboards/rename", s.dashboardAction(func(a action, req dashRequest) writer.Command {
@@ -155,6 +158,13 @@ func hasKind(d dashboards.Dashboard, k dashboards.Kind) bool {
 
 // ── Views ─────────────────────────────────────────────────────────────
 
+// dashboardPresence is the presence row a dashboard view's key
+// (dashboard:<id>:<readable>) joins: one per dashboard.
+func dashboardPresence(key string) string {
+	id, _, _ := strings.Cut(strings.TrimPrefix(key, "dashboard:"), ":")
+	return views.DashboardPresence(id)
+}
+
 // dashboardView is dashboard:<id>, the grid of a dashboard for everyone
 // who reads the same projects and spaces: what its gadgets show depends
 // on those alone (a saved filter's "me" is the dashboard's owner).
@@ -183,7 +193,7 @@ func (s *Server) dashboardView(ctx context.Context, q sqlite.Querier, actor peop
 			if err != nil {
 				return nil, err
 			}
-			return patch(ctx, views.DashboardGridRegion(grid))
+			return patch(ctx, templ.Join(views.DashboardHead(grid), views.DashboardGadgets(grid)))
 		},
 	}, nil
 }

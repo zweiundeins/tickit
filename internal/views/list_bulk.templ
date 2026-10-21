@@ -1,0 +1,81 @@
+package views
+
+import (
+	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/internal/ui"
+)
+
+// bulkBar is the bulk edit's bar above the list (FR-58.1): how many
+// issues the tab selected, and what to change for all of them. Its one
+// delegated handler sends each choice (data-bulk, data-value, data-ref).
+templ bulkBar(p ListPage) {
+	<div
+		id={ BulkID }
+		class="list-bulk"
+		role="group"
+		aria-label="Change the selected issues"
+		data-signals={ bulkSignals }
+		data-on:click={ bulkClick }
+		data-on:datastar-fetch={ bulkFailed }
+		data-effect={ bulkSettle }
+	>
+		<p class="list-bulk__count" aria-live="polite" data-text={ bulkCount } data-attr:aria-busy={ Busy("_bulk.op") }>{ bulkNone }</p>
+		@ui.Menu(ui.MenuProps{ID: "bulk-status", Label: "Set status", Caret: true, Size: ui.SizeSM, Variant: ui.Secondary, Attrs: bulkOff()}) {
+			for i, s := range p.Options.Statuses {
+				@ui.MenuItem(ui.MenuItemProps{Label: s.Name, Autofocus: i == 0, Attrs: bulkChoice(tracker.FieldStatus, s.ID)})
+			}
+		}
+		@ui.Menu(ui.MenuProps{ID: "bulk-assignee", Label: "Assign", Caret: true, Size: ui.SizeSM, Variant: ui.Secondary, Attrs: bulkOff()}) {
+			@ui.MenuItem(ui.MenuItemProps{Label: "Me", Autofocus: true, Attrs: bulkChoice(tracker.FieldAssignee, "me")})
+			@ui.MenuItem(ui.MenuItemProps{Label: "Unassigned", Attrs: bulkChoice(tracker.FieldAssignee, "")})
+			if len(p.Options.People) > 0 {
+				@ui.MenuSeparator()
+			}
+			for _, id := range p.Options.People {
+				@ui.MenuItem(ui.MenuItemProps{Label: p.People[id].Name, Attrs: bulkChoice(tracker.FieldAssignee, id)})
+			}
+		}
+		@ui.Menu(ui.MenuProps{ID: "bulk-priority", Label: "Set priority", Caret: true, Size: ui.SizeSM, Variant: ui.Secondary, Attrs: bulkOff()}) {
+			for i := len(tracker.Priorities) - 1; i >= 0; i-- {
+				@ui.MenuItem(ui.MenuItemProps{Label: tracker.Priorities[i].Name(), Autofocus: i == len(tracker.Priorities)-1, Attrs: bulkChoice(tracker.FieldPriority, string(tracker.Priorities[i]))})
+			}
+		}
+		@ui.Button(ui.ButtonProps{Label: "Labels", IconEnd: "chevron-down", Size: ui.SizeSM, Variant: ui.Secondary, PopoverTarget: "bulk-labels", Attrs: bulkOff()})
+		<div id="bulk-labels" class="tk-menu list-bulk__labels" popover data-on:toggle={ listToggle }>
+			<div class="list-filters__set">
+				<label class="tk-eyebrow" for="bulk-label">Label</label>
+				<input id="bulk-label" class="tk-input tk-input--sm" list="bulk-label-options" maxlength="50" autocomplete="off" placeholder="A label" data-on:keydown={ bulkLabelEnter }/>
+				<datalist id="bulk-label-options">
+					for _, l := range p.Options.Labels {
+						<option value={ l }></option>
+					}
+				</datalist>
+				<div class="cluster">
+					@ui.Button(ui.ButtonProps{Label: "Add", Size: ui.SizeSM, Variant: ui.Primary, Attrs: bulkLabel("add")})
+					@ui.Button(ui.ButtonProps{Label: "Remove", Size: ui.SizeSM, Attrs: bulkLabel("remove")})
+				</div>
+			</div>
+		</div>
+		@ui.Menu(ui.MenuProps{ID: "bulk-sprint", Label: "Set sprint", Caret: true, Size: ui.SizeSM, Variant: ui.Secondary, Attrs: bulkOff()}) {
+			@ui.MenuItem(ui.MenuItemProps{Label: "No sprint", Autofocus: true, Attrs: bulkChoice(tracker.FieldSprint, "")})
+			for _, s := range p.Options.Sprints {
+				if s.State != tracker.SprintClosed {
+					@ui.MenuItem(ui.MenuItemProps{Label: sprintOption(s), Attrs: bulkChoice(tracker.FieldSprint, s.ID)})
+				}
+			}
+		}
+		if p.Deletes.All || len(p.Deletes.Projects) > 0 {
+			@ui.Button(ui.ButtonProps{Label: "Delete", Icon: "trash", Size: ui.SizeSM, Variant: ui.Danger, Command: "show-modal", CommandFor: BulkDeleteID, Attrs: bulkOff()})
+			@ui.Dialog(ui.DialogProps{ID: BulkDeleteID, Title: "Delete the selected issues?", Description: "They leave every list and board. Their keys and history stay.", Size: ui.SizeSM, Footer: bulkDeleteFooter()}) {
+				<p data-text={ bulkDeleteText }></p>
+			}
+		}
+		@ui.Button(ui.ButtonProps{Label: "Clear selection", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-bulk-clear": "1", "data-attr:disabled": bulkEmpty}})
+	</div>
+	<p class="tk-outcome list-bulk__msg" role="status" hidden data-attr:hidden="!$_bulk.msg" data-attr:data-kind="$_bulk.ok ? 'ok' : 'refused'" data-text="$_bulk.msg"></p>
+}
+
+templ bulkDeleteFooter() {
+	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: BulkDeleteID})
+	@ui.Button(ui.ButtonProps{Label: "Delete", Variant: ui.Danger, Attrs: bulkChoice(tracker.BulkDelete, "")})
+}

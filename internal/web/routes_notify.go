@@ -43,7 +43,7 @@ func (s *Server) routesNotify() {
 	s.post("POST /cmd/notify/open", s.notifyOpen)
 	s.post("POST /cmd/notify/seen", s.notifySeen)
 	s.views.Register("home", s.homeView)
-	s.views.Register("activity-home", s.activityHomeView)
+	s.views.RegisterWithPresenceOf("activity-home", s.activityHomeView, func(string) string { return views.HomePresence })
 	s.views.Register("activity-project", s.activityScopeView(access.Project))
 	s.views.Register("activity-space", s.activityScopeView(access.Space))
 }

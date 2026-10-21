@@ -162,6 +162,17 @@ func editable(tx *writer.Tx, by tabs.By, issue string) (IssueState, error) {
 	return s, nil
 }
 
+// DescriptionEditable checks in the writer that by may change the issue's
+// description now, as a commit does: collab.ErrGone for a deleted or
+// hidden issue.
+func DescriptionEditable(tx *writer.Tx, by tabs.By, issue string) error {
+	if !ValidID(issue) {
+		return notFound("issue", issue)
+	}
+	_, err := editable(tx, by, issue)
+	return err
+}
+
 // ensureDesc starts the document of an issue created before descriptions
 // were documents of their own, from its description now; the issue's
 // version 1 then matches the document's (IssueState.DescUpto).
@@ -203,13 +214,7 @@ func (c *CommitDescription) Validate() error {
 	by, issue := c.By, c.Issue
 	c.c = &collab.Commit{Kind: descDocs, By: c.By, Session: c.Session, Tab: c.Tab, ID: c.Issue, Epoch: c.Epoch, Base: c.Base,
 		Ref: c.Ref, Client: c.Client, Steps: c.Steps, Check: checkDesc,
-		Gate: func(tx *writer.Tx) error {
-			if !ValidID(issue) {
-				return notFound("issue", issue)
-			}
-			_, err := editable(tx, by, issue)
-			return err
-		}}
+		Gate: func(tx *writer.Tx) error { return DescriptionEditable(tx, by, issue) }}
 	if err := c.c.Validate(); err != nil {
 		return errors.New("tracker: " + err.Error())
 	}

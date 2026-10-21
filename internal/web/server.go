@@ -177,6 +177,7 @@ func (s *Server) register() {
 	s.routesEditor()
 	s.routesEmbed()
 	s.routesDescription()
+	s.routesImages()
 	s.routesNotify()
 	s.routesPeople()
 	s.routesDashboards()

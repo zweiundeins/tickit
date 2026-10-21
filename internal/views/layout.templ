@@ -65,7 +65,7 @@ templ Layout(s Shell) {
 				{ children... }
 			}
 			if !s.Prefs.HideHint {
-				@firstVisitHint()
+				@firstVisitHint(s.Present)
 			}
 			@ReportDialog()
 			<div class="tk-float">
@@ -133,8 +133,8 @@ templ DemoNotice(nextReset string, hidden bool) {
 }
 
 // firstVisitHint invites a first-time visitor to watch presence work
-// (DM-11) until they dismiss it.
-templ firstVisitHint() {
+// (DM-11) until they dismiss it; present: the page has a presence row.
+templ firstVisitHint(present bool) {
 	@ui.Notice(ui.NoticeProps{
 		Tone:   ui.ToneInfo,
 		Icon:   "users",
@@ -142,7 +142,11 @@ templ firstVisitHint() {
 		Attrs:  templ.Attributes{"id": "first-visit", "role": "complementary", "aria-label": "Hint", "data-attr:hidden": hintHidden},
 		Action: ui.Button(ui.ButtonProps{Label: "Dismiss", Icon: "close", IconOnly: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": dismissHint, "data-on:datastar-fetch": dismissFailed, "data-attr:aria-busy": dismissBusy}}),
 	}) {
-		<p>Open this page in a private window to see a second person arrive.</p>
+		if present {
+			<p>Open this page in a private window to see a second person arrive.</p>
+		} else {
+			<p>Open a board, an issue or a page in a private window to see a second person arrive.</p>
+		}
 	}
 }
 

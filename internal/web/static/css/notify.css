@@ -130,17 +130,21 @@
 		}
 	}
 
+	/* One line a row at any width: the text truncates, the rest keeps its
+	 * size, and a narrow list shortens "Overdue" to its icon. */
 	.tk-worklist {
+		container-type: inline-size;
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		margin: 0;
 		padding: 0;
 		list-style: none;
 
 		& li {
 			display: flex;
-			flex-wrap: wrap; /* the due date and the status go below on a narrow box */
 			align-items: center;
-			gap: var(--tk-space-1) var(--tk-space-2);
+			gap: var(--tk-space-2);
+			min-inline-size: 0;
 			padding-block: var(--tk-space-1);
 			min-block-size: var(--tk-row-height);
 			border-block-end: 1px solid var(--tk-border-subtle);
@@ -154,9 +158,18 @@
 				flex: none;
 			}
 
-			& > a {
-				flex: 1 1 8rem;
+			& > .truncate {
+				flex: 1 1 0;
+			}
+
+			/* Last to give way, clipped rather than past the box. */
+			& > .tk-lozenge {
+				flex-shrink: 1;
 				min-inline-size: 0;
+				overflow: hidden;
+			}
+
+			& > a {
 				color: var(--tk-text-1);
 				text-decoration: none;
 
@@ -175,6 +188,16 @@
 			color: var(--tk-text-muted);
 			font-size: var(--tk-text-xs);
 			white-space: nowrap;
+		}
+
+		@container (width < 26rem) {
+			& .tk-due[data-overdue] > b {
+				position: absolute;
+				inline-size: 1px;
+				block-size: 1px;
+				overflow: hidden;
+				clip-path: inset(50%);
+			}
 		}
 	}
 }

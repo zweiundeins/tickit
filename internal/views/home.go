@@ -49,6 +49,9 @@ type Space struct {
 // HomeWorkID is the id of the person's part of the home page.
 const HomeWorkID = "home-work"
 
+// HomePresence is the key of the home page's presence row: everyone on it.
+const HomePresence = "home"
+
 // HomeAssigned is how many assigned issues the home page lists.
 const HomeAssigned = 10
 

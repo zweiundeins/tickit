@@ -185,6 +185,17 @@
 		overflow-wrap: anywhere;
 	}
 
+	/* An uploaded image, small enough to judge at a glance (FR-85.2). */
+	.tk-modlist__thumb {
+		display: block;
+		max-inline-size: 100%;
+		max-block-size: var(--tk-space-16);
+		inline-size: auto;
+		border: 1px solid var(--tk-border-subtle);
+		border-radius: var(--tk-radius-sm);
+		background: var(--tk-surface-2);
+	}
+
 	.tk-modlist__foot {
 		display: flex;
 		flex-wrap: wrap;

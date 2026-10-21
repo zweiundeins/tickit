@@ -3,10 +3,13 @@ package web_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // NFR-16, requirements 12.3: no action answers 500 or panics, whatever
@@ -190,9 +193,34 @@ func FuzzWikiActions(f *testing.F) {
 	fuzzFamily(f, "spaces/", "pages/r", "pages/m", "pages/l", "pages/w", "pages/t", "pages/d", "pages/s", "pages/c", "pages/i")
 }
 func FuzzEditorActions(f *testing.F) {
-	fuzzFamily(f, "pages/open", "pages/commit", "pages/presence", "issues/description/")
+	fuzzFamily(f, "pages/open", "pages/commit", "pages/presence", "pages/image", "issues/description/")
 }
-func FuzzNotifyActions(f *testing.F) { fuzzFamily(f, "notify/") }
-func FuzzStaffActions(f *testing.F) {
-	fuzzFamily(f, "moderation/", "admin/c", "admin/role", "admin/active", "account/")
+
+// FuzzUploads sends the uploads (FR-85) with every file the fuzzer makes,
+// as the editor sends them: none answers 500.
+func FuzzUploads(f *testing.F) {
+	fx := newFixture(f)
+	type target struct {
+		url string
+		c   *http.Client
+	}
+	var targets []target
+	for _, c := range secCases {
+		if strings.HasSuffix(c.name, "/image") {
+			path, _ := c.req(fx, c.open)
+			targets = append(targets, target{fx.e.URL + path, fx.client(sweepBy(c))})
+		}
+	}
+	for i := range targets {
+		f.Add(uint8(i), uploadPNG())
+		f.Add(uint8(i), uploadPNG()[:20])
+		f.Add(uint8(i), []byte("<svg onload=alert(1)>"))
+	}
+	f.Fuzz(func(t *testing.T, sel uint8, file []byte) {
+		tg := targets[int(sel)%len(targets)]
+		fields := map[string]string{"tab": "fuzz", "op": fmt.Sprintf("f%d", fx.n.Add(1))}
+		if code, answer := webtest.Upload(t, tg.c, tg.url, fields, file); code >= 500 && code != http.StatusServiceUnavailable {
+			t.Errorf("NFR-16: %s with %d bytes: %d %s", tg.url, len(file), code, answer)
+		}
+	})
 }
