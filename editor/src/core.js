@@ -17,6 +17,7 @@ import { caretPlugin, Carets } from './carets.js'
 import { IssueChipView, MentionView, PageLinkView, TaskItemView, ImageView } from './nodeviews.js'
 import { COMMANDS, rules, keymaps, inTable, inCode, setLanguage, shortcutText } from './commands.js'
 import { documentCSS } from './styles.js'
+import { uploadPlugin, placeholder, placed, removePlaceholder, imageFiles, check, send } from './uploads.js'
 
 const MAX_STEPS = 20
 const PRESENCE_MS = 100
@@ -128,6 +129,7 @@ class Editor {
 		this.raw = { batches: null, carets: null, chips: null, refusal: null, images: null }
 		this.chips = {}
 		this.images = []
+		this.uploading = 0
 		this.atoms = new Set()
 		this.handledRefusals = new Set()
 		this.offer = null // {from, to, target}
@@ -163,7 +165,8 @@ class Editor {
 				tableEditing(),
 				limitsPlugin((hit) => this.limitHit(hit)),
 				caretPlugin(),
-				new Plugin({ props: { handlePaste: (view, event) => this.paste(event) } }),
+				uploadPlugin(),
+				new Plugin({ props: { handlePaste: (view, event) => this.paste(event), handleDrop: (view, event, slice, moved) => !moved && this.drop(event) } }),
 			],
 		})
 		this.view = new EditorView(
@@ -426,7 +429,7 @@ class Editor {
 	}
 
 	updateStatus() {
-		const unsaved = collabState(this.view.state).unconfirmed.length
+		const unsaved = collabState(this.view.state).unconfirmed.length + this.uploading
 		const status = unsaved ? 'saving' : 'saved'
 		const el = this.ui.getElementById('saved')
 		// Stopped, nothing goes out: unconfirmed text is not saved (MP-14.1).
@@ -473,9 +476,17 @@ class Editor {
 			const b = e.target.closest('button')
 			if (!b) return
 			if (b.value === 'cancel') return this.closeDialogs()
+			if (b.value === 'upload') return ui.getElementById('image-file')?.click()
 			const img = this.images.find((i) => String(i.id) === b.value)
 			if (img) this.insertImage(img.id, img.alt ?? '')
 			this.closeDialogs()
+		})
+		const file = ui.getElementById('image-file')
+		on(file, 'change', () => {
+			const files = [...(file.files ?? [])]
+			file.value = ''
+			this.closeDialogs()
+			if (files.length) this.uploadFiles(files)
 		})
 		for (const d of ui.querySelectorAll('.dialog')) on(d, 'keydown', (e) => e.key === 'Escape' && (e.preventDefault(), this.closeDialogs()))
 		on(ui.getElementById('notice-act'), 'click', () => this.noticeAction?.())
@@ -577,6 +588,8 @@ class Editor {
 	// --- Paste: supported formatting only, and chip or page-link offers ----
 
 	paste(event) {
+		const files = imageFiles(event.clipboardData)
+		if (files.length && this.editable()) return this.uploadFiles(files)
 		const text = event.clipboardData?.getData('text/plain')?.trim()
 		const html = event.clipboardData?.getData('text/html')
 		if (!text || (html && html.replace(/<[^>]*>/g, '').trim() !== text)) return false
@@ -653,7 +666,8 @@ class Editor {
 	// --- Images (FR-84): from the page's library, alt text editable --------
 
 	openImages() {
-		if (!this.images.length) {
+		const upload = !!this.read().upload
+		if (!this.images.length && !upload) {
 			// The page may offer its own picker and call host.insertImage().
 			const handled = !this.host.dispatchEvent(new CustomEvent('sb-insert-image', { bubbles: true, composed: true, cancelable: true, detail: { page: this.page } }))
 			if (!handled) this.notice('No image library on this page.', { kind: 'info' })
@@ -676,8 +690,73 @@ class Editor {
 				return b
 			}),
 		)
+		d.querySelector('[value=upload]').hidden = !upload
 		this.showDialog(d)
-		list.querySelector('button')?.focus()
+		;(list.querySelector('button') ?? d.querySelector('.actions button:not([hidden])'))?.focus()
+	}
+
+	// --- Uploads (FR-85): pasted, dropped or chosen image files ------------
+
+	drop(event) {
+		const files = imageFiles(event.dataTransfer)
+		if (!files.length) return false
+		event.preventDefault()
+		if (!this.editable()) return true
+		const at = this.view.posAtCoords({ left: event.clientX, top: event.clientY })
+		return this.uploadFiles(files, at ? at.pos : undefined)
+	}
+
+	// uploadFiles sends each file and puts its image where pos was (the
+	// selection by default) once the server stored it.
+	uploadFiles(files, pos = this.view.state.selection.from) {
+		const { upload, tab } = this.read()
+		if (!this.editable()) return false
+		if (!upload) {
+			this.notice('Images cannot be uploaded here.', { kind: 'info' })
+			return true
+		}
+		if (!tab) {
+			this.notice('This tab is not connected. Reload the page.', { kind: 'refusal' })
+			return true
+		}
+		for (const file of files) {
+			const why = check(file)
+			if (why) {
+				this.notice(why, { kind: 'refusal' })
+				continue
+			}
+			const id = {}
+			const dom = placeholder(this.view, id, pos)
+			this.uploading++
+			this.updateStatus()
+			const progress = (f) => (dom.textContent = f < 1 ? `Uploading image… ${Math.round(f * 100)}%` : 'Converting image…')
+			send(upload, tab, file, progress).then(
+				(r) => this.uploaded(id, r),
+				(e) => this.uploadFailed(id, e.message),
+			)
+		}
+		return true
+	}
+
+	uploaded(id, r) {
+		this.uploading--
+		if (this.destroyed) return
+		const pos = placed(this.view.state, id)
+		const tr = removePlaceholder(this.view.state.tr, id)
+		if (pos != null && this.editable() && ID.test(r.id)) {
+			tr.replaceRangeWith(pos, pos, schema.nodes.image.create({ imageId: r.id, src: imageSrc(r.id), alt: '' }))
+		} else this.notice('The image was uploaded, but the editor stopped before it went into the page.', { kind: 'refusal' })
+		this.view.dispatch(tr)
+		this.updateStatus()
+		this.emit('sb-uploaded', { page: this.page, id: r.id, width: r.width, height: r.height })
+	}
+
+	uploadFailed(id, message) {
+		this.uploading--
+		if (this.destroyed) return
+		this.view.dispatch(removePlaceholder(this.view.state.tr, id))
+		this.notice(message, { kind: 'refusal' })
+		this.updateStatus()
 	}
 
 	insertImage(imageId, alt = '') {
