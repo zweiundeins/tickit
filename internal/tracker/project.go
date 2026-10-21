@@ -62,8 +62,9 @@ type NumberAssigned struct {
 	Issue  string `json:"issue"`
 }
 
-// WIPLimitSet sets the work-in-progress limit of a status's column, 0
-// for none (FR-43).
+// WIPLimitSet sets the work-in-progress limit of a board column, 0 for
+// none (FR-43). Status names the column by its id: the default board's
+// columns have their statuses' ids.
 type WIPLimitSet struct {
 	Status string `json:"status"`
 	Limit  int    `json:"limit"`
@@ -145,19 +146,20 @@ type Sprint struct {
 // ProjectState is what a project's commands decide on, folded from its
 // stream.
 type ProjectState struct {
-	Exists      bool           `json:"exists"`
-	Key         string         `json:"key"`
-	Name        string         `json:"name"`
-	Description string         `json:"description,omitempty"`
-	Lead        string         `json:"lead,omitempty"`
-	Open        bool           `json:"open"`
-	Archived    bool           `json:"archived,omitempty"`
-	Workflow    Workflow       `json:"workflow"`
-	Last        int64          `json:"last"` // the highest number given
-	WIP         map[string]int `json:"wip,omitempty"`
-	Components  []Component    `json:"components,omitempty"`
-	Sprints     []Sprint       `json:"sprints,omitempty"`
-	Version     int64          `json:"version"`
+	Exists      bool          `json:"exists"`
+	Key         string        `json:"key"`
+	Name        string        `json:"name"`
+	Description string        `json:"description,omitempty"`
+	Lead        string        `json:"lead,omitempty"`
+	Open        bool          `json:"open"`
+	Archived    bool          `json:"archived,omitempty"`
+	Workflow    Workflow      `json:"workflow"`
+	Board       []BoardColumn `json:"board,omitempty"`
+	Retired     []string      `json:"retired,omitempty"` // the ids of removed statuses, never given again
+	Last        int64         `json:"last"`              // the highest number given
+	Components  []Component   `json:"components,omitempty"`
+	Sprints     []Sprint      `json:"sprints,omitempty"`
+	Version     int64         `json:"version"`
 }
 
 // Component returns the component with the name, if the project has it.
@@ -178,14 +180,24 @@ func (s ProjectState) Sprint(id string) (Sprint, bool) {
 	return s.Sprints[i], true
 }
 
+// Column returns the board column with the id, if the board has it.
+func (s ProjectState) Column(id string) (BoardColumn, bool) {
+	i := slices.IndexFunc(s.Board, func(c BoardColumn) bool { return c.ID == id })
+	if i < 0 {
+		return BoardColumn{}, false
+	}
+	return s.Board[i], true
+}
+
 // projectFold is the version of evolveProject and ProjectState.
-const projectFold = 1
+const projectFold = 2
 
 func evolveProject(s ProjectState, e ProjectEvent) ProjectState {
 	s.Version++
 	switch e := e.(type) {
 	case ProjectCreated:
 		s.Exists, s.Key, s.Name, s.Description, s.Lead, s.Open, s.Workflow = true, e.Key, e.Name, e.Description, e.Lead, e.Open, e.Workflow
+		s.Board = DefaultBoard(e.Workflow)
 	case ProjectEdited:
 		if e.Name != nil {
 			s.Name = *e.Name
@@ -212,13 +224,11 @@ func evolveProject(s ProjectState, e ProjectEvent) ProjectState {
 	case NumberAssigned:
 		s.Last = max(s.Last, e.Number)
 	case WIPLimitSet:
-		if s.WIP == nil {
-			s.WIP = map[string]int{}
-		}
-		if e.Limit == 0 {
-			delete(s.WIP, e.Status)
-		} else {
-			s.WIP[e.Status] = e.Limit
+		s.Board = slices.Clone(s.Board)
+		for i := range s.Board {
+			if s.Board[i].ID == e.Status {
+				s.Board[i].WIP = e.Limit
+			}
 		}
 	case SprintCreated:
 		s.Sprints = append(s.Sprints, Sprint{ID: e.Sprint, Name: e.Name, Goal: e.Goal, Start: e.Start, End: e.End, State: SprintFuture})
@@ -240,6 +250,8 @@ func evolveProject(s ProjectState, e ProjectEvent) ProjectState {
 				s.Sprints[i].State = SprintClosed
 			}
 		}
+	default:
+		s = evolveWorkflow(s, e)
 	}
 	return s
 }
@@ -556,7 +568,7 @@ func (c RemoveComponent) Apply(tx *writer.Tx) error {
 }
 
 // SetWIPLimit sets the work-in-progress limit of a board column, 0 for
-// none (FR-43).
+// none (FR-43); Status is the column's id.
 type SetWIPLimit struct {
 	By      tabs.By
 	Project string
@@ -570,13 +582,14 @@ var setWIPLimit = projectDecider(func(c SetWIPLimit, s ProjectState) ([]ProjectE
 	if !s.Exists {
 		return nil, errNoProject
 	}
-	if _, ok := s.Workflow.Status(c.Status); !ok || !OnBoard(c.Status) {
+	col, ok := s.Column(c.Status)
+	if !ok {
 		return nil, tabs.Refuse("status", "The board has no such column.")
 	}
 	if c.Limit < 0 || c.Limit > MaxWIP {
 		return nil, tabs.Refuse("limit", "A limit is 0 (none) to 999.")
 	}
-	if s.WIP[c.Status] == c.Limit {
+	if col.WIP == c.Limit {
 		return nil, nil
 	}
 	return []ProjectEvent{WIPLimitSet{Status: c.Status, Limit: c.Limit}}, nil

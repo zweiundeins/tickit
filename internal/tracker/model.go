@@ -112,12 +112,13 @@ type Status struct {
 	Category Category `json:"category"`
 }
 
-// Workflow is a project's ordered statuses and the transitions between
-// them (FR-35 to FR-37). Transitions nil allows every one.
+// Workflow is a project's ordered statuses and the rules of which may
+// follow which (FR-35 to FR-37): Follows maps a status to those an issue
+// may come from, and a status without an entry may follow any.
 type Workflow struct {
-	Statuses    []Status            `json:"statuses"`
-	Start       string              `json:"start"`
-	Transitions map[string][]string `json:"transitions,omitempty"`
+	Statuses []Status            `json:"statuses"`
+	Start    string              `json:"start"`
+	Follows  map[string][]string `json:"follows,omitempty"`
 }
 
 // The statuses of the default workflow (section 4.2), by id.
@@ -176,15 +177,30 @@ func (w Workflow) Name(id string) string {
 // Allows reports whether the workflow lets an issue go from one status
 // to another (FR-37).
 func (w Workflow) Allows(from, to string) bool {
-	if w.Transitions == nil || from == to {
-		return true
-	}
-	return slices.Contains(w.Transitions[from], to)
+	rule, ok := w.Follows[to]
+	return !ok || from == to || slices.Contains(rule, from)
 }
 
-// OnBoard reports whether a status has a column on the board: every one
-// but Backlog (FR-40.1).
-func OnBoard(status string) bool { return status != StatusBacklog }
+// BoardColumn is a column of a project's board (FR-43): its statuses in
+// workflow order, and its work-in-progress limit, 0 for none.
+type BoardColumn struct {
+	ID       string   `json:"id"`
+	Name     string   `json:"name"`
+	Statuses []string `json:"statuses,omitempty"`
+	WIP      int      `json:"wip,omitempty"`
+}
+
+// DefaultBoard is the board a project starts with (FR-40.1): a column
+// per status of its workflow but Backlog, keyed and named as its status.
+func DefaultBoard(w Workflow) []BoardColumn {
+	var out []BoardColumn
+	for _, s := range w.Statuses {
+		if s.ID != StatusBacklog {
+			out = append(out, BoardColumn{ID: s.ID, Name: s.Name, Statuses: []string{s.ID}})
+		}
+	}
+	return out
+}
 
 // Limits of section 4.2 and DM-05.
 const (
@@ -207,6 +223,9 @@ const (
 	MaxSprintGoal    = 500
 	MaxFilterName    = 60
 	MaxWIP           = 999
+	MaxStatuses      = 20 // per workflow
+	MaxStatusName    = 40 // a status's or a column's name
+	MaxColumns       = 12 // per board
 	PageSize         = 25 // issues per page of a list (FR-54.1)
 	AssignableRecent = 24 // hours a guest stays assignable after acting in a project (FR-17.1)
 )

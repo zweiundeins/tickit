@@ -40,7 +40,7 @@ func selectWord(t *testing.T, p *browsertest.Page, root, word string) {
 func commentOn(t *testing.T, p *browsertest.Page, root, word, body string) {
 	t.Helper()
 	selectWord(t, p, root, word)
-	p.Wait(t, `!document.getElementById('wk-ic-add').hidden`, 5*time.Second)
+	p.Wait(t, `!document.getElementById('wk-ic-add').closest('.wk-sel').hidden`, 5*time.Second)
 	p.Eval(t, `(document.getElementById('wk-ic-add').click(), true)`, nil)
 	p.Wait(t, `getComputedStyle(document.getElementById('wk-ic-form')).display !== 'none' && document.activeElement?.id === 'ic-body'`, 5*time.Second)
 	p.Eval(t, `((t) => { t.value = `+jsString(body)+`; t.dispatchEvent(new Event('input', {bubbles: true})); t.form.requestSubmit(); return true })(document.getElementById('ic-body'))`, nil)
@@ -119,7 +119,7 @@ func TestInlineCommentsCoEditing(t *testing.T) {
 }
 
 // FR-91.1, FR-91.3: a reader comments on a word inside a list, past bold
-// text and a chip; another reader sees the highlight and the comment;
+// text, a chip and an issue list (FR-104); another reader sees the highlight and the comment;
 // resolving hides the highlight for both and lists it as resolved. At 320
 // px the comments sit below the text without a sideways scroll.
 func TestInlineCommentsReading(t *testing.T) {
@@ -127,6 +127,7 @@ func TestInlineCommentsReading(t *testing.T) {
 	page, _ := s.wikiPage(t)
 	body := `{"type":"doc","content":[{"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"Plan"}]},` +
 		`{"type":"paragraph","content":[{"type":"text","text":"Ship "},{"type":"text","marks":[{"type":"strong"}],"text":"soon"},{"type":"text","text":" with "},{"type":"issue_chip","attrs":{"key":"NOPE-1"}},{"type":"text","text":" done"}]},` +
+		`{"type":"issue_list","attrs":{"filter":"status=todo","limit":5}},`+
 		`{"type":"bullet_list","content":[{"type":"list_item","content":[{"type":"paragraph","content":[{"type":"text","text":"first step"}]}]},{"type":"list_item","content":[{"type":"paragraph","content":[{"type":"text","text":"second careful step"}]}]}]}]}`
 	if err := s.do(wiki.SetDocument{By: tabs.By{Actor: people.Seeded[0], Op: "d1", At: time.Now()}, Page: page, Doc: []byte(body), Message: "Text"}); err != nil {
 		t.Fatal(err)

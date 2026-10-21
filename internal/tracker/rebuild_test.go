@@ -46,7 +46,7 @@ func (e *env) dump(table string) string {
 	return b.String()
 }
 
-var projectionTables = []string{"projects", "statuses", "components", "sprints", "issues", "issue_labels", "labels", "issue_links", "issue_watchers", "issue_pages", "comments", "issue_doc"}
+var projectionTables = []string{"projects", "statuses", "board_columns", "components", "sprints", "issues", "issue_labels", "labels", "issue_links", "issue_watchers", "issue_pages", "comments", "issue_doc"}
 
 // FR-155.2: rebuilding every read model from the stored events yields the
 // same tables. FR-155.1: every event has its actor, time and op id.
@@ -103,6 +103,20 @@ func TestRebuild(t *testing.T) {
 	name, desc := "Web shop", "The storefront"
 	e.must(EditProject{By: e.by(admin), Project: e.web, Name: &name, Description: &desc})
 	e.must(ArchiveProject{By: e.by(admin), Project: e.arc, Archived: false})
+	// FR-36, FR-37, FR-43: the workflow and the board as an Admin sets them.
+	e.result(AddStatus{By: e.by(admin), Project: e.web, Name: "In QA", Category: InProgress})
+	e.must(SetStatus{By: e.by(sunny), Issue: web1, Seen: 1 << 40, Status: "in-qa"})
+	e.must(SetStatusCategory{By: e.by(admin), Project: e.web, Status: "in-qa", Category: Done})
+	e.must(RenameStatus{By: e.by(admin), Project: e.web, Status: StatusInReview, Name: "Code review"})
+	e.must(MoveStatus{By: e.by(admin), Project: e.web, Status: StatusToDo, Earlier: true})
+	e.must(SetTransitionRule{By: e.by(admin), Project: e.web, Status: StatusDone, From: []string{StatusInReview, StatusBlocked}})
+	e.must(MapStatus{By: e.by(admin), Project: e.web, Status: StatusBacklog, Column: StatusToDo})
+	e.must(EditColumn{By: e.by(admin), Project: e.web, Column: StatusToDo, Name: "Open", Limit: 4})
+	e.must(AddColumn{By: e.by(admin), Project: e.web, Name: "Later"})
+	e.must(MoveColumn{By: e.by(admin), Project: e.web, Column: StatusDone, Earlier: true})
+	e.must(RemoveColumn{By: e.by(admin), Project: e.web, Column: StatusSelected})
+	e.must(RemoveStatus{By: e.by(admin), Project: e.web, Status: StatusBlocked, MoveTo: StatusInProgress})
+	e.must(RemoveStatus{By: e.by(admin), Project: e.web, Status: "in-qa", MoveTo: StatusInProgress})
 
 	before := map[string]string{}
 	for _, tb := range projectionTables {

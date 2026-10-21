@@ -111,6 +111,31 @@ const codeLanguage = (pre) =>
 	language(pre.getAttribute('data-language')) ||
 	language(/(?:^|\s)(?:language|lang)-(\S+)/.exec((pre.className || '') + ' ' + (pre.querySelector('code')?.className || ''))?.[1])
 
+export const SAVED_FILTER = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+
+// An issue list's attributes as the server's rules take them (FR-104): a
+// typed filter is the issue list's query string, a pasted /issues address
+// gives its query.
+export function listAttrs({ filter = '', savedFilter = '', limit = 10 } = {}) {
+	let f = String(filter ?? '').trim()
+	const q = f.indexOf('?')
+	if (q >= 0 && /^(https?:\/\/[^/]*)?\/issues\b/.test(f)) f = f.slice(q + 1)
+	// Go's url.ParseQuery refuses a stray % and a semicolon.
+	f = f.replace(/^\?/, '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/%(?![0-9a-fA-F]{2})/g, '%25').replace(/;/g, '%3B').slice(0, limits.listFilter)
+	const id = String(savedFilter ?? '')
+	return { filter: f, savedFilter: SAVED_FILTER.test(id) ? id : '', limit: clampInt(limit, 1, limits.listRows, 10) }
+}
+
+// What an issue list shows in place of its rows, as the server's
+// doc.ListDescription writes it.
+export function listDescription(attrs, name = '') {
+	const tail = ', at most ' + attrs.limit
+	if (attrs.savedFilter && name) return ['Issues of the saved filter ', ['strong', name], tail]
+	if (attrs.savedFilter) return ['Issues of a saved filter' + tail]
+	if (attrs.filter) return ['Issues matching ', ['code', attrs.filter], tail]
+	return ['An issue list without a filter' + tail]
+}
+
 const mentionAttrs = (dom) => {
 	const personId = dom.getAttribute('data-person')
 	const label = (dom.textContent || '').trim().replace(/^@/, '').slice(0, MAX_LABEL)
@@ -170,6 +195,20 @@ const DOM = {
 			],
 			// The URL comes from imageId alone, never from src (DM-06.3).
 			toDOM: (node) => ['figure', { class: 'doc-image' }, ['img', { src: imageSrc(node.attrs.imageId), alt: node.attrs.alt, loading: 'lazy' }]],
+		},
+		issue_list: {
+			parseDOM: [
+				{
+					tag: 'div.issue-list',
+					priority: 60,
+					getAttrs: (dom) => listAttrs({ filter: dom.getAttribute('data-filter'), savedFilter: dom.getAttribute('data-saved-filter'), limit: dom.getAttribute('data-limit') }),
+				},
+			],
+			toDOM: (node) => [
+				'div',
+				{ class: 'issue-list', 'data-filter': node.attrs.filter, 'data-saved-filter': node.attrs.savedFilter, 'data-limit': String(node.attrs.limit) },
+				['p', { class: 'issue-list__desc' }, ...listDescription(node.attrs)],
+			],
 		},
 		hard_break: { parseDOM: [{ tag: 'br' }], toDOM: () => ['br'] },
 		issue_chip: {

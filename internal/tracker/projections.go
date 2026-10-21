@@ -15,22 +15,33 @@ import (
 // The projectors' versions: bump one when its handlers change, and the
 // runner rebuilds its tables from the events.
 const (
-	projectsVersion = 1
+	projectsVersion = 2
 	issuesVersion   = 1
 	commentsVersion = 1
 )
 
-// projectsProjector keeps projects, statuses, components and sprints.
-var projectsProjector = events.NewProjector(ProjectStream, "tracker_projects", projectsVersion,
+// projectsProjector keeps projects, statuses, board_columns, components
+// and sprints.
+var projectsProjector = events.NewProjector(ProjectStream, "tracker_projects", projectsVersion, append([]events.Handler[string, ProjectEvent]{
 	events.Handle(ProjectCreatedType, func(tx *writer.Tx, r events.Record[string, ProjectCreated]) error {
 		e := r.Data
 		if _, err := tx.Exec(`INSERT INTO projects (id, key, name, description, lead, open, archived, created_by, created_at)
 			VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`, r.ID, e.Key, e.Name, e.Description, e.Lead, e.Open, r.Actor, millis(r.At)); err != nil {
 			return err
 		}
+		board := DefaultBoard(e.Workflow)
 		for i, s := range e.Workflow.Statuses {
-			if _, err := tx.Exec(`INSERT INTO statuses (project_id, id, name, category, position) VALUES (?, ?, ?, ?, ?)`,
-				r.ID, s.ID, s.Name, string(s.Category), i+1); err != nil {
+			col := ""
+			if slices.ContainsFunc(board, func(c BoardColumn) bool { return c.ID == s.ID }) {
+				col = s.ID
+			}
+			if _, err := tx.Exec(`INSERT INTO statuses (project_id, id, name, category, position, board_column) VALUES (?, ?, ?, ?, ?, ?)`,
+				r.ID, s.ID, s.Name, string(s.Category), i+1, col); err != nil {
+				return err
+			}
+		}
+		for i, c := range board {
+			if _, err := tx.Exec(`INSERT INTO board_columns (project_id, id, name, position) VALUES (?, ?, ?, ?)`, r.ID, c.ID, c.Name, i+1); err != nil {
 				return err
 			}
 		}
@@ -70,7 +81,7 @@ var projectsProjector = events.NewProjector(ProjectStream, "tracker_projects", p
 	}),
 	events.Ignore(NumberAssignedType),
 	events.Handle(WIPLimitSetType, func(tx *writer.Tx, r events.Record[string, WIPLimitSet]) error {
-		_, err := tx.Exec(`UPDATE statuses SET wip_limit = ? WHERE project_id = ? AND id = ?`, r.Data.Limit, r.ID, r.Data.Status)
+		_, err := tx.Exec(`UPDATE board_columns SET wip_limit = ? WHERE project_id = ? AND id = ?`, r.Data.Limit, r.ID, r.Data.Status)
 		touchProject(tx, r.ID)
 		return err
 	}),
@@ -95,7 +106,7 @@ var projectsProjector = events.NewProjector(ProjectStream, "tracker_projects", p
 		tx.Touch(IssuesTopic)
 		return err
 	}),
-).Tables("projects", "statuses", "components", "sprints")
+}, workflowHandlers...)...).Tables("projects", "statuses", "board_columns", "components", "sprints")
 
 func touchProject(tx *writer.Tx, id string) {
 	tx.Touch(ProjectTopic(id), ProjectsTopic, BoardTopic(id))
@@ -156,6 +167,9 @@ var issuesProjector = events.NewProjector(IssueStream, "tracker_issues", issuesV
 	}),
 	events.Handle(MovedType, func(tx *writer.Tx, r events.Record[string, Moved]) error {
 		return setStatus(tx, r.ID, r.Version, millis(r.At), r.Data.Status, r.Data.Category, r.Data.Rank)
+	}),
+	events.Handle(CategoryChangedType, func(tx *writer.Tx, r events.Record[string, CategoryChanged]) error {
+		return setStatus(tx, r.ID, r.Version, millis(r.At), r.Data.Status, r.Data.To, "")
 	}),
 	events.Handle(PriorityChangedType, func(tx *writer.Tx, r events.Record[string, PriorityChanged]) error {
 		return set(tx, r.ID, r.Version, millis(r.At), `priority = ?, priority_order = ?`, string(r.Data.To), r.Data.To.Order())

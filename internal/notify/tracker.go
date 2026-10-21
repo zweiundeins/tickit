@@ -60,6 +60,7 @@ var issueReactions = events.NewProjector(tracker.IssueStream, "notify_issues", 1
 		return statusChanged(ctx, r.ID, r.Position, r.Meta, r.Data.Status)
 	}),
 	events.Ignore(tracker.SummaryChangedType),
+	events.Ignore(tracker.CategoryChangedType),
 	events.Ignore(tracker.TypeChangedType),
 	events.Ignore(tracker.PriorityChangedType),
 	events.Ignore(tracker.ParentChangedType),

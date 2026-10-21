@@ -288,6 +288,90 @@
 			}
 		}
 
+		/* An issue list (FR-104): its filter, then its issues as a table;
+		 * in the editor with the form that sets the filter. */
+		& .issue-list {
+			padding: var(--tk-space-3);
+			border: 1px solid var(--tk-border-subtle);
+			border-radius: calc(var(--tk-radius-md) * (1 - var(--tk-notch)));
+			background: var(--tk-surface-1);
+			font-size: var(--tk-text-md);
+			line-height: 1.5;
+
+			& > * + * {
+				margin-block-start: var(--tk-space-2);
+			}
+
+			& :is(th, td) {
+				min-inline-size: 0;
+			}
+
+			& table {
+				font-size: var(--tk-text-sm);
+			}
+		}
+
+		& .issue-list__desc,
+		& .issue-list__note,
+		& .issue-list__empty,
+		& .issue-list__none {
+			color: var(--tk-text-muted);
+		}
+
+		& .issue-list__desc,
+		& .issue-list__more {
+			font-size: var(--tk-text-sm);
+		}
+
+		& .issue-list__key a,
+		& .issue-list__person {
+			display: inline-flex;
+			align-items: center;
+			gap: var(--tk-space-1_5);
+			white-space: nowrap;
+		}
+
+		& .issue-list__key a {
+			font-family: var(--tk-font-mono);
+		}
+
+		& .issue-list__form {
+			display: flex;
+			flex-wrap: wrap;
+			gap: var(--tk-space-2) var(--tk-space-3);
+		}
+
+		& .issue-list__field {
+			display: grid;
+			gap: var(--tk-space-1);
+			color: var(--tk-text-2);
+			font-size: var(--tk-text-sm);
+
+			& :is(input, select) {
+				min-block-size: var(--tk-control-sm);
+				padding-inline: var(--tk-space-2);
+				border: 1px solid var(--tk-border);
+				border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+				background: var(--tk-surface-inset);
+				color: var(--tk-text-1);
+				font: inherit;
+			}
+
+			& input[type="text"] {
+				inline-size: min(22rem, 70vw);
+				font-family: var(--tk-font-mono);
+			}
+
+			& input[type="number"] {
+				inline-size: 5rem;
+			}
+		}
+
+		& .issue-list.ProseMirror-selectednode {
+			outline: 2px solid var(--tk-focus);
+			outline-offset: 2px;
+		}
+
 		/* Version compare (FR-88): words and colour, never colour alone. */
 		& ins.diff-ins {
 			background: var(--tk-ok-subtle);

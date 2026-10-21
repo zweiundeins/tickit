@@ -87,6 +87,8 @@ func History(ctx context.Context, q sqlite.Querier, issue string) ([]Entry, erro
 			add(FieldType, string(e.From), string(e.To))
 		case StatusChanged:
 			add(FieldStatus, e.From, e.To)
+		case CategoryChanged:
+			add(FieldCategory, string(e.From), string(e.To))
 		case Moved:
 			if e.FromStatus != e.Status {
 				add(FieldStatus, e.FromStatus, e.Status)
@@ -204,13 +206,9 @@ func lookupNames(ctx context.Context, q sqlite.Querier, personIDs, issueIDs, spr
 		if _, ok := n.workflows[p.project]; ok || p.project == "" {
 			continue
 		}
-		cols, err := Statuses(ctx, q, p.project)
+		w, err := allStatuses(ctx, q, p.project)
 		if err != nil {
 			return n, err
-		}
-		var w Workflow
-		for _, c := range cols {
-			w.Statuses = append(w.Statuses, c.Status)
 		}
 		n.workflows[p.project] = w
 	}
@@ -227,6 +225,8 @@ func (n names) show(p pending, raw string, isNew bool) string {
 		return IssueType(raw).Name()
 	case FieldStatus:
 		return n.workflows[p.project].Name(raw)
+	case FieldCategory:
+		return Category(raw).Name()
 	case FieldPriority:
 		return Priority(raw).Name()
 	case FieldAssignee:
@@ -309,4 +309,23 @@ func StateAt(ctx context.Context, q sqlite.Querier, issue string, version int64)
 		return s, 0, notFound("issue", issue)
 	}
 	return s, s.Version, nil
+}
+
+// allStatuses is a project's statuses, those removed too: the history
+// names the statuses an issue held (FR-36.2).
+func allStatuses(ctx context.Context, q sqlite.Querier, project string) (Workflow, error) {
+	var w Workflow
+	rows, err := q.QueryContext(ctx, `SELECT id, name, category FROM statuses WHERE project_id = ? ORDER BY removed, position`, project)
+	if err != nil {
+		return w, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var s Status
+		if err := rows.Scan(&s.ID, &s.Name, &s.Category); err != nil {
+			return w, err
+		}
+		w.Statuses = append(w.Statuses, s)
+	}
+	return w, rows.Err()
 }

@@ -250,7 +250,7 @@ func TestBoardOneRenderPerTick(t *testing.T) {
 		pid = p.ID
 		return err
 	})
-	key := views.BoardKey(pid, tracker.Filter{})
+	key := views.BoardKey(pid, tracker.Filter{}, views.LanesNone)
 	before := e.Hub.Stats().RendersByKey[key]
 	if code := move(t, e, c, "tab11", "op1", pr.Keys[1], "inreview", "", "", versionOf(page, pr.Keys[1])); code != http.StatusNoContent {
 		t.Fatalf("move: %d", code)
@@ -283,7 +283,7 @@ func TestBoardFrameSize(t *testing.T) {
 	start := time.Now()
 	for range runs {
 		err := e.DB.View(ctx, func(tx *sql.Tx) error {
-			l, err := web.ReadLanes(ctx, sqlite.Querier(tx), pr.ID, tracker.Filter{})
+			l, err := web.ReadLanes(ctx, sqlite.Querier(tx), pr.ID, tracker.Filter{}, views.LanesNone)
 			if err != nil {
 				return err
 			}

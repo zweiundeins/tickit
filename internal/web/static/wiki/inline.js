@@ -1,5 +1,6 @@
-// Inline comments on a page (FR-91), in view and in the editor: a Comment
-// button beside a selection of the page's text (or Ctrl+Alt+M), which hands
+// Inline comments on a page (FR-91), in view and in the editor: the Comment
+// button of the bar under a selection of the page's text (the bar is
+// views.SelectionBar's, which places it), or Ctrl+Alt+M, hands
 // the composer the range as positions of the document at a version, and
 // the highlights' clicks, which mark a comment and its card. The page's
 // wiring is Datastar's: this module dispatches tk-ic-select on the composer
@@ -107,7 +108,6 @@ function start() {
 	const form = document.getElementById('wk-ic-form')
 	const style = document.createElement('style')
 	document.head.append(style)
-	let pending = null // {detail, rect}
 
 	// current is the selection as an inline comment's range, or null.
 	const current = () => {
@@ -120,34 +120,14 @@ function start() {
 		if (body && body.contains(range.commonAncestorContainer)) detail = readerRange(body, range)
 		else if (editor && editor.querySelector('.pm-mount')?.contains(range.commonAncestorContainer)) detail = editor.commentRange?.() ?? null
 		if (!detail || !Number.isInteger(detail.v)) return null
-		return { detail: { ...detail, quote: quoteOf(sel) }, rect: range.getBoundingClientRect() }
+		return { detail: { ...detail, quote: quoteOf(sel) } }
 	}
-
-	const place = () => {
-		if (!add || !form) return
-		pending = current()
-		if (!pending) {
-			add.hidden = true
-			return
-		}
-		const box = add.offsetParent?.getBoundingClientRect() ?? { left: 0, top: 0 }
-		const r = pending.rect
-		add.hidden = false
-		const left = Math.min(r.right - box.left, (add.offsetParent?.clientWidth ?? innerWidth) - add.offsetWidth)
-		add.style.insetInlineStart = Math.max(0, left) + 'px'
-		add.style.insetBlockStart = r.bottom - box.top + 6 + 'px'
-	}
-
-	let queued = 0
-	document.addEventListener('selectionchange', () => {
-		cancelAnimationFrame(queued)
-		queued = requestAnimationFrame(place)
-	})
 
 	const open = () => {
-		const p = pending ?? current()
+		const p = current()
 		if (!p || !form) return false
-		add.hidden = true
+		const bar = add?.closest('.wk-sel')
+		if (bar) bar.hidden = true
 		form.dispatchEvent(new CustomEvent('tk-ic-select', { detail: p.detail }))
 		requestAnimationFrame(() => {
 			const t = document.getElementById('ic-body')

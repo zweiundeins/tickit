@@ -26,10 +26,9 @@ templ WikiPage(p PageProps) {
 		<div class="wk-docgrid">
 			@PageBodyRegion(p.Body)
 			@InlinePanel(p.Page.ID, p.Page.State == wiki.Current, p.Inline, p.Now)
-			if p.Page.State == wiki.Current {
-				@InlineAddButton()
-			}
+			@SelectionBar(p.Page.State == wiki.Current, len(p.Issue.Projects) > 0)
 		</div>
+		@PageIssueUI(p.Issue)
 		@PageRefsRegion(p.Refs)
 		<section class="wk-comments" aria-labelledby="comments-title">
 			<h2 class="wk-section-title" id="comments-title">Comments</h2>

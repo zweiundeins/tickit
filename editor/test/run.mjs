@@ -264,6 +264,7 @@ test("toDOM writes docs/editor.md's HTML of a document", async () => {
 			S.nodes.task_list.create(null, [S.nodes.task_item.create({ checked: true }, p(t('done'))), S.nodes.task_item.create(null, p(t('todo')))]),
 			S.nodes.table.create(null, S.nodes.table_row.create(null, [S.nodes.table_header.create({ colspan: 2 }, p(t('h'))), S.nodes.table_cell.create(null, p(t('c')))])),
 			S.nodes.image.create({ imageId: 'diagram-1', src: '/img/lib/diagram-1', alt: 'A diagram' }),
+			S.nodes.issue_list.create({ filter: 'type=bug&q=<b>', limit: 5 }),
 			p(
 				t('a'), S.nodes.hard_break.create(), S.nodes.issue_chip.create({ key: 'WEB-12' }), S.nodes.mention.create({ personId: 'u_1', label: 'Sunny Otter' }), S.nodes.page_link.create({ pageId: 'pg_roadmap' }),
 				t('s', ['strong']), t('e', ['em']), t('k', ['strike']), t('c', ['code']), t('l', [S.marks.link.create({ href: 'https://example.com/x' })]), t('u', [S.marks.link.create({ href: 'javascript:alert(1)' })]),
@@ -278,6 +279,7 @@ test("toDOM writes docs/editor.md's HTML of a document", async () => {
 		'<ul class="task-list"><li class="task-item" data-checked="true"><input type="checkbox" disabled="" checked=""><div><p>done</p></div></li><li class="task-item" data-checked="false"><input type="checkbox" disabled=""><div><p>todo</p></div></li></ul>',
 		'<table><tbody><tr><th colspan="2"><p>h</p></th><td><p>c</p></td></tr></tbody></table>',
 		'<figure class="doc-image"><img src="/img/lib/diagram-1" alt="A diagram" loading="lazy"></figure>',
+		'<div class="issue-list" data-filter="type=bug&amp;q=&lt;b&gt;" data-saved-filter="" data-limit="5"><p class="issue-list__desc">Issues matching <code>type=bug&amp;q=&lt;b&gt;</code>, at most 5</p></div>',
 		'<p>a<br><a class="issue-chip" data-key="WEB-12" href="/WEB-12">WEB-12</a><a class="mention" data-person="u_1" href="/people/u_1">@Sunny Otter</a><a class="page-link" data-page="pg_roadmap" href="/pages/pg_roadmap">Roadmap</a><strong>s</strong><em>e</em><s>k</s><code>c</code><a href="https://example.com/x" rel="nofollow ugc noopener" title="example.com">l</a><span class="link-unsafe">u</span></p>',
 	].join('')
 	ok(html === want, 'HTML differs:\n got  ' + html + '\n want ' + want)
@@ -672,6 +674,80 @@ test('a task checkbox toggles with one attr step; others see it (FR-82.1)', asyn
 	ok(s.state.doc.content[3].content[0].attrs.checked === true, 'checked at the writer')
 	const seen = await waitFor(b, () => harness.host().querySelector('li.task-item')?.dataset.checked === 'true' && harness.host().querySelector('li.task-item input').checked)
 	ok(seen, 'B sees it')
+	await close()
+})
+
+const SAVED = '0192f0c4-7b1e-7cc3-9d2a-5f6e7a8b9c0d'
+
+// The page's lists element, as the view pagelists:<page> patches it.
+const listsElement = (tab, html) =>
+	tab.evaluate((html) => {
+		harness.extraAttrs = ' lists="test-lists"'
+		harness.host().setAttribute('lists', 'test-lists')
+		let el = document.getElementById('test-lists')
+		if (!el) document.body.insertAdjacentHTML('beforeend', '<div id="test-lists" hidden></div>'), (el = document.getElementById('test-lists'))
+		el.innerHTML = html
+	}, html)
+
+test('an issue list: its form sets the filter with attr steps, others see it, its rows come from the page (FR-104)', async () => {
+	const { tabs, close } = await open(2)
+	const [a, b] = tabs
+	await listsElement(a, `<ul data-filters><li data-id="${SAVED}">Open bugs</li></ul>`)
+	await caretIn(a, 1)
+	ok(await a.evaluate(() => harness.host().insertIssueList()), 'inserted')
+	await waitFor(a, () => !!document.activeElement?.closest?.('.issue-list--edit'))
+	await a.keyboard.type('/issues?type=bug&q=50%', { delay: 10 })
+	await a.keyboard.press('Enter')
+	let s = await settled(tabs)
+	const list = () => s.state.doc.content.find((n) => n.type === 'issue_list')
+	ok(list()?.attrs.filter === 'type=bug&q=50%25' && list().attrs.savedFilter === '' && list().attrs.limit === 10, 'the filter at the writer: ' + JSON.stringify(list()))
+	ok(await waitFor(b, () => harness.host().querySelector('.issue-list--edit input[type=text]')?.value === 'type=bug&q=50%25'), 'B sees the filter')
+	ok(await a.evaluate(() => harness.host().querySelector('.issue-list__rows').textContent.includes('Loading the issues')), 'A waits for the rows')
+	await listsElement(a, `<ul data-filters><li data-id="${SAVED}">Open bugs</li></ul><div data-list="|type=bug&amp;q=50%25|10"><table class="issue-list__table"><tbody><tr data-key="WEB-12"><td><a href="/WEB-12">WEB-12</a></td></tr></tbody></table></div>`)
+	ok(await waitFor(a, () => !!harness.host().querySelector('.issue-list__rows tr[data-key="WEB-12"]')), 'the rows from the page')
+	await a.select('.issue-list--edit select', SAVED)
+	await a.evaluate(() => {
+		const i = harness.host().querySelector('.issue-list--edit input[type=number]')
+		i.value = '3'
+		i.dispatchEvent(new Event('change'))
+	})
+	s = await settled(tabs)
+	ok(list()?.attrs.savedFilter === SAVED && list().attrs.filter === '' && list().attrs.limit === 3, 'a saved filter and a cap: ' + JSON.stringify(list()))
+	ok(await a.evaluate(() => harness.host().querySelector('.issue-list--edit .issue-list__desc').textContent === 'Issues of the saved filter Open bugs, at most 3'), 'the description names the saved filter')
+	ok(await b.evaluate(() => harness.host().querySelector('.issue-list__rows').textContent.includes('The issues show when the page is read')), 'B without a lists element')
+	await close()
+})
+
+test('create issue: the selection is kept through others\' edits and becomes the chip, which others see (FR-105)', async () => {
+	const { tabs, close } = await open(2)
+	const [a, b] = tabs
+	await a.evaluate(() => {
+		window.selects = []
+		harness.host().addEventListener('sb-select', (e) => window.selects.push(e.detail))
+	})
+	await caretIn(a, 1)
+	await a.keyboard.type('fix the login form', { delay: 10 })
+	await settled(tabs)
+	const sel = await a.evaluate(() => {
+		const v = harness.host().view
+		const start = v.state.doc.child(0).nodeSize + 1 + 'Type here: fix the '.length
+		v.dispatch(v.state.tr.setSelection(v.state.selection.constructor.create(v.state.doc, start, start + 'login'.length)))
+		return start
+	})
+	const detail = await waitFor(a, () => window.selects.find((d) => !d.empty))
+	ok(detail.text === 'login' && detail.bottom > detail.top, 'sb-select: ' + JSON.stringify(detail))
+	ok(await a.evaluate(() => harness.host().selectionText()) === 'login', 'selectionText')
+	ok(await a.evaluate(() => harness.host().track('op1')), 'tracked')
+	await caretIn(b, 1, 0)
+	await b.keyboard.type('Now ', { delay: 10 })
+	await settled(tabs)
+	ok(await a.evaluate(() => harness.host().chipTracked('op1', 'WEB-12')), 'chipTracked')
+	const s = await settled(tabs)
+	const para = s.state.doc.content[1].content
+	ok(para.length === 3 && para[0].text === 'Now Type here: fix the ' && para[1].type === 'issue_chip' && para[1].attrs.key === 'WEB-12' && para[2].text === ' form', 'the chip replaced the selection: ' + JSON.stringify(para))
+	ok(await waitFor(b, () => harness.host().querySelectorAll('.pm-mount p a.issue-chip[data-key="WEB-12"]').length === 2), 'B sees the chip')
+	ok(!(await a.evaluate(() => harness.host().chipTracked('op1', 'WEB-12'))), 'once')
+	ok(sel > 0, 'selected')
 	await close()
 })
 

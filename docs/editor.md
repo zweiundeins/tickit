@@ -48,6 +48,7 @@ The Go renderer (reader view, comments, descriptions, versions) and the browser'
 | hard_break | `<br>` |
 | issue_chip | `<a class="issue-chip" data-key="WEB-12" href="/WEB-12">` holding the type icon `<svg class="tk-type" data-type="bug" viewBox="0 0 16 16" aria-hidden="true">` (two paths, `tk-type__tile` and `tk-type__glyph`), `<span class="issue-chip__key">WEB-12</span>`, `<span class="issue-chip__summary">Fix the login</span>` and `<span class="tk-lozenge issue-chip__status" data-cat="progress">In Review</span>`, from the issue as it is at render time; a deleted or unknown key carries `data-state="deleted"` or `"unknown"` and holds the key and `<span class="issue-chip__summary">deleted issue</span>` (or `unknown issue`) |
 | mention | `<a class="mention" data-person="<person id>" href="/people/<person id>">@Sunny Otter</a>`; the name is the person's name now, else the node's `label` |
+| issue_list | `<div class="issue-list" data-filter="status=todo" data-saved-filter="" data-limit="10">` holding `<p class="issue-list__desc">Issues matching <code>status=todo</code>, at most 10</p>` (or "Issues of the saved filter <strong>Name</strong>"); the reader view adds the rows after it (`table.issue-list__table` with key, summary, status and assignee, then a link to the issue list), versions and the editor's `toDOM` do not |
 | page_link | `<a class="page-link" data-page="<page id>" href="/pages/<page id>">Title</a>`; a removed page renders `<span class="page-link" data-state="gone">a removed page</span>` |
 | strong, em, strike, code | `<strong>`, `<em>`, `<s>`, `<code>` |
 | link | `<a href="…" rel="nofollow ugc noopener" title="<host>">`; an unsafe href renders as `<span class="link-unsafe">` |
@@ -76,7 +77,7 @@ The editor's node view of a removed page keeps its element, an `<a class="page-l
 
 `batches` holds every commit after the tab's acknowledged version, as the writer applied it, at most 500 a frame. `state` is `ok`, `gap` (the tab's version was folded away), `reset` (another epoch, or the tab's row is gone), `gone` (trashed, hidden or deleted) or `readonly`. `client` is the first 12 hex digits of SHA-256 of the tab id, so tab ids stay private. The page's GET puts the document at version `base` into the script element; later frames leave it empty, and the morph keeps the old one.
 
-The component emits `sb-commit` (the page posts it as the payload, never as signals), `sb-presence`, `sb-ack`, `sb-status` (`saving`, `saved`) and `sb-stopped` (with the number of unsaved steps). Toolbar state, status and refusals live in `_`-prefixed signals; no signal ever holds content.
+The component emits `sb-commit` (the page posts it as the payload, never as signals), `sb-presence`, `sb-ack`, `sb-status` (`saving`, `saved`), `sb-stopped` (with the number of unsaved steps) and `sb-select` (where a selection of text is, for "Create issue"). Toolbar state, status and refusals live in `_`-prefixed signals; no signal ever holds content.
 
 ## Events and tables
 
@@ -113,6 +114,11 @@ An issue's description is the second subject (FR-15, Q22). It uses the page edit
 - **Rules.** `doc.Rules` and DM-05's limits of a description: 20,000 characters of text, 50 mentions (`checkDesc`); a refusal goes into the tab's row of `issue_editors`.
 - **Gone.** A deleted or hidden issue answers a commit 409 and its editors' frames `gone`; a Viewer, or an archived project, `readonly` and 403.
 - **Fold.** `tracker.FoldDescriptions` folds the commits of descriptions up to their versions as `wiki.Fold` does pages' (FoldAfter, at most FoldBatch events a command); a deleted issue's commits hold nothing back.
+
+## Issue lists and issues from a selection
+
+- **Issue lists** (FR-104) are `issue_list` atom blocks: `filter` (the issue list's query string, at most 500 characters), `savedFilter` (a saved filter's id) and `limit` (1 to 25). The form in the editor's node view changes them with attr steps, so co-editors converge as for any other change. The host's `lists` attribute names the page's hidden `#wk-lists`, which the view `pagelists:<page>` patches with each list's rows (`[data-list]`, keyed `savedFilter|filter|limit` as `doc.IssueList.Key` writes it) and the saved filters (`[data-filters] > [data-id]`); the node views copy the rows, so the preview is live. A description's editor has no `lists` and shows no rows. The reader view renders the rows in place (docs/architecture.md, "The wiki").
+- **Create issue** (FR-105): in the editor, `track(id)` keeps the selection under an id, mapped through every transaction, and `chipTracked(id, key)` replaces it with the chip in a commit of its own once `POST /cmd/pages/issue` answered the key; a selection someone deleted meanwhile gets the chip where it was. In view mode the page sends the selected text, its top-level block and which occurrence in that block it is, and the server finds it (`doc.FindInBlock`, within one paragraph, white space folded) and commits the chip on the head (`wiki.ChipSelection`, `collab.CommitWhole`).
 
 ## Inline comments
 

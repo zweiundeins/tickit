@@ -81,6 +81,7 @@ type Server struct {
 	metrics  *metrics
 	projects *projectsCache // the home page's projects and open counts
 	counts   *countsCache   // the dashboards' counts by status and day
+	lists    *listsCache    // the issue lists on pages (routes_embed.go)
 
 	mux     *http.ServeMux
 	probes  []string // a URL of every GET route, for the test that GET never writes (NFR-06)
@@ -149,6 +150,7 @@ func New(cfg Config) (*Server, error) {
 		metrics:  newMetrics(cfg.DB),
 		projects: newProjectsCache(cfg.Hub),
 		counts:   newCountsCache(cfg.Hub),
+		lists:    &listsCache{hub: cfg.Hub},
 		mux:      http.NewServeMux(),
 		views:    newViewRegistry(),
 	}
@@ -174,6 +176,7 @@ func (s *Server) register() {
 	s.routesWiki()
 	s.routesEditor()
 	s.routesInline()
+	s.routesEmbed()
 	s.routesDescription()
 	s.routesImages()
 	s.routesNotify()

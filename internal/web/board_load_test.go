@@ -42,7 +42,7 @@ func TestBoardLoad(t *testing.T) {
 		pid = p.ID
 		return err
 	})
-	key := views.BoardKey(pid, tracker.Filter{})
+	key := views.BoardKey(pid, tracker.Filter{}, views.LanesNone)
 
 	type tab struct {
 		events <-chan string

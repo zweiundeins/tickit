@@ -24,7 +24,7 @@ type StatusCount struct {
 func StatusCounts(ctx context.Context, q sqlite.Querier, project string) ([]StatusCount, error) {
 	rows, err := q.QueryContext(ctx, `SELECT s.id, s.name, s.category,
 		(SELECT count(*) FROM issues i WHERE i.project_id = s.project_id AND i.status = s.id AND i.deleted_at IS NULL)
-		FROM statuses s WHERE s.project_id = ? ORDER BY s.position`, project)
+		FROM statuses s WHERE s.project_id = ? AND s.removed = 0 ORDER BY s.position`, project)
 	if err != nil {
 		return nil, err
 	}

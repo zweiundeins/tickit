@@ -102,7 +102,7 @@ func (s *Server) editorPage(w http.ResponseWriter, r *http.Request) {
 		}
 		return Page{
 			Title: "Editing " + p.Title, Nav: "spaces", Sidebar: sidebar, SidebarLabel: "Space",
-			Views:   []string{"pagepeople:" + p.ID, "carets:" + p.ID, "pagetitle:" + p.ID, "inline:" + p.ID, "tree:" + p.ID},
+			Views:   []string{"pagepeople:" + p.ID, "carets:" + p.ID, "pagetitle:" + p.ID, "inline:" + p.ID, "tree:" + p.ID, "pagelists:" + p.ID},
 			Scripts: []string{"editor/sb-rich-editor.min.js", inlineScript},
 			Body:    views.EditorPage(views.EditorProps{PageProps: props, Host: host}),
 		}, nil

@@ -35,6 +35,32 @@ type FaceResolver interface {
 	Face(id string) string
 }
 
+// IssueList is an issue list block (FR-104): a saved filter's id or a
+// filter in the issue list's query syntax, and how many rows it shows.
+type IssueList struct {
+	Filter      string
+	SavedFilter string
+	Limit       int
+}
+
+// IssueListOf reads an issue_list node's attributes.
+func IssueListOf(n *Node) IssueList {
+	l, _ := n.AttrInt("limit")
+	return IssueList{Filter: n.AttrString("filter"), SavedFilter: n.AttrString("savedFilter"), Limit: l}
+}
+
+// Key names the list by its attributes, as the editor's node view does.
+func (l IssueList) Key() string {
+	return l.SavedFilter + "|" + l.Filter + "|" + strconv.Itoa(l.Limit)
+}
+
+// ListResolver is a Resolver that fills issue lists: List returns
+// trusted HTML for the inside of the list's element, its rows as the
+// reader may see them now or what its filter is; "" for the default.
+type ListResolver interface {
+	List(l IssueList) string
+}
+
 // StaticResolver is a Resolver over maps, for tests and previews. Faces
 // are trusted HTML by person id (FaceResolver).
 type StaticResolver struct {
@@ -252,10 +278,64 @@ func (w htmlWriter) wrap(n *Node, extra string, body func()) {
 		w.s(`" alt="`)
 		w.esc(n.AttrString("alt"))
 		w.s(`" loading="lazy"></figure>`)
+	case "issue_list":
+		l := IssueListOf(n)
+		w.s(`<div class="issue-list" data-filter="`)
+		w.esc(l.Filter)
+		w.s(`" data-saved-filter="`)
+		w.esc(l.SavedFilter)
+		w.s(`" data-limit="` + strconv.Itoa(l.Limit) + `"` + extra + `>`)
+		inner := ""
+		if lr, ok := w.r.(ListResolver); ok {
+			inner = lr.List(l)
+		}
+		if inner == "" {
+			inner = ListDescription(l, "")
+		}
+		w.s(inner + `</div>`)
 	default:
 		// A node type the renderer does not know renders its content.
 		body()
 	}
+}
+
+// ListDescription is what an issue list shows in place of its rows: in
+// versions and comparisons, and without a ListResolver. name is the saved
+// filter's name, "" when unknown.
+func ListDescription(l IssueList, name string) string {
+	var b strings.Builder
+	w := htmlWriter{b: &b}
+	w.s(`<p class="issue-list__desc">`)
+	switch {
+	case l.SavedFilter != "" && name != "":
+		w.s(`Issues of the saved filter <strong>`)
+		w.esc(name)
+		w.s(`</strong>`)
+	case l.SavedFilter != "":
+		w.s(`Issues of a saved filter`)
+	case l.Filter != "":
+		w.s(`Issues matching <code>`)
+		w.esc(l.Filter)
+		w.s(`</code>`)
+	default:
+		w.s(`An issue list without a filter`)
+	}
+	w.s(`, at most ` + strconv.Itoa(l.Limit) + `</p>`)
+	return b.String()
+}
+
+// hasList reports whether n is or holds an issue list, whose HTML changes
+// with the issues and the reader.
+func hasList(n *Node) bool {
+	if n.typ.name == "issue_list" {
+		return true
+	}
+	for _, c := range n.content.nodes {
+		if c.typ.isBlock && hasList(c) {
+			return true
+		}
+	}
+	return false
 }
 
 type openMark struct {
@@ -441,10 +521,14 @@ type BlockCache struct {
 
 // cachedBlock is a block's HTML and the highlights inside it, relative to
 // its start, that it was rendered with.
-type cachedBlock struct{ html, marks string }
+type cachedBlock struct {
+	html, marks string
+	live        bool // holds an issue list: rendered every time (FR-104)
+}
 
 // Render renders the document, reusing the HTML of unchanged blocks, and
-// forgets blocks the document no longer holds.
+// forgets blocks the document no longer holds. A block that holds an
+// issue list renders every time.
 func (c *BlockCache) Render(d Doc, r Resolver) string { return c.RenderHighlighted(d, r, nil) }
 
 // RenderHighlighted renders as Render does, with the highlights of
@@ -459,16 +543,31 @@ func (c *BlockCache) RenderHighlighted(d Doc, r Resolver, hs []Highlight) string
 	pos := 0
 	for _, n := range d.content.nodes {
 		marks := highlightsIn(hs, pos, pos+n.size)
-		h, ok := c.m[n]
-		if !ok || h.marks != marks {
-			h = cachedBlock{renderBlockAt(n, r, pos, hs), marks}
+		e, ok := c.m[n]
+		if !ok {
+			e.live = hasList(n)
 		}
-		next[n] = h
-		b.WriteString(h.html)
+		if !ok || e.live || e.marks != marks {
+			e.html, e.marks = renderBlockAt(n, r, pos, hs), marks
+		}
+		next[n] = e
+		b.WriteString(e.html)
 		pos += n.size
 	}
 	c.m = next
 	return b.String()
+}
+
+// IssueLists returns the document's issue lists, in document order.
+func IssueLists(d Doc) []IssueList {
+	var out []IssueList
+	d.Descendants(func(n *Node, _ int, _ *Node, _ int) bool {
+		if n.typ.name == "issue_list" {
+			out = append(out, IssueListOf(n))
+		}
+		return !n.typ.inlineContent
+	})
+	return out
 }
 
 // Reset forgets every block.

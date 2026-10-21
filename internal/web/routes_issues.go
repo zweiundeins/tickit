@@ -101,7 +101,7 @@ func listQuery(ctx context.Context, q sqlite.Querier, actor people.Person, v url
 
 func knownStatuses(ctx context.Context, q sqlite.Querier, projects []string) ([]string, error) {
 	list, _ := json.Marshal(projects)
-	rows, err := q.QueryContext(ctx, `SELECT DISTINCT id FROM statuses WHERE project_id IN (SELECT value FROM json_each(?))`, string(list))
+	rows, err := q.QueryContext(ctx, `SELECT DISTINCT id FROM statuses WHERE project_id IN (SELECT value FROM json_each(?)) AND removed = 0`, string(list))
 	if err != nil {
 		return nil, err
 	}

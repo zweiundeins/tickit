@@ -85,6 +85,7 @@ var issueSearchProjector = events.NewProjector(IssueStream, search.IssuesProject
 	events.Ignore(TypeChangedType),
 	events.Ignore(StatusChangedType),
 	events.Ignore(MovedType),
+	events.Ignore(CategoryChangedType),
 	events.Ignore(PriorityChangedType),
 	events.Ignore(ParentChangedType),
 	events.Ignore(DueChangedType),

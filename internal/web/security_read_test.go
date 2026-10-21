@@ -65,7 +65,7 @@ func TestEveryGetReadOnly(t *testing.T) {
 	// The views no page names: a tab's editor, versions, and the ones
 	// actions add to a stream.
 	for _, p := range []string{page, opage} {
-		for _, k := range []string{"carets", "pagetitle", "pagepeople", "history", "tree", "pagedoc", "page"} {
+		for _, k := range []string{"carets", "pagetitle", "pagepeople", "history", "tree", "pagedoc", "page", "pagelists"} {
 			add(k + ":" + p)
 		}
 		add("editor:" + p + ".probe")

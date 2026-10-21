@@ -55,13 +55,23 @@ templ InlinePanel(page string, comments bool, list []InlineItem, now time.Time) 
 // icKeys sends the composer with Ctrl+Enter and closes it with Escape.
 var icKeys = `(evt.key === 'Enter' && (evt.ctrlKey || evt.metaKey)) ? (evt.preventDefault(), el.form.requestSubmit()) : evt.key === 'Escape' && (` + icCancel + `)`
 
-// InlineAddButton is the Comment button the page shows beside a selection
-// of its text; wiki/inline.js places it.
-templ InlineAddButton() {
-	<button id="wk-ic-add" class="tk-btn tk-btn--primary tk-btn--sm wk-ic-add" type="button" hidden aria-keyshortcuts="Control+Alt+M">
-		@ui.Icon("comment")
-		Comment
-	</button>
+// SelectionBar is the one bar under a selection of the page's text: Comment
+// (FR-91; wiki/inline.js runs it) and Create issue (FR-105), as the viewer
+// may. selWatch places it.
+templ SelectionBar(comment, issue bool) {
+	if comment || issue {
+		<div class="wk-sel" role="toolbar" aria-label="Selected text" hidden data-init={ selWatch }>
+			if comment {
+				<button id="wk-ic-add" class="tk-btn tk-btn--primary tk-btn--sm" type="button" aria-keyshortcuts="Control+Alt+M" data-on:mousedown={ keepSelection }>
+					@ui.Icon("comment")
+					Comment
+				</button>
+			}
+			if issue {
+				@ui.Button(ui.ButtonProps{Label: "Create issue", Icon: "plus", Size: ui.SizeSM, Variant: ui.Secondary, Attrs: templ.Attributes{"data-sel-issue": "", "data-on:mousedown": keepSelection, "data-on:click": selCreate}})
+			}
+		</div>
+	}
 }
 
 // InlineRegion is the shared list of a page's inline comments: those on

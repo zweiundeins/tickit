@@ -66,7 +66,10 @@ type PageProps struct {
 	Templates []wiki.Template
 	// Activity is the space's feed, on its home page (FR-69).
 	Activity templ.Component
-	Now      time.Time
+	// Issue is "Create issue" on a selection (FR-105), for those who may
+	// edit the page.
+	Issue PageIssueProps
+	Now   time.Time
 }
 
 // PageHead is what the page's shared view shows above the body.
@@ -155,6 +158,14 @@ func (h EditorHost) cmd() string {
 		return "/cmd/pages/" + h.Page
 	}
 	return h.Cmd
+}
+
+// lists names the element with the issue lists' rows: a page's (FR-104).
+func (h EditorHost) lists() string {
+	if h.Cmd == "" {
+		return ListsID
+	}
+	return ""
 }
 
 func (h EditorHost) label() string {

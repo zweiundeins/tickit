@@ -684,10 +684,19 @@
 		cursor: pointer;
 	}
 
-	.wk-ic-add {
+	/* The bar under a selection of the page's text: Comment (FR-91) and
+	   Create issue (FR-105). */
+	.wk-sel {
 		position: absolute;
 		z-index: var(--tk-z-dropdown);
-		box-shadow: var(--tk-shadow-overlay);
+		padding: var(--tk-space-1);
+		border: 1px solid var(--tk-border-strong);
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-overlay);
+		box-shadow: var(--tk-shadow-2);
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--tk-space-1);
 
 		&[hidden] {
 			display: none;

@@ -159,6 +159,7 @@ rocket('sb-rich-editor', {
 		images: string.default('[]').docs({ description: 'JSON [{id, alt}]: the image library the Image button offers.' }),
 		upload: string.docs({ description: 'Optional: the URL image files go to (FR-85), with the tab attribute. Without it, files are not uploaded.' }),
 		label: string.default('Page content').docs({ description: 'Accessible name of the editing area.' }),
+		lists: string.docs({ description: 'Id of the page element whose [data-list] children hold the issue lists\' rows and whose [data-filters] the saved filters (FR-104).' }),
 	}),
 	manifest: {
 		slots: [{ name: 'default', description: 'The server-rendered <script type="application/json" data-ignore-morph> and <div class="pm-mount prose" data-ignore-morph data-ignore>.' }],
@@ -172,6 +173,7 @@ rocket('sb-rich-editor', {
 			{ name: 'sb-limit', kind: 'custom-event', bubbles: true, composed: true, description: '{page, limit, max, value, message}: input stopped at a DM-05 limit.' },
 			{ name: 'sb-insert-image', kind: 'custom-event', bubbles: true, composed: true, description: 'Image button without an images library or upload; cancel it and call insertImage(id, alt).' },
 			{ name: 'sb-uploaded', kind: 'custom-event', bubbles: true, composed: true, description: '{page, id, width, height}: an uploaded image went into the document.' },
+			{ name: 'sb-select', kind: 'custom-event', bubbles: true, composed: true, description: '{page, empty, text, top, left, bottom}: where a selection of text is, in viewport pixels (FR-105).' },
 		],
 	},
 	renderOnPropChange: false,
@@ -183,7 +185,7 @@ rocket('sb-rich-editor', {
 			peek(() => ({
 				page: props.page, epoch: props.epoch, client: props.client, tab: props.tab, base: props.base, head: props.head,
 				batches: props.batches, carets: props.carets, comments: props.comments, chips: props.chips, state: props.state, refusal: props.refusal,
-				readonly: props.readonly, images: props.images, upload: props.upload, label: props.label,
+				readonly: props.readonly, images: props.images, upload: props.upload, label: props.label, lists: props.lists,
 			}))
 		// One sync for a morph's burst of attribute writes.
 		let queued = false
@@ -224,6 +226,10 @@ rocket('sb-rich-editor', {
 		defineHostProp('insertChip', { value: (key) => call('insertNode', 'issue_chip', { key }) })
 		defineHostProp('insertMention', { value: (personId, label) => call('insertNode', 'mention', { personId, label }) })
 		defineHostProp('insertPageLink', { value: (pageId) => call('insertNode', 'page_link', { pageId }) })
+		defineHostProp('insertIssueList', { value: (attrs) => call('insertIssueList', attrs) })
+		defineHostProp('selectionText', { value: () => call('selectionText') ?? '' })
+		defineHostProp('track', { value: (id) => call('track', id) })
+		defineHostProp('chipTracked', { value: (id, key) => call('chipTracked', id, key) })
 		defineHostProp('focus', { value: () => live.get(host)?.ed?.view.focus() })
 		defineHostProp('html', { value: () => call('html') })
 		defineHostProp('text', { value: () => call('text') })
