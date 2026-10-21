@@ -35,7 +35,8 @@ type Settings struct {
 	Project    tracker.Project
 	Live       SettingsLive
 	Workflow   WorkflowLive
-	Candidates []people.Person // whom the lead and the members' pickers offer
+	Leads      []people.Person // whom the lead's picker offers: who may be assigned, and the lead
+	Candidates []people.Person // whom the members' picker offers
 }
 
 // SettingsLive is the settings' shared region: the members with their

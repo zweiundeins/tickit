@@ -27,6 +27,8 @@ func TestProjectDeciders(t *testing.T) {
 	web.When(EditProject{Name: &same}).Then(t)                                                         // FR-14.3: nothing changes
 	web.When(EditProject{Name: &long}).ThenError(t, refuse("name", "A name has 1 to 100 characters.")) // FR-02
 	web.When(EditProject{Description: &desc, Lead: &lead}).Then(t, ProjectEdited{Description: &desc, Lead: &lead})
+	web.When(EditProject{Lead: &lead, lead: &assignCheck{Why: "Priya Raman cannot lead WEB: they are not a member of it."}}).
+		ThenError(t, refuse("lead", "Priya Raman cannot lead WEB: they are not a member of it.")) // FR-03.1
 	eventstest.For(editProject).When(EditProject{Name: &name}).ThenError(t, errNoProject)
 
 	arch := eventstest.For(archiveProject).Given(webCreated)
