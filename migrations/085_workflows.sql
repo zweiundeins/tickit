@@ -2,7 +2,8 @@
 -- tracker_projects. A status keeps its row once removed (removed = 1), so
 -- that history and feeds still name it; board_column is the board column
 -- that shows it, '' for none; follows is the JSON list of the statuses it
--- may follow, '' for any.
+-- may follow, '' for any. Its wip_limit is no longer written: limits are
+-- the columns'.
 ALTER TABLE statuses ADD COLUMN board_column TEXT NOT NULL DEFAULT '';
 ALTER TABLE statuses ADD COLUMN follows TEXT NOT NULL DEFAULT '';
 ALTER TABLE statuses ADD COLUMN removed INTEGER NOT NULL DEFAULT 0;
