@@ -398,6 +398,58 @@ func TestProjectSettings(t *testing.T) {
 	}
 }
 
+// FR-03.1: the settings of a seeded project show its seeded lead as
+// chosen among everyone who may lead it; a new lead shows in another
+// tab's list of projects, and one who may not lead is refused in words.
+func TestSettingsLead(t *testing.T) {
+	e := seededEnv(t)
+	e.Account(t, "ada@example.com", "correct horse battery", people.Admin)
+	c := webtest.Client(t)
+	e.Login(t, c, "ada@example.com", "correct horse battery")
+	code, page := webtest.Get(t, c, e.URL+"/projects/WEB/settings")
+	if code != http.StatusOK {
+		t.Fatalf("the settings: %d", code)
+	}
+	i := strings.Index(page, `id="pd-lead"`)
+	if i < 0 {
+		t.Fatal("no lead picker")
+	}
+	picker := page[i : i+strings.Index(page[i:], "</select>")]
+	if !strings.Contains(picker, `<option value="s-priya" selected>Priya Raman</option>`) {
+		t.Errorf("the lead is not chosen: %s", picker)
+	}
+	for _, p := range people.Seeded {
+		if !strings.Contains(picker, `value="`+p.ID+`"`) {
+			t.Errorf("the picker leaves out %s", p.Name)
+		}
+	}
+
+	var name, desc string
+	e.DB.R.QueryRow(`SELECT name, description FROM projects WHERE key = 'WEB'`).Scan(&name, &desc)
+	edit := func(op, lead string) {
+		t.Helper()
+		body := fmt.Sprintf(`{"tab":"tab1","op":%q,"project":"WEB","name":%q,"description":%q,"lead":%q}`, op, name, desc, lead)
+		if code, msg := webtest.Post(t, c, e.URL+"/cmd/projects/edit", body); code != http.StatusNoContent {
+			t.Fatalf("%s: %d %s", op, code, msg)
+		}
+	}
+	settings := webtest.Listen(t, c, e.URL+"/stream?tab=tab1&v=settings:WEB", nil)
+	webtest.Next(t, settings, `id="project-settings"`)
+	list := webtest.Listen(t, c, e.URL+"/stream?tab=tab2&v=projects:", nil)
+	if f := webtest.Next(t, list, `id="projects-list"`); strings.Contains(f, "Lena Brunner") {
+		t.Fatal("Lena leads a project already")
+	}
+	edit("op1", "s-lena")
+	webtest.Next(t, settings, `"op1":{"ok":true`)
+	webtest.Next(t, list, "Lena Brunner")
+	stranger := people.GuestOf("stranger")
+	edit("op2", stranger.ID)
+	webtest.Next(t, settings, `"op2":{"ok":false,"msg":"`+stranger.Name+` cannot lead WEB: they are not a member of it.","field":"lead"}`)
+	if _, page := webtest.Get(t, c, e.URL+"/projects/WEB/settings"); !strings.Contains(page, `<option value="s-lena" selected>`) {
+		t.Error("the new lead is not chosen")
+	}
+}
+
 // NFR-06: the projects' pages write nothing, with a project and its
 // issues there.
 func TestBoardPagesNeverWrite(t *testing.T) {

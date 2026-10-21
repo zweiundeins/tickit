@@ -143,6 +143,26 @@ Commands, besides the one above:
     CGO_ENABLED=0 go build -tags pprof -o tickit-pprof ./cmd/tickit    # then run -bin ./tickit-pprof -seconds 60 -cpuprofile cpu.pprof
     cp --reflink=always run.db fold.db && tickit-load fold -db fold.db -n 20 -cpuprofile fold.pprof
 
+## Control on lith v0.4.1 after the merges of 21 October
+
+21 October 2026, the same machine and command, 120 s without sustain (`go tool task load LOAD_DIR=... LOAD_SECONDS=120 SERVER_CPUS=0-5 LOAD_CPUS=12-19`, the cached `base.db` copied into each directory), Go 1.27.3, lith v0.4.1. `76daac9` is `rewrite` after bulk edit, uploads, workflows with board columns and swimlanes, issues on pages, inline comments, presence rows on home and dashboards and stream metrics; `e0928aa` the tuned build above; `e6c1649` adds the two changes below. Other agents ran on the machine: the load average is given for each run.
+
+| Run (load at start / end) | move p50 / p95 | field p50 / p95 | commit p50 / p95 | ticks summed, renders | overruns | page document p50 / p95 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 76daac9 (2.6 / 5.9) | 52.5 / 92.9 ms | 49.3 / 79.7 ms | 40.9 / 72.1 ms | 27.8 s, 77,923 | 0.38 % | 90.2 / 117.9 ms |
+| e0928aa (5.9 / 7.1) | 46.0 / 71.1 ms | 45.3 / 72.4 ms | 37.6 / 64.6 ms | 22.2 s, 75,192 | 0.04 % | 59.9 / 83.8 ms |
+| 76daac9 (7.1 / 4.5) | 48.4 / 72.6 ms | 44.5 / 69.9 ms | 37.7 / 64.7 ms | 22.8 s, 78,924 | 0.13 % | 84.8 / 134.0 ms |
+| e0928aa (4.5 / 4.5) | 45.1 / 68.3 ms | 43.1 / 69.9 ms | 37.1 / 63.9 ms | 20.6 s, 74,913 | 0 | 59.5 / 75.2 ms |
+| e6c1649 (3.3 / 13.9) | 49.5 / 75.2 ms | 49.0 / 79.5 ms | 41.4 / 70.9 ms | 29.1 s, 78,495 | 0.38 % | 69.6 / 106.6 ms |
+| 76daac9 (13.9 / 9.2) | 54.4 / 82.8 ms | 48.6 / 74.1 ms | 40.1 / 70.6 ms | 26.1 s, 78,091 | 0.46 % | 88.4 / 147.7 ms |
+| e6c1649 (9.2 / 7.7) | 52.3 / 81.6 ms | 50.1 / 86.2 ms | 42.3 / 78.5 ms | 29.7 s, 77,662 | 0.59 % | 73.6 / 97.8 ms |
+
+Commit to frame differs by 2 to 6 ms at the median, within what the load moves it, and a 60 s profile of each build gave the same shares to the board, home and editor views (and fewer ticks to `76daac9`). The board's frame grew to 66,797 B and the list's 25 rows to 46,057 B (bulk edit's check boxes, labels, the resolved column); `pagelists:` renders on every commit and `issue-desc:` on every field change, about 4 % more renders and 1.3 % of the CPU. What regressed is the page document: `pageIssueProps` ("Create issue", FR-105) found the person's last reported project by walking `issues_created` over every issue for someone who reported none, 25 ms a load. Migration 088 indexes `issues (reporter, created_at)`; the page then loaded at p50 70 to 74 ms against 88 for `76daac9` in the same hour. The Move menu's `moveTargets`, every space's tree, is 83 % of what is left of the page's props, as before.
+
+The fold (NFR-43.3): `wiki.Fold` and `tracker.FoldDescriptions` found their bound, the oldest commit no version holds, by a lookup per page or description on every command. `collab_uncut` (migration 087) keeps it: a commit inserts its document's row if there is none, a cut deletes it, and the bound is one index lookup. `tickit-load fold` on copies of the v0.3.0 control's sustained database, three runs each, p50 per limit of 200, 100, 50, 25 and 10 events: before 35.5 to 39.7, 24.9 to 26.6, 23.0 to 24.3, 22.2 to 23.2, 21.3 to 22.4 ms; after 26.5 to 31.2, 22.7 to 25.5, 21.1 to 21.4, 19.9 to 20.8, 19.1 to 20.2 ms. The rest is lith's `events.Compact`.
+
+    cp --reflink=auto /tmp/tickit-load-030/run.db x.db && tickit-load fold -db x.db -n 20
+
 ## The race detector
 
 20 October 2026, same machine: `go test -race -count=1 -timeout 40m ./...` found no data race. The first run, before the merge of `rewrite`, timed out in `internal/web` after 10 minutes, in `TestSearchSpeed` (10,000 issues), and `internal/search`'s `TestRebuild` missed its 20 s wait for the rebuild; the run after the merge passed every package in 4 min 3 s but `internal/people`'s `TestHashesAtOnce`, a heap measurement that read 171 MiB under `-race` with the suite running (it passes alone, with and without `-race`). Timing and heap measurements now skip under `-race` (each package's `raceDetector`, true in a test file built with the `race` tag), and the rebuild test waits 2 minutes there; `internal/web` takes 3 min 46 s and `internal/search` 1 min 17 s under the detector.

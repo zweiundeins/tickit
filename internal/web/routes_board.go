@@ -864,13 +864,22 @@ func (s *Server) settingsPage(w http.ResponseWriter, r *http.Request) {
 			return Page{}, err
 		}
 		var humans []people.Person
+		leads, led := cands, p.Lead == ""
 		for _, c := range cands {
 			if c.Kind != people.Seed {
 				humans = append(humans, c)
 			}
+			led = led || c.ID == p.Lead
+		}
+		if !led { // a lead who left the project still shows as the lead
+			lead, err := people.Get(ctx, q, p.Lead)
+			if err != nil {
+				return Page{}, err
+			}
+			leads = append(slices.Clip(leads), lead)
 		}
 		return Page{Title: p.Name + " settings", Nav: "projects", Views: []string{"settings:" + p.Key},
-			Body: views.SettingsPage(views.Settings{Project: p, Live: live, Workflow: wf, Candidates: humans})}, nil
+			Body: views.SettingsPage(views.Settings{Project: p, Live: live, Workflow: wf, Leads: leads, Candidates: humans})}, nil
 	})
 }
 

@@ -803,7 +803,7 @@ func SettingsPage(s Settings) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = ui.Select(ui.SelectProps{ID: lead.ID, Options: personOptions(s.Candidates, s.Project.Lead, "Nobody"), Attrs: map[string]any{"data-bind": "_pd.lead"}}).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = ui.Select(ui.SelectProps{ID: lead.ID, Options: personOptions(s.Leads, s.Project.Lead, "Nobody"), Attrs: map[string]any{"data-bind": "_pd.lead"}}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

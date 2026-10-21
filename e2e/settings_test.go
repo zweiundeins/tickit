@@ -75,3 +75,38 @@ func settingsFit(wide bool, names []string) string {
 	return out;
 })()`
 }
+
+// FR-03.1, FR-03.2: a seeded project's settings show its seeded lead in
+// the picker; the admin chooses another and saves, and a list of projects
+// in another tab shows the new lead within a tick.
+func TestSettingsLeadLive(t *testing.T) {
+	e, _ := seededDemo(t)
+	b := browsertest.Start(t)
+	settings := staffPage(t, e, b, "ada@example.com", 1280)
+	settings.Navigate(t, e.URL+"/projects/WEB/settings")
+	settings.Wait(t, `document.getElementById('reconnecting')?.hidden && document.getElementById('pd-lead')`, 10*time.Second)
+	var shown string
+	settings.Eval(t, `(() => { const s = document.getElementById('pd-lead'); return s.value + ' ' + s.selectedOptions[0]?.text })()`, &shown)
+	if shown != "s-priya Priya Raman" {
+		t.Errorf("the lead picker shows %q", shown)
+	}
+
+	list := staffPage(t, e, b, "ada@example.com", 1280)
+	list.Navigate(t, e.URL+"/projects")
+	lead := `[...document.querySelectorAll('#projects-list tr')].find((r) => r.querySelector('.tk-key')?.textContent === 'WEB')?.cells[2].textContent.trim()`
+	list.Wait(t, `document.getElementById('reconnecting')?.hidden && `+lead+` === 'Priya Raman'`, 10*time.Second)
+
+	settings.Eval(t, `(() => {
+		const s = document.getElementById('pd-lead')
+		s.value = 's-lena'
+		s.dispatchEvent(new Event('change', {bubbles: true}))
+		s.closest('form').querySelector('button[type=submit]').click()
+		return true
+	})()`, nil)
+	list.Wait(t, lead+` === 'Lena Brunner'`, 3*time.Second)
+	for _, p := range []*browsertest.Page{settings, list} {
+		if errs := p.Errors(); len(errs) > 0 {
+			t.Errorf("the page reported %q", errs)
+		}
+	}
+}

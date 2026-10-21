@@ -167,7 +167,7 @@ templ SettingsPage(s Settings) {
 				}
 				{{ lead := ui.FieldProps{ID: "pd-lead", Label: "Lead", Optional: true} }}
 				@ui.Field(lead) {
-					@ui.Select(ui.SelectProps{ID: lead.ID, Options: personOptions(s.Candidates, s.Project.Lead, "Nobody"), Attrs: map[string]any{"data-bind": "_pd.lead"}})
+					@ui.Select(ui.SelectProps{ID: lead.ID, Options: personOptions(s.Leads, s.Project.Lead, "Nobody"), Attrs: map[string]any{"data-bind": "_pd.lead"}})
 				}
 				<div class="cluster">
 					@ui.Button(ui.ButtonProps{Label: "Save", Variant: ui.Primary, Type: "submit", Attrs: map[string]any{"data-attr:aria-busy": Busy("_pd.op")}})

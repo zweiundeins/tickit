@@ -336,7 +336,10 @@ func cutDescription(tx *writer.Tx, m events.Meta, issue string, s IssueState) (b
 		editors = []string{m.Actor}
 	}
 	e := DescriptionChanged{To: descRaw(head), Upto: ds.Version, Editors: editors}
-	return true, events.Execute(Store(), tx, cutDescDecider, IssueStream.ID(issue), events.Any, e, m)
+	if err := events.Execute(Store(), tx, cutDescDecider, IssueStream.ID(issue), events.Any, e, m); err != nil {
+		return false, err
+	}
+	return true, descDocs.Cut(tx, issue, ds.Version)
 }
 
 // SetDescription replaces an issue's description with a whole document
@@ -467,8 +470,8 @@ func (c *FoldDescriptions) Apply(tx *writer.Tx) error {
 	defer func() { c.Took = time.Since(start) }()
 	since := c.At.Add(-collab.FoldAfter)
 	var oldest sql.NullInt64
-	err := tx.QueryRow(`SELECT min(e.at) FROM issue_doc d JOIN issues i ON i.id = d.issue_id AND i.deleted_at IS NULL AND d.version > i.desc_upto
-		JOIN lith_events e ON e.stream = 'issuedoc' AND e.stream_id = d.issue_id AND e.version = i.desc_upto + 1`).Scan(&oldest)
+	err := tx.QueryRow(`SELECT min(u.at) FROM collab_uncut u JOIN issues i ON i.id = u.id AND i.deleted_at IS NULL
+		WHERE u.kind = 'issuedoc'`).Scan(&oldest)
 	if err != nil {
 		return err
 	}

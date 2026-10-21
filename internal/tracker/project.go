@@ -390,6 +390,7 @@ type EditProject struct {
 	Name        *string
 	Description *string
 	Lead        *string
+	lead        *assignCheck // set by Apply for a new lead
 }
 
 func (c EditProject) Validate() error {
@@ -429,6 +430,9 @@ var editProject = projectDecider(func(c EditProject, s ProjectState) ([]ProjectE
 		}
 	}
 	if c.Lead != nil && *c.Lead != s.Lead {
+		if c.lead != nil && !c.lead.OK {
+			return nil, tabs.Refuse("lead", c.lead.Why)
+		}
 		e.Lead = c.Lead
 	}
 	if e == (ProjectEdited{}) {
@@ -438,7 +442,39 @@ var editProject = projectDecider(func(c EditProject, s ProjectState) ([]ProjectE
 })
 
 func (c EditProject) Apply(tx *writer.Tx) error {
+	if c.Lead != nil && *c.Lead != "" {
+		p, err := projectState(tx, c.Project)
+		if err != nil {
+			return err
+		}
+		if *c.Lead != p.Lead {
+			check, err := canLead(tx, c.Project, p, *c.Lead, at(c.By))
+			if err != nil {
+				return err
+			}
+			c.lead = &check
+		}
+	}
 	return projectCommand(tx, c.By, c.Project, access.Configure, editProject, c)
+}
+
+// canLead says whether a person may lead a project: anyone its issues
+// may be assigned to (FR-03).
+func canLead(tx *writer.Tx, project string, p ProjectState, person string, now time.Time) (assignCheck, error) {
+	c, err := canAssign(tx, project, p, person, now)
+	if err != nil || c.OK {
+		return c, err
+	}
+	who, err := people.Get(tx.Context(), tx, person)
+	switch {
+	case err != nil:
+		return assignCheck{}, err
+	case who.Kind == people.Deleted:
+		return assignCheck{Why: "That person does not exist."}, nil
+	case who.Inactive:
+		return assignCheck{Why: who.Name + " is deactivated and cannot lead a project."}, nil
+	}
+	return assignCheck{Why: fmt.Sprintf("%s cannot lead %s: they are not a member of it.", who.Name, p.Key)}, nil
 }
 
 // projectCommand runs a project's command after its access check.

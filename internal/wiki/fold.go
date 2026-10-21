@@ -44,8 +44,7 @@ func (c *Fold) Apply(tx *writer.Tx) error {
 	defer func() { c.Took = time.Since(start) }()
 	since := c.At.Add(-FoldAfter)
 	var oldest sql.NullInt64
-	err := tx.QueryRow(`SELECT min(e.at) FROM (SELECT page_id, max(upto) upto FROM page_versions GROUP BY page_id) v
-		JOIN lith_events e ON e.stream = 'pagedoc' AND e.stream_id = v.page_id AND e.version = v.upto + 1`).Scan(&oldest)
+	err := tx.QueryRow(`SELECT min(at) FROM collab_uncut WHERE kind = 'pagedoc'`).Scan(&oldest)
 	if err != nil {
 		return err
 	}
