@@ -38,6 +38,9 @@ type Shell struct {
 	// Views are the views the page's stream watches besides the tab's, the
 	// person's and the demo's, as "kind:arg" (docs/architecture.md).
 	Views []string
+	// Present says that a view of Views has a presence row, for the
+	// first-visit hint.
+	Present bool
 	// Create is the dialog the header's Create opens, with the id
 	// CreateID; nil shows a placeholder.
 	Create templ.Component

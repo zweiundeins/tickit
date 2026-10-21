@@ -117,18 +117,32 @@ templ dashDeleteFooter(id string) {
 	@ui.Button(ui.ButtonProps{Label: "Delete", Variant: ui.Danger, Attrs: templ.Attributes{"data-d": id, "data-on:click": dashDelete, "data-attr:aria-busy": dashBusy}})
 }
 
-// DashboardGridRegion is a dashboard's shared region: its name and owner,
-// and its gadgets in order.
+// DashboardGridRegion is a dashboard's shared regions: its name and owner
+// beside the presence row, and its gadgets in order.
 templ DashboardGridRegion(g DashboardGrid) {
+	<div class="tk-dash__head">
+		@DashboardHead(g)
+		@Presence(PresenceID(DashboardPresence(g.Dashboard.ID)), nil)
+	</div>
+	@DashboardGadgets(g)
+}
+
+// DashboardHead is a dashboard's name and owner.
+templ DashboardHead(g DashboardGrid) {
+	{{ d := g.Dashboard }}
+	<div id={ DashboardHeadID } class="tk-pagehead">
+		<div>
+			<p class="tk-eyebrow">Dashboard</p>
+			<h1>{ d.Name }</h1>
+		</div>
+		@ui.Byline(ui.BylineProps{Person: UIPerson(g.Owner), Verb: "made it", At: d.Created.In(Zone), Now: g.Now, Href: PersonHref(g.Owner.ID)})
+	</div>
+}
+
+// DashboardGadgets is a dashboard's gadgets in order.
+templ DashboardGadgets(g DashboardGrid) {
 	{{ d := g.Dashboard }}
 	<div id={ DashboardGridID } data-owner={ d.Owner }>
-		<div class="tk-pagehead">
-			<div>
-				<p class="tk-eyebrow">Dashboard</p>
-				<h1>{ d.Name }</h1>
-			</div>
-			@ui.Byline(ui.BylineProps{Person: UIPerson(g.Owner), Verb: "made it", At: d.Created.In(Zone), Now: g.Now, Href: PersonHref(g.Owner.ID)})
-		</div>
 		if len(g.Gadgets) == 0 {
 			@ui.EmptyState(ui.EmptyProps{Icon: "dashboard", Title: "No gadgets yet", Text: "Its owner adds gadgets: a saved filter's issues, issues by status, created against resolved, their issues and the activity."})
 		} else {
@@ -201,6 +215,7 @@ templ AssignedRegions(a Assigned) {
 
 // DashboardGone replaces a dashboard's grid once it is deleted.
 templ DashboardGone() {
+	<div id={ DashboardHeadID } class="tk-pagehead"></div>
 	<div id={ DashboardGridID }>
 		@ui.EmptyState(ui.EmptyProps{Icon: "trash", Title: "This dashboard was deleted", Text: "Its owner deleted it.", Action: ui.Button(ui.ButtonProps{Label: "All dashboards", Href: "/dashboards"})})
 	</div>
