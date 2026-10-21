@@ -114,13 +114,16 @@ type AddInlineComment struct {
 	From, To int
 	Text     string
 	Body     json.RawMessage
+	// On, for the seed, puts it on the first text of the head that holds
+	// On instead of From and To at Base.
+	On string
 }
 
 func (c AddInlineComment) Validate() error {
 	if err := checkBy(c.By); err != nil {
 		return err
 	}
-	if c.ID != "" && !ValidID(c.ID) || !ValidID(c.Page) || c.Base < 0 || c.From < 0 || c.To <= c.From || len(c.Text) > doc.Tickit().Limits().StoredBytes {
+	if c.ID != "" && !ValidID(c.ID) || !ValidID(c.Page) || c.Base < 0 || c.From < 0 || c.To <= c.From && c.On == "" || len(c.Text) > doc.Tickit().Limits().StoredBytes {
 		return errors.New("wiki: a malformed inline comment")
 	}
 	return nil
@@ -145,6 +148,17 @@ func (c AddInlineComment) ApplyResult(tx *writer.Tx) ([]byte, error) {
 	ds, err := docState(tx, c.Page)
 	if err != nil {
 		return nil, err
+	}
+	if c.On != "" {
+		head, err := pageDocs.StateDoc(tx.Context(), tx, c.Page, ds)
+		if err != nil {
+			return nil, err
+		}
+		var ok bool
+		if c.From, c.To, ok = doc.Find(head, c.On); !ok {
+			return nil, tabs.Refuse("anchor", "Select some text of the page to comment on.")
+		}
+		c.Epoch, c.Base, c.Text = ds.Epoch, ds.Version, c.On
 	}
 	if ds.Epoch != c.Epoch {
 		return nil, tabs.Refuse("anchor", "The page was reset since you selected the text: select it again.")

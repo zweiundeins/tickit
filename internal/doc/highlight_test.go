@@ -160,3 +160,14 @@ func itoa(n int) string {
 	}
 	return itoa(n/10) + string(rune('0'+n%10))
 }
+
+// Find puts a seeded inline comment on its text.
+func TestFind(t *testing.T) {
+	d := mustDoc(t, docOf(`{"type":"paragraph","content":[`+text("a😀")+`]}`, `{"type":"paragraph","content":[`+text("say hello")+`]}`))
+	if f, to, ok := Find(d, "hello"); !ok || f != 10 || to != 15 {
+		t.Errorf("hello at %d %d %v", f, to, ok)
+	}
+	if _, _, ok := Find(d, "absent"); ok {
+		t.Error("found what is not there")
+	}
+}

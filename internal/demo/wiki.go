@@ -282,7 +282,11 @@ func (wikiSeeder) PageSteps(r *Run) ([]Step, error) {
 		id := r.PageCommentID(n)
 		n++
 		at := r.Time(cm.At)
-		add(at, PhaseChange, "comment on "+cm.Page, wiki.AddComment{By: r.By(cm.By, at), ID: id, Page: page, Body: body})
+		if cm.On != "" {
+			add(at, PhaseChange, "inline comment on "+cm.Page, wiki.AddInlineComment{By: r.By(cm.By, at), ID: id, Page: page, On: cm.On, Body: body})
+		} else {
+			add(at, PhaseChange, "comment on "+cm.Page, wiki.AddComment{By: r.By(cm.By, at), ID: id, Page: page, Body: body})
+		}
 		for _, rp := range cm.Replies {
 			rb, err := r.Doc(string(rp.Body), cm.Space)
 			if err != nil {
@@ -291,6 +295,10 @@ func (wikiSeeder) PageSteps(r *Run) ([]Step, error) {
 			at := r.Time(rp.At)
 			add(at, PhaseChange, "reply on "+cm.Page, wiki.AddComment{By: r.By(rp.By, at), ID: r.PageCommentID(n), Page: page, Parent: id, Body: rb})
 			n++
+		}
+		if cm.On != "" && cm.Resolved != nil {
+			at := r.Time(cm.Resolved.At)
+			add(at, PhaseChange, "resolve on "+cm.Page, wiki.ResolveInline{By: r.By(cm.Resolved.By, at), Comment: id, Resolved: true})
 		}
 	}
 	return steps, nil

@@ -154,6 +154,24 @@ func InlineText(d Doc, from, to int) (s string, ok bool) {
 	return d.TextBetween(from, to, "", func(*Node) string { return "" }), true
 }
 
+// Find is the range of the first text node that holds s.
+func Find(d Doc, s string) (from, to int, ok bool) {
+	if s == "" {
+		return 0, 0, false
+	}
+	d.Descendants(func(n *Node, pos int, _ *Node, _ int) bool {
+		if ok {
+			return false
+		}
+		if i := strings.Index(n.text, s); n.typ.isText && i >= 0 {
+			from = pos + utf16Len(n.text[:i])
+			to, ok = from+utf16Len(s), true
+		}
+		return !ok
+	})
+	return from, to, ok
+}
+
 // Quote is the text between from and to as a list of comments shows it:
 // blocks separated by a space, at most n characters with an ellipsis.
 func Quote(d Doc, from, to, n int) string {
