@@ -134,7 +134,7 @@ The header holds the brand, Projects, Spaces, Filters and Dashboards with the cu
 }
 ```
 
-Variants are `Primary` (one per view), `Secondary`, `Ghost` and `Danger`. `Command: "show-modal", CommandFor: id` opens a dialog without script. A field's message element is always present and polite, so a refusal that arrives later is read (NFR-48.2); a pending input is `Readonly` (dashed). Also: `ui.Textarea`, `ui.Select` (native, for short plain lists), `ui.Checkbox`, `ui.Toggle` (role=switch), `ui.RadioGroup` (with `Segmented` for a row of choices with icons, using `ui.TypeMark` and `ui.PriorityMark` as option icons), `ui.Picker` (sb-select: searchable, several, remote) and `ui.DatePicker` (sb-date-picker). Pickers carry their own label inside the component, so they take no Field; `HideLabel` keeps it for screen readers where the page names the field already (a row of an issue's details), `Size: ui.SizeSM` makes the control as tall as a small button, and `Confirm` marks a value the server has not confirmed (dashed, `:state(pending)`). A picker always renders its `value` attribute, `value=""` included, since Starbase ignores a removed one. A single picker selects its text when it takes the focus, so a typed name replaces the value it shows. `ui.CopyButton` (sb-copy-button) copies a text, or with `Path` the page's origin and a path, which a shared view can render without knowing the host; it says "Copied" (or `Copied`) beside itself in a polite status.
+Variants are `Primary` (one per view), `Secondary`, `Ghost` and `Danger`. `Command: "show-modal", CommandFor: id` opens a dialog without script. A field's message element is always present and polite, so a refusal that arrives later is read (NFR-48.2); a pending input is `Readonly` (dashed). Also: `ui.Textarea`, `ui.Select` (native, for short plain lists), `ui.Checkbox`, `ui.Toggle` (role=switch), `ui.RadioGroup` (with `Segmented` for a row of choices with icons, using `ui.TypeMark` and `ui.PriorityMark` as option icons), `ui.Picker` (sb-select: searchable, several, remote) and `ui.DatePicker` (sb-date-picker). Pickers carry their own label inside the component, so they take no Field; `HideLabel` keeps it for screen readers where the page names the field already (a row of an issue's details), `Size: ui.SizeSM` makes the control as tall as a small button, and `Confirm` marks a value the server has not confirmed (dashed, `:state(pending)`). A picker always renders its `value` attribute, `value=""` included, since Starbase ignores a removed one. Typing into a single picker searches the typed text alone, whatever it showed. `ui.CopyButton` (sb-copy-button) copies a text, or with `Path` the page's origin and a path, which a shared view can render without knowing the host; it says "Copied" (or `Copied`) beside itself in a polite status.
 
 ### Menus and layers
 
@@ -150,7 +150,7 @@ Variants are `Primary` (one per view), `Secondary`, `Ghost` and `Danger`. `Comma
 @ui.Tip("Calm Lynx, away") { …a focusable anchor… }
 ```
 
-`Menu` is a native popover anchored to its button: Escape and a click outside close it, the focus returns to the button, arrow keys move through items. `ActionMenu` is Starbase's sb-dropdown, for submenus; it emits `sb-select {name, value}`. `Dialog` and `SidePanel` are modal `<dialog>`s: focus stays inside, Escape closes, the focus returns (NFR-47.2). A panel's body is a container of its own, so an issue laid out for a page stacks inside it. Give the first field `autofocus`.
+`Menu` is a native popover anchored to its button: Escape and a click outside close it, the focus returns to the button, arrow keys move through items. `ActionMenu` is Starbase's sb-dropdown, for submenus; it emits `sb-select {name, value}`. Rows that each need the same menu share one sb-context-menu (load "context-menu"): the page renders the menu once, as a `<template data-sb-menu>` of `.tk-menu__item` buttons with `role="menuitem"` and a `data-action`, in a `sb-context-menu.tk-menu` with `data-ignore-morph`, and each row has a `ContextMenuButton` with its `ContextID` and, as attributes, the actions checked (`data-menu-checked`, on items with `data-menu-check="radio"`), hidden (`data-menu-hidden`) or disabled. The menu emits `sb-menu-action {action, contextId}`; a checked mark changes when the next frame brings the row's new attributes. The accounts in admin use it. `Dialog` and `SidePanel` are modal `<dialog>`s: focus stays inside, Escape closes, the focus returns (NFR-47.2). A panel's body is a container of its own, so an issue laid out for a page stacks inside it. Give the first field `autofocus`.
 
 ### Navigation
 
@@ -167,7 +167,7 @@ Variants are `Primary` (one per view), `Secondary`, `Ghost` and `Danger`. `Comma
 
 `Tabs` is sb-tabs: the panels are light-DOM children in slots, so live regions inside them still morph by id; the issue's Comments, History and Activity bind `selected` to a signal (`data-attr:selected`) and set it from `sb-tab-change`. Real tabs only: navigation between pages with their own URL is `TabNav` (a project's tabs, admin's).
 
-`Tree` is the ARIA tree pattern rendered by the server: links as tree items, one tab stop, Up and Down through visible items, Right and Left to open and close, Home and End, Enter to follow. Expand the ancestors of the current page in `Items`. Open and closed state survives frames (`data-preserve-attr`). It stays tickit's own rather than sb-tree, whose items are not links (no Enter to follow, no new tab, nothing before its bundle runs), whose icons are text glyphs and which has no `aria-current` and no meta after the label.
+`Tree` is Starbase's sb-tree on the server's nested lists (load "tree"): items with `Href` are links (Enter and a click follow them, a middle click opens a tab), the `Current` one is `aria-current="page"` and its tab stop, its branches open by themselves, and `Meta` shows muted after the label. Up and Down move, Right and Left open and close, Home and End jump. Open and closed branches are the component's own state, so frames keep what the reader opened; an `Expanded` the server changes wins. Before the bundle runs the lists show as plain links. Items without `Href`, with `Name` and `Value`, make a tree to choose from: Enter or a click selects, `sb-change {name, value}` reports it (the Move dialog). Each row's icon is a copy of the item's pixel SVG (`data-icon`), whose second shade is an attribute since the page's styles do not reach the copy. The page tree renders whole: lazy branches (`data-lazy`, `sb-load`) would need each tab's open branches in the shared tree view, which the next frame would drop.
 
 ### Long lists
 
@@ -288,7 +288,7 @@ The toolbar is `role=toolbar` with one tab stop and Left and Right along it; eve
 go tool task vendor-starbase STARBASE=/develop/starbase
 ```
 
-Vendored: `copy-button`, `date-picker`, `dropdown`, `popover`, `select`, `tabs`, `toast`, `tree`, `virtual-scroll`. The modules stay as Starbase wrote them; `edge.Static` minifies them in production. A page loads a component by naming it in `Page.Components` (`web.StarbaseScripts` adds the modules it renders, in order, after the import map); `/design` loads them all.
+Vendored: `context-menu`, `copy-button`, `date-picker`, `dropdown`, `popover`, `select`, `tabs`, `toast`, `tree`, `virtual-scroll`. The modules stay as Starbase wrote them; `edge.Static` minifies them in production. A page loads a component by naming it in `Page.Components` (`web.StarbaseScripts` adds the modules it renders, in order, after the import map); `/design` loads them all.
 
 Where the app uses them:
 
@@ -296,7 +296,7 @@ Where the app uses them:
 | --- | --- | --- |
 | sb-tabs | `ui.Tabs` | the issue's Comments, History and Activity, on its page and in the side panel (the issue page, board, backlog, issue list, search: `web.panelComponents`) |
 | sb-virtual-scroll | `ui.VirtualList` | the activity feeds of the home page, a project's Activity tab and a space's overview (`views.FeedWindow`, `web.feedComponents`) |
-| sb-tree | | not used: the page tree is `ui.Tree` (see Navigation) |
+| sb-tree | `ui.Tree` | a space's page tree beside its pages (`views.PageTree`, `web.treeComponents`), and the places of a page's Move dialog |
 
 The other lists stay plain on purpose: a person's page and a dashboard's activity gadget show 20 and 10 entries, the moderation page the newest 50, search results are pages of a ranked result with numbered links, and an issue's History and Activity are part of the issue's one view, which renders them whole.
 
@@ -309,8 +309,9 @@ Where the app uses them (the styleguide shows them all):
 | sb-copy-button | `ui.CopyButton` | "Copy link" on an issue (page and panel) and on a page in view |
 | sb-toast | `ui.Toasts` | the issue list: a saved filter, once its dialog closed |
 | sb-dropdown | `ui.ActionMenu` | `/design` only |
+| sb-context-menu | `ui.ContextMenuButton` | the accounts' row menu in admin: one menu for every row, the row's role checked, Reactivate, Deactivate and Erase as they apply (a page of 50 accounts went from 472 KB to 67 KB) |
 
-Native selects stay for short fixed lists: priority, type, category, roles, a workflow's statuses and columns. The hand-made menus stay too: each does something sb-dropdown's items cannot, so none was replaced. The board's card menu hides the columns a workflow rule forbids and is one menu for every card (NFR-37, `TestBoardFrameSize`), the issue's "More actions" hides "Delete issue" by the viewer's style, the status and priority menus show the current value checked, the saved filters are links (a middle click opens a tab), and the admin's row menu mixes a checked role with actions.
+Native selects stay for short fixed lists: priority, type, category, roles, a workflow's statuses and columns. The other hand-made menus stay. The board's card menu is one menu for every card already (NFR-37, `TestBoardFrameSize`), and the columns a card may not go to come from the rules the lanes carry, which sb-context-menu would need on every card as `data-menu-hidden`. The issue's status, priority, type, sprint and components menus show a pixel icon or a lozenge per item and the current value checked; sb-dropdown's icons are text and its trigger a slot, so they would look and read differently from every other menu. The saved filters' menus are links in `ui.Menu` already. The bulk bar's menus are one per list, not per row.
 
 The issue's pickers sit in the frame of the shared view `issue:<id>`: a frame updates their `value` and `options` attributes, which never touches the open list, the typed search or the focus inside the shadow root (MP-03.3). The frame's `sb-change` handler sends the field with the version the page showed when the picker took the focus (MP-08.2); a refusal reverts the picker, a conflict keeps the person's value for "Use it anyway".
 

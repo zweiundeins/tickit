@@ -58,6 +58,7 @@ templ AdminAccountsTab(a AdminAccounts) {
 				@ui.Button(ui.ButtonProps{Label: "Filter", Icon: "filter", Type: "submit", Size: ui.SizeSM})
 			</form>
 			@AdminAccountsTable(a)
+			@adminMenu()
 		</div>
 		@adminCreateForm()
 	</div>
@@ -111,22 +112,8 @@ templ AdminAccountsTable(a AdminAccounts) {
 								}
 							</td>
 							<td class="tk-admin__actions">
-								@ui.Menu(ui.MenuProps{ID: "role-" + r.Person.ID, Label: "Change " + r.Person.Name + "'s role or status", Icon: "more", IconOnly: true, Size: ui.SizeSM, Align: "end"}) {
-									@ui.MenuLabel("Site role")
-									for _, role := range []people.SiteRole{people.NoRole, people.Moderator, people.Admin} {
-										{{ checked := r.Person.Role == role }}
-										@ui.MenuItem(ui.MenuItemProps{Label: siteRoleName(role), Checked: &checked, Attrs: templ.Attributes{"data-account": r.Person.ID, "data-role": string(role), "data-on:click": adminRole, "data-on:datastar-fetch": adminFailed}})
-									}
-									@ui.MenuSeparator()
-									if r.Status == "inactive" {
-										@ui.MenuItem(ui.MenuItemProps{Label: "Reactivate", Icon: "restore", Attrs: templ.Attributes{"data-account": r.Person.ID, "data-active": "true", "data-on:click": adminActive, "data-on:datastar-fetch": adminFailed}})
-									} else if r.Person.ID != a.Me {
-										@ui.MenuItem(ui.MenuItemProps{Label: "Deactivate", Icon: "lock", Danger: true, Attrs: templ.Attributes{"data-account": r.Person.ID, "data-active": "false", "data-on:click": adminActive, "data-on:datastar-fetch": adminFailed}})
-									}
-									if r.Person.ID != a.Me {
-										@ui.MenuItem(ui.MenuItemProps{Label: "Erase…", Icon: "trash", Danger: true, Attrs: templ.Attributes{"data-account": r.Person.ID, "data-on:click": adminErase, "data-on:datastar-fetch": adminFailed}})
-									}
-								}
+								@ui.ContextMenuButton(ui.ContextMenuButtonProps{Menu: AdminMenuID, ContextID: r.Person.ID, Label: "Change " + r.Person.Name + "'s role or status", Size: ui.SizeSM,
+									Attrs: templ.Attributes{"data-menu-checked": "role:" + string(r.Person.Role), "data-menu-hidden": adminHidden(r, a.Me)}})
 							</td>
 						</tr>
 					}
@@ -135,6 +122,40 @@ templ AdminAccountsTable(a AdminAccounts) {
 		}
 		@ui.Pagination(ui.PaginationProps{Page: max(a.Filter.Page, 1), Pages: a.Pages(), Total: a.Total, Noun: "accounts", Href: a.href})
 	</div>
+}
+
+// adminMenu is the one menu of every account's row (sb-context-menu):
+// each row's button says which role is checked and what does not apply.
+templ adminMenu() {
+	<sb-context-menu id={ AdminMenuID } class="tk-menu tk-menu--end" aria-label="Account actions" data-ignore-morph data-on:sb-menu-action={ adminMenuAction } data-on:datastar-fetch={ adminFailed }>
+		<template data-sb-menu>
+			<div role="group" aria-label="Site role">
+				<div class="tk-menu__label-group tk-eyebrow" aria-hidden="true">Site role</div>
+				for _, role := range []people.SiteRole{people.NoRole, people.Moderator, people.Admin} {
+					<button type="button" class="tk-menu__item" role="menuitem" data-action={ "role:" + string(role) } data-menu-check="radio">
+						<span class="tk-menu__check">
+							@ui.Icon("check")
+						</span>
+						<span class="tk-menu__label">{ siteRoleName(role) }</span>
+					</button>
+				}
+			</div>
+			<div class="tk-menu__sep" role="separator"></div>
+			<button type="button" class="tk-menu__item" role="menuitem" data-action="reactivate">
+				@ui.Icon("restore")
+				<span class="tk-menu__label">Reactivate</span>
+			</button>
+			<button type="button" class="tk-menu__item tk-menu__item--danger" role="menuitem" data-action="deactivate">
+				@ui.Icon("lock")
+				<span class="tk-menu__label">Deactivate</span>
+			</button>
+			<button type="button" class="tk-menu__item tk-menu__item--danger" role="menuitem" data-action="erase">
+				@ui.Icon("trash")
+				<span class="tk-menu__label">Erase…</span>
+			</button>
+		</template>
+	</sb-context-menu>
+	<button id={ AdminMenuID + "-erase" } type="button" hidden data-on:click={ adminErase } data-on:datastar-fetch={ adminFailed }></button>
 }
 
 func statusLabel(s string) string {

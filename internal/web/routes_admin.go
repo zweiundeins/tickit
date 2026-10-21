@@ -77,7 +77,7 @@ func (s *Server) adminPage(tab views.AdminTab, build adminTab) http.HandlerFunc 
 			if err != nil {
 				return Page{}, err
 			}
-			return Page{Title: "Administration", Nav: "admin", Width: "full", Views: vs, Body: within(views.Admin(tab), body)}, nil
+			return Page{Title: "Administration", Nav: "admin", Width: "full", Views: vs, Components: []string{"context-menu"}, Body: within(views.Admin(tab), body)}, nil
 		})
 	}
 }

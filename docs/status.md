@@ -107,8 +107,8 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | --- | --- | --- | --- | --- | --- |
 | FR-75 | Spaces and their home pages | Must | done | internal/web/wiki_test.go: TestWikiPages; internal/demo/seed/content_test.go: TestPageCounts |  |
 | FR-76 | Create a space | Should | done | internal/wiki/commands_test.go: TestCreateSpace; internal/web/wiki_test.go: TestWikiPages |  |
-| FR-78 | Page tree | Must | done | internal/wiki/commands_test.go: TestMoves; internal/web/wiki_test.go: TestWikiLive |  |
-| FR-79 | Move and reorder pages | Should | done | internal/wiki/commands_test.go: TestMoves | Moves go through a Move dialog with a picker of targets; the tree has no drag. |
+| FR-78 | Page tree | Must | done | internal/wiki/commands_test.go: TestMoves; internal/web/wiki_test.go: TestWikiLive; e2e/sbnav_test.go: TestPageTree (Chromium) | Starbase's sb-tree on the server's lists. |
+| FR-79 | Move and reorder pages | Should | done | internal/wiki/commands_test.go: TestMoves; e2e/sbnav_test.go: TestMoveDialogTree (Chromium) | Moves go through a Move dialog that picks the place in a tree of the spaces and their pages; the page tree has no drag. |
 | FR-80 | View a page | Must | done | internal/web/wiki_test.go: TestWikiPages; internal/web/wiki_test.go: TestWikiLive; e2e/editor_reconnect_test.go: TestReaderSeesEdits (Chromium) |  |
 | FR-81 | Create a page | Must | done | internal/web/wiki_test.go: TestWikiPages; internal/wiki/commands_test.go: TestPageTitles; internal/web/wiki_test.go: TestWikiLive |  |
 | FR-82 | Rich-text editor | Must | done | editor/test/run.mjs: "input rules and shortcuts (FR-82.2)" (Chromium); editor/test/run.mjs: "paste keeps supported formatting only and offers chips and page links (FR-82.3, DM-06)" (Chromium); editor/test/run.mjs: "undo takes back only the own changes (MP-05.7, FR-82.4)" (Chromium); editor/test/run.mjs: "a task checkbox toggles with one attr step; others see it (FR-82.1)" (Chromium); internal/doc/fuzz_test.go: TestRebaseGenerated | The editor's browser tests run with `node test/run.mjs` in editor/, not with go test. |
@@ -160,7 +160,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | ID | Title | Priority | Status | Tests | Note |
 | --- | --- | --- | --- | --- | --- |
 | FR-140 | Account list | Should | done | internal/web/demo_test.go: TestStaffOnly | No test cites it; `/admin` lists accounts 50 a page with search, role and status filters and last login, and `/admin/guests` the guests of 24 hours; tests check only the 403s and screenshots (e2e/demo_test.go: TestDemoShots, Chromium, needs TICKIT_SHOTS). |
-| FR-142 | Assign site roles | Should | done | internal/web/demo_test.go: TestAccounts |  |
+| FR-142 | Assign site roles | Should | done | internal/web/demo_test.go: TestAccounts; e2e/sbnav_test.go: TestAdminRowMenu (Chromium) | The accounts share one row menu (sb-context-menu). |
 | FR-143 | Deactivate and reactivate accounts | Should | done | internal/web/demo_test.go: TestAccounts | Reactivation restoring login is implemented in `people.SetActive` but not tested. |
 
 ## Import, export and API
@@ -264,7 +264,7 @@ No Must or Should requirements.
 | --- | --- | --- | --- | --- | --- |
 | NFR-45 | WCAG 2.2 AA | Should | partly | e2e/a11y_test.go: TestAxe (Chromium, TICKIT_AXE); internal/web/contrast_test.go: TestContrast | axe finds no serious or critical issue on the pages of NFR-45 in both themes and a keyboard walk is recorded (docs/accessibility.md); no screen reader check was run (NFR-45.1). |
 | NFR-46 | Zoom | Must | done | e2e/a11y_test.go: TestNarrowPages (Chromium); e2e/dashboard_layout_test.go: TestDashboardRowsFit (Chromium, Firefox); internal/web/stream_test.go: TestZoom; internal/web/prefs_test.go: TestEveryPage | Eight pages at 320 CSS pixels with no sideways scroll; zoom is allowed on every page. |
-| NFR-47 | Keyboard | Must | done | e2e/board_test.go: TestBoardKeyboardMove (Chromium); e2e/list_test.go: TestListTypingAndHistory (Chromium); e2e/list_test.go: TestListPanel (Chromium); e2e/notify_test.go: TestBellLive (Chromium) | Tree pattern, dialogs and panels are built (internal/ui/expr.go, overlays.templ), but no test drives the page tree keys or checks that focus returns. |
+| NFR-47 | Keyboard | Must | done | e2e/board_test.go: TestBoardKeyboardMove (Chromium); e2e/list_test.go: TestListTypingAndHistory (Chromium); e2e/list_test.go: TestListPanel (Chromium); e2e/notify_test.go: TestBellLive (Chromium); e2e/sbnav_test.go: TestPageTree, TestMoveDialogTree, TestAdminRowMenu (Chromium) | The page tree's keys, the Move dialog's tree and the admin's row menu (Escape gives the focus back to the row's button) have tests; dialogs and panels have none for the focus return. |
 | NFR-48 | Live updates and assistive technology | Must | done | e2e/notify_test.go: TestBellLive (Chromium); e2e/issue_test.go: TestIssueEditInPlace (Chromium); e2e/frames_test.go: TestFramesKeepPlace (Chromium) |  |
 | NFR-49 | Accessible editor | Should | done | editor/test/run.mjs: "toolbar: named buttons, aria-pressed, one tab stop, Alt+F10 and arrows (NFR-49, NFR-47)" (Chromium); editor/test/run.mjs: "remote carets: bar and name in the person's hue, at their place, hidden from screen readers (MP-06)" (Chromium); editor/test/run.mjs: "toDOM writes docs/editor.md's HTML of a document" (Chromium) | Node tests with puppeteer-core (npm test in editor/), not go test. |
 | NFR-50 | Semantics, colour and contrast | Must | done | internal/web/contrast_test.go: TestContrast; internal/ui/ui_test.go: TestIcons |  |

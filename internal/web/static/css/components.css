@@ -997,8 +997,28 @@
 		color: var(--tk-accent-text);
 	}
 
+	/* sb-context-menu places itself by its trigger or the pointer. */
+	sb-context-menu.tk-menu {
+		position-area: none;
+
+		&:not(:popover-open) {
+			display: none;
+		}
+	}
+
+	.tk-menu__item[aria-checked] {
+		&[aria-checked="true"] {
+			color: var(--tk-accent-text);
+		}
+
+		&[aria-checked="false"] .tk-menu__check > .tk-icon {
+			visibility: hidden;
+		}
+	}
+
 	.tk-menu__sep {
 		margin: var(--tk-space-1) calc(-1 * var(--tk-space-1));
+		border-block-start: 1px solid var(--tk-border-subtle);
 	}
 
 	.tk-menu__label-group {

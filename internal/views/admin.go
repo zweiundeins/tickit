@@ -222,6 +222,25 @@ func personOr(m map[string]people.Person, id string) people.Person {
 	return people.Person{ID: id, Name: id}
 }
 
+// AdminMenuID is the accounts' row menu.
+const AdminMenuID = "admin-row-menu"
+
+// adminHidden lists the row menu's actions that do not apply to an
+// account: the other of Reactivate and Deactivate, and for the admin's
+// own account Deactivate and Erase.
+func adminHidden(r people.AccountRow, me string) string {
+	switch {
+	case r.Person.ID == me && r.Status == "inactive":
+		return "deactivate erase"
+	case r.Person.ID == me:
+		return "reactivate deactivate erase"
+	case r.Status == "inactive":
+		return "deactivate"
+	default:
+		return "reactivate"
+	}
+}
+
 // The admin's and the moderator's actions: one pending op each page.
 var (
 	adminSignals = `{_admin: {op: '', ok: false, msg: '', email: '', username: '', name: '', role: 'moderator', password: ''}}`
@@ -232,18 +251,23 @@ var (
 	adminCreate  = Act("_admin.op", "/cmd/admin/create", "email: $_admin.email, username: $_admin.username, name: $_admin.name, role: $_admin.role, password: $_admin.password")
 	adminRole    = Act("_admin.op", "/cmd/admin/role", "account: el.dataset.account, role: el.dataset.role")
 	adminActive  = Act("_admin.op", "/cmd/admin/active", "account: el.dataset.account, active: el.dataset.active === 'true'")
-	adminErase   = Ask("Erase this account? Its email, username, name and sessions are deleted for good, and what it did shows as by \"Deleted person\".", "Erase", Act("_admin.op", "/cmd/admin/erase", "account: el.dataset.account"))
-	adminReset   = Ask("Reset the demo now? Every visitor's changes are deleted, and every open page shows the fresh demo.", "Reset now", Act("_admin.op", "/cmd/admin/reset", ""))
-	modSignals   = `{_mod: {op: '', ok: false, msg: '', reason: ''}}`
-	modSettled   = Settle("_mod.op", "$_mod.ok = o.ok, $_mod.msg = o.ok ? 'Done.' : o.msg")
-	modFailed    = Failed("_mod.op")
-	modBusy      = Busy("_mod.op")
-	modKind      = `$_mod.msg ? ($_mod.ok ? 'ok' : 'refused') : false`
-	modAct       = Act("_mod.op", "/cmd/moderation/act", "action: el.dataset.action, kind: el.dataset.kind, id: el.dataset.id, reason: $_mod.reason")
-	modDelete    = Ask("Delete this for good? It cannot be restored.", "Delete for good", modAct)
-	modBlock     = Act("_mod.op", "/cmd/moderation/block", "person: el.dataset.person, reason: $_mod.reason")
-	modUnblock   = Act("_mod.op", "/cmd/moderation/unblock", "person: el.dataset.person")
-	modDismiss   = Act("_mod.op", "/cmd/moderation/dismiss", "report: +el.dataset.report")
+	// adminMenuAction runs the row menu's action for the account it opened
+	// for; Erase asks first, through the hidden button beside the menu.
+	adminMenuAction = `((a, id) => a.startsWith('role:') ? ` + Act("_admin.op", "/cmd/admin/role", "account: id, role: a.slice(5)") +
+		` : a === 'reactivate' || a === 'deactivate' ? ` + Act("_admin.op", "/cmd/admin/active", "account: id, active: a === 'reactivate'") +
+		` : a === 'erase' && ((b) => (b.dataset.account = id, b.click()))(document.getElementById('` + AdminMenuID + `-erase')))(evt.detail.action, evt.detail.contextId)`
+	adminErase = Ask("Erase this account? Its email, username, name and sessions are deleted for good, and what it did shows as by \"Deleted person\".", "Erase", Act("_admin.op", "/cmd/admin/erase", "account: el.dataset.account"))
+	adminReset = Ask("Reset the demo now? Every visitor's changes are deleted, and every open page shows the fresh demo.", "Reset now", Act("_admin.op", "/cmd/admin/reset", ""))
+	modSignals = `{_mod: {op: '', ok: false, msg: '', reason: ''}}`
+	modSettled = Settle("_mod.op", "$_mod.ok = o.ok, $_mod.msg = o.ok ? 'Done.' : o.msg")
+	modFailed  = Failed("_mod.op")
+	modBusy    = Busy("_mod.op")
+	modKind    = `$_mod.msg ? ($_mod.ok ? 'ok' : 'refused') : false`
+	modAct     = Act("_mod.op", "/cmd/moderation/act", "action: el.dataset.action, kind: el.dataset.kind, id: el.dataset.id, reason: $_mod.reason")
+	modDelete  = Ask("Delete this for good? It cannot be restored.", "Delete for good", modAct)
+	modBlock   = Act("_mod.op", "/cmd/moderation/block", "person: el.dataset.person, reason: $_mod.reason")
+	modUnblock = Act("_mod.op", "/cmd/moderation/unblock", "person: el.dataset.person")
+	modDismiss = Act("_mod.op", "/cmd/moderation/dismiss", "report: +el.dataset.report")
 	// The report dialog (DM-08), which a Report button opens with its
 	// thing's kind and id in data-report-kind and data-report-id.
 	reportSignals  = `{_report: {op: '', kind: '', id: '', reason: '', msg: '', ok: false}}`

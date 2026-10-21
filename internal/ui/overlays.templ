@@ -73,6 +73,39 @@ templ Menu(p MenuProps) {
 	</div>
 }
 
+// ContextMenuButtonProps is a button that opens a page's one
+// sb-context-menu for the thing ContextID names.
+type ContextMenuButtonProps struct {
+	Menu      string // the menu's id
+	ContextID string
+	// Label is the button's accessible name: "Change Ada's role".
+	Label string
+	Icon  string // "more" by default
+	Size  Size
+	// Attrs go on the button: data-menu-checked, data-menu-hidden,
+	// data-menu-disabled, data-menu-param-*.
+	Attrs templ.Attributes
+}
+
+// ContextMenuButton is an icon button for an sb-context-menu; load its
+// bundle on the page ("context-menu").
+templ ContextMenuButton(p ContextMenuButtonProps) {
+	<button
+		type="button"
+		class={ menuButtonClass(MenuProps{IconOnly: true, Size: p.Size}) }
+		aria-haspopup="menu"
+		aria-expanded="false"
+		aria-controls={ p.Menu }
+		aria-label={ p.Label }
+		data-menu-for={ p.Menu }
+		data-context-id={ p.ContextID }
+		data-preserve-attr="style aria-expanded"
+		{ p.Attrs... }
+	>
+		@Icon(iconOr(p.Icon, "more"))
+	</button>
+}
+
 func menuButtonClass(p MenuProps) string {
 	v := p.Variant
 	if v == "" {
