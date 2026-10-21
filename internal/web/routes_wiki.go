@@ -285,7 +285,10 @@ func (s *Server) pageView(ctx context.Context, q sqlite.Querier, me people.Perso
 	if err != nil {
 		return Page{}, err
 	}
-	pageViews := []string{"page:" + p.ID, "pagedoc:" + p.ID, "pagepeople:" + p.ID, "tree:" + p.ID}
+	if props.Inline, err = s.inlineItems(ctx, q, p.ID); err != nil {
+		return Page{}, err
+	}
+	pageViews := []string{"page:" + p.ID, "pagedoc:" + p.ID, "inline:" + p.ID, "pagepeople:" + p.ID, "tree:" + p.ID}
 	if section == "home" {
 		feed, err := s.ScopeActivity(ctx, q, access.SpaceScope(sp.ID), time.Now())
 		if err != nil {
@@ -296,8 +299,9 @@ func (s *Server) pageView(ctx context.Context, q sqlite.Querier, me people.Perso
 	}
 	return Page{
 		Title: p.Title, Nav: "spaces", Sidebar: sidebar, SidebarLabel: "Space",
-		Views: pageViews,
-		Body:  templ.Join(views.WikiPage(props), views.Viewed(recent.Page, p.ID)),
+		Views:   pageViews,
+		Scripts: []string{inlineScript},
+		Body:    templ.Join(views.WikiPage(props), views.Viewed(recent.Page, p.ID)),
 	}, nil
 }
 
@@ -399,6 +403,11 @@ func comments(ctx context.Context, q sqlite.Querier, page string) ([]views.Comme
 	if err != nil {
 		return nil, err
 	}
+	return commentItems(ctx, q, list)
+}
+
+// commentItems are threads of comments with their authors and bodies.
+func commentItems(ctx context.Context, q sqlite.Querier, list []wiki.Comment) ([]views.CommentItem, error) {
 	var ids []string
 	var refs doc.Refs
 	docs := map[string]doc.Doc{}
@@ -635,18 +644,24 @@ func readerOf(page string) *reader {
 	return r
 }
 
-// readerHTML renders a page's head document.
-func (s *Server) readerHTML(ctx context.Context, q sqlite.Querier, page string) (string, error) {
+// readerHTML renders a page's head document, its inline comments' text
+// highlighted (FR-91), with the version and epoch a selection in it is
+// at.
+func (s *Server) readerHTML(ctx context.Context, q sqlite.Querier, page string) (views.PageBody, error) {
 	h, err := wiki.HeadOf(ctx, q, page)
 	if errors.Is(err, sql.ErrNoRows) {
-		return "", nil
+		return views.PageBody{}, nil
 	}
 	if err != nil {
-		return "", err
+		return views.PageBody{}, err
 	}
 	res, err := resolveFaces(ctx, q, doc.References(h.Doc))
 	if err != nil {
-		return "", err
+		return views.PageBody{}, err
+	}
+	hs, err := wiki.Highlights(ctx, q, page)
+	if err != nil {
+		return views.PageBody{}, err
 	}
 	key, _ := json.Marshal(res)
 	rd := readerOf(page)
@@ -656,7 +671,7 @@ func (s *Server) readerHTML(ctx context.Context, q sqlite.Querier, page string) 
 		rd.cache.Reset()
 		rd.key = string(key)
 	}
-	return rd.cache.Render(h.Doc, res), nil
+	return views.PageBody{HTML: rd.cache.RenderHighlighted(h.Doc, res, hs), V: h.Version, Epoch: h.Epoch}, nil
 }
 
 func (s *Server) readerView(ctx context.Context, q sqlite.Querier, actor people.Person, arg string) (live.View, error) {
@@ -666,13 +681,13 @@ func (s *Server) readerView(ctx context.Context, q sqlite.Querier, actor people.
 	}
 	return live.View{
 		Key:    "pagedoc:" + p.ID,
-		Topics: []string{wiki.DocTopic(p.ID), wiki.ChipsTopic(p.ID), people.Topic},
+		Topics: []string{wiki.DocTopic(p.ID), wiki.ChipsTopic(p.ID), wiki.InlineTopic(p.ID), people.Topic},
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
-			html, err := s.readerHTML(ctx, querier(ctx, tx), p.ID)
+			body, err := s.readerHTML(ctx, querier(ctx, tx), p.ID)
 			if err != nil {
 				return nil, err
 			}
-			return patch(ctx, views.PageBodyRegion(html))
+			return patch(ctx, views.PageBodyRegion(body))
 		},
 	}, nil
 }

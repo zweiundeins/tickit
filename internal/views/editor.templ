@@ -63,7 +63,8 @@ const (
 // sb-rich-editor with the document at Base in its script, the pickers
 // for issues, people and pages, the status and the stopped states.
 templ EditorPage(p EditorProps) {
-	<article class="wk-page wk-editing" data-signals={ wikiSignals } data-page={ p.Page.ID }>
+	@ownStyle(p.Me, p.CanAdmin, p.CanEdit)
+	<article class="wk-page wk-page--inline wk-editing" data-signals={ wikiSignals } data-page={ p.Page.ID }>
 		<div data-signals={ editorSignals } data-effect={ titleSync }></div>
 		<div class="wk-page__top">
 			@ui.Breadcrumbs(p.Head.Crumbs)
@@ -130,10 +131,16 @@ templ EditorPage(p EditorProps) {
 			@ui.Button(ui.ButtonProps{Label: "Mention", Icon: "user", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-kind": "person", "data-label": "Find a person", "data-on:click": pickOpen}})
 			@ui.Button(ui.ButtonProps{Label: "Page link", Icon: "page", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-kind": "page", "data-label": "Find a page by its title", "data-on:click": pickOpen}})
 		</div>
-		<div class="wk-editarea">
-			@EditorHostEl(p.Host)
-			@editorCopy(p.Page.ID)
+		<div class="wk-docgrid">
+			<div class="wk-editarea">
+				@EditorHostEl(p.Host)
+				@editorCopy(p.Page.ID)
+			</div>
+			@InlinePanel(p.Page.ID, true, p.Inline, p.Now)
+			@InlineAddButton()
 		</div>
+		<p class="wk-problem" role="status" data-text="$_wk.cmod.msg" data-effect={ cmodSettled }></p>
+		@commentEditDialog()
 		@pickDialog()
 		@saveVersionDialog(p.Page.ID)
 		<p class="wk-problem" role="status" data-text="$_wk.version.msg"></p>
@@ -154,6 +161,7 @@ templ EditorHostEl(h EditorHost) {
 		head={ i64(h.Head) }
 		batches={ h.Batches }
 		chips={ h.Chips }
+		comments={ h.Comments }
 		state={ h.State }
 		refusal={ h.Refusal }
 		images={ h.Images }

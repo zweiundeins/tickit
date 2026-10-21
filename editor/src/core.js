@@ -14,6 +14,7 @@ import { schema, limits, ISSUE_KEY, ID, normalizeHref, setLabelHooks, imageSrc, 
 import { collab, collabState, getVersion, makeCommit, batchTransaction, receiveTransaction, REMOTE } from './collab.js'
 import { limitsPlugin } from './limits.js'
 import { caretPlugin, Carets } from './carets.js'
+import { commentPlugin, drawComments, commentRange } from './comments.js'
 import { IssueChipView, MentionView, PageLinkView, TaskItemView, ImageView } from './nodeviews.js'
 import { COMMANDS, rules, keymaps, inTable, inCode, setLanguage, shortcutText } from './commands.js'
 import { documentCSS } from './styles.js'
@@ -125,7 +126,7 @@ class Editor {
 		this.stopped = null
 		this.status = ''
 		this.seq = 0
-		this.raw = { batches: null, carets: null, chips: null, refusal: null, images: null }
+		this.raw = { batches: null, carets: null, chips: null, refusal: null, images: null, comments: null }
 		this.chips = {}
 		this.images = []
 		this.atoms = new Set()
@@ -163,6 +164,7 @@ class Editor {
 				tableEditing(),
 				limitsPlugin((hit) => this.limitHit(hit)),
 				caretPlugin(),
+				commentPlugin(),
 				new Plugin({ props: { handlePaste: (view, event) => this.paste(event) } }),
 			],
 		})
@@ -254,6 +256,10 @@ class Editor {
 		if (applied || p.carets !== this.raw.carets) {
 			this.raw.carets = p.carets
 			this.carets.set(parseJSON(p.carets, []), p.client)
+		}
+		if (p.comments !== this.raw.comments || (applied && this.commentsPending)) {
+			this.raw.comments = p.comments
+			this.commentsPending = !drawComments(this.view, this.carets.maps, parseJSON(p.comments, null))
 		}
 		this.view.setProps({}) // editable may have changed
 		if (applied) {
@@ -737,6 +743,12 @@ class Editor {
 		const div = document.createElement('div')
 		div.append(DOMSerializer.fromSchema(schema).serializeFragment(this.view.state.doc.content))
 		return div.innerHTML
+	}
+
+	// commentRange is the selection as an inline comment's range (FR-91).
+	commentRange() {
+		const r = commentRange(this.view.state)
+		return r && { ...r, epoch: this.epoch }
 	}
 
 	text() {

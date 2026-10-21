@@ -47,7 +47,7 @@ func (e *env) dump(table string) string {
 	return b.String()
 }
 
-var wikiTables = []string{"spaces", "pages", "page_labels", "page_watchers", "page_versions", "page_doc", "page_chips", "page_links", "page_comment_threads", "search_pages"}
+var wikiTables = []string{"spaces", "pages", "page_labels", "page_watchers", "page_versions", "page_doc", "page_chips", "page_links", "page_comment_threads", "page_inline", "search_pages"}
 
 // FR-155.2: rebuilding every read model of the wiki from the stored
 // events yields the same tables, after a fold too. FR-155.1: every event
@@ -87,6 +87,11 @@ func TestRebuild(t *testing.T) {
 	e.must(tracker.HideComment{By: e.by(moderator), Comment: cm, Hidden: true})
 	e.must(tracker.HideComment{By: e.by(moderator), Comment: cm, Hidden: false})
 	e.must(tracker.DeleteComment{By: e.by(sunny), Comment: cm})
+	cs := e.docState(c)
+	in := e.result(AddInlineComment{By: e.by(rainy), Page: c, Epoch: cs.Epoch, Base: cs.Version, From: 1, To: 7, Text: "Seeded", Body: paras("On the word")})["id"]
+	e.must(ResolveInline{By: e.by(sunny), Comment: in, Resolved: true})
+	e.must(ResolveInline{By: e.by(sunny), Comment: in, Resolved: false})
+	e.must(ResolveInline{By: e.by(rainy), Comment: in, Resolved: true})
 	name := "Engineering"
 	e.must(EditSpace{By: e.by(admin), Space: sp, Name: &name})
 	e.must(ArchiveSpace{By: e.by(admin), Space: ops, Archived: true})
@@ -144,7 +149,7 @@ func TestRebuild(t *testing.T) {
 	}
 	var missing int
 	e.View(t, func(tx *sql.Tx) error {
-		return tx.QueryRow(`SELECT count(*) FROM lith_events WHERE stream IN ('space', 'page', 'pagedoc')
+		return tx.QueryRow(`SELECT count(*) FROM lith_events WHERE stream IN ('space', 'page', 'pagedoc', 'inline')
 			AND (actor IS NULL OR actor = '' OR causation IS NULL OR at = 0)`).Scan(&missing)
 	})
 	if missing != 0 {

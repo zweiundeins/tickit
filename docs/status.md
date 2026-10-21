@@ -118,7 +118,7 @@ Where the rewrite stands on 20 October 2026, read from the code on lith v0.3.0; 
 | FR-87 | Page versions | Must | done | internal/wiki/commands_test.go: TestVersions; internal/web/wiki_test.go: TestWikiPages |  |
 | FR-88 | Compare versions | Should | done | internal/doc/diff_test.go: TestDiff |  |
 | FR-89 | Restore a version | Should | done | internal/wiki/commands_test.go: TestVersions; internal/doc/diff_test.go: TestRestoreStep |  |
-| FR-90 | Page comments | Should | done | internal/wiki/commands_test.go: TestComments; internal/web/wiki_test.go: TestPageCommentEdit | Comments, replies, delete and hide work; the author edits their own comment in a dialog (`POST /cmd/pages/comment/edit`, plain text as when adding), and it then says "edited". |
+| FR-90 | Page comments | Should | done | internal/wiki/commands_test.go: TestComments; internal/web/wiki_test.go: TestPageCommentEdit | Comments, replies, delete and hide work; the author edits their own comment in a dialog (`POST /cmd/pages/comment/edit`, plain text as when adding), and it then says "edited". FR-91 (a Could) is built too: inline comments on a range of text, live in readers and editors, detached when their text goes, resolved and reopened (internal/wiki/inline_test.go, internal/doc/highlight_test.go, internal/web/inline_test.go: TestInlineCommentsLive, internal/notify/wiki_test.go: TestInlineCommentNotifies, e2e/inline_test.go: TestInlineCommentsCoEditing, TestInlineCommentsReading (Chromium)). |
 | FR-94 | Page trash | Should | done | internal/wiki/commands_test.go: TestTrash |  |
 
 ## Links between pages and issues

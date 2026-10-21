@@ -118,3 +118,15 @@ func TestDocDeciders(t *testing.T) {
 }
 
 var _ = errors.New
+
+func TestInlineDeciders(t *testing.T) {
+	on := InlineAnchored{Page: "p", V: 3, From: 5, To: 10, Quote: "hello"}
+	eventstest.For(anchorDecider).When(on).Then(t, on)
+	eventstest.For(anchorDecider).Given(on).When(on).ThenError(t, errorString("wiki: the inline comment exists"))
+
+	res := eventstest.For(resolveDecider).Given(on)
+	res.When(ResolveInline{Resolved: true}).Then(t, InlineResolved{})
+	res.When(ResolveInline{Resolved: false}).Then(t)
+	res.Given(InlineResolved{}).When(ResolveInline{Resolved: false}).Then(t, InlineReopened{})
+	res.Given(InlineResolved{}).When(ResolveInline{Resolved: true}).Then(t)
+}

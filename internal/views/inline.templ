@@ -1,0 +1,171 @@
+package views
+
+import (
+	"time"
+
+	"github.com/zweiundeins/tickit/internal/ui"
+)
+
+// The inline comments of a page (FR-91): beside its text on a wide page,
+// below it on a narrow one. The composer and the Comment button are the
+// frame's; the list is the shared view inline:<page>. wiki/inline.js
+// hands the composer a selection (tk-ic-select) and opens a new comment
+// beside its text ($_icMade).
+var (
+	inlineSignals = `{_ic: {open: false, op: '', body: '', parent: '', toName: '', quote: '', v: 0, epoch: '', from: 0, upto: 0, text: '', msg: '', rop: '', rmsg: ''}, _icMade: ''}`
+
+	icSelect = `$_ic.parent = '', $_ic.quote = evt.detail.quote, $_ic.v = evt.detail.v, $_ic.epoch = evt.detail.epoch, $_ic.from = evt.detail.from, $_ic.upto = evt.detail.to, $_ic.text = evt.detail.text, $_ic.msg = '', $_ic.open = true`
+	icSubmit = `$_ic.body.trim() && ($_ic.parent !== '' ? ` + Act("_ic.op", "/cmd/pages/comment", "page: el.dataset.page, parent: $_ic.parent, body: $_ic.body") +
+		` : ` + Act("_ic.op", "/cmd/pages/comment/inline", "page: el.dataset.page, epoch: $_ic.epoch, base: $_ic.v, from: $_ic.from, to: $_ic.upto, text: $_ic.text, body: $_ic.body") + `)`
+	icSettled = Settle("_ic.op", "o.ok ? ($_ic.body = '', $_ic.open = false, $_ic.msg = '') : ($_ic.msg = o.msg)")
+	icFailed  = Failed("_ic.op")
+	icCancel  = `$_ic.open = false, $_ic.msg = ''`
+	icReply   = `$_ic.parent = el.dataset.c, $_ic.toName = el.dataset.name, $_ic.msg = '', $_ic.open = true, requestAnimationFrame(() => document.getElementById('ic-body')?.focus())`
+	icMade    = `$_icMade && (document.dispatchEvent(new CustomEvent('tk-ic-made', {detail: $_icMade})), $_icMade = '')`
+	icResolve = Act("_ic.rop", "/cmd/pages/comment/resolve", "comment: el.dataset.c, resolved: el.dataset.resolved !== 'true'")
+	icRSettle = Settle("_ic.rop", "$_ic.rmsg = o.ok ? '' : o.msg")
+	icRFailed = Failed("_ic.rop")
+)
+
+// InlinePanel is the column of a page's inline comments; comments says
+// that the viewer may comment there (a current page).
+templ InlinePanel(page string, comments bool, list []InlineItem, now time.Time) {
+	<aside class="wk-ic-panel" aria-labelledby="ic-title" data-signals={ inlineSignals } data-effect={ icMade }>
+		<h2 class="wk-section-title" id="ic-title">Inline comments</h2>
+		if comments {
+			<p class="wk-ic-hint muted" data-show="!$_ic.open">Select text to comment on it (Ctrl+Alt+M).</p>
+			<form id="wk-ic-form" class="wk-ic-form tk-box" style="display: none" data-show="$_ic.open" data-page={ page } data-on:tk-ic-select={ icSelect } data-on:submit__prevent={ icSubmit } data-effect={ icSettled } data-on:datastar-fetch={ icFailed }>
+				<p class="wk-ic-form__about" data-show="$_ic.parent === ''">On <q class="wk-ic__text" data-text="$_ic.quote"></q></p>
+				<p class="wk-ic-form__about" style="display: none" data-show="$_ic.parent !== ''">Replying to <b data-text="$_ic.toName"></b></p>
+				{{ f := ui.FieldProps{ID: "ic-body", Label: "Comment", HideLabel: true, ErrorAttrs: templ.Attributes{"data-text": "$_ic.msg"}} }}
+				@ui.Field(f) {
+					@ui.Textarea(ui.TextareaProps{ID: f.ID, Placeholder: "Add a comment", Rows: 3, MaxLength: 10000, DescribedBy: f.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_ic.body", "data-attr:readonly": Pending("_ic.op"), "data-on:keydown": icKeys}})
+				}
+				<div class="cluster">
+					@ui.Button(ui.ButtonProps{Label: "Comment", Type: "submit", Size: ui.SizeSM, Variant: ui.Primary, Attrs: templ.Attributes{"data-attr:aria-busy": Busy("_ic.op")}})
+					@ui.Button(ui.ButtonProps{Label: "Cancel", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-on:click": icCancel}})
+				</div>
+			</form>
+		}
+		<p class="wk-problem" role="status" data-text="$_ic.rmsg" data-effect={ icRSettle }></p>
+		@InlineRegion(list, now)
+	</aside>
+}
+
+// icKeys sends the composer with Ctrl+Enter and closes it with Escape.
+var icKeys = `(evt.key === 'Enter' && (evt.ctrlKey || evt.metaKey)) ? (evt.preventDefault(), el.form.requestSubmit()) : evt.key === 'Escape' && (` + icCancel + `)`
+
+// InlineAddButton is the Comment button the page shows beside a selection
+// of its text; wiki/inline.js places it.
+templ InlineAddButton() {
+	<button id="wk-ic-add" class="tk-btn tk-btn--primary tk-btn--sm wk-ic-add" type="button" hidden aria-keyshortcuts="Control+Alt+M">
+		@ui.Icon("comment")
+		Comment
+	</button>
+}
+
+// InlineRegion is the shared list of a page's inline comments: those on
+// text in the order of the text, the detached ones, and the resolved ones
+// folded away (FR-91.2, FR-91.3).
+templ InlineRegion(list []InlineItem, now time.Time) {
+	{{ open, detached, resolved := splitInline(list) }}
+	<div id={ InlineID } class="wk-ic-list">
+		if len(open) > 0 {
+			<ol class="wk-thread" role="list" aria-label="On the text">
+				for _, c := range open {
+					@inlineCard(c, now)
+				}
+			</ol>
+		} else if len(detached) == 0 {
+			<p class="wk-empty muted">No open inline comments.</p>
+		}
+		if len(detached) > 0 {
+			<section class="wk-ic-group" aria-labelledby="ic-detached">
+				<h3 class="tk-eyebrow" id="ic-detached">Detached</h3>
+				<p class="muted">The text these comments were on was deleted.</p>
+				<ol class="wk-thread" role="list">
+					for _, c := range detached {
+						@inlineCard(c, now)
+					}
+				</ol>
+			</section>
+		}
+		if len(resolved) > 0 {
+			<details class="wk-ic-group wk-ic-resolved" data-preserve-attr="open">
+				<summary class="tk-eyebrow">Resolved ({ itoa(len(resolved)) })</summary>
+				<ol class="wk-thread" role="list">
+					for _, c := range resolved {
+						@inlineCard(c, now)
+					}
+				</ol>
+			</details>
+		}
+	</div>
+}
+
+func splitInline(list []InlineItem) (open, detached, resolved []InlineItem) {
+	for _, c := range list {
+		switch {
+		case c.Resolved:
+			resolved = append(resolved, c)
+		case c.Detached:
+			detached = append(detached, c)
+		default:
+			open = append(open, c)
+		}
+	}
+	return open, detached, resolved
+}
+
+func inlineState(c InlineItem) string {
+	switch {
+	case c.Resolved:
+		return "resolved"
+	case c.Detached:
+		return "detached"
+	}
+	return "open"
+}
+
+// inlineCard is one inline comment with its replies: the text it is on
+// (a button to it while the text is there), the comment as page comments
+// show it, Reply and Resolve or Reopen.
+templ inlineCard(c InlineItem, now time.Time) {
+	<li id={ "ic-" + c.ID } class="wk-comment wk-ic" data-author={ c.Author.ID } data-c={ c.ID } data-state={ inlineState(c) }>
+		if c.Detached || c.Resolved {
+			<p class="wk-ic__quote"><q class="wk-ic__text">{ c.Quote }</q></p>
+		} else {
+			<button type="button" class="wk-ic__quote" data-c={ c.ID } data-ic-go aria-label={ "Go to the text: " + c.Quote }><q class="wk-ic__text">{ c.Quote }</q></button>
+		}
+		@commentBody(c.CommentItem, now, false)
+		if c.Resolved {
+			<p class="wk-ic__resolved muted">
+				Resolved by { c.ResolvedBy.Name }
+				@ui.RelativeTime(c.ResolvedAt, now)
+			</p>
+		}
+		if !c.Deleted {
+			<div class="wk-ic__actions">
+				if !c.Resolved {
+					<button class="tk-btn tk-btn--ghost tk-btn--sm" type="button" data-c={ c.ID } data-name={ c.Author.Name } data-on:click={ icReply }>Reply</button>
+				}
+				<button class="tk-btn tk-btn--ghost tk-btn--sm" type="button" data-c={ c.ID } data-resolved={ boolText(c.Resolved) } data-on:click={ icResolve } data-on:datastar-fetch={ icRFailed }>
+					if c.Resolved {
+						Reopen
+					} else {
+						Resolve
+					}
+				</button>
+			</div>
+		}
+		if len(c.Replies) > 0 {
+			<ol class="wk-replies" role="list">
+				for _, r := range c.Replies {
+					<li class="wk-comment" data-author={ r.Author.ID }>
+						@commentBody(r, now, false)
+					</li>
+				}
+			</ol>
+		}
+	</li>
+}

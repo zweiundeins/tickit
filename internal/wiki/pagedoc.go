@@ -25,6 +25,7 @@ var pageDocs = collab.NewKind(collab.Config{
 	Name: "pagedoc", Noun: "page", Store: func() *events.Store { return Store() },
 	Head: "page_doc", Editors: "page_editors", Key: "page_id",
 	EditorTopic: EditorTopic, CaretsTopic: CaretsTopic,
+	OnCommit: mapAnchors,
 })
 
 // The document's events (collab's), under the wiki's names.

@@ -7,7 +7,7 @@
 //
 // # Streams
 //
-// Four kinds, keyed by UUIDv7 strings:
+// Five kinds, keyed by UUIDv7 strings:
 //
 //   - "space": space.created (with its home page), .edited, .archived,
 //     .unarchived.
@@ -19,6 +19,8 @@
 //     version is the collab version the editor speaks.
 //   - "page_comment": page_comment.added, .edited, .deleted, .hidden,
 //     .unhidden.
+//   - "inline", keyed by an inline comment's id (FR-91): inline.anchored
+//     {page, v, from, to, quote}, .resolved, .reopened (inline.go).
 //
 // Rules across pages live in tables the commands write: page_titles
 // (titles unique per space without regard to case), page_parents (no
@@ -113,7 +115,7 @@ func init() {
 
 // Parts are the wiki's projectors, for the app's one event store.
 func Parts() []events.Part {
-	return []events.Part{spacesProjector, pagesProjector, versionsProjector, docsProjector, threadsProjector, chipsProjector, pageSearch}
+	return []events.Part{spacesProjector, pagesProjector, versionsProjector, docsProjector, threadsProjector, inlineProjector, chipsProjector, pageSearch}
 }
 
 // Bind gives the wiki's commands the app's event store, which holds every

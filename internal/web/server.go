@@ -173,6 +173,7 @@ func (s *Server) register() {
 	s.routesSearch()
 	s.routesWiki()
 	s.routesEditor()
+	s.routesInline()
 	s.routesDescription()
 	s.routesNotify()
 	s.routesPeople()

@@ -222,6 +222,11 @@
 		--tk-ok-subtle: light-dark(oklch(47% 0.11 150 / 0.11), oklch(80% 0.12 150 / 0.11));
 		--tk-info-subtle: light-dark(oklch(47% 0.1 240 / 0.1), oklch(80% 0.09 240 / 0.11));
 
+		/* Inline comments' highlights (FR-91): the text, the one chosen, its edge. */
+		--tk-ic-bg: light-dark(oklch(84% 0.13 82 / 0.35), oklch(84% 0.13 82 / 0.2));
+		--tk-ic-active: light-dark(oklch(84% 0.13 82 / 0.7), oklch(84% 0.13 82 / 0.42));
+		--tk-ic-edge: var(--tk-warn);
+
 		/* The inverted bubble of tooltips and name tags. */
 		--tk-tip-bg: var(--tk-text-1);
 		--tk-tip-text: var(--tk-bg);

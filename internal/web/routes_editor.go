@@ -83,9 +83,16 @@ func (s *Server) editorPage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return Page{}, err
 		}
+		marks, err := commentsJSON(ctx, q, p.ID, h.Version)
+		if err != nil {
+			return Page{}, err
+		}
+		if props.Inline, err = s.inlineItems(ctx, q, p.ID); err != nil {
+			return Page{}, err
+		}
 		host := views.EditorHost{
 			Page: p.ID, Epoch: h.Epoch, Client: newClient(), State: "ok", Base: h.Version, Head: h.Version,
-			Batches: "[]", Chips: chips, Images: imagesJSON(),
+			Batches: "[]", Chips: chips, Images: imagesJSON(), Comments: marks,
 			// The script must not hold "</script": < goes out as \u003c.
 			Doc: strings.ReplaceAll(string(raw), "<", `\u003c`),
 		}
@@ -95,8 +102,8 @@ func (s *Server) editorPage(w http.ResponseWriter, r *http.Request) {
 		}
 		return Page{
 			Title: "Editing " + p.Title, Nav: "spaces", Sidebar: sidebar, SidebarLabel: "Space",
-			Views:   []string{"pagepeople:" + p.ID, "carets:" + p.ID, "pagetitle:" + p.ID, "tree:" + p.ID},
-			Scripts: []string{"editor/sb-rich-editor.min.js"},
+			Views:   []string{"pagepeople:" + p.ID, "carets:" + p.ID, "pagetitle:" + p.ID, "inline:" + p.ID, "tree:" + p.ID},
+			Scripts: []string{"editor/sb-rich-editor.min.js", inlineScript},
 			Body:    views.EditorPage(views.EditorProps{PageProps: props, Host: host}),
 		}, nil
 	})
@@ -352,7 +359,7 @@ func (s *Server) editorView(ctx context.Context, q sqlite.Querier, actor people.
 		// The person too: another who names the tab id gets a view of
 		// their own, never the tab's (NFR-02.3).
 		Key:    wiki.EditorView(page, tab) + "." + actor.ID,
-		Topics: []string{wiki.DocTopic(page), wiki.ChipsTopic(page), wiki.PageTopic(page), wiki.EditorTopic(tab), people.Topic},
+		Topics: []string{wiki.DocTopic(page), wiki.ChipsTopic(page), wiki.PageTopic(page), wiki.InlineTopic(page), wiki.EditorTopic(tab), people.Topic},
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			host, err := editorHost(ctx, querier(ctx, tx), actor, page, tab)
 			if err != nil {
@@ -404,6 +411,9 @@ func editorHost(ctx context.Context, q sqlite.Querier, actor people.Person, page
 	}
 	host.Batches = string(b)
 	if host.Chips, err = chipsJSON(ctx, q, h.Doc); err != nil {
+		return host, err
+	}
+	if host.Comments, err = commentsJSON(ctx, q, page, h.Version); err != nil {
 		return host, err
 	}
 	if isPaused || !canIn(ctx, q, actor, access.EditIssues, p.Space) {

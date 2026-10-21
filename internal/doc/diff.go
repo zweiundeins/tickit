@@ -410,7 +410,7 @@ func backtrack(trace [][]int, d, off, n, m, a0, b0 int) []editOp {
 // blocks added or removed carry data-diff="ins" or "del" (FR-88.1).
 func (d *DocDiff) HTML(r Resolver) string {
 	var b strings.Builder
-	w := htmlWriter{&b, resolverOrNone(r)}
+	w := htmlWriter{b: &b, r: resolverOrNone(r)}
 	w.changes(d.changes)
 	return b.String()
 }
