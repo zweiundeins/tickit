@@ -279,7 +279,7 @@ test("toDOM writes docs/editor.md's HTML of a document", async () => {
 		'<ul class="task-list"><li class="task-item" data-checked="true"><input type="checkbox" disabled="" checked=""><div><p>done</p></div></li><li class="task-item" data-checked="false"><input type="checkbox" disabled=""><div><p>todo</p></div></li></ul>',
 		'<table><tbody><tr><th colspan="2"><p>h</p></th><td><p>c</p></td></tr></tbody></table>',
 		'<figure class="doc-image"><img src="/img/lib/diagram-1" alt="A diagram" loading="lazy"></figure>',
-		'<div class="issue-list" data-filter="type=bug&amp;q=<b>" data-saved-filter="" data-limit="5"><p class="issue-list__desc">Issues matching <code>type=bug&amp;q=&lt;b&gt;</code>, at most 5</p></div>',
+		'<div class="issue-list" data-filter="type=bug&amp;q=&lt;b&gt;" data-saved-filter="" data-limit="5"><p class="issue-list__desc">Issues matching <code>type=bug&amp;q=&lt;b&gt;</code>, at most 5</p></div>',
 		'<p>a<br><a class="issue-chip" data-key="WEB-12" href="/WEB-12">WEB-12</a><a class="mention" data-person="u_1" href="/people/u_1">@Sunny Otter</a><a class="page-link" data-page="pg_roadmap" href="/pages/pg_roadmap">Roadmap</a><strong>s</strong><em>e</em><s>k</s><code>c</code><a href="https://example.com/x" rel="nofollow ugc noopener" title="example.com">l</a><span class="link-unsafe">u</span></p>',
 	].join('')
 	ok(html === want, 'HTML differs:\n got  ' + html + '\n want ' + want)
