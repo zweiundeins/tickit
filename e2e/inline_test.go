@@ -127,7 +127,7 @@ func TestInlineCommentsReading(t *testing.T) {
 	page, _ := s.wikiPage(t)
 	body := `{"type":"doc","content":[{"type":"heading","attrs":{"level":1},"content":[{"type":"text","text":"Plan"}]},` +
 		`{"type":"paragraph","content":[{"type":"text","text":"Ship "},{"type":"text","marks":[{"type":"strong"}],"text":"soon"},{"type":"text","text":" with "},{"type":"issue_chip","attrs":{"key":"NOPE-1"}},{"type":"text","text":" done"}]},` +
-		`{"type":"issue_list","attrs":{"filter":"status=todo","limit":5}},`+
+		`{"type":"issue_list","attrs":{"filter":"status=todo","limit":5}},` +
 		`{"type":"bullet_list","content":[{"type":"list_item","content":[{"type":"paragraph","content":[{"type":"text","text":"first step"}]}]},{"type":"list_item","content":[{"type":"paragraph","content":[{"type":"text","text":"second careful step"}]}]}]}]}`
 	if err := s.do(wiki.SetDocument{By: tabs.By{Actor: people.Seeded[0], Op: "d1", At: time.Now()}, Page: page, Doc: []byte(body), Message: "Text"}); err != nil {
 		t.Fatal(err)
