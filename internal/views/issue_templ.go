@@ -3209,7 +3209,7 @@ func assigneeMenu(m Issue) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if m.Assignee != "" {
-			templ_7745c5c3_Err = ui.Avatar(ui.AvatarProps{Person: UIPerson(m.person(m.Assignee)), Size: ui.SizeSM, Decorative: true}).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = ui.Avatar(ui.AvatarProps{Person: UIPerson(m.person(m.Assignee)), Size: ui.SizeXS, Decorative: true}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

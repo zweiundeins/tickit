@@ -625,7 +625,7 @@ templ personLine(p people.Person) {
 templ assigneeMenu(m Issue) {
 	<div class="tk-issue__assignee" data-assignee={ m.Assignee }>
 		if m.Assignee != "" {
-			@ui.Avatar(ui.AvatarProps{Person: UIPerson(m.person(m.Assignee)), Size: ui.SizeSM, Decorative: true})
+			@ui.Avatar(ui.AvatarProps{Person: UIPerson(m.person(m.Assignee)), Size: ui.SizeXS, Decorative: true})
 		}
 		@ui.Picker(ui.PickerProps{ID: "issue-assignee", Label: "Assignee", HideLabel: true, Name: "assignee", Options: assigneeOptions(m), Value: m.Assignee, Placeholder: "Unassigned", Searchable: true, Clearable: true, Confirm: true, Size: ui.SizeSM, Attrs: picker("assignee")})
 	</div>

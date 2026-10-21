@@ -84,9 +84,9 @@ func TestSettingsLeadLive(t *testing.T) {
 	b := browsertest.Start(t)
 	settings := staffPage(t, e, b, "ada@example.com", 1280)
 	settings.Navigate(t, e.URL+"/projects/WEB/settings")
-	settings.Wait(t, `document.getElementById('reconnecting')?.hidden && document.getElementById('pd-lead')`, 10*time.Second)
+	settings.Wait(t, `document.getElementById('reconnecting')?.hidden && customElements.get('sb-select') && document.getElementById('pd-lead')?.shadowRoot`, 10*time.Second)
 	var shown string
-	settings.Eval(t, `(() => { const s = document.getElementById('pd-lead'); return s.value + ' ' + s.selectedOptions[0]?.text })()`, &shown)
+	settings.Eval(t, `(() => { const s = document.getElementById('pd-lead'); return s.value + ' ' + s.shadowRoot.querySelector('input').value })()`, &shown)
 	if shown != "s-priya Priya Raman" {
 		t.Errorf("the lead picker shows %q", shown)
 	}
@@ -96,13 +96,12 @@ func TestSettingsLeadLive(t *testing.T) {
 	lead := `[...document.querySelectorAll('#projects-list tr')].find((r) => r.querySelector('.tk-key')?.textContent === 'WEB')?.cells[2].textContent.trim()`
 	list.Wait(t, `document.getElementById('reconnecting')?.hidden && `+lead+` === 'Priya Raman'`, 10*time.Second)
 
-	settings.Eval(t, `(() => {
-		const s = document.getElementById('pd-lead')
-		s.value = 's-lena'
-		s.dispatchEvent(new Event('change', {bubbles: true}))
-		s.closest('form').querySelector('button[type=submit]').click()
-		return true
-	})()`, nil)
+	// Typed into the picker, as the keyboard would.
+	focusIn(t, settings, "pd-lead", "input")
+	typeKeys(t, settings, "lena")
+	enter(t, settings)
+	settings.Wait(t, `document.getElementById('pd-lead').value === 's-lena'`, 2*time.Second)
+	settings.Eval(t, `(document.querySelector('#pd-lead').closest('form').querySelector('button[type=submit]').click(), true)`, nil)
 	list.Wait(t, lead+` === 'Lena Brunner'`, 3*time.Second)
 	for _, p := range []*browsertest.Page{settings, list} {
 		if errs := p.Errors(); len(errs) > 0 {

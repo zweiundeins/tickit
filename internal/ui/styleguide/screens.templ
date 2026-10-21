@@ -238,7 +238,7 @@ templ issueBody(p Props, at string) {
 				<p class="cluster sg-issue__key">
 					@ui.TypeLabel(s.Type)
 					<span class="mono">{ s.Key }</span>
-					<sb-copy-button value="https://tickit.zweiundeins.gmbh/WEB-12" label="Copy link to WEB-12" copied-label="Copied"></sb-copy-button>
+					@ui.CopyButton(ui.CopyProps{Label: "Copy link to WEB-12", Path: "/WEB-12", Copied: "Link copied"})
 				</p>
 				<h1 class="sg-issue__title">{ s.Summary }</h1>
 				<div class="cluster">

@@ -308,7 +308,7 @@ func TestIssueURLs(t *testing.T) {
 func TestCreateIssue(t *testing.T) {
 	e := newIssueEnv(t)
 	_, home := webtest.Get(t, e.c, e.URL+"/privacy")
-	if !strings.Contains(home, `id="create"`) || !strings.Contains(home, "Create an issue") || !strings.Contains(home, `value="`+probeWeb+`"`) {
+	if !strings.Contains(home, `id="create"`) || !strings.Contains(home, "Create an issue") || !strings.Contains(home, `&#34;value&#34;:&#34;`+probeWeb+`&#34;`) {
 		t.Fatal("no create dialog on /privacy")
 	}
 	post := func(op, body string) (int, string) {

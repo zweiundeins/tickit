@@ -389,13 +389,6 @@ func menu(f string) templ.Attributes {
 // locked disables a control of a read-only page or an old version.
 var locked = templ.Attributes{"data-attr:disabled": disabledWhile, "data-preserve-attr": "disabled"}
 
-func boolStr(b bool) string {
-	if b {
-		return "true"
-	}
-	return "false"
-}
-
 func joinComma(list []string) string { return strings.Join(list, ", ") }
 
 // The hints under the text fields: what the markup reads.
