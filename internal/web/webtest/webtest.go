@@ -101,7 +101,9 @@ func StartWith(t testing.TB, o Options) *Env {
 		hub.Run(hubCtx)
 	}()
 	go w.Run(context.Background())
-	srv := httptest.NewServer(site.Handler())
+	srv := httptest.NewUnstartedServer(site.Handler())
+	srv.Config.ErrorLog = slog.NewLogLogger(log.Handler(), slog.LevelWarn) // as cmd/tickit has it
+	srv.Start()
 	e.URL = srv.URL
 	t.Cleanup(func() {
 		e.StopStreams()
@@ -109,6 +111,9 @@ func StartWith(t testing.TB, o Options) *Env {
 		w.Close()
 		db.Close()
 		checkSecrets(t, logs.String()) // NFR-11
+		if strings.Contains(logs.String(), "superfluous response.WriteHeader") {
+			t.Error("a handler wrote its status twice")
+		}
 		if t.Failed() {
 			t.Logf("server log:\n%s", logs.String())
 		}

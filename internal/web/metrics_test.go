@@ -2,6 +2,7 @@ package web_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -67,5 +68,28 @@ func TestViewAndStreamMetrics(t *testing.T) {
 	res.Body.Close()
 	if res.StatusCode != http.StatusBadRequest || gather()["tickit_streams_opened_total"][""] != 1 {
 		t.Errorf("a refused stream: %d", res.StatusCode)
+	}
+}
+
+// A stream writes its status once: the hub flushes the headers before
+// its first frame, which must not write them again (MP-11.4).
+func TestStreamWritesItsStatusOnce(t *testing.T) {
+	e := webtest.Start(t)
+	seedProbes(t, e)
+	c := webtest.Client(t)
+	webtest.Get(t, c, e.URL+"/WEB-1")
+	events, stop := webtest.Open(t, c, e.URL+"/stream?tab=tab1&alive=1&v=issue:"+web.ProbeIssue, nil)
+	defer stop()
+	webtest.Next(t, events, `"_outcomes"`)
+	for _, u := range []string{"/alive?tab=tab1", "/pace?tab=tab1"} {
+		if code, _ := webtest.Post(t, c, e.URL+u, ""); code != http.StatusNoContent {
+			t.Fatalf("%s: %d", u, code)
+		}
+	}
+	if code, _ := webtest.Post(t, c, e.URL+"/cmd/input", `{"tab":"tab1","op":"i1"}`); code != http.StatusNoContent {
+		t.Fatalf("/cmd/input: %d", code)
+	}
+	if strings.Contains(e.Logs(), "superfluous") {
+		t.Fatalf("a response wrote its status twice:\n%s", e.Logs())
 	}
 }

@@ -141,27 +141,43 @@ func keyKind(key string) string {
 type countedStream struct {
 	http.ResponseWriter
 	m      *metrics
+	sent   bool // the status went out, by WriteHeader or implied by a Write or Flush
 	opened bool
 }
 
 func (w *countedStream) WriteHeader(code int) {
-	if code == http.StatusOK && !w.opened {
-		w.opened = true
-		w.m.opened.Inc()
+	if !w.sent && code >= 200 {
+		w.sent = true
+		w.count(code)
 	}
 	w.ResponseWriter.WriteHeader(code)
 }
 
 func (w *countedStream) Write(p []byte) (int, error) {
-	if !w.opened {
-		w.WriteHeader(http.StatusOK)
-	}
+	w.implied()
 	return w.ResponseWriter.Write(p)
 }
 
-func (w *countedStream) Flush() {
-	if f, ok := w.ResponseWriter.(http.Flusher); ok {
-		f.Flush()
+func (w *countedStream) Flush() { w.FlushError() }
+
+func (w *countedStream) FlushError() error {
+	w.implied()
+	return http.NewResponseController(w.ResponseWriter).Flush()
+}
+
+// implied notes the 200 that net/http sends for a Write or Flush before
+// any WriteHeader, without writing it again.
+func (w *countedStream) implied() {
+	if !w.sent {
+		w.sent = true
+		w.count(http.StatusOK)
+	}
+}
+
+func (w *countedStream) count(code int) {
+	if code == http.StatusOK {
+		w.opened = true
+		w.m.opened.Inc()
 	}
 }
 
