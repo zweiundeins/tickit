@@ -1,10 +1,13 @@
 package web_test
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/png"
 	"io"
 	"net/http"
 	"net/url"
@@ -279,12 +282,29 @@ func (f *fixture) sid(w who) string {
 	return ""
 }
 
-// post sends body to path as w, as Datastar does from the site's page.
+// post sends body to path as w, as Datastar does from the site's page; a
+// body with a file goes as an upload does (FR-85), its fields as parts.
 func (f *fixture) post(w who, path string, body map[string]any) (int, string) {
 	f.t.Helper()
+	if file, ok := body["file"].([]byte); ok {
+		fields := map[string]string{}
+		for k, v := range body {
+			if k != "file" {
+				fields[k] = fmt.Sprint(v)
+			}
+		}
+		return webtest.Upload(f.t, f.client(w), f.e.URL+path, fields, file)
+	}
 	b, _ := json.Marshal(body)
 	return webtest.Post(f.t, f.client(w), f.e.URL+path, string(b))
 }
+
+// uploadPNG is a small PNG, as a person uploads one (FR-85).
+var uploadPNG = sync.OnceValue(func() []byte {
+	var b bytes.Buffer
+	png.Encode(&b, image.NewGray(image.Rect(0, 0, 4, 3)))
+	return b.Bytes()
+})
 
 // get answers a GET as w within d: a stream is cut off then.
 func (f *fixture) get(c *http.Client, path string, d time.Duration) (int, string) {

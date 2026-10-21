@@ -75,13 +75,16 @@ var (
 	classEditBatch   = class{name: "edit-batch", every: time.Second / 10, burst: 50, separate: true, body: 256 << 10}
 	classCaret       = class{name: "caret", every: time.Second / 15, burst: 30, separate: true, body: 2 << 10}
 	classCreateScope = class{name: "create-scope", window: 24 * time.Hour, burst: 2, body: 8 << 10}
-	classUpload      = class{name: "upload", every: 30 * time.Second, burst: 3, body: 8 << 10}
+	classUpload      = class{name: "upload", every: 30 * time.Second, burst: 3, body: 6 << 20}
+	// classBulk is a bulk edit of up to 100 issues (FR-58), which would
+	// take five times the field class's burst at once.
+	classBulk = class{name: "bulk", every: 10 * time.Second, burst: 3, body: 16 << 10}
 	// classView is for watching and unwatching side panels, which DM-04
 	// does not name.
 	classView = class{name: "view", every: time.Second / 5, burst: 20, body: 2 << 10}
 )
 
-var classes = []class{classCreate, classComment, classField, classEditBatch, classCaret, classCreateScope, classUpload, classView}
+var classes = []class{classCreate, classComment, classField, classEditBatch, classCaret, classCreateScope, classUpload, classView, classBulk}
 
 // tooMany is what a request over a limit hears (DM-04.2).
 const tooMany = "Too many changes at once. Wait a moment."
@@ -135,7 +138,13 @@ func (s *Server) decode(w http.ResponseWriter, r *http.Request, c class, v paylo
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return action{}, false
 	}
-	p := v.payload()
+	return s.actionOf(w, r, v.payload())
+}
+
+// actionOf is the action of a request whose payload p was read: 400
+// without valid tab and op ids, 403 for an account that must change its
+// password first.
+func (s *Server) actionOf(w http.ResponseWriter, r *http.Request, p *Payload) (action, bool) {
 	actor := people.Actor(r.Context())
 	if !validID(p.Tab) || !validID(p.Op) || actor.IsZero() {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -186,13 +195,19 @@ type result struct {
 // an OK that would start what it may not (a reset). It answers the
 // requests that reached no outcome itself and reports false then.
 func (s *Server) run(w http.ResponseWriter, r *http.Request, a action, cmd writer.Command) (result, bool) {
+	return s.runNoted(w, r, a, cmd, nil)
+}
+
+// runNoted is run with tabs.Act's Note, which makes the result of a
+// command that went through its outcome's message and data.
+func (s *Server) runNoted(w http.ResponseWriter, r *http.Request, a action, cmd writer.Command, note func([]byte) (string, json.RawMessage)) (result, bool) {
 	if !s.connected(w, r, a.By.Actor, a.Tab) {
 		return result{}, false
 	}
 	// The demo's guard refuses while it resets, for a blocked guest, and
 	// past the caps (DM-03.4, DM-07.2, DM-04.3).
 	cmd = s.demo.Guard(a.By.Actor, a.Addr, cmd)
-	op := writer.OnceResult(a.Session+":"+r.URL.Path+":"+a.By.Op, tabs.Act{Session: a.Session, Tab: a.Tab, By: a.By, Cmd: cmd})
+	op := writer.OnceResult(a.Session+":"+r.URL.Path+":"+a.By.Op, tabs.Act{Session: a.Session, Tab: a.Tab, By: a.By, Cmd: cmd, Note: note})
 	if err := s.w.Do(r.Context(), op); err != nil {
 		s.failAction(w, r, err)
 		return result{}, false

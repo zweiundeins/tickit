@@ -30,6 +30,7 @@ export const documentCSS = /* css */ `
 :where(.ProseMirror) :where(.doc-image__alt) { position: absolute; inset-block-start: .5em; inset-inline-end: .5em; opacity: 0; }
 :where(.ProseMirror) :where(figure.doc-image:hover, figure.doc-image.ProseMirror-selectednode, figure.doc-image:focus-within) :where(.doc-image__alt) { opacity: 1; }
 :where(.ProseMirror) :where(.issue-chip, .mention, .page-link) { cursor: default; }
+:where(.ProseMirror) :where(.sb-upload) { display: inline-block; padding: .25em .5em; border: 1px dashed currentColor; border-radius: 4px; font-size: .875em; opacity: .75; user-select: none; }
 :where(.tk-caret) { position: relative; margin-inline: -1px; border-inline-start: 2px solid currentColor; word-break: normal; pointer-events: auto; }
 :where(.tk-caret__tag) { position: absolute; inset-block-end: 100%; inset-inline-start: -2px; white-space: nowrap; user-select: none; pointer-events: none; font-size: .6875rem; line-height: 15px; padding: 0 4px; opacity: 0; transition: opacity .2s; }
 :where(.tk-caret--tag, .tk-caret:hover) :where(.tk-caret__tag) { opacity: 1; }

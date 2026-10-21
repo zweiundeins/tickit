@@ -20,7 +20,9 @@
 // showed; a field someone else changed after Seen refuses the change
 // with a *Conflict (MP-08), and a board move whose card moved after Seen
 // with a *Conflict of the field "move" (MP-04.3). A change to the value
-// a field holds stores nothing (FR-14.3).
+// a field holds stores nothing (FR-14.3). BulkEdit changes one field of
+// up to 100 issues, or deletes them, each through its single edit in a
+// savepoint of its own, so each changes or is refused alone (FR-58).
 //
 // The seed runs the same commands with a seeded person (people.Seed) as
 // the actor and a past By.At: the access checks let seeded people act,

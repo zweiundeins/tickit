@@ -211,6 +211,9 @@ type Act struct {
 	Session, Tab string
 	By           By
 	Cmd          writer.Command
+	// Note, when set, turns the result of a Cmd that went through into
+	// its outcome's message and data: what a bulk edit refused (FR-58.2).
+	Note func(result []byte) (msg string, data json.RawMessage)
 }
 
 func (a Act) Validate() error {
@@ -277,6 +280,8 @@ func (a Act) ApplyResult(tx *writer.Tx) ([]byte, error) {
 		}
 	case err != nil:
 		return nil, err
+	case a.Note != nil:
+		o.Msg, o.Data = a.Note(value)
 	}
 	state.record(o)
 	if err := Save(tx, a.Session, a.Tab, state, a.By.At); err != nil {

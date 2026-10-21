@@ -23,8 +23,17 @@ tickit.zweiundeins.gmbh {
 		}
 	}
 
-	# The largest body tickit takes is an edit batch of 256 KiB.
-	request_body {
+	# The largest body tickit takes is an edit batch of 256 KiB, but for an
+	# image upload (FR-85): a file of 5 MB in a multipart body. The two
+	# matchers exclude each other, since both limits would apply otherwise.
+	@upload path_regexp ^/cmd/(pages/[^/]+|issues/[^/]+/description)/image$
+	@other {
+		not path_regexp ^/cmd/(pages/[^/]+|issues/[^/]+/description)/image$
+	}
+	request_body @upload {
+		max_size 6MB
+	}
+	request_body @other {
 		max_size 1MB
 	}
 

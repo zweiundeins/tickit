@@ -22,6 +22,7 @@ import (
 
 	"github.com/zweiundeins/tickit/internal/access"
 	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/images"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/recent"
 	"github.com/zweiundeins/tickit/internal/tracker"
@@ -43,7 +44,7 @@ import (
 //	/spaces/{key}/trash                  the trash (FR-94)
 //	/pages/{id}                          a page link's address: redirects
 //	/labels/{label}                      pages and issues with a label (FR-93)
-//	/img/lib/{id}                        an image of the library (FR-84)
+//	/img/lib/{id}                        an image of the library (FR-84), or an uploaded one (FR-85)
 func (s *Server) routesWiki() {
 	const probeID = "0192d000-0000-7000-8000-000000000001"
 	s.get("GET /spaces", http.HandlerFunc(s.spacesPage))
@@ -57,7 +58,7 @@ func (s *Server) routesWiki() {
 	s.get("GET /pages/{id}", http.HandlerFunc(s.pageRedirect), "/pages/"+probeID)
 	s.get("GET /pages/{id}/edit", http.HandlerFunc(s.pageRedirect), "/pages/"+probeID+"/edit")
 	s.get("GET /labels/{label}", http.HandlerFunc(s.labelPage), "/labels/release")
-	s.get("GET /img/lib/{id}", http.HandlerFunc(s.libraryImage), "/img/lib/architecture-overview", "/img/lib/nope")
+	s.get("GET /img/lib/{id}", http.HandlerFunc(s.libraryImage), "/img/lib/architecture-overview", "/img/lib/nope", "/img/lib/up-aaaaaaaaaaaaaaaaaaaaaaaaaa")
 
 	s.post("POST /cmd/spaces/create", s.createSpace)
 	s.post("POST /cmd/pages/create", s.createPage)
@@ -1022,6 +1023,10 @@ func (s *Server) labelPage(w http.ResponseWriter, r *http.Request) {
 // images.json: SVG files under static/img/lib.
 func (s *Server) libraryImage(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	if images.IsUpload(id) {
+		s.uploadedImage(w, r, id) // FR-85
+		return
+	}
 	if hidden, err := wiki.ImageHidden(r.Context(), s.db.R, id); !wiki.ImageExists(id) || hidden || err != nil { // DM-07.1
 		s.notFound(w, r)
 		return

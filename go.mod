@@ -19,6 +19,7 @@ require (
 	github.com/zweiundeins/lith/minify v0.4.1
 	github.com/zweiundeins/lith/prom v0.4.1
 	golang.org/x/crypto v0.57.0
+	golang.org/x/image v0.43.0
 )
 
 require (

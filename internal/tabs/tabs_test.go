@@ -150,6 +150,34 @@ func TestRefusalData(t *testing.T) {
 	})
 }
 
+// FR-58.2: a Note turns the result of a command that went through into
+// the outcome's message and data; a refusal keeps its own.
+func TestNote(t *testing.T) {
+	e := dbtest.Open(t)
+	noted := func(result []byte) (string, json.RawMessage) {
+		return "2 issues changed. 1 was not.", json.RawMessage(`{"n":"` + string(result) + `"}`)
+	}
+	for _, c := range []struct {
+		op  string
+		cmd writer.Command
+	}{
+		{"op1", note{key: "a"}},
+		{"op2", note{key: "b", refuse: &writer.Refusal{Msg: "No."}}},
+	} {
+		o := writer.OnceResult("s1:"+c.op, tabs.Act{Session: "s1", Tab: "t1", By: tabs.By{Actor: ada, Op: c.op, At: now}, Cmd: c.cmd, Note: noted})
+		if err := e.W.Do(context.Background(), o); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s, _ := state(t, e)
+	if o, _ := s.Outcome("op1"); !o.OK || o.Msg != "2 issues changed. 1 was not." || string(o.Data) != `{"n":""}` {
+		t.Errorf("the noted outcome: %+v", o)
+	}
+	if o, _ := s.Outcome("op2"); o.OK || o.Msg != "No." || o.Data != nil {
+		t.Errorf("the refused outcome: %+v", o)
+	}
+}
+
 // NFR-01.1: a refusal for want of a right is Denied: the action answers 403.
 func TestDenied(t *testing.T) {
 	e := dbtest.Open(t)

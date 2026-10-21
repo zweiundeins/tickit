@@ -90,6 +90,17 @@ func (vr *ViewRegistry) add(kind string, f ViewFactory, presenceOf func(string) 
 	vr.kinds[kind] = viewKind{make: f, presenceOf: presenceOf}
 }
 
+// hasPresence says whether a view that specs name joins a presence row.
+func (vr *ViewRegistry) hasPresence(specs []string) bool {
+	for _, spec := range specs {
+		kind, _, _ := strings.Cut(spec, ":")
+		if vr.kinds[kind].presenceOf != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // MaxViews is how many views a document may name in its stream's URL.
 const MaxViews = 8
 

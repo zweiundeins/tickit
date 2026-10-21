@@ -136,21 +136,26 @@ func (c *Commit) Validate() error {
 	by, page := c.By, c.Page
 	c.c = &collab.Commit{Kind: pageDocs, By: c.By, Session: c.Session, Tab: c.Tab, ID: c.Page, Epoch: c.Epoch, Base: c.Base,
 		Ref: c.Ref, Client: c.Client, Steps: c.Steps,
-		Gate: func(tx *writer.Tx) error {
-			ps, err := pageState(tx, page)
-			if err != nil {
-				return err
-			}
-			if err := require(tx, by, access.EditIssues, ps.Space); err != nil {
-				return err
-			}
-			if ps.State != Current {
-				return collab.ErrGone
-			}
-			return nil
-		}}
+		Gate: func(tx *writer.Tx) error { return DocEditable(tx, by, page) }}
 	if err := c.c.Validate(); err != nil {
 		return errors.New("wiki: " + err.Error())
+	}
+	return nil
+}
+
+// DocEditable checks in the writer that by may change the page's
+// document now, as a commit does: the page current (collab.ErrGone) and
+// by a Member of its space.
+func DocEditable(tx *writer.Tx, by tabs.By, page string) error {
+	ps, err := pageState(tx, page)
+	if err != nil {
+		return err
+	}
+	if err := require(tx, by, access.EditIssues, ps.Space); err != nil {
+		return err
+	}
+	if ps.State != Current {
+		return collab.ErrGone
 	}
 	return nil
 }
