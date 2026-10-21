@@ -67,6 +67,13 @@ type (
 		To       string   `json:"to"`
 		Category Category `json:"category"`
 	}
+	// CategoryChanged is a change of the category of the issue's status
+	// in its workflow (FR-36.1): the status stays.
+	CategoryChanged struct {
+		Status string   `json:"status"`
+		From   Category `json:"from"`
+		To     Category `json:"to"`
+	}
 	// Moved is a move on the board or in the backlog (FR-41, FR-45): a new
 	// rank, and a new status when it went to another column.
 	Moved struct {
@@ -159,6 +166,7 @@ func (DescriptionChanged) issueEvent() {}
 func (TypeChanged) issueEvent()        {}
 func (StatusChanged) issueEvent()      {}
 func (Moved) issueEvent()              {}
+func (CategoryChanged) issueEvent()    {}
 func (PriorityChanged) issueEvent()    {}
 func (AssigneeChanged) issueEvent()    {}
 func (ParentChanged) issueEvent()      {}
@@ -191,6 +199,7 @@ var (
 	TypeChangedType        = defineIssue[TypeChanged]("issue.type_changed")
 	StatusChangedType      = defineIssue[StatusChanged]("issue.status_changed")
 	MovedType              = defineIssue[Moved]("issue.moved")
+	CategoryChangedType    = defineIssue[CategoryChanged]("issue.category_changed")
 	PriorityChangedType    = defineIssue[PriorityChanged]("issue.priority_changed")
 	AssigneeChangedType    = defineIssue[AssigneeChanged]("issue.assignee_changed")
 	ParentChangedType      = defineIssue[ParentChanged]("issue.parent_changed")
@@ -230,7 +239,8 @@ const (
 	FieldComponents  = "components"
 	FieldWatchers    = "watchers"
 	FieldLinks       = "links"
-	FieldMove        = "move" // a board move's refusals and conflicts
+	FieldMove        = "move"     // a board move's refusals and conflicts
+	FieldCategory    = "category" // a history entry of issue.category_changed
 )
 
 // Link is a link as one of its issues holds it.
@@ -317,6 +327,8 @@ func evolveIssue(s IssueState, e IssueEvent) IssueState {
 	case StatusChanged:
 		s.Status, s.Category = e.To, e.Category
 		s.changed(FieldStatus)
+	case CategoryChanged:
+		s.Category = e.To
 	case Moved:
 		if e.Status != e.FromStatus {
 			s.Status, s.Category = e.Status, e.Category

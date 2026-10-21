@@ -75,6 +75,7 @@ var labels = map[string]string{
 	FieldEstimate:    "original estimate",
 	FieldRemaining:   "remaining estimate",
 	FieldSprint:      "sprint",
+	FieldCategory:    "status category",
 }
 
 // FieldLabel is a field as messages and the history name it: "due date".

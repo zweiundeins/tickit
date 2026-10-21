@@ -2,6 +2,7 @@ package views
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"encoding/hex"
 	"errors"
 	"net/url"
@@ -44,6 +45,23 @@ func QuickFilterOf(v url.Values) tracker.Filter { return QuickFilter(tracker.Par
 // QuickQuery is the board page's query for a quick filter.
 func QuickQuery(f tracker.Filter) string { return QuickFilter(f).Values().Encode() }
 
+// The swimlanes a board groups its cards in (FR-44), chosen per tab: in
+// the page's URL (lanes=epic) and the board view's name (".ge").
+const (
+	LanesNone     = ""
+	LanesEpic     = "epic"
+	LanesAssignee = "assignee"
+)
+
+// LanesOf reads a board's swimlanes from its page's query.
+func LanesOf(v url.Values) string {
+	switch l := v.Get("lanes"); l {
+	case LanesEpic, LanesAssignee:
+		return l
+	}
+	return LanesNone
+}
+
 // SavedOf is the saved filter a board's page names (filter=<id>), "" for
 // none (FR-56.2).
 func SavedOf(v url.Values) string {
@@ -63,9 +81,10 @@ var b64 = base64.RawURLEncoding
 // "WEB", then ".a" and an assignee, ".t" and a type, ".l" and a label in
 // base64url, ".q" and the text in base64url, each sorted. Person ids,
 // types and base64url hold only the characters a view's name may (the
-// stream's argPattern); the page builds the same name (boardArg). A
-// saved filter's id comes last, after ".f" (FR-56.2).
-func BoardArg(key string, f tracker.Filter, saved string) string {
+// stream's argPattern); the page builds the same name (boardArg). The
+// swimlanes follow, ".ge" or ".ga" (FR-44), and a saved filter's id comes
+// last, after ".f" (FR-56.2).
+func BoardArg(key string, f tracker.Filter, saved, lanes string) string {
 	f = QuickFilter(f)
 	var b strings.Builder
 	b.WriteString(key)
@@ -85,6 +104,9 @@ func BoardArg(key string, f tracker.Filter, saved string) string {
 		}
 		b.WriteString(".q" + b64.EncodeToString([]byte(string(q))))
 	}
+	if lanes != LanesNone {
+		b.WriteString(".g" + lanes[:1])
+	}
 	if tracker.ValidID(saved) {
 		b.WriteString(".f" + saved)
 	}
@@ -94,26 +116,35 @@ func BoardArg(key string, f tracker.Filter, saved string) string {
 var errBoardArg = errors.New("views: a malformed board view")
 
 // ParseBoardArg reads BoardArg's name back: the key, the quick filter
-// with Me kept, and the saved filter's id or "".
-func ParseBoardArg(arg string) (string, tracker.Filter, string, error) {
+// with Me kept, the saved filter's id or "", and the swimlanes.
+func ParseBoardArg(arg string) (key string, f tracker.Filter, saved, lanes string, err error) {
 	parts := strings.Split(arg, ".")
 	key, ok := tracker.NormalizeKey(parts[0])
 	if !ok || key != parts[0] {
-		return "", tracker.Filter{}, "", errBoardArg
+		return "", f, "", "", errBoardArg
 	}
-	var f tracker.Filter
-	saved := ""
 	for _, p := range parts[1:] {
 		if len(p) < 2 {
-			return "", f, "", errBoardArg
+			return "", f, "", "", errBoardArg
 		}
 		v := p[1:]
 		switch p[0] {
 		case 'f':
 			if !tracker.ValidID(v) || saved != "" {
-				return "", f, "", errBoardArg
+				return "", f, "", "", errBoardArg
 			}
 			saved = v
+		case 'g':
+			switch {
+			case lanes != LanesNone:
+				return "", f, "", "", errBoardArg
+			case v == "e":
+				lanes = LanesEpic
+			case v == "a":
+				lanes = LanesAssignee
+			default:
+				return "", f, "", "", errBoardArg
+			}
 		case 'a':
 			f.Assignees = append(f.Assignees, v)
 		case 't':
@@ -121,7 +152,7 @@ func ParseBoardArg(arg string) (string, tracker.Filter, string, error) {
 		case 'l', 'q':
 			raw, err := b64.DecodeString(v)
 			if err != nil {
-				return "", f, "", errBoardArg
+				return "", f, "", "", errBoardArg
 			}
 			if p[0] == 'l' {
 				f.Labels = append(f.Labels, string(raw))
@@ -129,16 +160,19 @@ func ParseBoardArg(arg string) (string, tracker.Filter, string, error) {
 				f.Text = string(raw)
 			}
 		default:
-			return "", f, "", errBoardArg
+			return "", f, "", "", errBoardArg
 		}
 	}
-	return key, QuickFilter(f), saved, nil
+	return key, QuickFilter(f), saved, lanes, nil
 }
 
 // BoardKey is the key of a project's board view for a quick filter
-// normalized for its viewer (Me replaced): the tabs that see the same
-// cards share it (MP-11.1).
-func BoardKey(projectID string, f tracker.Filter) string {
+// normalized for its viewer (Me replaced) and its swimlanes: the tabs
+// that see the same cards in the same rows share it (MP-11.1).
+func BoardKey(projectID string, f tracker.Filter, lanes string) string {
+	if lanes != LanesNone {
+		return "board:" + projectID + ":" + f.Key() + ":" + lanes
+	}
 	return "board:" + projectID + ":" + f.Key()
 }
 
@@ -158,6 +192,8 @@ type Lanes struct {
 	// Rev is the frame's revision, a hash of its bytes: the page tells by
 	// it whether a frame came since a move (web fills it in).
 	Rev string
+	// Group is the swimlanes (FR-44): LanesNone, LanesEpic, LanesAssignee.
+	Group string
 }
 
 // BoardHead is the head above the board: the project's name, the active
@@ -173,6 +209,8 @@ type BoardHead struct {
 	Next      []tracker.Sprint
 	Assignees []people.Person
 	Now       time.Time
+	// Lanes are the board's columns, for the card menu's "Move to".
+	Lanes []ui.LaneRef
 }
 
 // BoardPage is the board's page.
@@ -193,6 +231,8 @@ type BoardPage struct {
 	CanEdit bool
 	// CreateStatus opens the create dialog in a status, from ?create=.
 	CreateStatus string
+	// Group is the tab's swimlanes (FR-44).
+	Group string
 	// Me and Moderates are the issue panel's (docs/architecture.md).
 	Me        string
 	Moderates bool
@@ -241,7 +281,128 @@ func category(c tracker.Category) ui.StatusCategory {
 func CardID(key string) string { return "c-" + key }
 
 // laneID is the id of a column.
-func laneID(status string) string { return "lane-" + status }
+func laneID(column string) string { return "lane-" + column }
+
+// laneProps is a column as the board draws it: its "+" creates an issue
+// in its first status.
+func laneProps(l Lanes, col tracker.Column) ui.LaneProps {
+	p := ui.LaneProps{ID: laneID(col.ID), Name: col.Name, Category: category(col.Category), Count: len(col.Cards), Total: l.Totals[col.ID], WIP: col.WIP, Lean: true,
+		Attrs: map[string]any{"data-lane": col.ID, "data-name": col.Name}}
+	if len(col.Statuses) > 0 {
+		p.CreateAttrs = map[string]any{"data-status": col.Statuses[0].ID}
+	}
+	return p
+}
+
+// headProps is a column's head above swimlanes: no drop target.
+func headProps(l Lanes, col tracker.Column) ui.LaneProps {
+	p := laneProps(l, col)
+	p.Attrs = map[string]any{"data-col": col.ID}
+	return p
+}
+
+// cellProps is a column's cell in a swimlane: the drop target.
+func cellProps(col tracker.Column) ui.LaneProps {
+	return ui.LaneProps{Name: col.Name, Category: category(col.Category), Attrs: map[string]any{"data-lane": col.ID, "data-name": col.Name}}
+}
+
+// laneStatus is the status a card's markup names: only in a column of
+// several statuses on a board with rules, where the page needs it to
+// tell where the card may go (FR-37.1).
+func laneStatus(l Lanes, col tracker.Column, c tracker.Card) string {
+	if l.Board.Rules != nil && len(col.Statuses) > 1 {
+		return c.Status
+	}
+	return ""
+}
+
+// lanesAttrs are the lanes' region's: its id, its revision, and the
+// rules of the moves when the workflow has any (FR-37.1): {c: column to
+// statuses, t: status to the columns a card of it may go to}.
+func lanesAttrs(l Lanes) map[string]any {
+	a := map[string]any{"id": BoardLanesID, "data-rev": l.Rev}
+	if l.Board.Rules != nil {
+		cols := map[string][]string{}
+		for _, c := range l.Board.Columns {
+			ids := []string{}
+			for _, s := range c.Statuses {
+				ids = append(ids, s.ID)
+			}
+			cols[c.ID] = ids
+		}
+		b, _ := json.Marshal(map[string]any{"c": cols, "t": l.Board.Rules})
+		a["data-rules"] = string(b)
+	}
+	return a
+}
+
+// boardClass is the lanes' region's class: flat cards, in swimlanes.
+func boardClass(l Lanes) string {
+	if l.Group != LanesNone {
+		return "tk-board--flat tk-board--swim"
+	}
+	return "tk-board--flat"
+}
+
+// swim is a row of a board of swimlanes: its cards per column.
+type swim struct {
+	Key   string
+	Name  string
+	Count int
+	Cards [][]tracker.Card
+	order string // sorts the rows
+}
+
+// swims groups a board's cards in rows (FR-44): by epic, the epics in the
+// order of their keys and an epic's own card in its row, then "No epic";
+// or by assignee, by name, then "Unassigned".
+func swims(l Lanes) []swim {
+	rows := map[string]*swim{}
+	var keys []string
+	for i, col := range l.Board.Columns {
+		for _, c := range col.Cards {
+			key, name, order := "", "", ""
+			switch l.Group {
+			case LanesEpic:
+				switch {
+				case c.Type == tracker.Epic:
+					key, name, order = c.ID, c.Key+" "+c.Summary, keyOrder(c.Key)
+				case c.Epic != nil:
+					key, name, order = c.Epic.ID, c.Epic.Key+" "+c.Epic.Summary, keyOrder(c.Epic.Key)
+				default:
+					name, order = "No epic", "\xff"
+				}
+			default:
+				if c.Assignee != "" {
+					key, name = c.Assignee, l.People[c.Assignee].Name
+					order = strings.ToLower(name) + "\x00" + key
+				} else {
+					name, order = "Unassigned", "\xff"
+				}
+			}
+			r, ok := rows[key]
+			if !ok {
+				r = &swim{Key: key, Name: name, order: order, Cards: make([][]tracker.Card, len(l.Board.Columns))}
+				rows[key] = r
+				keys = append(keys, key)
+			}
+			r.Cards[i] = append(r.Cards[i], c)
+			r.Count++
+		}
+	}
+	out := make([]swim, len(keys))
+	for i, k := range keys {
+		out[i] = *rows[k]
+	}
+	slices.SortStableFunc(out, func(a, b swim) int { return strings.Compare(a.order, b.order) })
+	return out
+}
+
+// keyOrder sorts issue keys by project, then number.
+func keyOrder(key string) string {
+	p, n, _ := tracker.ParseIssueKey(key)
+	return p + "-" + strconv.FormatInt(1e12+n, 10)
+}
 
 // shortID is an issue's id in 22 characters (base64url of its 16
 // bytes): the board's card carries it, and the page puts the issue
@@ -255,12 +416,16 @@ func shortID(id string) string {
 	return b64.EncodeToString(raw)
 }
 
-// cardProps is a tracker card as the board draws it.
-func cardProps(c tracker.Card, who map[string]people.Person, now time.Time, menu string) ui.CardProps {
+// cardProps is a tracker card as the board draws it; status, when set,
+// names the card's status in its markup (laneStatus).
+func cardProps(c tracker.Card, who map[string]people.Person, now time.Time, menu, status string) ui.CardProps {
 	p := ui.CardProps{
 		ID: CardID(c.Key), Key: c.Key, Summary: c.Summary, Href: "/" + c.Key, LinkAttrs: map[string]any{"data-i": shortID(c.ID)},
 		Type: ui.IssueType(c.Type), Priority: ui.Priority(c.Priority), Labels: c.Labels, LabelHref: LabelHref, Now: now, MenuID: menu,
 		SlotAttrs: map[string]any{"data-v": strconv.FormatInt(c.Version, 10)},
+	}
+	if status != "" {
+		p.SlotAttrs["data-s"] = status
 	}
 	if c.Assignee != "" {
 		u := UIPerson(who[c.Assignee])
@@ -298,14 +463,24 @@ func facesOf(b tracker.BoardView, who map[string]people.Person) []ui.Person {
 	return out
 }
 
-// laneRefs are the columns the card menu moves to.
-func laneRefs(b tracker.BoardView) []ui.LaneRef {
-	out := make([]ui.LaneRef, len(b.Columns))
-	for i, c := range b.Columns {
+// LaneRefs are the columns the card menu moves to.
+func LaneRefs(cols []tracker.Column) []ui.LaneRef {
+	out := make([]ui.LaneRef, len(cols))
+	for i, c := range cols {
 		out[i] = ui.LaneRef{ID: c.ID, Name: c.Name, Cat: category(c.Category)}
 	}
 	return out
 }
+
+// cardMenu is the board's card menu; the board head's view patches its
+// "Move to" items (CardMenuLanes).
+func cardMenu(h BoardHead) ui.CardMenuProps {
+	return ui.CardMenuProps{ID: CardMenuID, Lanes: h.Lanes}
+}
+
+// CardMenuLanes are the card menu's "Move to" items as the columns are
+// now (FR-36.3, FR-43).
+func CardMenuLanes(h BoardHead) templ.Component { return ui.CardMenuLanes(cardMenu(h)) }
 
 // DaysLeft is the days to a sprint's end, 0 on its last day, negative
 // past it; ok is false without an end date.
@@ -358,10 +533,10 @@ func boardSignals(p BoardPage) string {
 	if p.Applied != nil {
 		saved, sname = p.Applied.ID, p.Applied.Name
 	}
-	return `{_board: {op: '', pcard: '', drag: '', say: '', note: '', ncard: '', problem: '', retry: '', move: {issue: '', status: '', before: '', after: '', seen: 0}}, _bf: {mine: ` +
+	return `{_board: {op: '', pcard: '', drag: '', say: '', note: '', ncard: '', problem: '', retry: '', move: {issue: '', column: '', before: '', after: '', seen: 0}}, _bf: {mine: ` +
 		strconv.FormatBool(mine) + `, who: ` + jsString(strings.Join(who, " ")) + `, types: ` + jsString(strings.Join(types, " ")) +
 		`, labels: ` + jsString(strings.Join(f.Labels, " ")) + `, text: ` + jsString(f.Text) + `, q: ` + jsString(f.Text) +
-		`, saved: ` + jsString(saved) + `, sname: ` + jsString(sname) + `}}`
+		`, saved: ` + jsString(saved) + `, sname: ` + jsString(sname) + `, group: ` + jsString(p.Group) + `}}`
 }
 
 // savedAttrs are a saved filter's item in the board's Filters menu: its

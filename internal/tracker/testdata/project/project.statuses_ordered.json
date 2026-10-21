@@ -1,0 +1,11 @@
+{
+  "order": [
+    "backlog",
+    "todo",
+    "selected",
+    "inprogress",
+    "inreview",
+    "blocked",
+    "done"
+  ]
+}

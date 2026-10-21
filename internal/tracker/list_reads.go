@@ -96,7 +96,7 @@ func ListOptions(ctx context.Context, q sqlite.Querier, readable []string) (Filt
 		}
 		return rows.Err()
 	}
-	err = strs(`SELECT id, min(name), min(category) FROM statuses WHERE project_id IN (SELECT value FROM json_each(?))
+	err = strs(`SELECT id, min(name), min(category) FROM statuses WHERE project_id IN (SELECT value FROM json_each(?)) AND removed = 0
 		GROUP BY id ORDER BY min(position), id`, func(r *sql.Rows) error {
 		var s Status
 		err := r.Scan(&s.ID, &s.Name, &s.Category)

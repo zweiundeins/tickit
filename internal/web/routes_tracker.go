@@ -361,12 +361,10 @@ func loadIssue(ctx context.Context, q sqlite.Querier, id string, now time.Time) 
 		live.Depends(ctx, wiki.PageTopic(p.ID)) // a linked page's title
 	}
 	project := d.ProjectID
-	if m.Workflow, err = tracker.ProjectWorkflow(ctx, q, project); err != nil {
-		return m, err
-	}
 	if m.Statuses, err = tracker.Statuses(ctx, q, project); err != nil {
 		return m, err
 	}
+	m.Workflow = tracker.WorkflowOf(m.Statuses) // the menu offers what the rules allow (FR-16.1, FR-37.1)
 	if m.Sprints, err = tracker.Sprints(ctx, q, project); err != nil {
 		return m, err
 	}

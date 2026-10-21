@@ -125,19 +125,87 @@ func Readable(ctx context.Context, q sqlite.Querier, actor people.Person) ([]str
 	return out, nil
 }
 
-// Column is a status of a project's workflow as its board shows it.
+// WorkflowStatus is a status of a project's workflow as its settings and
+// menus show it: its place, the board column that shows it ("" for none)
+// and the statuses it may follow, any when Any (FR-37).
+type WorkflowStatus struct {
+	Status
+	Position int
+	Column   string
+	Any      bool
+	Follows  []string
+}
+
+// Statuses lists a project's workflow in order (FR-35.3).
+func Statuses(ctx context.Context, q sqlite.Querier, project string) ([]WorkflowStatus, error) {
+	rows, err := q.QueryContext(ctx, `SELECT id, name, category, position, board_column, follows FROM statuses
+		WHERE project_id = ? AND removed = 0 ORDER BY position`, project)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []WorkflowStatus
+	for rows.Next() {
+		var c WorkflowStatus
+		var follows string
+		if err := rows.Scan(&c.ID, &c.Name, &c.Category, &c.Position, &c.Column, &follows); err != nil {
+			return nil, err
+		}
+		c.Any = follows == ""
+		if !c.Any {
+			if err := json.Unmarshal([]byte(follows), &c.Follows); err != nil {
+				return nil, err
+			}
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// WorkflowOf is the workflow of a project's statuses as Statuses lists
+// them, its rules included; Start stays empty.
+func WorkflowOf(list []WorkflowStatus) Workflow {
+	var w Workflow
+	for _, s := range list {
+		w.Statuses = append(w.Statuses, s.Status)
+		if !s.Any {
+			if w.Follows == nil {
+				w.Follows = map[string][]string{}
+			}
+			w.Follows[s.ID] = s.Follows
+		}
+	}
+	return w
+}
+
+// Column is a column of a project's board (FR-40, FR-43): its id and
+// name, with the category of its first status, its statuses in workflow
+// order and its limit.
 type Column struct {
 	Status
-	Position int  // in the workflow, from 1
+	Statuses []Status
+	Position int
 	WIP      int  // the work-in-progress limit, 0 for none (FR-43)
 	Over     bool // more cards than the limit
 	Cards    []Card
 	Points   int // the cards' story points
 }
 
-// Statuses lists a project's workflow in order, with the board's limits.
-func Statuses(ctx context.Context, q sqlite.Querier, project string) ([]Column, error) {
-	rows, err := q.QueryContext(ctx, `SELECT id, name, category, position, wip_limit FROM statuses WHERE project_id = ? ORDER BY position`, project)
+// Board is the column's statuses as the decider holds them.
+func (c Column) Board() BoardColumn {
+	b := BoardColumn{ID: c.ID, Name: c.Name, WIP: c.WIP}
+	for _, s := range c.Statuses {
+		b.Statuses = append(b.Statuses, s.ID)
+	}
+	return b
+}
+
+// BoardColumns lists a project's board columns in order, each with its
+// statuses.
+func BoardColumns(ctx context.Context, q sqlite.Querier, project string) ([]Column, error) {
+	rows, err := q.QueryContext(ctx, `SELECT c.id, c.name, c.position, c.wip_limit, coalesce(s.id, ''), coalesce(s.name, ''), coalesce(s.category, '')
+		FROM board_columns c LEFT JOIN statuses s ON s.project_id = c.project_id AND s.board_column = c.id AND s.removed = 0
+		WHERE c.project_id = ? ORDER BY c.position, s.position`, project)
 	if err != nil {
 		return nil, err
 	}
@@ -145,10 +213,21 @@ func Statuses(ctx context.Context, q sqlite.Querier, project string) ([]Column, 
 	var out []Column
 	for rows.Next() {
 		var c Column
-		if err := rows.Scan(&c.ID, &c.Name, &c.Category, &c.Position, &c.WIP); err != nil {
+		var st Status
+		if err := rows.Scan(&c.ID, &c.Name, &c.Position, &c.WIP, &st.ID, &st.Name, &st.Category); err != nil {
 			return nil, err
 		}
-		out = append(out, c)
+		if n := len(out); n == 0 || out[n-1].ID != c.ID {
+			c.Category = ToDo
+			if st.ID != "" {
+				c.Category = st.Category
+			}
+			out = append(out, c)
+		}
+		if st.ID != "" {
+			last := &out[len(out)-1]
+			last.Statuses = append(last.Statuses, st)
+		}
 	}
 	return out, rows.Err()
 }
@@ -528,13 +607,16 @@ func cards(ctx context.Context, q sqlite.Querier, query string, args ...any) ([]
 	return out, rows.Err()
 }
 
-// BoardView is a project's board (FR-40): a column per status but
-// Backlog, in workflow order, with its cards in rank order.
+// BoardView is a project's board (FR-40, FR-43): its columns in order,
+// each with its cards in rank order, and the rules of the moves.
 type BoardView struct {
 	Project Project
 	Sprint  *Sprint // the active sprint, whose issues alone the board shows (FR-46.2)
 	Columns []Column
 	Total   int // cards on the board
+	// Rules are the columns a card may go to, by its status (Rules); nil
+	// when the workflow allows every move.
+	Rules map[string][]string
 }
 
 // Board reads a project's board, its cards filtered by quick (FR-42):
@@ -548,10 +630,19 @@ func Board(ctx context.Context, q sqlite.Querier, project string, quick Filter) 
 		return b, err
 	}
 	b.Project = p
-	cols, err := Statuses(ctx, q, project)
+	cols, err := BoardColumns(ctx, q, project)
 	if err != nil {
 		return b, err
 	}
+	statuses, err := Statuses(ctx, q, project)
+	if err != nil {
+		return b, err
+	}
+	board := make([]BoardColumn, len(cols))
+	for i, c := range cols {
+		board[i] = c.Board()
+	}
+	b.Rules = Rules(WorkflowOf(statuses), board)
 	sprints, err := Sprints(ctx, q, project)
 	if err != nil {
 		return b, err
@@ -562,17 +653,14 @@ func Board(ctx context.Context, q sqlite.Querier, project string, quick Filter) 
 		b.Sprint = &sprints[0]
 		f.Sprints = []string{sprints[0].ID}
 	}
-	all, err := cards(ctx, q, `SELECT `+cardColumns+cardFrom+filterWhere+` AND i.status != 'backlog' AND ?17 = ?17 ORDER BY i.rank, i.number`,
+	all, err := cards(ctx, q, `SELECT `+cardColumns+cardFrom+filterWhere+` AND s.board_column != '' AND ?17 = ?17 ORDER BY i.rank, i.number`,
 		filterArgs([]string{project}, f)...)
 	if err != nil {
 		return b, err
 	}
 	for _, c := range cols {
-		if !OnBoard(c.ID) {
-			continue
-		}
 		for _, card := range all {
-			if card.Status == c.ID {
+			if slices.ContainsFunc(c.Statuses, func(s Status) bool { return s.ID == card.Status }) {
 				c.Cards = append(c.Cards, card)
 				if card.Points != nil {
 					c.Points += *card.Points

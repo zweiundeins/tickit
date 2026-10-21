@@ -19,7 +19,7 @@ const menuKeys = `['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(evt.key) && (
 	evt.preventDefault()
 	const i = items.indexOf(document.activeElement), n = items.length
 	items[evt.key === 'Home' ? 0 : evt.key === 'End' ? n - 1 : (i + (evt.key === 'ArrowDown' ? 1 : n - 1)) % n]?.focus()
-})([...el.querySelectorAll('.tk-menu__item:not([disabled]):not([aria-disabled="true"])')])`
+})([...el.querySelectorAll('.tk-menu__item:not([disabled]):not([aria-disabled="true"]):not([hidden])')])`
 
 // treeKeys is the keyboard of the ARIA tree pattern (NFR-47.2): Up and
 // Down move through the visible items, Right opens an item or goes to its

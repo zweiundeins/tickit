@@ -196,9 +196,10 @@ func Members(ctx context.Context, q sqlite.Querier, project string) ([]Member, e
 // board shows, whatever the quick filter: the faces above the board
 // (FR-42), most cards first.
 func BoardAssignees(ctx context.Context, q sqlite.Querier, project string) ([]string, error) {
-	rows, err := q.QueryContext(ctx, `SELECT assignee FROM issues WHERE project_id = ?1 AND deleted_at IS NULL AND status != 'backlog' AND assignee != ''
-		AND coalesce((SELECT id FROM sprints WHERE project_id = ?1 AND state = 'active'), sprint) = sprint
-		GROUP BY assignee ORDER BY count(*) DESC, assignee LIMIT 12`, project)
+	rows, err := q.QueryContext(ctx, `SELECT i.assignee FROM issues i JOIN statuses s ON s.project_id = i.project_id AND s.id = i.status
+		WHERE i.project_id = ?1 AND i.deleted_at IS NULL AND s.board_column != '' AND i.assignee != ''
+		AND coalesce((SELECT id FROM sprints WHERE project_id = ?1 AND state = 'active'), i.sprint) = i.sprint
+		GROUP BY i.assignee ORDER BY count(*) DESC, i.assignee LIMIT 12`, project)
 	if err != nil {
 		return nil, err
 	}
@@ -215,10 +216,12 @@ func BoardAssignees(ctx context.Context, q sqlite.Querier, project string) ([]st
 }
 
 // BoardCounts counts the cards of each column of a project's board
-// without a quick filter, for its work-in-progress limits (FR-43).
+// without a quick filter, by column id, for its work-in-progress limits
+// (FR-43).
 func BoardCounts(ctx context.Context, q sqlite.Querier, project string) (map[string]int, error) {
-	rows, err := q.QueryContext(ctx, `SELECT status, count(*) FROM issues WHERE project_id = ?1 AND deleted_at IS NULL AND status != 'backlog'
-		AND coalesce((SELECT id FROM sprints WHERE project_id = ?1 AND state = 'active'), sprint) = sprint GROUP BY status`, project)
+	rows, err := q.QueryContext(ctx, `SELECT s.board_column, count(*) FROM issues i JOIN statuses s ON s.project_id = i.project_id AND s.id = i.status
+		WHERE i.project_id = ?1 AND i.deleted_at IS NULL AND s.board_column != ''
+		AND coalesce((SELECT id FROM sprints WHERE project_id = ?1 AND state = 'active'), i.sprint) = i.sprint GROUP BY s.board_column`, project)
 	if err != nil {
 		return nil, err
 	}

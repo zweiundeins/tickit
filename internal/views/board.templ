@@ -19,7 +19,7 @@ templ Board(p BoardPage) {
 		class="tk-bd"
 		data-project={ p.Project.Key }
 		data-pid={ p.Project.ID }
-		data-arg={ BoardArg(p.Project.Key, p.Filter, appliedID(p.Applied)) }
+		data-arg={ BoardArg(p.Project.Key, p.Filter, appliedID(p.Applied), p.Group) }
 		if p.CanEdit {
 			data-edit="1"
 		}
@@ -84,6 +84,13 @@ templ Board(p BoardPage) {
 					<span data-text="$_bf.sname">{ appliedName(p.Applied) }</span>
 				</span>
 				<button class="tk-btn tk-btn--ghost tk-btn--sm" type="button" data-filter="clear" hidden data-attr:hidden={ "!(" + anyFilter + ")" }>Clear filters</button>
+				@ui.Menu(ui.MenuProps{ID: "board-group", Label: "Swimlanes", Icon: "rows", Caret: true, Size: ui.SizeSM, Variant: ui.Secondary}) {
+					for _, g := range groups {
+						<button class="tk-menu__item" type="button" role="menuitemradio" data-filter="group" data-v={ g.v } aria-checked="false" data-attr:aria-checked={ groupOn }>
+							<span class="tk-menu__label">{ g.name }</span>
+						</button>
+					}
+				}
 			</div>
 			@Presence(PresenceID(BoardHeadKey(p.Project.ID)), nil)
 		</div>
@@ -103,7 +110,7 @@ templ Board(p BoardPage) {
 			}
 		</div>
 		<p class="visually-hidden" aria-live="assertive" data-text="$_board.say"></p>
-		@ui.CardMenu(ui.CardMenuProps{ID: CardMenuID, Lanes: laneRefs(p.Lanes.Board)})
+		@ui.CardMenu(cardMenu(p.Head))
 		<p id="board-help" class="tk-bd__help muted">
 			Drag a card to another column or place, or open its <span aria-hidden="true">“…”</span> menu to move it with the keyboard. On a touch screen, drag a card by its grip.
 		</p>
@@ -141,13 +148,31 @@ func savedIcon(starred bool) string {
 // a card moves the element, and the card glides there in the view
 // transition scoped to the region.
 templ BoardLanes(l Lanes) {
-	@ui.Board(ui.BoardProps{Label: "Board of " + l.Board.Project.Name, Class: "tk-board--flat", Attrs: map[string]any{"id": BoardLanesID, "data-rev": l.Rev}}) {
+	@ui.Board(ui.BoardProps{Label: "Board of " + l.Board.Project.Name, Class: boardClass(l), Attrs: lanesAttrs(l)}) {
 		@ui.FaceStyles(facesOf(l.Board, l.People))
-		for _, col := range l.Board.Columns {
-			@ui.Lane(ui.LaneProps{ID: laneID(col.ID), Name: col.Name, Category: category(col.Category), Count: len(col.Cards), Total: l.Totals[col.ID], WIP: col.WIP, Lean: true,
-				CreateAttrs: map[string]any{"data-status": col.ID}, Attrs: map[string]any{"data-lane": col.ID, "data-name": col.Name}}) {
-				for _, c := range col.Cards {
-					@ui.BoardCard(cardProps(c, l.People, l.Now, CardMenuID))
+		if l.Group == LanesNone {
+			for _, col := range l.Board.Columns {
+				@ui.Lane(laneProps(l, col)) {
+					for _, c := range col.Cards {
+						@ui.BoardCard(cardProps(c, l.People, l.Now, CardMenuID, laneStatus(l, col, c)))
+					}
+				}
+			}
+		} else {
+			@ui.Swim(ui.SwimProps{}) {
+				for _, col := range l.Board.Columns {
+					@ui.LaneHead(headProps(l, col))
+				}
+			}
+			for _, sw := range swims(l) {
+				@ui.Swim(ui.SwimProps{Name: sw.Name, Count: sw.Count}) {
+					for i, col := range l.Board.Columns {
+						@ui.LaneCell(cellProps(col)) {
+							for _, c := range sw.Cards[i] {
+								@ui.BoardCard(cardProps(c, l.People, l.Now, CardMenuID, laneStatus(l, col, c)))
+							}
+						}
+					}
 				}
 			}
 		}
