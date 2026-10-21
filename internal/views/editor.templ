@@ -142,7 +142,8 @@ templ EditorPage(p EditorProps) {
 
 // EditorHostEl is the sb-rich-editor element (docs/editor.md, "Editor
 // frame"). carets come from the page's shared carets view through
-// $_carets, which data-preserve-attr keeps through the tab's frames.
+// $_carets, which data-preserve-attr keeps through the tab's frames, as it
+// keeps tab, which the editor's image uploads carry (FR-85).
 templ EditorHostEl(h EditorHost) {
 	<sb-rich-editor
 		id={ EditorID }
@@ -157,13 +158,15 @@ templ EditorHostEl(h EditorHost) {
 		state={ h.State }
 		refusal={ h.Refusal }
 		images={ h.Images }
+		upload={ h.cmd() + "/image" }
 		label={ h.label() }
 		data-cmd={ h.cmd() }
 		if h.Readonly {
 			readonly
 		}
-		data-preserve-attr="carets"
+		data-preserve-attr="carets tab"
 		data-attr:carets="$_carets"
+		data-attr:tab="$_tab"
 		data-init={ editorOpen }
 		data-on:sb-commit={ editorCommit }
 		data-on:sb-presence={ editorPresence }

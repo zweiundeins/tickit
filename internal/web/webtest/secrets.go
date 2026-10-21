@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
@@ -70,6 +72,8 @@ func (rec *recorder) RoundTrip(req *http.Request) (*http.Response, error) {
 				}
 			}
 			tab, _ = m["tab"].(string)
+		} else {
+			tab = multipartTab(req.Header.Get("Content-Type"), b)
 		}
 	}
 	for _, c := range req.Cookies() {
@@ -106,6 +110,26 @@ func (rec *recorder) RoundTrip(req *http.Request) (*http.Response, error) {
 		return res, nil
 	}
 	return rec.connect(req, res, body, tab)
+}
+
+// multipartTab is the tab field of a multipart body, as an upload sends
+// it (FR-85), or "".
+func multipartTab(ctype string, body []byte) string {
+	mt, params, err := mime.ParseMediaType(ctype)
+	if err != nil || mt != "multipart/form-data" {
+		return ""
+	}
+	r := multipart.NewReader(bytes.NewReader(body), params["boundary"])
+	for {
+		p, err := r.NextPart()
+		if err != nil {
+			return ""
+		}
+		if p.FormName() == "tab" {
+			b, _ := io.ReadAll(io.LimitReader(p, 64))
+			return string(b)
+		}
+	}
 }
 
 // connect opens the stream of the tab that req acts from, with the

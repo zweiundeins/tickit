@@ -173,6 +173,7 @@ var secCases = []secCase{
 	{name: "pages/comment/hide", pattern: "POST /cmd/pages/comment/hide", need: admin, guard: true, outcome: true, by: wOwner, req: at("/cmd/pages/comment/hide", "comment", "@pcomment", "hidden", true)},
 	{name: "pages/open", pattern: "POST /cmd/pages/{id}/open", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/{page}/open", "base", 0, "client", "0123456789ab")},
 	{name: "pages/commit", pattern: "POST /cmd/pages/{id}/commit", need: edit, guard: true, by: wMember, req: commitReq},
+	{name: "pages/image", pattern: "POST /cmd/pages/{id}/image", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/pages/{page}/image", "file", uploadPNG())},
 	{name: "pages/presence", pattern: "POST /cmd/pages/{id}/presence", need: self, guard: true, by: wMember, noop: true, req: func(f *fixture, open bool) (string, map[string]any) {
 		return "/cmd/pages/" + f.id("page", open) + "/presence", map[string]any{"epoch": epochOf(f, f.id("page", open)), "ack": 0, "v": 0, "anchor": 1, "head": 1, "seq": 1}
 	}},
@@ -185,6 +186,7 @@ var secCases = []secCase{
 			f.e.Do(f.t, tracker.OpenDescription{By: f.by(wMember), Session: f.sid(wMember), Tab: "sec", Issue: f.id("issue", false), Client: "0123456789ab"})
 		}},
 	{name: "issues/description/commit", pattern: "POST /cmd/issues/{id}/description/commit", need: edit, guard: true, by: wMember, req: descCommitReq},
+	{name: "issues/description/image", pattern: "POST /cmd/issues/{id}/description/image", need: edit, guard: true, outcome: true, by: wMember, req: at("/cmd/issues/{issue}/description/image", "file", uploadPNG())},
 	{name: "issues/description/presence", pattern: "POST /cmd/issues/{id}/description/presence", need: self, guard: true, by: wMember, noop: true, req: func(f *fixture, open bool) (string, map[string]any) {
 		return "/cmd/issues/" + f.id("issue", open) + "/description/presence", map[string]any{"epoch": descEpochOf(f, f.id("issue", open)), "ack": 0, "v": 0, "anchor": 1, "head": 1, "seq": 1}
 	}},

@@ -11,6 +11,7 @@ import (
 
 	"github.com/zweiundeins/tickit/internal/access"
 	"github.com/zweiundeins/tickit/internal/demo"
+	"github.com/zweiundeins/tickit/internal/images"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/tracker"
@@ -94,7 +95,7 @@ func (s *Server) moderationView(ctx context.Context, q sqlite.Querier, actor peo
 	}
 	return live.View{
 		Key:    "moderation",
-		Topics: []string{tracker.IssuesTopic, demo.ModerationTopic, people.Topic, "pages"},
+		Topics: []string{tracker.IssuesTopic, demo.ModerationTopic, people.Topic, "pages", images.Topic},
 		Every:  time.Minute,
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			m, err := s.moderationState(ctx, querier(ctx, tx))

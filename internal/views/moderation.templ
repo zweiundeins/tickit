@@ -82,6 +82,9 @@ templ ModerationRegion(m Moderation) {
 								}
 							</div>
 							<p class="tk-modlist__text">{ t.Text }</p>
+							if t.Kind == "upload" && !t.Hidden {
+								<img class="tk-modlist__thumb" src={ t.Href } alt="" loading="lazy"/>
+							}
 							<div class="tk-modlist__foot">
 								@ui.Byline(ui.BylineProps{Person: UIPerson(personOr(m.People, t.Author)), At: t.At, Now: m.Now})
 								<div class="cluster tk-modlist__actions">
