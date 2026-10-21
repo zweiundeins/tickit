@@ -72,8 +72,10 @@ func (f ActivityFeed) setSize() string {
 	return "-1"
 }
 
-func (f ActivityFeed) entryID(e activity.Entry) string {
-	return f.ID + "-" + strconv.FormatInt(e.Position, 10)
+// entryKey keys an entry for sb-virtual-scroll. No id: with ids the morph
+// moves the entries, and their label ids go by slot so it patches in place.
+func (f ActivityFeed) entryKey(e activity.Entry) string {
+	return strconv.FormatInt(e.Position, 10)
 }
 
 // older and newer are the windows after and before this one, "" for none.

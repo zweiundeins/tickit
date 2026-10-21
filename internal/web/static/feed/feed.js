@@ -7,10 +7,8 @@
 //   the buffer small enough that a window of data-feed-window entries from a
 //   multiple of ten still covers what the component asks for.
 // - Windows count from the newest entry, so an entry that arrives moves every
-//   other one down a row. A reader who scrolled, or whose focus or pointer is
-//   in the feed, keeps their place: the entry at the top of the box stays
-//   there (found by its id), and "Newer activity" leads back up. At the top
-//   and idle, new entries come in.
+//   other one down a row. The component keeps a reader's place (the entries
+//   carry data-key); once it has, "Newer activity" shows and leads back up.
 // - Page Down and Page Up move the focus to the next and the previous entry
 //   (the ARIA feed pattern), also to one the window has yet to bring.
 
@@ -38,38 +36,22 @@ function setup(host) {
 		if (String(buffer) !== host.getAttribute('buffer')) host.setAttribute('buffer', buffer)
 	}
 
-	// anchor: the entry at the top of the box, its index in the feed, and how
-	// far the box is scrolled into it.
-	let anchor = null
+	// first: the key and place of the window's first entry, to see entries
+	// arrive above it.
+	let first = null
 	let pending = -1
 	const remember = () => {
-		const s = size(), top = scroller.scrollTop, i = Math.floor(top / s)
-		const el = items()[i - offset()]
-		anchor = el ? { id: el.id, index: i, delta: top - i * s } : null
-		if (top < s / 2) hide()
+		const el = items()[0]
+		first = el ? { key: el.dataset.key, pos: +el.getAttribute('aria-posinset') } : null
+		if (scroller.scrollTop < size() / 2) hide()
 	}
 	const hide = () => {
 		const b = newer()
 		if (b && !b.hidden) b.hidden = true
 	}
-	const engaged = () => scroller.scrollTop > 0 || host.contains(document.activeElement) || host.matches(':hover')
-	// The component tracks the focused entry by its index: after a move, tell
-	// it where the focus is now, before its own refocus runs in the next frame.
-	const resync = () => {
-		const a = document.activeElement
-		if (a && a !== host && host.contains(a)) a.dispatchEvent(new FocusEvent('focusin', { bubbles: true, composed: true }))
-	}
-	const keep = () => {
-		if (anchor && engaged()) {
-			const el = document.getElementById(anchor.id)
-			const i = el && el.parentElement === host ? items().indexOf(el) : -1
-			const d = i < 0 ? 0 : offset() + i - anchor.index
-			if (d) {
-				scroller.scrollTop = (anchor.index + d) * size() + anchor.delta
-				resync()
-				if (d > 0 && newer()) newer().hidden = false
-			}
-		}
+	const morphed = () => {
+		const el = first && items().find((a) => a.dataset.key === first.key)
+		if (el && +el.getAttribute('aria-posinset') > first.pos && scroller.scrollTop > 0 && newer()) newer().hidden = false
 		if (pending >= 0) {
 			const el = items()[pending - offset()]
 			if (el) (pending = -1), el.focus()
@@ -78,8 +60,8 @@ function setup(host) {
 	}
 
 	scroller.addEventListener('scroll', remember, { passive: true })
-	// After the component's own observer: the morph is done, its geometry set.
-	new MutationObserver(() => queueMicrotask(keep)).observe(host, { childList: true, attributes: true, attributeFilter: ['offset', 'total'] })
+	// After the component's own observer: the morph is done, the place kept.
+	new MutationObserver(() => queueMicrotask(morphed)).observe(host, { childList: true, subtree: true, attributes: true, attributeFilter: ['offset', 'total', 'data-key'] })
 	new ResizeObserver(measure).observe(scroller)
 	measure()
 	remember()
@@ -90,9 +72,13 @@ function setup(host) {
 		pending = i
 		host.scrollToIndex(i, { block: 'nearest' })
 	}
+	// The entry with the focus, by key: the morph patches entries in place, so
+	// until the component's refocus a frame later the focused one may show another.
+	let focused = ''
+	host.addEventListener('focusin', (evt) => (focused = evt.target.closest?.('article')?.dataset.key || ''))
 	host.addEventListener('keydown', (evt) => {
 		if ((evt.key !== 'PageDown' && evt.key !== 'PageUp') || evt.altKey || evt.ctrlKey || evt.metaKey || evt.shiftKey) return
-		const art = evt.target.closest?.('article')
+		const art = (focused && items().find((a) => a.dataset.key === focused)) || evt.target.closest?.('article')
 		const at = art ? +art.getAttribute('aria-posinset') - 1 : Math.floor(scroller.scrollTop / size()) - (evt.key === 'PageDown' ? 1 : 0)
 		const next = at + (evt.key === 'PageDown' ? 1 : -1)
 		if (next < 0 || next >= (+host.getAttribute('total') || 0)) return

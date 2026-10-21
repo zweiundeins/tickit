@@ -5,12 +5,10 @@ import "strconv"
 // feedWindow answers sb-window on a feed's sb-virtual-scroll: the window
 // that holds the entries it asks for starts at a multiple of FeedStep, and
 // the tab's stream moves to that window's view (POST /cmd/feed/window);
-// $_views names it for a reconnect. The window waits for its frame with
-// aria-busy, which the frame takes off.
+// $_views names it for a reconnect.
 var feedWindow = `((from) => {
 	if (String(from) === el.getAttribute('offset')) return
 	const kind = el.dataset.feedKind, scope = el.dataset.feedScope, spec = kind + ':' + (scope ? scope + '.' : '') + from
-	el.setAttribute('aria-busy', 'true')
 	@post('/cmd/feed/window', {payload: {tab: $_tab, views: $_views, feed: spec}, requestCancellation: 'disabled'})
 	$_views = $_views.split(',').map((v) => v.startsWith(kind + ':' + scope) ? spec : v).join(',')
 })(Math.min(+el.dataset.feedMax, Math.max(0, Math.floor(evt.detail.offset / ` + strconv.Itoa(FeedStep) + `) * ` + strconv.Itoa(FeedStep) + `)))`

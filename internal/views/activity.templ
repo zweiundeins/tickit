@@ -74,10 +74,10 @@ templ FeedWindow(f ActivityFeed) {
 
 templ feedEntry(f ActivityFeed, i int, e activity.Entry) {
 	{{ who := f.person(e.Actor) }}
-	{{ id := f.entryID(e) }}
+	{{ id := f.ID + "-" + strconv.Itoa(i) }}
 	<article
 		class="tk-vfeed__item"
-		id={ id }
+		data-key={ f.entryKey(e) }
 		tabindex="-1"
 		aria-posinset={ strconv.Itoa(f.From + i + 1) }
 		aria-setsize={ f.setSize() }

@@ -319,15 +319,15 @@ func feedEntry(f ActivityFeed, i int, e activity.Entry) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		who := f.person(e.Actor)
-		id := f.entryID(e)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<article class=\"tk-vfeed__item\" id=\"")
+		id := f.ID + "-" + strconv.Itoa(i)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<article class=\"tk-vfeed__item\" data-key=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var12 string
-		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
+		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(f.entryKey(e))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 80, Col: 9}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 80, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {

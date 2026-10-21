@@ -63,7 +63,7 @@ func TestHomeFeedScrolls(t *testing.T) {
 	const top = `(() => {
 		const h = document.getElementById('activity-home-list'), sc = h.shadowRoot.querySelector('.scroller'), r = sc.getBoundingClientRect()
 		const el = [...h.children].find((a) => a.getBoundingClientRect().top >= r.top - 1)
-		return el ? {id: el.id, pos: +el.getAttribute('aria-posinset'), y: Math.round(el.getBoundingClientRect().top - r.top), n: h.children.length, offset: +h.getAttribute('offset')} : null
+		return el ? {id: el.dataset.key, pos: +el.getAttribute('aria-posinset'), y: Math.round(el.getBoundingClientRect().top - r.top), n: h.children.length, offset: +h.getAttribute('offset')} : null
 	})()`
 	type place struct {
 		ID     string
@@ -87,7 +87,7 @@ func TestHomeFeedScrolls(t *testing.T) {
 		p.Call(t, "Input.dispatchMouseEvent", map[string]any{"type": "mouseWheel", "x": box.X, "y": box.Y, "deltaX": 0, "deltaY": 625})
 		time.Sleep(60 * time.Millisecond)
 	}
-	p.Wait(t, `(() => { const h = document.getElementById('activity-home-list'); return !h.hasAttribute('aria-busy') && +h.getAttribute('offset') > 100 })()`, 5*time.Second)
+	p.Wait(t, `(() => { const h = document.getElementById('activity-home-list'); return !h.matches(':state(loading)') && +h.getAttribute('offset') > 100 })()`, 5*time.Second)
 	before := at()
 	if before.N > 60 || before.Offset < 100 {
 		t.Fatalf("the window holds %d entries from %d: want a window of at most 50 far down", before.N, before.Offset)
@@ -98,7 +98,7 @@ func TestHomeFeedScrolls(t *testing.T) {
 	for i := range 3 {
 		create(fmt.Sprintf("Arrived while scrolled %d", i))
 	}
-	p.Wait(t, `+document.getElementById(`+jsQuote(before.ID)+`)?.getAttribute('aria-posinset') === `+fmt.Sprint(before.Pos+3), 10*time.Second)
+	p.Wait(t, `+document.querySelector('#activity-home-list > [data-key="'+`+jsQuote(before.ID)+`+'"]')?.getAttribute('aria-posinset') === `+fmt.Sprint(before.Pos+3), 10*time.Second)
 	time.Sleep(200 * time.Millisecond)
 	after := at()
 	t.Logf("scrolled to %+v, after new entries %+v", before, after)
@@ -111,7 +111,7 @@ func TestHomeFeedScrolls(t *testing.T) {
 	// By keyboard: Page Down from the entry at the top moves the focus entry
 	// by entry, past the windows the page has, and the frame of a new entry
 	// leaves the focus on the entry it was on.
-	p.Eval(t, `(document.getElementById(`+jsQuote(after.ID)+`).focus(), true)`, nil)
+	p.Eval(t, `(document.querySelector('#activity-home-list > [data-key="'+`+jsQuote(after.ID)+`+'"]').focus(), true)`, nil)
 	start := after.Pos
 	for range 120 {
 		p.Press(t, "PageDown")
@@ -120,7 +120,7 @@ func TestHomeFeedScrolls(t *testing.T) {
 	want := start + 120
 	p.Wait(t, `+document.activeElement?.getAttribute('aria-posinset') === `+fmt.Sprint(want), 10*time.Second)
 	var focused place
-	p.Eval(t, `(() => { const a = document.activeElement, sc = document.getElementById('activity-home-list').shadowRoot.querySelector('.scroller'); return {id: a.id, pos: +a.getAttribute('aria-posinset'), y: Math.round(a.getBoundingClientRect().top - sc.getBoundingClientRect().top)} })()`, &focused)
+	p.Eval(t, `(() => { const a = document.activeElement, sc = document.getElementById('activity-home-list').shadowRoot.querySelector('.scroller'); return {id: a.dataset.key, pos: +a.getAttribute('aria-posinset'), y: Math.round(a.getBoundingClientRect().top - sc.getBoundingClientRect().top)} })()`, &focused)
 	shoot(t, p, "feed-home-keyboard")
 	if focused.Y < 0 {
 		t.Errorf("the focused entry is out of view: %+v", focused)
@@ -128,10 +128,10 @@ func TestHomeFeedScrolls(t *testing.T) {
 	create("Arrived while focused")
 	p.Wait(t, `+document.activeElement?.getAttribute('aria-posinset') === `+fmt.Sprint(want+1), 10*time.Second)
 	var still place
-	p.Eval(t, `(() => { const a = document.activeElement, sc = document.getElementById('activity-home-list').shadowRoot.querySelector('.scroller'); return {id: a.id, pos: +a.getAttribute('aria-posinset'), y: Math.round(a.getBoundingClientRect().top - sc.getBoundingClientRect().top)} })()`, &still)
+	p.Eval(t, `(() => { const a = document.activeElement, sc = document.getElementById('activity-home-list').shadowRoot.querySelector('.scroller'); return {id: a.dataset.key, pos: +a.getAttribute('aria-posinset'), y: Math.round(a.getBoundingClientRect().top - sc.getBoundingClientRect().top)} })()`, &still)
 	time.Sleep(300 * time.Millisecond) // the component's own refocus, a frame later
 	var id string
-	p.Eval(t, `document.activeElement.id`, &id)
+	p.Eval(t, `document.activeElement.dataset.key`, &id)
 	t.Logf("focus on %+v, after a new entry %+v", focused, still)
 	if id != focused.ID || still.Y != focused.Y {
 		t.Errorf("the focus or its place moved: before %+v, after %+v (focus on %s)", focused, still, id)
