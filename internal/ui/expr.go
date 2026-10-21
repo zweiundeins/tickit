@@ -98,3 +98,8 @@ const dismiss = `el.closest('[data-dismissible]').hidden = true`
 func shortcutKey(key string) string {
 	return `!evt.ctrlKey && !evt.metaKey && !evt.altKey && evt.key.toLowerCase() === '` + strings.ToLower(key) + `' && !evt.target.closest?.('input, textarea, select, [contenteditable], sb-rich-editor') && !document.querySelector('dialog[open], :popover-open') && (evt.preventDefault(), el.click())`
 }
+
+// pickerSelect selects the text of a single picker when it takes the
+// focus, so a typed name replaces the value it shows instead of being
+// appended to it. On a Picker.
+const pickerSelect = `!el.hasAttribute('multiple') && !el.contains(evt.relatedTarget) && el.shadowRoot?.querySelector('input')?.select()`

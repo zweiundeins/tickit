@@ -1069,6 +1069,18 @@
 		}
 	}
 
+	/* A sprint's dates side by side in its dialog. */
+	.tk-bl__date {
+		inline-size: 12rem;
+		max-inline-size: 100%;
+	}
+
+	/* The member picker in the row of its form, as wide as a name. */
+	.tk-settings__person {
+		inline-size: 16rem;
+		max-inline-size: 100%;
+	}
+
 	.tk-settings__components {
 		display: grid;
 		gap: var(--tk-space-2);

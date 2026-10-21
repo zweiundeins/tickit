@@ -15,7 +15,7 @@ var (
 	createProjectFailed  = `evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && evt.detail.argsRaw.status !== '403' && ($_np.op = '', $_np.err.any = ` + problem + `)`
 
 	saveDetails    = Act("_pd.op", "/cmd/projects/edit", "project: "+settingsProject+", name: $_pd.name, description: $_pd.description, lead: $_pd.lead")
-	detailsSettled = Settle("_pd.op", "$_pd.msg = o.ok ? 'Saved.' : o.msg")
+	detailsSettled = Settle("_pd.op", "$_pd.msg = o.ok ? 'Saved.' : o.msg, $_pd.field = o.ok ? '' : (o.field || '')")
 
 	archive        = Act("_ar.op", "/cmd/projects/archive", "project: "+settingsProject+", archived: el.dataset.archived === 'true'")
 	archiveSettled = Settle("_ar.op", "o.ok ? location.reload() : ($_ar.msg = o.msg)")

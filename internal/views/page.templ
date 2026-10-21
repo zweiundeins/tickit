@@ -102,6 +102,7 @@ templ pageActions(p PageProps) {
 		}
 		@ui.Button(ui.ButtonProps{Label: "Watch", Icon: "watch", Size: ui.SizeSM, Pressed: boolText(p.Watching), Attrs: templ.Attributes{"data-page": p.Page.ID, "data-watch": "", "data-on:click": watchPage, "data-effect": watchSettled, "data-attr:aria-busy": Busy("_wk.watch.op")}})
 		@ui.Button(ui.ButtonProps{Label: "History", Icon: "history", Size: ui.SizeSM, Variant: ui.Ghost, Href: p.Head.History})
+		@ui.CopyButton(ui.CopyProps{Label: "Copy link to this page", Path: p.URL, Copied: "Link copied"})
 		@ui.Button(ui.ButtonProps{Label: "Report", Icon: "warning", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: ReportAttrs("page", p.Page.ID)})
 		if p.CanEdit && p.Page.State == wiki.Current {
 			<form class="wk-addlabel" data-page={ p.Page.ID } data-on:submit__prevent={ addLabel } data-effect={ labelSettled } data-on:datastar-fetch={ labelFailed }>

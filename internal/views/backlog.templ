@@ -198,14 +198,8 @@ templ createSprint() {
 				@ui.Textarea(ui.TextareaProps{ID: goal.ID, Rows: 2, MaxLength: tracker.MaxSprintGoal, Attrs: map[string]any{"data-bind": "_sp.goal", "data-attr:readonly": Pending("_sp.op")}})
 			}
 			<div class="cluster">
-				{{ start := ui.FieldProps{ID: "sp-start", Label: "Starts", Optional: true} }}
-				@ui.Field(start) {
-					<input id={ start.ID } class="tk-input" type="date" data-bind="_sp.start"/>
-				}
-				{{ end := ui.FieldProps{ID: "sp-end", Label: "Ends", Optional: true} }}
-				@ui.Field(end) {
-					<input id={ end.ID } class="tk-input" type="date" data-bind="_sp.end"/>
-				}
+				@ui.DatePicker(ui.DatePickerProps{ID: "sp-start", Label: "Starts (optional)", Name: "start", Class: "tk-bl__date", Attrs: map[string]any{"data-on:sb-change": "$_sp.start = evt.detail.value"}})
+				@ui.DatePicker(ui.DatePickerProps{ID: "sp-end", Label: "Ends (optional)", Name: "end", Class: "tk-bl__date", Attrs: map[string]any{"data-on:sb-change": "$_sp.end = evt.detail.value"}})
 			</div>
 			<p class="tk-outcome" data-kind="refused" role="status" hidden data-attr:hidden="!$_sp.msg" data-text="$_sp.msg"></p>
 		</form>

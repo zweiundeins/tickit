@@ -35,17 +35,8 @@ templ CreateIssueDialog(p CreateIssueProps) {
 			<p>There is no project to create an issue in yet.</p>
 		} else {
 			<div class="tk-issue__form">
-				{{ fp := ui.FieldProps{ID: "create-project", Label: "Project", Required: true, ErrorAttrs: createError("project")} }}
-				@ui.Field(fp) {
-					<span class="tk-select">
-						<select id={ fp.ID } data-bind="_new.project" required aria-describedby={ fp.DescribedBy() }>
-							for _, pr := range p.Projects {
-								<option value={ pr.ID } selected?={ pr.ID == p.Project }>{ pr.Name + " (" + pr.Key + ")" }</option>
-							}
-						</select>
-						@ui.Icon("chevron-down")
-					</span>
-				}
+				@ui.Picker(ui.PickerProps{ID: "create-project", Label: "Project", Name: "project", Options: createProjects(p.Projects), Value: p.Project, Searchable: true, Attrs: templ.Attributes{"data-on:sb-change": "$_new.project = evt.detail.value"}})
+				<p class="tk-field__error" aria-live="polite" { createError("project")... }></p>
 				<p class="tk-issue__where muted" { showIf(`$_new.status !== '' && $_new.where !== ''`)... }>
 					@ui.Icon("board")
 					<span>Goes into the column <strong data-text="$_new.where"></strong>.</span>
@@ -62,19 +53,10 @@ templ CreateIssueDialog(p CreateIssueProps) {
 				}
 				@ui.RadioGroup(ui.RadioGroupProps{Name: "priority", Legend: "Priority", Segmented: true, Options: prioOptions(), Attrs: templ.Attributes{"data-on:change": createPrio}})
 				<div class="tk-issue__formrow">
-					{{ fa := ui.FieldProps{ID: "create-assignee", Label: "Assignee", Optional: true, ErrorAttrs: createError("assignee")} }}
-					@ui.Field(fa) {
-						<span class="tk-select">
-							<select id={ fa.ID } data-bind="_new.assignee" aria-describedby={ fa.DescribedBy() }>
-								<option value="">Unassigned</option>
-								<option value="me">Me</option>
-								for _, pp := range p.People {
-									<option value={ pp.ID }>{ pp.Name }</option>
-								}
-							</select>
-							@ui.Icon("chevron-down")
-						</span>
-					}
+					<div class="tk-field">
+						@ui.Picker(ui.PickerProps{ID: "create-assignee", Label: "Assignee (optional)", Name: "assignee", Options: createPeople(p.People), Placeholder: "Unassigned", Searchable: true, Clearable: true, Attrs: templ.Attributes{"data-on:sb-change": "$_new.assignee = evt.detail.value"}})
+						<p class="tk-field__error" aria-live="polite" { createError("assignee")... }></p>
+					</div>
 					{{ fpar := ui.FieldProps{ID: "create-parent", Label: "Parent or epic", Optional: true, Hint: "The key of its epic, or of the issue a subtask belongs to.", ErrorAttrs: createError("parent")} }}
 					@ui.Field(fpar) {
 						@ui.Input(ui.InputProps{ID: fpar.ID, Placeholder: "WEB-3", DescribedBy: fpar.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_new.parent"}})
@@ -107,6 +89,24 @@ func createError(field string) templ.Attributes {
 templ createFooter() {
 	@ui.Button(ui.ButtonProps{Label: "Cancel", Variant: ui.Ghost, Command: "close", CommandFor: CreateID})
 	@ui.Button(ui.ButtonProps{Label: "Create", Variant: ui.Primary, Attrs: templ.Attributes{"data-on:click": createSubmit, "data-attr:aria-busy": createBusy, "data-on:datastar-fetch": createFailed}})
+}
+
+func createProjects(list []tracker.Project) []ui.Option {
+	out := make([]ui.Option, len(list))
+	for i, pr := range list {
+		out[i] = ui.Option{Value: pr.ID, Label: pr.Name, Description: pr.Key}
+	}
+	return out
+}
+
+// createPeople are who the assignee picker offers: the person first, as
+// "Me", then the project's assignable people.
+func createPeople(list []people.Person) []ui.Option {
+	out := []ui.Option{{Value: "me", Label: "Me"}}
+	for _, p := range list {
+		out = append(out, ui.Option{Value: p.ID, Label: p.Name})
+	}
+	return out
 }
 
 func typeOptions() []ui.Option {

@@ -171,7 +171,7 @@ func (s *Server) issuePage(w http.ResponseWriter, r *http.Request) {
 			Project:    m.ProjectID,
 			Views:      []string{"issue:" + m.ID, "issue-desc:" + m.ID, "issue-typing:" + m.ID},
 			Scripts:    []string{"editor/sb-rich-editor.min.js"},
-			Components: panelComponents,
+			Components: issueComponents,
 			Body: templ.Join(views.IssuePage(views.IssueFrameProps{
 				Issue: &m, ID: m.ID, Key: m.Key, Me: actor.ID,
 				ReadOnly: !edit || m.Project.Archived || !m.Deleted.IsZero(), Moderates: hide,
@@ -212,10 +212,6 @@ func (s *Server) oldIssueURL(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/"+d.Key, http.StatusMovedPermanently)
 	}
 }
-
-// panelComponents are the Starbase components of the issue's frame, on its
-// page and in the side panel: its tabs.
-var panelComponents = []string{"tabs"}
 
 // deletes is where actor may delete issues among projects, nil for those
 // they may read (views.Deletes): the document shows "Delete issue" there

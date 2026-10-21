@@ -178,5 +178,5 @@ $_bl.rows = ''`
 
 var (
 	sprintCreate  = `$_sp.name.trim() && ` + Act("_sp.op", "/cmd/sprints/create", "project: document.querySelector('.tk-bl').dataset.project, name: $_sp.name, goal: $_sp.goal, start: $_sp.start, end: $_sp.end")
-	sprintSettled = Settle("_sp.op", "o.ok ? ($_sp.msg = '', $_sp.name = '', $_sp.goal = '', el.close()) : ($_sp.msg = o.msg)")
+	sprintSettled = Settle("_sp.op", "o.ok ? ($_sp.msg = '', $_sp.name = '', $_sp.goal = '', $_sp.start = '', $_sp.end = '', ['sp-start', 'sp-end'].forEach(i => document.getElementById(i).value = ''), el.close()) : ($_sp.msg = o.msg)")
 )

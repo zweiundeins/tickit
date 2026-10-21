@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/a-h/templ"
@@ -54,6 +55,13 @@ type Page struct {
 	Refresh int
 }
 
+// issueComponents are the Starbase components of an issue's details, on
+// its page and in the issue panel: the pickers, the copy button and the tabs.
+var issueComponents = []string{"select", "date-picker", "copy-button", "tabs"}
+
+// createComponents are the create dialog's (views.CreateIssueDialog).
+var createComponents = []string{"select"}
+
 // errGone is what a page handler returns for something deleted: the page
 // answers 410.
 var errGone = errors.New("gone")
@@ -91,6 +99,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, buil
 			if p.Create, err = s.createDialog(ctx, tx, people.Actor(ctx), p.Project); err != nil {
 				return err
 			}
+			p.Components = append(slices.Clip(p.Components), createComponents...)
 		}
 		shell, err := s.shell(r, tx, p)
 		if err != nil {

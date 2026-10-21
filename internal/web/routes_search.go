@@ -269,7 +269,7 @@ func (s *Server) searchPage(w http.ResponseWriter, r *http.Request) {
 		if p.Q != "" {
 			title = p.Q + " · Search"
 		}
-		return Page{Title: title, Query: p.Q, Views: watch, Components: panelComponents, Body: views.SearchBody(page)}, nil
+		return Page{Title: title, Query: p.Q, Views: watch, Components: issueComponents, Body: views.SearchBody(page)}, nil
 	})
 }
 

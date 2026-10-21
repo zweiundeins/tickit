@@ -1,6 +1,7 @@
 package views
 
 import (
+	"encoding/json"
 	"net/url"
 	"strconv"
 	"time"
@@ -157,6 +158,29 @@ type filterOption struct {
 type filterGroup struct {
 	ID, Label, Name string
 	Options         []filterOption
+	// People is a filter of people (assignee, reporter): a picker to
+	// type a name in, since the list of people is long.
+	People bool
+}
+
+func (g filterGroup) pickerOptions() []ui.Option {
+	out := make([]ui.Option, len(g.Options))
+	for i, o := range g.Options {
+		out[i] = ui.Option{Value: o.Value, Label: o.Label}
+	}
+	return out
+}
+
+// pickerValue is the checked values as the picker's JSON value.
+func (g filterGroup) pickerValue() string {
+	v := []string{}
+	for _, o := range g.Options {
+		if o.Checked {
+			v = append(v, o.Value)
+		}
+	}
+	b, _ := json.Marshal(v)
+	return string(b)
 }
 
 func (g filterGroup) count() int {
@@ -222,7 +246,9 @@ func (p ListPage) groups() []filterGroup {
 		return out
 	}
 	add("assignee", "Assignee", "assignee", f.Assignees, people(filterOption{Value: tracker.Me, Label: "Me"}, filterOption{Value: tracker.Unassigned, Label: "Unassigned"})...)
+	g[len(g)-1].People = true
 	add("reporter", "Reporter", "reporter", f.Reporters, people(filterOption{Value: tracker.Me, Label: "Me"})...)
+	g[len(g)-1].People = true
 	o = nil
 	for _, l := range p.Options.Labels {
 		o = append(o, filterOption{Value: l, Label: l})
@@ -292,18 +318,22 @@ func listSend(push string) string {
 }
 
 // listCounts writes how many values each filter has on its button.
-const listCounts = `document.getElementById('` + ListFormID + `').querySelectorAll('[data-count]').forEach(c => { const n = [...document.querySelectorAll('[data-in="' + c.dataset.count + '"]')].filter(i => i.type === 'checkbox' ? i.checked : i.value).length; c.textContent = n || ''; c.hidden = !n })`
+const listCounts = `document.getElementById('` + ListFormID + `').querySelectorAll('[data-count]').forEach(c => { const n = [...document.querySelectorAll('[data-in="' + c.dataset.count + '"]')].reduce((n, i) => n + (i.type === 'checkbox' ? +i.checked : Array.isArray(i.value) ? i.value.length : i.value ? 1 : 0), 0); c.textContent = n || ''; c.hidden = !n })`
+
+// listPickers are the form's Starbase pickers, which are no form elements:
+// set each from p, a URLSearchParams.
+const listPickers = `el.querySelectorAll('sb-select[name], sb-date-picker[name]').forEach(c => c.value = c.hasAttribute('multiple') ? p.getAll(c.getAttribute('name')) : (p.get(c.getAttribute('name')) ?? ''))`
 
 var (
-	listSignals = `{_list: {query: ''}, _save: {op: '', name: '', msg: '', done: ''}}`
+	listSignals = `{_list: {query: ''}, _save: {op: '', name: '', msg: ''}, _toasts: []}`
 	// listInput: a changed filter shows its first page (FR-51.3); typing
 	// replaces the history entry, other changes add one.
 	listInput  = `(evt.target.name !== 'page' && (el.elements.page.value = ''), ` + listCounts + `, ` + listSend(`evt.target.type !== 'search'`) + `)`
 	listSubmit = listSend(`true`)
 	// listPop restores the form from the address on back and forward.
-	listPop = `location.pathname === '/issues' && (((f, p) => { for (const i of f.elements) { if (!i.name) continue; if (i.type === 'checkbox') i.checked = p.getAll(i.name).includes(i.value); else i.value = p.get(i.name) ?? '' } })(el, new URLSearchParams(location.search)), ` + listCounts + `, ` + listSend(`false`) + `)`
+	listPop = `location.pathname === '/issues' && (((f, p) => { for (const i of f.elements) { if (!i.name) continue; if (i.type === 'checkbox') i.checked = p.getAll(i.name).includes(i.value); else i.value = p.get(i.name) ?? '' } ` + listPickers + ` })(el, new URLSearchParams(location.search)), ` + listCounts + `, ` + listSend(`false`) + `)`
 	// listClear empties the filters, the sort kept.
-	listClear = `(((f) => { for (const i of f.elements) { if (i.type === 'checkbox') i.checked = false; else if (i.name && i.name !== 'sort' && i.name !== 'dir') i.value = '' } })(document.getElementById('` + ListFormID + `')), ` + listCounts + `, ` + listSend(`true`) + `)`
+	listClear = `(((f, el, p) => { for (const i of f.elements) { if (i.type === 'checkbox') i.checked = false; else if (i.name && i.name !== 'sort' && i.name !== 'dir') i.value = '' } ` + listPickers + ` })(document.getElementById('` + ListFormID + `'), document.getElementById('` + ListFormID + `'), new URLSearchParams()), ` + listCounts + `, ` + listSend(`true`) + `)`
 	// listClick, on the list's container: a sort header cycles ascending,
 	// descending and the default, created newest first (FR-53.1); a page
 	// link shows that page; a click on a row opens its issue.
@@ -337,6 +367,6 @@ var (
 // Saving the list's filter (FR-56.1).
 var (
 	saveFilter        = `$_save.name.trim() && ` + Act("_save.op", "/cmd/filters/save", "name: $_save.name, query: "+listQS)
-	saveFilterSettled = Settle("_save.op", "o.ok ? ($_save.msg = '', $_save.name = '', $_save.done = 'Saved. It is in Filters now.', document.getElementById('save-filter').close()) : ($_save.msg = o.msg)")
+	saveFilterSettled = Settle("_save.op", "o.ok ? ($_save.msg = '', $_save.name = '', $_toasts = [...$_toasts.slice(-2), {id: 'saved-' + $_save.op, text: 'Saved. It is in Filters now.', variant: 'ok'}], document.getElementById('save-filter').close()) : ($_save.msg = o.msg)")
 	saveFilterFailed  = Failed("_save.op")
 )

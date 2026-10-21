@@ -189,6 +189,11 @@
 		}
 	}
 
+	.tk-dash__pick {
+		inline-size: 16rem;
+		max-inline-size: 100%;
+	}
+
 	.tk-dash__bar {
 		display: flex;
 		flex-wrap: wrap;

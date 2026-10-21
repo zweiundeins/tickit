@@ -32,11 +32,6 @@
 		font-size: var(--tk-text-sm);
 	}
 
-	.tk-issue__copied {
-		color: var(--tk-ok);
-		font-size: var(--tk-text-xs);
-	}
-
 	.tk-issue__titlerow {
 		display: flex;
 		align-items: flex-start;
@@ -362,11 +357,53 @@
 		display: none;
 	}
 
-	.tk-issue__menusearch {
-		padding: var(--tk-space-1) var(--tk-space-1) var(--tk-space-2);
+	/* The pickers of the side column: a face, the field, "Assign to me". */
+	.tk-props dd > .tk-picker,
+	.tk-props dd > .tk-date,
+	.tk-issue__assignee {
+		flex: 1 1 100%;
+		min-inline-size: 0;
+		max-inline-size: none;
+	}
 
-		& .tk-input {
-			inline-size: 100%;
+	.tk-issue__assignee {
+		display: flex;
+		align-items: center;
+		gap: var(--tk-space-2);
+
+		& .tk-picker {
+			flex: 1;
+			inline-size: auto;
+			min-inline-size: 0;
+			max-inline-size: none;
+		}
+	}
+
+	.tk-issue__side .tk-due {
+		display: inline-flex;
+		margin-block-start: var(--tk-space-1);
+	}
+
+	.tk-issue__me {
+		all: unset;
+		margin-block-start: var(--tk-space-1);
+		color: var(--tk-accent-text);
+		font-size: var(--tk-text-xs);
+		cursor: pointer;
+
+		&:hover {
+			text-decoration: underline;
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--tk-focus);
+			outline-offset: 2px;
+		}
+
+		&:disabled,
+		&[aria-busy="true"] {
+			opacity: 0.5;
+			cursor: default;
 		}
 	}
 

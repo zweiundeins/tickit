@@ -198,7 +198,7 @@ func TestListURL(t *testing.T) {
 	e := newList(t)
 	c := webtest.Client(t)
 	_, page := webtest.Get(t, c, e.URL+"/issues?status=todo&assignee=me&sort=priority&dir=desc&page=2&q=login")
-	for _, want := range []string{`value="login"`, `name="status" value="todo" checked`, `name="assignee" value="me" checked`, `name="sort" value="priority"`, `name="dir" value="desc"`, `name="page" value="2"`} {
+	for _, want := range []string{`value="login"`, `name="status" value="todo" checked`, `name="assignee" options=`, `value="[&#34;me&#34;]"`, `name="sort" value="priority"`, `name="dir" value="desc"`, `name="page" value="2"`} {
 		if !strings.Contains(page, want) {
 			t.Errorf("the form lacks %s", want)
 		}

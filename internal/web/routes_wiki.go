@@ -295,7 +295,7 @@ func (s *Server) pageView(ctx context.Context, q sqlite.Querier, me people.Perso
 	}
 	pageViews := []string{"page:" + p.ID, "pagedoc:" + p.ID, "inline:" + p.ID, "pagepeople:" + p.ID, "tree:" + p.ID}
 	scripts := []string{inlineScript}
-	var components []string
+	components := []string{"copy-button"}
 	if section == "home" {
 		feed, err := s.ScopeActivity(ctx, q, access.SpaceScope(sp.ID), from, time.Now())
 		if err != nil {
@@ -303,7 +303,7 @@ func (s *Server) pageView(ctx context.Context, q sqlite.Querier, me people.Perso
 		}
 		props.Activity = views.Activity(feed)
 		pageViews = append(pageViews, views.FeedSpec(feed.Kind, feed.Scope, feed.From))
-		scripts, components = append(scripts, views.FeedScript), feedComponents
+		scripts, components = append(scripts, views.FeedScript), append(components, feedComponents...)
 	}
 	return Page{
 		Title: p.Title, Nav: "spaces", Sidebar: sidebar, SidebarLabel: "Space",

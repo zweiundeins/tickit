@@ -790,6 +790,103 @@
 	.tk-date {
 		display: block;
 		inline-size: 100%;
+
+		/* As tall as the other fields. The input grows into the control;
+		 * its own width (20 characters) would push the control past a
+		 * narrow column. */
+		&::part(control) {
+			min-block-size: var(--tk-control-md);
+			padding-block: 0;
+		}
+
+		&::part(input) {
+			inline-size: 0;
+			block-size: calc(var(--tk-control-md) - 2px);
+		}
+
+		&::part(button) {
+			block-size: calc(var(--tk-control-md) - 4px);
+		}
+	}
+
+	/* The label for screen readers only: the page names the field. */
+	.tk-picker--bare::part(label) {
+		position: absolute;
+		inline-size: 1px;
+		block-size: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+
+	/* As tall as a small button, for rows of details and filter bars. */
+	.tk-picker--sm {
+		font-size: var(--tk-text-sm);
+
+		&::part(control) {
+			min-block-size: var(--tk-control-sm);
+			padding-block: 0;
+		}
+
+		&::part(input) {
+			block-size: calc(var(--tk-control-sm) - 2px);
+		}
+
+		&::part(button) {
+			inline-size: var(--tk-control-sm);
+			block-size: calc(var(--tk-control-sm) - 4px);
+			margin-inline-end: 0;
+		}
+	}
+
+	sb-date-picker.tk-picker--sm::part(input) {
+		padding-inline: var(--tk-space-2);
+	}
+
+	/* Room for the clear button beside the arrow, so a long value ends
+	 * before it. */
+	sb-select.tk-picker[clearable]:not([multiple])::part(control) {
+		padding-inline-end: calc(var(--tk-space-8) + var(--tk-space-6));
+	}
+
+	/* A small picker in a narrow column shows the clear button while it
+	 * has the focus only, so the value gets the room otherwise. */
+	sb-select.tk-picker--sm[clearable]:not([multiple]):not(:focus-within) {
+		&::part(control) {
+			padding-inline-end: var(--tk-space-8);
+		}
+
+		&::part(clear) {
+			display: none;
+		}
+	}
+
+	/* A value sent and not yet confirmed: dashed, as a pending field is. */
+	.tk-picker:state(pending)::part(control),
+	.tk-date:state(pending)::part(control) {
+		border-style: dashed;
+	}
+
+	sb-select.tk-picker--bare:not(:defined),
+	sb-date-picker.tk-picker--bare:not(:defined) {
+		min-block-size: var(--tk-control-md);
+	}
+
+	sb-select.tk-picker--sm.tk-picker--bare:not(:defined),
+	sb-date-picker.tk-picker--sm.tk-picker--bare:not(:defined) {
+		min-block-size: var(--tk-control-sm);
+	}
+
+	/* sb-copy-button as a small ghost button. */
+	.tk-copy {
+		vertical-align: middle;
+
+		&::part(button) {
+			inline-size: var(--tk-control-sm);
+			block-size: var(--tk-control-sm);
+			border-color: transparent;
+			background: transparent;
+		}
 	}
 
 	/* ── Menus: popovers anchored to their button. ────────────────── */

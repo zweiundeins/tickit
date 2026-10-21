@@ -134,7 +134,7 @@ The header holds the brand, Projects, Spaces, Filters and Dashboards with the cu
 }
 ```
 
-Variants are `Primary` (one per view), `Secondary`, `Ghost` and `Danger`. `Command: "show-modal", CommandFor: id` opens a dialog without script. A field's message element is always present and polite, so a refusal that arrives later is read (NFR-48.2); a pending input is `Readonly` (dashed). Also: `ui.Textarea`, `ui.Select` (native, for short plain lists), `ui.Checkbox`, `ui.Toggle` (role=switch), `ui.RadioGroup` (with `Segmented` for a row of choices with icons, using `ui.TypeMark` and `ui.PriorityMark` as option icons), `ui.Picker` (sb-select: searchable, several, remote) and `ui.DatePicker` (sb-date-picker). Pickers carry their own label inside the component, so they take no Field.
+Variants are `Primary` (one per view), `Secondary`, `Ghost` and `Danger`. `Command: "show-modal", CommandFor: id` opens a dialog without script. A field's message element is always present and polite, so a refusal that arrives later is read (NFR-48.2); a pending input is `Readonly` (dashed). Also: `ui.Textarea`, `ui.Select` (native, for short plain lists), `ui.Checkbox`, `ui.Toggle` (role=switch), `ui.RadioGroup` (with `Segmented` for a row of choices with icons, using `ui.TypeMark` and `ui.PriorityMark` as option icons), `ui.Picker` (sb-select: searchable, several, remote) and `ui.DatePicker` (sb-date-picker). Pickers carry their own label inside the component, so they take no Field; `HideLabel` keeps it for screen readers where the page names the field already (a row of an issue's details), `Size: ui.SizeSM` makes the control as tall as a small button, and `Confirm` marks a value the server has not confirmed (dashed, `:state(pending)`). A picker always renders its `value` attribute, `value=""` included, since Starbase ignores a removed one. A single picker selects its text when it takes the focus, so a typed name replaces the value it shows. `ui.CopyButton` (sb-copy-button) copies a text, or with `Path` the page's origin and a path, which a shared view can render without knowing the host; it says "Copied" (or `Copied`) beside itself in a polite status.
 
 ### Menus and layers
 
@@ -251,7 +251,7 @@ A board of many cards uses `ui.BoardCard` instead, in a Board with Class `tk-boa
 @ui.RelativeTime(t.In(zone), now)
 ```
 
-The conflict of MP-08.3 is a danger `Notice` beside the field with the retry as its action; the person's value stays in the field. `Outcome` is a polite live region (a failure is an alert). `Toasts` is for news from elsewhere, never for the outcome of the person's own action. `RelativeTime` writes English text and the absolute date, time and zone in its title (NFR-51); the zone is `t`'s location. Its text is the server's at render time.
+The conflict of MP-08.3 is a danger `Notice` beside the field with the retry as its action; the person's value stays in the field. `Outcome` is a polite live region (a failure is an alert). `Toasts` is for an outcome that has no field or region left to sit by: a dialog that closed with it ("Saved. It is in Filters now."), news from elsewhere. Never for a refusal: that stays beside its field, as MP-08's conflict does. `RelativeTime` writes English text and the absolute date, time and zone in its title (NFR-51); the zone is `t`'s location. Its text is the server's at render time.
 
 ### Charts
 
@@ -300,6 +300,20 @@ Where the app uses them:
 
 The other lists stay plain on purpose: a person's page and a dashboard's activity gadget show 20 and 10 entries, the moderation page the newest 50, search results are pages of a ranked result with numbered links, and an issue's History and Activity are part of the issue's one view, which renders them whole.
 
+Where the app uses them (the styleguide shows them all):
+
+| Component | Wrapper | Pages |
+| --- | --- | --- |
+| sb-select | `ui.Picker` | an issue's assignee and epic (page and panel), the create dialog's project and assignee, the issue list's Assignee and Reporter filters (several, in their popovers), a project's lead and the member to add in its settings, a dashboard gadget's project and saved filter |
+| sb-date-picker | `ui.DatePicker` | an issue's due date, the issue list's Due, Created and Resolved ranges (From and To), a sprint's start and end |
+| sb-copy-button | `ui.CopyButton` | "Copy link" on an issue (page and panel) and on a page in view |
+| sb-toast | `ui.Toasts` | the issue list: a saved filter, once its dialog closed |
+| sb-dropdown | `ui.ActionMenu` | `/design` only |
+
+Native selects stay for short fixed lists: priority, type, category, roles, a workflow's statuses and columns. The hand-made menus stay too: each does something sb-dropdown's items cannot, so none was replaced. The board's card menu hides the columns a workflow rule forbids and is one menu for every card (NFR-37, `TestBoardFrameSize`), the issue's "More actions" hides "Delete issue" by the viewer's style, the status and priority menus show the current value checked, the saved filters are links (a middle click opens a tab), and the admin's row menu mixes a checked role with actions.
+
+The issue's pickers sit in the frame of the shared view `issue:<id>`: a frame updates their `value` and `options` attributes, which never touches the open list, the typed search or the focus inside the shadow root (MP-03.3). The frame's `sb-change` handler sends the field with the version the page showed when the picker took the focus (MP-08.2); a refusal reverts the picker, a conflict keeps the person's value for "Use it anyway".
+
 Not vendored, on purpose: dialogs and the side panel are native `<dialog>`s (sb-modal, sb-drawer), tooltips are CSS with an Escape hush (sb-tooltip), disclosures are `<details>` (sb-details), notices are markup (sb-alert), and sb-relative-time's title lacks the time zone NFR-51 asks for. Starbase's components read `--sb-*`, which `starbase.css` maps onto tickit's tokens, so themes and the smooth style reach them.
 
 ## Do and do not
@@ -310,7 +324,7 @@ Not vendored, on purpose: dialogs and the side panel are native `<dialog>`s (sb-
 - Do name every icon, as text beside it or as its label. Do not leave an icon-only control without `aria-label`.
 - Do keep the focus ring. Do not set `outline: none` without a visible replacement.
 - Do mark a sent control pending and end it with its outcome. Do not show a result before the server renders it.
-- Do put a refusal next to its control. Do not put the outcome of the person's own action in a toast.
+- Do put a refusal next to its control. Do not put an outcome in a toast while its field or region is still on screen.
 - Do keep Datastar expressions in Go constants that read ids from the element. Do not put a person's value in an expression.
 - Do set data in the UI face. Do not set names, titles or documents in Pixelify Sans.
 - Do put behaviour on a container and delegate (the card menu). Do not repeat an expression on a hundred cards.

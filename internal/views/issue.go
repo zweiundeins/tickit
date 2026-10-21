@@ -315,6 +315,7 @@ func viewerStyle(me string, del Deletes) templ.Component {
 		b.WriteString(`.tk-issue .tk-typing [data-who="` + me + `"]{display:none}`)
 		b.WriteString(`.tk-issue:has([data-watcher="` + me + `"]) .tk-watch__off{display:none}`)
 		b.WriteString(`.tk-issue:has([data-watcher="` + me + `"]) .tk-watch__on{display:inline}`)
+		b.WriteString(`.tk-issue [data-assignee="` + me + `"] + .tk-issue__me{display:none}`)
 		b.WriteString(`</style>`)
 		_, err := io.WriteString(w, b.String())
 		return err
@@ -372,6 +373,13 @@ func choice(f, value, ref string) templ.Attributes {
 	return a
 }
 
+// picker is the attributes of a Starbase picker for field f: disabled
+// while read-only, busy while f is pending. The frame's sb-change and
+// focusin handlers send its value (issuePick).
+func picker(f string) templ.Attributes {
+	return merge(locked, pending(f), templ.Attributes{"data-act": "pick", "data-field": f})
+}
+
 // menu is the attributes of a menu's button for field f: disabled while
 // read-only, busy while f is pending, and the version it showed kept.
 func menu(f string) templ.Attributes {
@@ -380,13 +388,6 @@ func menu(f string) templ.Attributes {
 
 // locked disables a control of a read-only page or an old version.
 var locked = templ.Attributes{"data-attr:disabled": disabledWhile, "data-preserve-attr": "disabled"}
-
-func boolStr(b bool) string {
-	if b {
-		return "true"
-	}
-	return "false"
-}
 
 func joinComma(list []string) string { return strings.Join(list, ", ") }
 
@@ -415,18 +416,41 @@ func orNone(s string) string {
 	return s
 }
 
-func assigneeName(m Issue) string {
-	if m.Assignee == "" {
-		return "Unassigned"
+// assigneeOptions are the people the assignee picker offers: those who
+// may be assigned, and the assignee now if they no longer may.
+func assigneeOptions(m Issue) []ui.Option {
+	out := make([]ui.Option, 0, len(m.Assignable)+1)
+	has := m.Assignee == ""
+	for _, p := range m.Assignable {
+		out = append(out, ui.Option{Value: p.ID, Label: p.Name})
+		has = has || p.ID == m.Assignee
 	}
-	return m.person(m.Assignee).Name
+	if !has {
+		out = append(out, ui.Option{Value: m.Assignee, Label: m.person(m.Assignee).Name})
+	}
+	return out
 }
 
-func epicName(m Issue) string {
-	if m.Parent == nil {
-		return "None"
+// epicOptions are the project's epics: the summary, and the key under it,
+// which the search finds too.
+func epicOptions(m Issue) []ui.Option {
+	out := make([]ui.Option, 0, len(m.Epics)+1)
+	has := m.Parent == nil
+	for _, e := range m.Epics {
+		out = append(out, ui.Option{Value: e.ID, Label: e.Summary, Description: e.Key})
+		has = has || e.ID == m.Parent.ID
 	}
-	return m.Parent.Key + " " + m.Parent.Summary
+	if !has {
+		out = append(out, ui.Option{Value: m.Parent.ID, Label: m.Parent.Summary, Description: m.Parent.Key})
+	}
+	return out
+}
+
+func parentValue(m Issue) string {
+	if m.Parent == nil {
+		return ""
+	}
+	return m.Parent.ID
 }
 
 func sprintLabel(m Issue) string {

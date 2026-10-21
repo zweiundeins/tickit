@@ -414,12 +414,12 @@ func TestSettingsLead(t *testing.T) {
 	if i < 0 {
 		t.Fatal("no lead picker")
 	}
-	picker := page[i : i+strings.Index(page[i:], "</select>")]
-	if !strings.Contains(picker, `<option value="s-priya" selected>Priya Raman</option>`) {
+	picker := page[i : i+strings.Index(page[i:], "</sb-select>")]
+	if !strings.Contains(picker, `value="s-priya"`) || !strings.Contains(picker, `{&#34;value&#34;:&#34;s-priya&#34;,&#34;label&#34;:&#34;Priya Raman&#34;}`) {
 		t.Errorf("the lead is not chosen: %s", picker)
 	}
 	for _, p := range people.Seeded {
-		if !strings.Contains(picker, `value="`+p.ID+`"`) {
+		if !strings.Contains(picker, `&#34;value&#34;:&#34;`+p.ID+`&#34;`) {
 			t.Errorf("the picker leaves out %s", p.Name)
 		}
 	}
@@ -445,7 +445,7 @@ func TestSettingsLead(t *testing.T) {
 	stranger := people.GuestOf("stranger")
 	edit("op2", stranger.ID)
 	webtest.Next(t, settings, `"op2":{"ok":false,"msg":"`+stranger.Name+` cannot lead WEB: they are not a member of it.","field":"lead"}`)
-	if _, page := webtest.Get(t, c, e.URL+"/projects/WEB/settings"); !strings.Contains(page, `<option value="s-lena" selected>`) {
+	if _, page := webtest.Get(t, c, e.URL+"/projects/WEB/settings"); !strings.Contains(page, `name="lead" options=`) || !regexp.MustCompile(`id="pd-lead"[^>]* value="s-lena"`).MatchString(page) {
 		t.Error("the new lead is not chosen")
 	}
 }

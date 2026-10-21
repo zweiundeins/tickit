@@ -80,10 +80,11 @@ func roleOptions(current access.Role) []ui.Option {
 	return out
 }
 
-func personOptions(list []people.Person, current string, none string) []ui.Option {
-	out := []ui.Option{{Value: "", Label: none, Selected: current == ""}}
-	for _, p := range list {
-		out = append(out, ui.Option{Value: p.ID, Label: p.Name, Selected: p.ID == current})
+// pickPeople are people as a picker's options.
+func pickPeople(list []people.Person) []ui.Option {
+	out := make([]ui.Option, len(list))
+	for i, p := range list {
+		out[i] = ui.Option{Value: p.ID, Label: p.Name}
 	}
 	return out
 }
