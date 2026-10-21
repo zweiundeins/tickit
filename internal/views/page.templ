@@ -24,6 +24,7 @@ templ WikiPage(p PageProps) {
 		}
 		@pageActions(p)
 		@PageBodyRegion(p.Body)
+		@PageIssueUI(p.Issue)
 		@PageRefsRegion(p.Refs)
 		<section class="wk-comments" aria-labelledby="comments-title">
 			<h2 class="wk-section-title" id="comments-title">Comments</h2>

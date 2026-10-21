@@ -273,7 +273,11 @@ func (s *Server) pageView(ctx context.Context, q sqlite.Querier, me people.Perso
 	if err != nil {
 		return Page{}, err
 	}
-	if props.Body, err = s.readerHTML(ctx, q, p.ID); err != nil {
+	projects, err := tracker.Readable(ctx, q, me)
+	if err != nil {
+		return Page{}, err
+	}
+	if props.Body, err = s.readerHTML(ctx, q, p.ID, listsFor{readable: projects, owner: p.CreatedBy}); err != nil {
 		return Page{}, err
 	}
 	if props.Refs, err = pageRefs(ctx, q, p.ID); err != nil {
@@ -320,6 +324,11 @@ func (s *Server) pageProps(ctx context.Context, q sqlite.Querier, me people.Pers
 		Templates: wiki.Templates(), Now: time.Now(),
 	}
 	props.CanTrash = props.CanAdmin || p.CreatedBy == me.ID && canIn(ctx, q, me, access.TrashOwnPage, sp.ID)
+	if props.CanEdit && p.State == wiki.Current {
+		if props.Issue, err = pageIssueProps(ctx, q, me, p, sp); err != nil { // FR-105
+			return props, err
+		}
+	}
 	if props.CanEdit {
 		if props.Targets, err = moveTargets(ctx, q, me, p.ID); err != nil {
 			return props, err
@@ -610,7 +619,8 @@ func (s *Server) pageHeadView(ctx context.Context, q sqlite.Querier, actor peopl
 // The reader view (FR-80.3, Q18): the head document rendered once per
 // tick for every reader, from the document cache, re-rendering only the
 // blocks a commit changed (doc.BlockCache), and all of them when a chip,
-// a name or a linked title changes.
+// a name or a linked title changes. Blocks with issue lists render every
+// time, with the reader's rows (FR-104, routes_embed.go).
 type reader struct {
 	mu    sync.Mutex
 	cache doc.BlockCache
@@ -636,8 +646,9 @@ func readerOf(page string) *reader {
 	return r
 }
 
-// readerHTML renders a page's head document.
-func (s *Server) readerHTML(ctx context.Context, q sqlite.Querier, page string) (string, error) {
+// readerHTML renders a page's head document, its issue lists as lf sees
+// them.
+func (s *Server) readerHTML(ctx context.Context, q sqlite.Querier, page string, lf listsFor) (string, error) {
 	h, err := wiki.HeadOf(ctx, q, page)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil
@@ -650,6 +661,11 @@ func (s *Server) readerHTML(ctx context.Context, q sqlite.Querier, page string) 
 		return "", err
 	}
 	key, _ := json.Marshal(res)
+	var r doc.Resolver = res
+	if len(doc.IssueLists(h.Doc)) > 0 {
+		live.Depends(ctx, listTopics...)
+		r = listResolver{res, func(l doc.IssueList) string { return s.listHTML(ctx, q, lf, l) }}
+	}
 	rd := readerOf(page)
 	rd.mu.Lock()
 	defer rd.mu.Unlock()
@@ -657,19 +673,25 @@ func (s *Server) readerHTML(ctx context.Context, q sqlite.Querier, page string) 
 		rd.cache.Reset()
 		rd.key = string(key)
 	}
-	return rd.cache.Render(h.Doc, res), nil
+	return rd.cache.Render(h.Doc, r), nil
 }
 
+// readerView is pagedoc:<page>, keyed by the projects the reader may
+// read: what its issue lists show (FR-104).
 func (s *Server) readerView(ctx context.Context, q sqlite.Querier, actor people.Person, arg string) (live.View, error) {
 	p, _, err := readable(ctx, q, actor, arg)
 	if err != nil {
 		return live.View{}, err
 	}
+	projects, err := tracker.Readable(ctx, q, actor)
+	if err != nil {
+		return live.View{}, err
+	}
 	return live.View{
-		Key:    "pagedoc:" + p.ID,
+		Key:    "pagedoc:" + p.ID + ":" + rightsKey(projects),
 		Topics: []string{wiki.DocTopic(p.ID), wiki.ChipsTopic(p.ID), people.Topic},
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
-			html, err := s.readerHTML(ctx, querier(ctx, tx), p.ID)
+			html, err := s.readerHTML(ctx, querier(ctx, tx), p.ID, listsFor{readable: projects, owner: p.CreatedBy, seq: live.Seq(ctx)})
 			if err != nil {
 				return nil, err
 			}
@@ -869,11 +891,12 @@ func (s *Server) oldVersion(w http.ResponseWriter, r *http.Request, from, n int)
 		if err != nil {
 			return Page{}, err
 		}
+		lists := describeLists(ctx, q, res)
 		if old != nil {
 			diff := doc.Diff(old, d)
-			vp.Compare, vp.From, vp.HTML, vp.Inserted, vp.Deleted = true, from, diff.HTML(res), diff.Inserted, diff.Deleted
+			vp.Compare, vp.From, vp.HTML, vp.Inserted, vp.Deleted = true, from, diff.HTML(lists), diff.Inserted, diff.Deleted
 		} else {
-			vp.HTML = doc.RenderHTML(d, res)
+			vp.HTML = doc.RenderHTML(d, lists)
 		}
 		sidebar, err := s.sidebar(ctx, q, sp, p.ID, "")
 		if err != nil {

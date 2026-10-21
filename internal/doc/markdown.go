@@ -106,6 +106,14 @@ func (m *mdWriter) block(n *Node, first, rest string) {
 				m.line(rest, "|"+strings.Repeat(" --- |", len(cells)))
 			}
 		}
+	case "issue_list":
+		l := IssueListOf(n)
+		if l.SavedFilter != "" {
+			m.line(first, "Issue list of a saved filter")
+			break
+		}
+		v, _ := url.ParseQuery(l.Filter)
+		m.line(first, "Issue list: [issues matching "+mdEscape(l.Filter)+"](/issues?"+v.Encode()+")")
 	case "image":
 		m.line(first, "!["+mdEscape(n.AttrString("alt"))+"](/img/lib/"+url.PathEscape(n.AttrString("imageId"))+")")
 	default:

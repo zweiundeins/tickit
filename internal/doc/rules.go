@@ -226,6 +226,10 @@ func (r Rules) checkNode(n *Node, lim Limits, inCode bool) error {
 		if l := utf8.RuneCountInString(n.AttrString("label")); l != 0 && (l < 2 || l > 30) {
 			return refuse("A mention's name has 2 to 30 characters.")
 		}
+	case "issue_list":
+		if err := checkIssueList(n, lim); err != nil {
+			return err
+		}
 	case "page_link":
 		id := n.AttrString("pageId")
 		ok := PageID(id)
@@ -252,6 +256,30 @@ func checkStrings(specs []*attribute, values []any, lim Limits) error {
 		if s, ok := values[i].(string); ok && len(s) > lim.AttrLength && utf16Len(s) > lim.AttrLength {
 			return refuse("A link or attribute holds at most %s characters.", thousands(lim.AttrLength))
 		}
+	}
+	return nil
+}
+
+// checkIssueList checks an issue list's filter (FR-104): a saved filter's
+// id, or the issue list's query string, and its row cap.
+func checkIssueList(n *Node, lim Limits) error {
+	if id := n.AttrString("savedFilter"); id != "" && !uuid7Re.MatchString(id) {
+		return refuse("An issue list names a saved filter of this site.")
+	}
+	f := n.AttrString("filter")
+	if utf8.RuneCountInString(f) > max(lim.ListFilter, 1) {
+		return refuse("An issue list's filter holds at most %s characters.", thousands(lim.ListFilter))
+	}
+	for _, c := range f {
+		if c < 0x20 || c == 0x7f {
+			return refuse("An issue list's filter holds a control character.")
+		}
+	}
+	if _, err := url.ParseQuery(f); err != nil {
+		return refuse("An issue list's filter is written as the issue list's address writes it, such as status=todo&project=WEB.")
+	}
+	if _, ok := wholeIn(n.Attr("limit"), 1, max(lim.ListRows, 1)); !ok {
+		return refuse("An issue list shows 1 to %d rows.", lim.ListRows)
 	}
 	return nil
 }

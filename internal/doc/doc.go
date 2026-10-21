@@ -82,6 +82,10 @@
 //     and a UUIDv7, s- and a slug); its label is empty or 2 to 30
 //     characters.
 //   - page_link.pageId is a UUIDv7 (FR-103).
+//   - issue_list (FR-104): savedFilter empty or a UUIDv7; filter at most
+//     listFilter (500) characters without control characters, a query
+//     string as the issue list's address writes it; limit a whole number
+//     from 1 to listRows (25).
 //   - link.href passes SafeHref: http, https or mailto, parsed by net/url,
 //     with a host for http and https, at most 2,048 characters (DM-06.2).
 //   - Every attribute string holds at most attrLength (2,048) characters.
@@ -94,7 +98,9 @@
 // and never from src, and no <a> for a link mark around an atom. Marks
 // nest as DOMSerializer nests them: marks shared with the previous node
 // stay open. What chips, mentions and page links show comes from a
-// Resolver at render time. BlockCache keeps the HTML of unchanged blocks.
+// Resolver at render time; an issue list's rows come from a ListResolver,
+// and without one it shows its filter (ListDescription). BlockCache keeps
+// the HTML of unchanged blocks, except those holding an issue list.
 // Text gives the search text, References the issue keys, person ids and
 // page ids of a document. Diff compares two versions (top-level blocks
 // matched by content, then words, atoms and marks of paired blocks with
