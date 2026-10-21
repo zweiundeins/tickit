@@ -62,7 +62,10 @@ func cutVersion(tx *writer.Tx, m events.Meta, page string, s PageState, message,
 		m.Actor = editors[len(editors)-1]
 	}
 	cut := VersionCut{Upto: ds.Version, Title: s.Title, Doc: marshalDoc(head), Editors: editors, Message: message, Reason: reason}
-	return true, events.Execute(Store(), tx, cutDecider, PageStream.ID(page), events.Any, cut, m)
+	if err := events.Execute(Store(), tx, cutDecider, PageStream.ID(page), events.Any, cut, m); err != nil {
+		return false, err
+	}
+	return true, pageDocs.Cut(tx, page, ds.Version)
 }
 
 // editorsSince are the people who committed to the document, or renamed

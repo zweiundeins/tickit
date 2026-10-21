@@ -354,6 +354,11 @@ func TestFold(t *testing.T) {
 	for i := range 5 {
 		e.commit(sunny, p, int64(i+41), "d"+strings.Repeat("x", i), steps(insert(1, "b")))
 	}
+	// NFR-43.3: the fold's bound is the first commit after the version.
+	uncut := `SELECT at FROM collab_uncut WHERE kind = 'pagedoc' AND id = ?`
+	if got, want := e.row(uncut, p), e.row(`SELECT at FROM lith_events WHERE stream = 'pagedoc' AND stream_id = ? AND version = 42`, p); got != want {
+		t.Errorf("oldest uncut commit at %s, want %s", got, want)
+	}
 	before := e.head(p)
 	// Too early: nothing folds.
 	f := &Fold{At: e.now}
@@ -380,6 +385,10 @@ func TestFold(t *testing.T) {
 	}
 	if a := e.commit(sunny, p, 45, "fresh", steps(insert(1, "z"))); a != Applied {
 		t.Errorf("commit on the head: %c", a)
+	}
+	e.must(CutVersion{By: e.by(sunny), Page: p})
+	if n := e.row(`SELECT count(*) FROM collab_uncut WHERE id = ?`, p); n != "0" {
+		t.Errorf("%s uncut rows after a version of the head", n)
 	}
 }
 
