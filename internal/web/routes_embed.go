@@ -265,6 +265,10 @@ func (s *Server) pageListsView(ctx context.Context, q sqlite.Querier, actor peop
 	}, nil
 }
 
+// lastReported is the project of the issue a person created last
+// (issues_reporter, migration 088).
+const lastReported = `SELECT project_id FROM issues WHERE reporter = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1`
+
 // pageIssueProps is "Create issue" on a page for a person who may edit it
 // (FR-105): the projects they may create issues in, the space's own
 // project preselected (the project whose key is the space's), else the
@@ -302,7 +306,7 @@ func pageIssueProps(ctx context.Context, q sqlite.Querier, me people.Person, p w
 		}
 	}
 	var last string
-	err = q.QueryRowContext(ctx, `SELECT project_id FROM issues WHERE reporter = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1`, me.ID).Scan(&last)
+	err = q.QueryRowContext(ctx, lastReported, me.ID).Scan(&last)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return props, err
 	}
