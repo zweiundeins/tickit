@@ -304,9 +304,10 @@ func (s *Server) pageView(ctx context.Context, q sqlite.Querier, me people.Perso
 	}
 	return Page{
 		Title: p.Title, Nav: "spaces", Sidebar: sidebar, SidebarLabel: "Space",
-		Views:   pageViews,
-		Scripts: []string{inlineScript},
-		Body:    templ.Join(views.WikiPage(props), views.Viewed(recent.Page, p.ID)),
+		Views:      pageViews,
+		Scripts:    []string{inlineScript},
+		Components: []string{"copy-button"},
+		Body:       templ.Join(views.WikiPage(props), views.Viewed(recent.Page, p.ID)),
 	}, nil
 }
 

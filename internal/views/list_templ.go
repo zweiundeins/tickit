@@ -68,7 +68,11 @@ func IssueListBody(p ListPage) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div></div><p class=\"list-saved\" role=\"status\" data-text=\"$_save.done\"></p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = ui.Toasts(ui.ToastsProps{Placement: "bottom-center", Attrs: templ.Attributes{"data-attr:toasts": "JSON.stringify($_toasts)"}}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

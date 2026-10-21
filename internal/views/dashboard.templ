@@ -75,15 +75,11 @@ templ DashboardBody(p DashboardPage) {
 				@ui.Field(ui.FieldProps{ID: "dash-kind", Label: "Add a gadget", ErrorAttrs: templ.Attributes{"data-text": "$_dash.msg"}}) {
 					@ui.Select(ui.SelectProps{ID: "dash-kind", Options: gadgetKinds(), DescribedBy: "dash-kind-error", Attrs: templ.Attributes{"data-bind": "_dash.kind"}})
 				}
-				<div data-show={ needsProject }>
-					@ui.Field(ui.FieldProps{ID: "dash-project", Label: "Project"}) {
-						@ui.Select(ui.SelectProps{ID: "dash-project", Options: projectOptions(p.Projects), Attrs: templ.Attributes{"data-bind": "_dash.project"}})
-					}
+				<div class="tk-dash__pick" data-show={ needsProject }>
+					@ui.Picker(ui.PickerProps{ID: "dash-project", Label: "Project", Name: "project", Options: projectOptions(p.Projects), Placeholder: "Pick a project", Searchable: true, Attrs: templ.Attributes{"data-on:sb-change": "$_dash.project = evt.detail.value"}})
 				</div>
-				<div data-show={ needsFilter }>
-					@ui.Field(ui.FieldProps{ID: "dash-filter", Label: "Saved filter"}) {
-						@ui.Select(ui.SelectProps{ID: "dash-filter", Options: filterOptions(p.Filters), Attrs: templ.Attributes{"data-bind": "_dash.filter"}})
-					}
+				<div class="tk-dash__pick" data-show={ needsFilter }>
+					@ui.Picker(ui.PickerProps{ID: "dash-filter", Label: "Saved filter", Name: "filter", Options: filterOptions(p.Filters), Placeholder: "Pick a saved filter", Searchable: true, Attrs: templ.Attributes{"data-on:sb-change": "$_dash.filter = evt.detail.value"}})
 				</div>
 				@ui.Button(ui.ButtonProps{Label: "Add", Icon: "plus", Variant: ui.Primary, Type: "submit", Attrs: templ.Attributes{"data-attr:aria-busy": dashBusy}})
 				<span class="cluster tk-dash__manage">

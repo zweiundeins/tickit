@@ -325,7 +325,7 @@ const listCounts = `document.getElementById('` + ListFormID + `').querySelectorA
 const listPickers = `el.querySelectorAll('sb-select[name], sb-date-picker[name]').forEach(c => c.value = c.hasAttribute('multiple') ? p.getAll(c.getAttribute('name')) : (p.get(c.getAttribute('name')) ?? ''))`
 
 var (
-	listSignals = `{_list: {query: ''}, _save: {op: '', name: '', msg: '', done: ''}}`
+	listSignals = `{_list: {query: ''}, _save: {op: '', name: '', msg: ''}, _toasts: []}`
 	// listInput: a changed filter shows its first page (FR-51.3); typing
 	// replaces the history entry, other changes add one.
 	listInput  = `(evt.target.name !== 'page' && (el.elements.page.value = ''), ` + listCounts + `, ` + listSend(`evt.target.type !== 'search'`) + `)`
@@ -367,6 +367,6 @@ var (
 // Saving the list's filter (FR-56.1).
 var (
 	saveFilter        = `$_save.name.trim() && ` + Act("_save.op", "/cmd/filters/save", "name: $_save.name, query: "+listQS)
-	saveFilterSettled = Settle("_save.op", "o.ok ? ($_save.msg = '', $_save.name = '', $_save.done = 'Saved. It is in Filters now.', document.getElementById('save-filter').close()) : ($_save.msg = o.msg)")
+	saveFilterSettled = Settle("_save.op", "o.ok ? ($_save.msg = '', $_save.name = '', $_toasts = [...$_toasts.slice(-2), {id: 'saved-' + $_save.op, text: 'Saved. It is in Filters now.', variant: 'ok'}], document.getElementById('save-filter').close()) : ($_save.msg = o.msg)")
 	saveFilterFailed  = Failed("_save.op")
 )

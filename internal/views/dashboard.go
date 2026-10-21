@@ -158,15 +158,15 @@ func gadgetKinds() []ui.Option {
 }
 
 func projectOptions(list []tracker.Project) []ui.Option {
-	out := []ui.Option{{Value: "", Label: "Pick a project"}}
+	out := make([]ui.Option, 0, len(list))
 	for _, p := range list {
-		out = append(out, ui.Option{Value: p.ID, Label: p.Key + " " + p.Name})
+		out = append(out, ui.Option{Value: p.ID, Label: p.Name, Description: p.Key})
 	}
 	return out
 }
 
 func filterOptions(list []tracker.SavedFilter) []ui.Option {
-	out := []ui.Option{{Value: "", Label: "Pick a saved filter"}}
+	out := make([]ui.Option, 0, len(list))
 	for _, f := range list {
 		out = append(out, ui.Option{Value: f.ID, Label: f.Name})
 	}

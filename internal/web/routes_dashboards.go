@@ -143,7 +143,7 @@ func (s *Server) dashboardPage(w http.ResponseWriter, r *http.Request) {
 		if hasKind(d, dashboards.Assigned) {
 			names = append(names, "dashme:"+d.ID)
 		}
-		return Page{Title: d.Name, Nav: "dashboards", Width: "full", Views: names, Body: views.DashboardBody(p)}, nil
+		return Page{Title: d.Name, Nav: "dashboards", Width: "full", Views: names, Components: []string{"select"}, Body: views.DashboardBody(p)}, nil
 	})
 }
 

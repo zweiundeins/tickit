@@ -20,7 +20,7 @@ templ IssueListBody(p ListPage) {
 				@ui.Button(ui.ButtonProps{Label: "Export CSV", Icon: "table", Variant: ui.Ghost, Href: csvHref(p.Query)})
 			</div>
 		</div>
-		<p class="list-saved" role="status" data-text="$_save.done"></p>
+		@ui.Toasts(ui.ToastsProps{Placement: "bottom-center", Attrs: templ.Attributes{"data-attr:toasts": "JSON.stringify($_toasts)"}})
 		@ui.Glyphs()
 		@listForm(p)
 		if p.Unwatched {
