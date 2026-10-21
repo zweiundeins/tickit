@@ -176,7 +176,7 @@ Variants are `Primary` (one per view), `Secondary`, `Ghost` and `Danger`. `Comma
 }
 ```
 
-Plain tables (NFR-50). In cells: `.tk-key` for keys, `.tk-grow` for the column that takes the room and cuts its text, `.tk-num` for numbers, `.tk-cell` for a face beside a name. The table scrolls sideways inside its region on narrow screens.
+Plain tables (NFR-50). In cells: `.tk-key` for keys, `.tk-grow` for the column that takes the room and cuts its text, `.tk-num` for numbers, `.tk-cell` for a face beside a name. A select in a cell is as wide as its longest option, and the tooltips of the row's last cell open towards the start. The table scrolls sideways inside its region on narrow screens.
 
 ### People
 

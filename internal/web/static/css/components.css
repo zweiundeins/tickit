@@ -187,9 +187,11 @@
 		transition-delay: 0ms;
 	}
 
-	/* Tips at the inline end of a bar open towards the start. */
+	/* Tips at the inline end of a bar or a table row open towards the
+	 * start, so a hidden bubble never widens a scrolling region. */
 	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head, .tk-presence__item, .tk-issue__refs li) > .tk-tip > .tk-tip__bubble,
-	.tk-tip--end > .tk-tip__bubble {
+	.tk-tip--end > .tk-tip__bubble,
+	.tk-table td:last-child .tk-tip > .tk-tip__bubble {
 		inset-inline: auto 0;
 		translate: 0 0.25rem;
 
@@ -200,7 +202,8 @@
 	}
 
 	:is(.tk-header__end, .tk-demo, .tk-panel__actions, .tk-dialog__head, .tk-notice, .tk-card__who, .tk-lane__head, .tk-presence__item, .tk-issue__refs li) > .tk-tip:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble,
-	.tk-tip--end:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble {
+	.tk-tip--end:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble,
+	.tk-table td:last-child .tk-tip:is(:hover, :focus-visible, :has(:focus-visible)) > .tk-tip__bubble {
 		translate: 0 0;
 	}
 
@@ -1475,6 +1478,12 @@
 					text-decoration: underline;
 				}
 			}
+		}
+
+		/* A select is as wide as its longest option: a percentage width
+		 * would give the column no minimum, and the select none. */
+		& .tk-select > select {
+			inline-size: auto;
 		}
 
 		& .tk-key {

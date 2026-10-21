@@ -1059,6 +1059,16 @@
 		}
 	}
 
+	/* A part with a table takes the page's width; its text keeps the
+	 * measure. */
+	.tk-settings__part:has(> .tk-table-wrap) {
+		max-inline-size: none;
+
+		& > p {
+			max-inline-size: var(--tk-prose-max);
+		}
+	}
+
 	.tk-settings__components {
 		display: grid;
 		gap: var(--tk-space-2);
@@ -1136,17 +1146,13 @@
 	}
 
 	/* The workflow's settings (FR-36, FR-43). */
-	.tk-wf {
-		max-inline-size: none;
-	}
-
 	.tk-wf__actions {
 		display: inline-flex;
 		gap: var(--tk-space-0_5);
 	}
 
-	.tk-wf__follows {
-		max-inline-size: 18rem;
+	td.tk-wf__follows {
+		white-space: normal;
 		color: var(--tk-text-2);
 		font-size: var(--tk-text-sm);
 	}
