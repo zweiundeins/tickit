@@ -94,7 +94,8 @@ func TestAxe(t *testing.T) {
 }
 
 // NFR-46.1, NFR-56.1: at 320 CSS pixels (400 % of 1280) no main page
-// scrolls sideways; the board's lanes scroll inside their region.
+// scrolls sideways; the board's lanes scroll inside their region. No page
+// has an id twice.
 func TestNarrowPages(t *testing.T) {
 	e := webtest.Start(t)
 	if _, err := demo.Seed(context.Background(), e.W, e.Server.Demo().Content(), time.Now(), 1); err != nil {
@@ -110,6 +111,12 @@ func TestNarrowPages(t *testing.T) {
 		p.Eval(t, `({scroll: document.documentElement.scrollWidth, inner: innerWidth})`, &w)
 		if w.Scroll > w.Inner {
 			t.Errorf("%s scrolls sideways at 320 px: %d", pg.name, w.Scroll)
+		}
+		// An id twice, as the menu panel's copy of the sidebar had them.
+		var twice []string
+		p.Eval(t, `(() => { const seen = new Set(), out = []; for (const el of document.querySelectorAll('[id]')) { if (seen.has(el.id)) out.push(el.id); seen.add(el.id) }; return out })()`, &twice)
+		if len(twice) > 0 {
+			t.Errorf("%s has ids twice: %v", pg.name, twice)
 		}
 	}
 	if errs := p.Errors(); len(errs) > 0 {

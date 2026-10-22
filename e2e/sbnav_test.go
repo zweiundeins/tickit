@@ -416,3 +416,49 @@ func TestFocusAfterOwnAction(t *testing.T) {
 	g.Wait(t, `document.querySelector('#report [role=status]').textContent.startsWith('Thank you') && document.activeElement?.getAttribute('commandfor') === 'report'`, 5*time.Second)
 	noErrors(t, p, g)
 }
+
+// FR-78.3, MP-03: on a narrow screen the page tree is in the menu panel:
+// the page has one tree and no id twice, frames reach it there, and a
+// branch the tab loaded in the panel refreshes when a page in it changes.
+func TestPageTreeInMenuPanel(t *testing.T) {
+	e, _ := seededDemo(t)
+	var page, onboarding, child, home string
+	e.DB.R.QueryRow(`SELECT id FROM pages WHERE title = 'Deploy to production'`).Scan(&page)
+	e.DB.R.QueryRow(`SELECT id FROM pages WHERE title = 'Onboarding'`).Scan(&onboarding)
+	e.DB.R.QueryRow(`SELECT id FROM pages WHERE title = 'Engineering handbook'`).Scan(&home)
+	e.DB.R.QueryRow(`SELECT id FROM pages WHERE parent_id = ? AND state = 'current' ORDER BY rank LIMIT 1`, onboarding).Scan(&child)
+	p := browsertest.Start(t).NewPage(t, 375, 800)
+	p.Navigate(t, e.URL+wiki.PageURL("ENG", page, "Deploy to production"))
+	p.Wait(t, `document.getElementById('reconnecting')?.hidden && customElements.get('sb-tree')`, 10*time.Second)
+	dupes := `(() => { const seen = new Set(), out = []; for (const el of document.querySelectorAll('[id]')) { if (seen.has(el.id)) out.push(el.id); seen.add(el.id) }; return out })()`
+	var twice []string
+	p.Eval(t, dupes, &twice)
+	if len(twice) > 0 {
+		t.Errorf("ids twice in the page: %v", twice)
+	}
+
+	p.Eval(t, `(document.querySelector('[commandfor=tk-nav]').click(), true)`, nil)
+	p.Wait(t, `document.getElementById('tk-nav').open && document.querySelector('#tk-nav #page-tree sb-tree')?.checkVisibility()`, 2*time.Second)
+	tree := `document.querySelector('#tk-nav #page-tree sb-tree')`
+	rowsJS := `[...` + tree + `.shadowRoot.querySelectorAll('[role=treeitem]')]`
+	p.Eval(t, `(`+tree+`.shadowRoot.querySelector('[data-id="`+onboarding+`"]').focus(), true)`, nil)
+	treeKey(t, p, "ArrowRight")
+	p.Wait(t, rowsJS+`.some((r) => r.dataset.id === `+jsQuote(child)+`)`, 5*time.Second)
+
+	ada := people.Seeded[0]
+	e.Do(t, wiki.RenamePage{By: tabs.By{Actor: ada, Op: "rn3", At: time.Now()}, Page: home, Title: "Handbook renamed"})
+	p.Wait(t, rowsJS+`.some((r) => r.dataset.id === `+jsQuote(home)+` && r.textContent.includes('Handbook renamed'))`, 5*time.Second)
+	e.Do(t, wiki.RenamePage{By: tabs.By{Actor: ada, Op: "rn4", At: time.Now()}, Page: child, Title: "Renamed in the panel"})
+	p.Wait(t, rowsJS+`.some((r) => r.dataset.id === `+jsQuote(child)+` && r.textContent.includes('Renamed in the panel'))`, 5*time.Second)
+
+	// Closed, the panel gives the tree back to the sidebar, still open there.
+	key(t, p, "Escape")
+	p.Wait(t, `!document.getElementById('tk-nav').open && document.querySelector('#tk-sidebar #page-tree sb-tree')`, 2*time.Second)
+	p.Eval(t, dupes, &twice)
+	if len(twice) > 0 {
+		t.Errorf("ids twice after the panel closed: %v", twice)
+	}
+	p.Eval(t, `(document.querySelector('[commandfor=tk-nav]').click(), true)`, nil)
+	p.Wait(t, `document.getElementById('tk-nav').open && `+rowsJS+`.some((r) => r.dataset.id === `+jsQuote(child)+`)`, 2*time.Second)
+	noErrors(t, p)
+}

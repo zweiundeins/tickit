@@ -119,7 +119,7 @@ Each takes a props struct; zero values are the defaults. The calls below are tem
 }
 ```
 
-The header holds the brand, Projects, Spaces, Filters and Dashboards with the current one marked, `Admin` links for those who may use them, search with its Ctrl K hint (the shortcut works on every page), Create, the bell (a button with `aria-expanded` and a polite live region `#tk-unread` for the count), the display menu and the person's menu (FR-137). Below 48rem the links and the sidebar move into a panel that the menu button opens; below 30rem the search is an icon button that opens the field over the header, which closes when the focus leaves it or on Escape. The shell hides tooltips on Escape. `DisplayProps` takes `Href` (links) or `Attrs` (buttons that post a preference).
+The header holds the brand, Projects, Spaces, Filters and Dashboards with the current one marked, `Admin` links for those who may use them, search with its Ctrl K hint (the shortcut works on every page), Create, the bell (a button with `aria-expanded` and a polite live region `#tk-unread` for the count), the display menu and the person's menu (FR-137). Below 48rem the links and the sidebar move into a panel that the menu button opens (the sidebar's one copy moves into the panel while it is open and back when it closes, so its ids stay unique and frames reach it); below 30rem the search is an icon button that opens the field over the header, which closes when the focus leaves it or on Escape. The shell hides tooltips on Escape. `DisplayProps` takes `Href` (links) or `Attrs` (buttons that post a preference).
 
 ### Buttons and fields
 

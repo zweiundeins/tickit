@@ -21,6 +21,15 @@ const menuKeys = `['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(evt.key) && (
 	items[evt.key === 'Home' ? 0 : evt.key === 'End' ? n - 1 : (i + (evt.key === 'ArrowDown' ? 1 : n - 1)) % n]?.focus()
 })([...el.querySelectorAll('.tk-menu__item:not([disabled]):not([aria-disabled="true"]):not([hidden])')])`
 
+// navSidebar moves the sidebar's content into the menu panel while it is
+// open, and back when it closes: one copy in the page, so its ids are
+// unique and frames reach it. moveBefore keeps components' state. On the panel.
+const navSidebar = `((side, slot) => {
+	if (!side || !slot) return
+	const [from, to] = evt.newState === 'open' ? [side, slot] : [slot, side]
+	for (const c of [...from.children]) to.moveBefore ? to.moveBefore(c, null) : to.append(c)
+})(document.getElementById('tk-sidebar'), el.querySelector('.tk-navpanel__side'))`
+
 // toolbarKeys moves the focus along a toolbar's buttons with Left, Right,
 // Home and End (the ARIA toolbar pattern). On the toolbar.
 const toolbarKeys = `['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(evt.key) && ((items) => {

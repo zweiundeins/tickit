@@ -93,7 +93,7 @@ templ Shell(p ShellProps) {
 			</main>
 		</div>
 		@Footer(p.Footer)
-		@SidePanel(PanelProps{ID: "tk-nav", Title: "Menu", Side: "start", Class: "tk-navpanel"}) {
+		@SidePanel(PanelProps{ID: "tk-nav", Title: "Menu", Side: "start", Class: "tk-navpanel", Attrs: templ.Attributes{"data-on:toggle": navSidebar}}) {
 			<nav class="tk-navpanel__links" aria-label="Main">
 				for _, it := range p.Header.Nav {
 					@navLink(it)
@@ -103,9 +103,7 @@ templ Shell(p ShellProps) {
 				}
 			</nav>
 			if p.Sidebar != nil {
-				<nav class="tk-navpanel__side" aria-label={ iconOr(p.SidebarLabel, "Project") }>
-					@p.Sidebar
-				</nav>
+				<nav class="tk-navpanel__side" aria-label={ iconOr(p.SidebarLabel, "Project") }></nav>
 			}
 		}
 	</div>
