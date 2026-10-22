@@ -1,7 +1,7 @@
 {
   "repo": "github.com/zweiundeins/starbase",
-  "commit": "804dc27abf29011741f8d3962f3df0331763f081",
-  "date": "2026-10-21T21:15:00Z",
+  "commit": "163fc43415cfae7b584426f52c599aa444dff326",
+  "date": "2026-10-22T05:15:19Z",
   "license": "MIT",
   "datastar": "sha384-mvTnynHaljKNMleD0bj6/rWROnluHlNmbc5rOQTd+fQH3YBDYhlvHdNquEX99by5",
   "fonts": {
@@ -20,7 +20,7 @@
         "context-menu.js": "sha384-e23UnqRafdN3NmvXeQN2NY+Th8e+zqTKHK6UDVSflszbRA7VYvtokIWMbuHche5S",
         "contracts/context-menu.js": "sha384-lbuqJacJXgi7BBy00k9VJ9tr5NSuZRYeZTbjTbsgCa0cyocWxtlK70ee3LOU3Ybo",
         "core/keyboard.js": "sha384-Qx096Qn3lPqo0PP0Vt2WD8mklelqGSVCQxnO1jAdpqLJeKNsEendYbBIy2pYzzU9",
-        "core/popover.js": "sha384-qJc0WBtY/HFynLvxM/E4SMzltClxqIDb2MoD+aed7Xym00KS7w9W8FqFrV/VzPd4",
+        "core/popover.js": "sha384-aTOd68enfo7YyBcJ1HGlbT1R+Xpe96eh88hZTjvp9jlrMYlGNrZx5bqx6a6i4B5h",
         "core/template-bind.js": "sha384-bNaYs0nJACnQN9eE/7fe/fkBGeJ5BRI//lp/zs/VJwtXsCuoEEAYLWRwxQp4kX03"
       }
     },
@@ -93,7 +93,7 @@
       "pinned": true,
       "entry": "tree.js",
       "files": {
-        "tree.js": "sha384-Xyd+LqjBCvOzgDfoji1ftJOgZ/s+R1/ExlrTzJMRH7hmccQO73dmv04mCDjm3SZW"
+        "tree.js": "sha384-273N8HWKT7yrRZEChHG+jtriGEmWjloWCp2vkcVrlFp5Dd2OeOET9xjElBwDSAxZ"
       }
     },
     {
