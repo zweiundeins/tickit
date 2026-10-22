@@ -163,6 +163,10 @@ The fold (NFR-43.3): `wiki.Fold` and `tracker.FoldDescriptions` found their boun
 
     cp --reflink=auto /tmp/tickit-load-030/run.db x.db && tickit-load fold -db x.db -n 20
 
+## The fold on lith v0.4.2
+
+21 October 2026, the same machine, `767960d` (lith v0.4.2, whose `events.Compact` bounds its DELETE and `StateAt` by version and starts its cut after the kind's compacted position), with `collab_uncut`. `tickit-load fold` on three fresh copies of the v0.3.0 control's sustained database, as above, p50 of 20 commands per limit of 200, 100, 50, 25 and 10 events: 4.6 to 5.5, 2.4 to 2.6, 1.4 to 1.6, 0.9 to 1.1, 0.7 to 0.8 ms. The max per limit from 100 down is 3.2 ms; at 200 it is the first command after the open (41 to 830 ms: migrations and a cold cache). Against 19 to 31 ms before, NFR-43.3's 5 ms holds for every batch but the first.
+
 ## The race detector
 
 20 October 2026, same machine: `go test -race -count=1 -timeout 40m ./...` found no data race. The first run, before the merge of `rewrite`, timed out in `internal/web` after 10 minutes, in `TestSearchSpeed` (10,000 issues), and `internal/search`'s `TestRebuild` missed its 20 s wait for the rebuild; the run after the merge passed every package in 4 min 3 s but `internal/people`'s `TestHashesAtOnce`, a heap measurement that read 171 MiB under `-race` with the suite running (it passes alone, with and without `-race`). Timing and heap measurements now skip under `-race` (each package's `raceDetector`, true in a test file built with the `race` tag), and the rebuild test waits 2 minutes there; `internal/web` takes 3 min 46 s and `internal/search` 1 min 17 s under the detector.

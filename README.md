@@ -21,7 +21,7 @@ Go · templ · SQLite · lith · Datastar + Rocket · event sourcing · ProseMir
 - **A live board:** columns that hold one or more statuses with work-in-progress limits, swimlanes by epic or assignee. Drag a card, or move it by keyboard from its menu. It moves at once, marked pending, and other browsers see it 22 to 74 ms later. Of two people who move one card at once, the second reads "Sunny Otter moved WEB-12 to In Review first".
 - **Field conflicts in words:** "Sunny Otter changed the priority to High 5 seconds ago. Your Critical was not saved.", with a button to save yours anyway.
 - **Pages, co-edited:** a page tree per space, templates, labels, the trash, versions with a slider, compare and restore, comments with replies, inline comments on selected text that follow it as people edit, images pasted or dropped in, issue chips that show an issue's live status, live tables of the issues a filter matches, and an issue made from selected text. Up to 20 people type in one paragraph: the server orders and rebases every edit, so nobody's keystroke is lost, and everyone sees the others' carets.
-- **Search and lists:** one index over issues, comments and pages with a typeahead in the header; a filtered, sorted, paged issue list that every tab with the same filter shares as one live view; saved filters; CSV export.
+- **Search and lists:** one index over issues, comments and pages with a typeahead in the header; a filtered, sorted, paged issue list that every tab with the same filter shares as one live view; saved filters; CSV export; dashboards of gadgets (a filter's issues, counts by status, assigned to me, activity).
 - **Live everywhere:** faces of the people on an issue, a board or a page, "is typing" indicators, a bell that every tab of a person updates, activity feeds, and a reconnect after a deploy without a reload.
 - **Run as a public demo:** seeded content (Alpenglow, a fictional Swiss outdoor shop, with 30 days of history), a nightly reset at 04:00 Zurich time announced ten minutes ahead, rate limits and daily caps, moderation, and administration pages.
 - **A design system of its own:** a sibling of Starbase and lith's site with 8-bit corners, light and dark themes, pixel icons and Starbase components, at [/design](https://tickit.zweiundeins.gmbh/design).
@@ -82,10 +82,11 @@ go tool task load        # 200 streams against the built binary (NFR-38)
 On a development machine (i5-13500), against the built binary with 10,000 issues, 2,000 pages, 1,000,000 events and 200 open streams ([benchmarks/RESULTS.md](benchmarks/RESULTS.md)):
 
 - **Actions:** 32,150 answered 204 at p50 0.6 ms and p95 3.6 ms.
-- **Commit to screen:** a card move reaches the 100 board tabs at p50 53 ms and p95 77 ms, an upper bound measured at the client.
+- **Commit to screen:** a card move reaches the 90 board tabs at p50 45 to 54 ms and p95 68 to 93 ms over seven runs, an upper bound measured at the client.
 - **Co-editing:** 20 browsers typing 5 characters a second each, keystroke to the other editors at p95 152 ms on loopback, every document identical at the end; the writer spends 0.25 ms a commit.
-- **Frames:** a board of 100 cards in about 60 KB, 25 issue rows in 36 KB; one render a tick however many tabs watch.
+- **Frames:** a board of 100 cards in about 67 KB, 25 issue rows in 46 KB, the page tree of a 400-page space in 29 to 73 KB; one render a tick however many tabs watch.
 - **Restart:** every one of the 200 streams back with current frames 1.0 s after `/healthz`.
+- **Folding the co-editing log:** on lith v0.4.2 a fold of 10 to 100 commits holds the writer 0.7 to 2.6 ms at the median.
 
 ## Project
 
@@ -97,10 +98,11 @@ On a development machine (i5-13500), against the built binary with 10,000 issues
 | Path | What it holds |
 | --- | --- |
 | `cmd/tickit` | the binary: `serve`, `backup`, `seed`, `account create`, `migrations-pending` |
-| `internal/` | domain packages (`people`, `access`, `tabs`, `tracker`, `wiki`, `doc`, `markup`, `search`, `notify`, `activity`, `demo`), the design system (`ui`), the pages (`views`) and the server (`web`) |
+| `internal/` | domain packages (`people`, `access`, `tabs`, `tracker`, `wiki`, `collab`, `doc`, `markup`, `search`, `notify`, `activity`, `dashboards`, `recent`, `images`, `demo`), the design system (`ui`), the pages (`views`) and the server (`web`) |
 | `editor/` | the source of the `sb-rich-editor` component; its bundle is committed in `internal/web/static/editor/` |
 | `e2e/` | browser tests of the multiplayer criteria |
 | `cmd/tickit-load`, `benchmarks/` | the load test and the measured numbers |
+| `cmd/vendor-starbase` | copies the pinned Starbase components and fonts into `internal/web/static` |
 
 ## Credits
 
