@@ -181,6 +181,9 @@ type TreeItem struct {
 	// Meta shows after the label, muted: a count, "draft".
 	Meta     string
 	Children []TreeItem
+	// Lazy is a branch sent without its children: opening it emits
+	// sb-load {id}, and the page brings them.
+	Lazy bool
 }
 
 // TreeProps is a tree of pages or of items to choose from.
@@ -222,12 +225,23 @@ templ Tree(p TreeProps) {
 	</sb-tree>
 }
 
+// TreeBranch is the list of a lazy item's children, which a page puts in
+// the item once the tree asks for them (sb-load).
+templ TreeBranch(items []TreeItem) {
+	<ul>
+		@treeItems(items)
+	</ul>
+}
+
 templ treeItems(items []TreeItem) {
 	for _, it := range items {
 		<li
 			data-id={ it.ID }
 			if it.Expanded {
 				data-open
+			}
+			if it.Lazy && len(it.Children) == 0 {
+				data-lazy
 			}
 		>
 			if it.Href != "" {

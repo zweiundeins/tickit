@@ -321,20 +321,21 @@ templ moveFooter() {
 
 // SpaceTree is the sidebar's tree of a space, with the faces of the
 // people on its pages above it when presence names its row's id (MP-02.1).
-templ SpaceTree(label string, items []ui.TreeItem, presence string) {
+templ SpaceTree(t TreeProps, presence string) {
 	if presence != "" {
 		<div class="wk-tree__presence">
 			@Presence(presence, nil)
 		</div>
 	}
-	@PageTree(label, items)
+	@PageTree(t)
 }
 
 // PageTree is the space's tree beside the page (FR-78): the current page
-// highlighted and its ancestors open; a person opens and closes nodes in
-// the page, which frames keep (ui.Tree, data-preserve-attr).
-templ PageTree(label string, items []ui.TreeItem) {
-	<nav id={ TreeID } class="wk-tree" aria-label={ label }>
-		@ui.Tree(ui.TreeProps{Label: label, Items: items})
+// highlighted and its ancestors open, the other branches lazy. The tab
+// fetches a branch it opens (GET /spaces/{key}/tree?parent=), and again
+// when the tree's data-rev changes, so the shared view stays one for all.
+templ PageTree(t TreeProps) {
+	<nav id={ TreeID } class="wk-tree" aria-label={ t.Label }>
+		@ui.Tree(ui.TreeProps{Label: t.Label, Items: t.Items, Attrs: templ.Attributes{"data-space": t.Space, "data-rev": t.Rev, "data-init": treeInit, "data-on:sb-load": "el.tkLoad(evt.detail.id)"}})
 	</nav>
 }

@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"hash/fnv"
+	"io"
 	"net/http"
 	"slices"
 	"strconv"
@@ -55,6 +57,7 @@ func (s *Server) routesWiki() {
 	s.get("GET /spaces/{key}/pages/{id}/versions/{n}", http.HandlerFunc(s.versionPage), "/spaces/ENG/pages/"+probeID+"/versions/1")
 	s.get("GET /spaces/{key}/pages/{id}/compare", http.HandlerFunc(s.comparePage), "/spaces/ENG/pages/"+probeID+"/compare?from=1&to=2")
 	s.get("GET /spaces/{key}/trash", http.HandlerFunc(s.trashPage), "/spaces/ENG/trash")
+	s.get("GET /spaces/{key}/tree", http.HandlerFunc(s.treeChildren), "/spaces/ENG/tree?parent="+probeID, "/spaces/ENG/tree?parent=nope")
 	s.get("GET /pages/{id}", http.HandlerFunc(s.pageRedirect), "/pages/"+probeID)
 	s.get("GET /pages/{id}/edit", http.HandlerFunc(s.pageRedirect), "/pages/"+probeID+"/edit")
 	s.get("GET /labels/{label}", http.HandlerFunc(s.labelPage), "/labels/release")
@@ -501,7 +504,7 @@ var treeComponents = []string{"tree"}
 // sidebar is the space, its overview and trash, and the page tree, which
 // the tree view patches.
 func (s *Server) sidebar(ctx context.Context, q sqlite.Querier, sp wiki.Space, current, section string) (templ.Component, error) {
-	items, err := treeItems(ctx, q, sp, current)
+	tree, err := spaceTree(ctx, q, sp, current)
 	if err != nil {
 		return nil, err
 	}
@@ -515,36 +518,112 @@ func (s *Server) sidebar(ctx context.Context, q sqlite.Querier, sp wiki.Space, c
 			{Label: "Overview", Href: "/spaces/" + sp.Key, Icon: "home", Current: section == "home"},
 			{Label: "Trash", Href: "/spaces/" + sp.Key + "/trash", Icon: "trash", Current: section == "trash"},
 		}}},
-		Extra:       views.SpaceTree("Pages in "+sp.Name, items, presenceRow),
+		Extra:       views.SpaceTree(tree, presenceRow),
 		Collapsible: true,
 	}), nil
 }
 
-// treeItems is a space's tree with the current page highlighted and its
-// ancestors open (FR-78.1).
-func treeItems(ctx context.Context, q sqlite.Querier, sp wiki.Space, current string) ([]ui.TreeItem, error) {
+// spaceTree is a space's tree with the current page highlighted and its
+// ancestors and the home page open (FR-78.1). The other branches are lazy:
+// a tab that opens one asks for its children (treeChildren).
+func spaceTree(ctx context.Context, q sqlite.Querier, sp wiki.Space, current string) (views.TreeProps, error) {
 	nodes, err := wiki.Tree(ctx, q, sp.ID)
 	if err != nil {
-		return nil, err
+		return views.TreeProps{}, err
 	}
-	var conv func([]*wiki.Node) ([]ui.TreeItem, bool)
-	conv = func(ns []*wiki.Node) ([]ui.TreeItem, bool) {
-		out := make([]ui.TreeItem, 0, len(ns))
-		found := false
+	path := map[string]bool{}
+	var find func([]*wiki.Node) bool
+	find = func(ns []*wiki.Node) bool {
 		for _, n := range ns {
-			children, under := conv(n.Children)
-			it := ui.TreeItem{ID: n.ID, Label: n.Title, Href: wiki.PageURL(sp.Key, n.ID, n.Title), Current: n.ID == current, Children: children}
-			if n.Home {
-				it.Icon = "home"
+			if n.ID == current || find(n.Children) {
+				path[n.ID] = true
+				return true
 			}
-			it.Expanded = under || n.Home
-			found = found || under || it.Current
-			out = append(out, it)
 		}
-		return out, found
+		return false
 	}
-	items, _ := conv(nodes)
-	return items, nil
+	find(nodes)
+	return views.TreeProps{Label: "Pages in " + sp.Name, Space: sp.Key, Rev: treeRev(nodes), Items: treeNodes(sp, nodes, path, current)}, nil
+}
+
+// treeNodes are nodes as tree items: those open (on the path or the home
+// page) with their children, the other branches lazy.
+func treeNodes(sp wiki.Space, ns []*wiki.Node, open map[string]bool, current string) []ui.TreeItem {
+	out := make([]ui.TreeItem, 0, len(ns))
+	for _, n := range ns {
+		it := ui.TreeItem{ID: n.ID, Label: n.Title, Href: wiki.PageURL(sp.Key, n.ID, n.Title), Current: n.ID == current}
+		if n.Home {
+			it.Icon = "home"
+		}
+		if len(n.Children) > 0 {
+			if (open[n.ID] && n.ID != current) || n.Home {
+				it.Expanded, it.Children = true, treeNodes(sp, n.Children, open, current)
+			} else {
+				it.Lazy = true
+			}
+		}
+		out = append(out, it)
+	}
+	return out
+}
+
+// treeRev changes with anything in the tree, lazy branches included, so a
+// tab fetches the branches it opened again (views.PageTree).
+func treeRev(ns []*wiki.Node) string {
+	h := fnv.New64a()
+	var walk func([]*wiki.Node)
+	walk = func(ns []*wiki.Node) {
+		for _, n := range ns {
+			io.WriteString(h, n.ID+"\x00"+n.Title+"\x00")
+			walk(n.Children)
+			io.WriteString(h, "\x01")
+		}
+	}
+	walk(ns)
+	return strconv.FormatUint(h.Sum64(), 36)
+}
+
+// treeChildren answers a page tree's sb-load: the children of ?parent= as a
+// list to put in its item, for the tab that asked (no view, no frame).
+func (s *Server) treeChildren(w http.ResponseWriter, r *http.Request) {
+	ctx, me := r.Context(), people.Actor(r.Context())
+	var items []ui.TreeItem
+	err := s.db.View(ctx, func(tx *sql.Tx) error {
+		p, sp, err := readable(ctx, tx, me, r.URL.Query().Get("parent"))
+		if err != nil {
+			return err
+		}
+		if sp.Key != r.PathValue("key") {
+			return access.ErrNotFound
+		}
+		nodes, err := wiki.Tree(ctx, tx, sp.ID)
+		if err != nil {
+			return err
+		}
+		var find func([]*wiki.Node) *wiki.Node
+		find = func(ns []*wiki.Node) *wiki.Node {
+			for _, n := range ns {
+				if n.ID == p.ID {
+					return n
+				}
+				if m := find(n.Children); m != nil {
+					return m
+				}
+			}
+			return nil
+		}
+		if n := find(nodes); n != nil {
+			items = treeNodes(sp, n.Children, nil, "")
+		}
+		return nil
+	})
+	if err != nil {
+		s.failAction(w, r, err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	ui.TreeBranch(items).Render(ctx, w)
 }
 
 // spacePresenceKey names the presence row of a space's page tree: the
@@ -579,11 +658,11 @@ func (s *Server) treeView(ctx context.Context, q sqlite.Querier, actor people.Pe
 			if err != nil {
 				return nil, err
 			}
-			items, err := treeItems(ctx, q, space, p.ID)
+			tree, err := spaceTree(ctx, q, space, p.ID)
 			if err != nil {
 				return nil, err
 			}
-			return patch(ctx, views.PageTree("Pages in "+space.Name, items))
+			return patch(ctx, views.PageTree(tree))
 		},
 	}, nil
 }

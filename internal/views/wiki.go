@@ -129,6 +129,29 @@ type MoveTarget struct {
 	Depth        int
 }
 
+// TreeProps is a space's page tree as one page shows it (PageTree).
+type TreeProps struct {
+	Label string
+	Space string // the space's key, for the lazy branches' requests
+	Rev   string // changes with anything in the tree
+	Items []ui.TreeItem
+}
+
+// treeInit, on the page tree's sb-tree: el.tkLoad(id) fetches a branch's
+// children and puts them in its item; a new data-rev fetches the branches
+// this tab loaded again, which frames send without their children.
+const treeInit = `el.tkLoaded = new Set()
+el.tkLoad = (id) => fetch('/spaces/' + encodeURIComponent(el.dataset.space) + '/tree?parent=' + encodeURIComponent(id), {headers: {Accept: 'text/html'}})
+	.then((r) => r.ok ? r.text() : null)
+	.then((h) => {
+		const li = [...el.querySelectorAll('li[data-lazy]')].find((l) => l.dataset.id === id)
+		if (h === null || !li) return void el.tkLoaded.delete(id)
+		el.tkLoaded.add(id)
+		li.querySelector(':scope > ul')?.remove()
+		li.insertAdjacentHTML('beforeend', h)
+	})
+new MutationObserver(() => el.tkLoaded.forEach(el.tkLoad)).observe(el, {attributeFilter: ['data-rev']})`
+
 // moveFrom is the target a page is under now.
 func moveFrom(p wiki.Page) string {
 	if p.Parent == "" {

@@ -140,8 +140,30 @@ func TestPageTree(t *testing.T) {
 		t.Errorf("after the frame the focus is on %+v", f)
 	}
 
-	// Enter follows the focused link.
+	// A branch off the current page's path comes without its children:
+	// Right opens it, and the tab fetches them. A page renamed in it later
+	// shows in this tab too, and the branch stays open (FR-78.3).
 	treeKey(t, p, "ArrowRight")
+	p.Wait(t, treeRows+`.length === `+fmt.Sprint(len(rs)), time.Second)
+	var lazy treeRow
+	for _, r := range rows(t, p) {
+		if r.Open == "false" && r.Label == "Onboarding" {
+			lazy = r
+		}
+	}
+	if lazy.ID == "" {
+		t.Fatal("no closed Onboarding")
+	}
+	var child string
+	e.DB.R.QueryRow(`SELECT id FROM pages WHERE parent_id = ? AND state = 'current' ORDER BY rank LIMIT 1`, lazy.ID).Scan(&child)
+	p.Eval(t, `(document.querySelector('#page-tree sb-tree').shadowRoot.querySelector('[data-id="`+lazy.ID+`"]').focus(), true)`, nil)
+	treeKey(t, p, "ArrowRight")
+	p.Wait(t, treeRows+`.some((r) => r.id === `+jsQuote(child)+`)`, 5*time.Second)
+	e.Do(t, wiki.RenamePage{By: tabs.By{Actor: ada, Op: "rn2", At: time.Now()}, Page: child, Title: "Renamed inside a loaded branch"})
+	p.Wait(t, treeRows+`.some((r) => r.id === `+jsQuote(child)+` && r.label === 'Renamed inside a loaded branch')`, 5*time.Second)
+	treeKey(t, p, "ArrowLeft")
+
+	// Enter follows the focused link.
 	treeKey(t, p, "ArrowDown")
 	next := focusedRow(t, p)
 	enter(t, p)

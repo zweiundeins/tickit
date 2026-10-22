@@ -392,3 +392,38 @@ func TestPageCommentEdit(t *testing.T) {
 		t.Errorf("the edited comment: %s", frame)
 	}
 }
+
+// FR-78.1, FR-78.3: the page tree sends the branches off the current
+// page's path without their children, and a tab asks for them with
+// GET /spaces/{key}/tree?parent=, which answers a list for that item only.
+func TestPageTreeLazy(t *testing.T) {
+	e := startWiki(t)
+	c := webtest.Client(t)
+	webtest.Get(t, c, e.URL+"/")
+	space, home := wikiSpace(t, e, c, "ENG")
+	a := wikiPage(t, e, c, space, home, "Section A")
+	b := wikiPage(t, e, c, space, home, "Section B")
+	a1 := wikiPage(t, e, c, space, a, "Inside A")
+	b1 := wikiPage(t, e, c, space, b, "Inside B")
+	wikiPage(t, e, c, space, b1, "Deep in B")
+
+	_, page := webtest.Get(t, c, e.URL+wiki.PageURL("ENG", a1, "Inside A"))
+	tree := page[strings.Index(page, `id="page-tree"`):]
+	tree = tree[:strings.Index(tree, "</sb-tree>")]
+	if !strings.Contains(tree, `data-id="`+a+`" data-open`) || !strings.Contains(tree, "Inside A") {
+		t.Errorf("the current page's branch is not open: %s", tree)
+	}
+	if !strings.Contains(tree, `data-id="`+b+`" data-lazy`) || strings.Contains(tree, "Inside B") {
+		t.Errorf("the other branch is not lazy: %s", tree)
+	}
+	code, list := webtest.Get(t, c, e.URL+"/spaces/ENG/tree?parent="+b)
+	if code != http.StatusOK || !strings.HasPrefix(list, "<ul>") || !strings.Contains(list, "Inside B") || !strings.Contains(list, `data-id="`+b1+`" data-lazy`) || strings.Contains(list, "Deep in B") {
+		t.Errorf("the branch: %d %s", code, list)
+	}
+	if code, _ := webtest.Get(t, c, e.URL+"/spaces/OTHER/tree?parent="+b); code != http.StatusNotFound {
+		t.Errorf("another space's key: %d", code)
+	}
+	if code, _ := webtest.Get(t, c, e.URL+"/spaces/ENG/tree?parent=nope"); code != http.StatusNotFound {
+		t.Errorf("no such page: %d", code)
+	}
+}

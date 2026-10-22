@@ -1864,7 +1864,7 @@ func moveFooter() templ.Component {
 
 // SpaceTree is the sidebar's tree of a space, with the faces of the
 // people on its pages above it when presence names its row's id (MP-02.1).
-func SpaceTree(label string, items []ui.TreeItem, presence string) templ.Component {
+func SpaceTree(t TreeProps, presence string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1899,7 +1899,7 @@ func SpaceTree(label string, items []ui.TreeItem, presence string) templ.Compone
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = PageTree(label, items).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = PageTree(t).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1908,9 +1908,10 @@ func SpaceTree(label string, items []ui.TreeItem, presence string) templ.Compone
 }
 
 // PageTree is the space's tree beside the page (FR-78): the current page
-// highlighted and its ancestors open; a person opens and closes nodes in
-// the page, which frames keep (ui.Tree, data-preserve-attr).
-func PageTree(label string, items []ui.TreeItem) templ.Component {
+// highlighted and its ancestors open, the other branches lazy. The tab
+// fetches a branch it opens (GET /spaces/{key}/tree?parent=), and again
+// when the tree's data-rev changes, so the shared view stays one for all.
+func PageTree(t TreeProps) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1938,7 +1939,7 @@ func PageTree(label string, items []ui.TreeItem) templ.Component {
 		var templ_7745c5c3_Var82 string
 		templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.ResolveAttributeValue(TreeID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/page.templ`, Line: 337, Col: 17}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/page.templ`, Line: 338, Col: 17}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var82)
 		if templ_7745c5c3_Err != nil {
@@ -1949,9 +1950,9 @@ func PageTree(label string, items []ui.TreeItem) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var83 string
-		templ_7745c5c3_Var83, templ_7745c5c3_Err = templ.ResolveAttributeValue(label)
+		templ_7745c5c3_Var83, templ_7745c5c3_Err = templ.ResolveAttributeValue(t.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/page.templ`, Line: 337, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/page.templ`, Line: 338, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var83)
 		if templ_7745c5c3_Err != nil {
@@ -1961,7 +1962,7 @@ func PageTree(label string, items []ui.TreeItem) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ui.Tree(ui.TreeProps{Label: label, Items: items}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ui.Tree(ui.TreeProps{Label: t.Label, Items: t.Items, Attrs: templ.Attributes{"data-space": t.Space, "data-rev": t.Rev, "data-init": treeInit, "data-on:sb-load": "el.tkLoad(evt.detail.id)"}}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
