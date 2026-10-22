@@ -137,20 +137,9 @@ type TreeProps struct {
 	Items []ui.TreeItem
 }
 
-// treeInit, on the page tree's sb-tree: el.tkLoad(id) fetches a branch's
-// children and puts them in its item; a new data-rev fetches the branches
-// this tab loaded again, which frames send without their children.
-const treeInit = `el.tkLoaded = new Set()
-el.tkLoad = (id) => fetch('/spaces/' + encodeURIComponent(el.dataset.space) + '/tree?parent=' + encodeURIComponent(id), {headers: {Accept: 'text/html'}})
-	.then((r) => r.ok ? r.text() : null)
-	.then((h) => {
-		const li = [...el.querySelectorAll('li[data-lazy]')].find((l) => l.dataset.id === id)
-		if (h === null || !li) return void el.tkLoaded.delete(id)
-		el.tkLoaded.add(id)
-		li.querySelector(':scope > ul')?.remove()
-		li.insertAdjacentHTML('beforeend', h)
-	})
-new MutationObserver(() => el.tkLoaded.forEach(el.tkLoad)).observe(el, {attributeFilter: ['data-rev']})`
+// TreeScript is the module of pages with a space's tree: it fetches the
+// lazy branches a tab opens (static/wiki/tree.js).
+const TreeScript = "wiki/tree.js"
 
 // moveFrom is the target a page is under now.
 func moveFrom(p wiki.Page) string {

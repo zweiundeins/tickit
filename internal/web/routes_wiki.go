@@ -297,7 +297,7 @@ func (s *Server) pageView(ctx context.Context, q sqlite.Querier, me people.Perso
 		return Page{}, err
 	}
 	pageViews := []string{"page:" + p.ID, "pagedoc:" + p.ID, "inline:" + p.ID, "pagepeople:" + p.ID, "tree:" + p.ID}
-	scripts := []string{inlineScript}
+	scripts := []string{inlineScript, views.TreeScript}
 	components := []string{"copy-button", "tree"}
 	if section == "home" {
 		feed, err := s.ScopeActivity(ctx, q, access.SpaceScope(sp.ID), from, time.Now())
@@ -500,6 +500,9 @@ func moveTargets(ctx context.Context, q sqlite.Querier, me people.Person, page s
 // treeComponents are the Starbase components of a page with a space's
 // sidebar (sidebar).
 var treeComponents = []string{"tree"}
+
+// treeScripts are the scripts of a page with a space's sidebar.
+var treeScripts = []string{views.TreeScript}
 
 // sidebar is the space, its overview and trash, and the page tree, which
 // the tree view patches.
@@ -856,7 +859,7 @@ func (s *Server) historyPage(w http.ResponseWriter, r *http.Request) {
 			return Page{}, err
 		}
 		return Page{Title: "History of " + p.Title, Nav: "spaces", Sidebar: sidebar, SidebarLabel: "Space",
-			Views: []string{"history:" + p.ID, "tree:" + p.ID}, Components: treeComponents, Body: views.History(views.VersionsProps{PageProps: props, Versions: vs})}, nil
+			Views: []string{"history:" + p.ID, "tree:" + p.ID}, Components: treeComponents, Scripts: treeScripts, Body: views.History(views.VersionsProps{PageProps: props, Versions: vs})}, nil
 	})
 }
 
@@ -1008,7 +1011,7 @@ func (s *Server) oldVersion(w http.ResponseWriter, r *http.Request, from, n int)
 			title = "Versions " + strconv.Itoa(from) + " and " + strconv.Itoa(n) + " of " + p.Title
 		}
 		return Page{Title: title, Nav: "spaces", Sidebar: sidebar, SidebarLabel: "Space",
-			Views: []string{"tree:" + p.ID}, Components: treeComponents, Body: views.OldVersion(vp)}, nil
+			Views: []string{"tree:" + p.ID}, Components: treeComponents, Scripts: treeScripts, Body: views.OldVersion(vp)}, nil
 	})
 }
 
@@ -1034,7 +1037,7 @@ func (s *Server) trashPage(w http.ResponseWriter, r *http.Request) {
 			return Page{}, err
 		}
 		return Page{Title: "Trash of " + sp.Name, Nav: "spaces", Sidebar: sidebar, SidebarLabel: "Space",
-			Views: []string{"trash:" + sp.ID}, Components: treeComponents, Body: views.Trash(props)}, nil
+			Views: []string{"trash:" + sp.ID}, Components: treeComponents, Scripts: treeScripts, Body: views.Trash(props)}, nil
 	})
 }
 

@@ -271,7 +271,7 @@ templ commentEditFooter() {
 templ createPageDialog(space string, templates []wiki.Template) {
 	@ui.Dialog(ui.DialogProps{ID: "create-page", Title: "Create a page", Footer: createPageFooter()}) {
 		<form id="create-page-form" class="stack" data-space={ space } data-on:submit__prevent={ createPage } data-effect={ createPageSettled } data-on:datastar-fetch={ createPageFailed }>
-			{{ f := ui.FieldProps{ID: "create-title", Label: "Title", Required: true, ErrorAttrs: templ.Attributes{"data-text": "$_wk.create.msg"}} }}
+			{{ f := ui.FieldProps{ID: "page-new-title", Label: "Title", Required: true, ErrorAttrs: templ.Attributes{"data-text": "$_wk.create.msg"}} }}
 			@ui.Field(f) {
 				@ui.Input(ui.InputProps{ID: f.ID, Required: true, MaxLength: 255, Autocomplete: "off", DescribedBy: f.DescribedBy(), Attrs: templ.Attributes{"data-bind": "_wk.create.title", "data-attr:readonly": Pending("_wk.create.op")}})
 			}
@@ -331,11 +331,10 @@ templ SpaceTree(t TreeProps, presence string) {
 }
 
 // PageTree is the space's tree beside the page (FR-78): the current page
-// highlighted and its ancestors open, the other branches lazy. The tab
-// fetches a branch it opens (GET /spaces/{key}/tree?parent=), and again
-// when the tree's data-rev changes, so the shared view stays one for all.
+// highlighted and its ancestors open, the other branches lazy, which
+// TreeScript fetches for the tab that opens one.
 templ PageTree(t TreeProps) {
 	<nav id={ TreeID } class="wk-tree" aria-label={ t.Label }>
-		@ui.Tree(ui.TreeProps{Label: t.Label, Items: t.Items, Attrs: templ.Attributes{"data-space": t.Space, "data-rev": t.Rev, "data-init": treeInit, "data-on:sb-load": "el.tkLoad(evt.detail.id)"}})
+		@ui.Tree(ui.TreeProps{Label: t.Label, Items: t.Items, Attrs: templ.Attributes{"data-space": t.Space, "data-rev": t.Rev}})
 	</nav>
 }
