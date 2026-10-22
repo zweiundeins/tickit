@@ -1435,7 +1435,7 @@ func AdminDemoTab(d AdminDemo) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = ui.Button(ui.ButtonProps{Label: "Reset now", Icon: "restore", Variant: ui.Danger, Size: ui.SizeSM, Disabled: d.Status.Resetting, Attrs: templ.Attributes{"data-on:click": adminReset, "data-on:datastar-fetch": adminFailed, "data-attr:aria-busy": adminBusy}}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = ui.Button(ui.ButtonProps{Label: "Reset now", Icon: "restore", Variant: ui.Danger, Size: ui.SizeSM, Attrs: templ.Attributes{"aria-disabled": boolText(d.Status.Resetting), "data-on:click": "el.getAttribute('aria-disabled') !== 'true' && (" + adminReset + ")", "data-on:datastar-fetch": adminFailed, "data-attr:aria-busy": adminBusy}}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

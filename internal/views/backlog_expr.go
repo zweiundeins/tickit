@@ -150,10 +150,13 @@ if (!op) return
 const o = $_outcomes[op]
 if (!o) return
 const B = el.bl, rows = $_bl.rows.split(' ').filter(Boolean).map(B.row)
+const had = el.querySelector('.tk-bl__bar').contains(document.activeElement)
 rows.forEach((r) => B.mark(r, ''))
 if (o.ok) {
 	rows.forEach((r) => { const c = r && r.querySelector('.tk-blrow__check'); if (c) c.checked = false })
 	$_bl.n = el.querySelectorAll('.tk-blrow__check:checked').length
+	// The bar's buttons turn disabled with nothing checked: the focus goes to the first moved row's box.
+	if (had && !$_bl.n) rows.find(Boolean)?.querySelector('.tk-blrow__check')?.focus()
 	B.say(rows.length === 1 ? 'Moved.' : rows.length + ' issues moved.')
 } else {
 	if (B.origin && rows[0] && B.region().dataset.rev === B.rev) B.put(B.origin.list, rows[0], B.origin.next && B.origin.next.parentElement === B.origin.list ? B.origin.next : null)

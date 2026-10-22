@@ -232,7 +232,7 @@ templ SettingsRegion(l SettingsLive) {
 							</td>
 							<td>
 								@ui.Select(ui.SelectProps{ID: "role-" + m.Person, Size: ui.SizeSM, Options: roleOptions(m.Role),
-									Attrs: map[string]any{"aria-label": "Role of " + l.People[m.Person].Name, "data-person": m.Person, "data-on:change": setRole, "data-attr:disabled": Pending("_ms.op")}})
+									Attrs: merge(templ.Attributes{"aria-label": "Role of " + l.People[m.Person].Name, "data-person": m.Person, "data-on:change": setRole}, OffKeepFocus("false", Pending("_ms.op")))})
 							</td>
 							<td class="muted">{ since(m.AddedAt) }</td>
 							<td>

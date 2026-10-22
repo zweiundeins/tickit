@@ -270,10 +270,11 @@ var (
 	modDismiss = Act("_mod.op", "/cmd/moderation/dismiss", "report: +el.dataset.report")
 	// The report dialog (DM-08), which a Report button opens with its
 	// thing's kind and id in data-report-kind and data-report-id.
-	reportSignals  = `{_report: {op: '', kind: '', id: '', reason: '', msg: '', ok: false}}`
-	reportOpen     = `$_report.kind = el.dataset.reportKind, $_report.id = el.dataset.reportId, $_report.reason = '', $_report.msg = '', $_report.ok = false, el.closest('[popover]')?.hidePopover(), document.getElementById('` + ReportID + `').showModal()`
-	reportSend     = `$_report.reason.trim() && ` + Act("_report.op", "/cmd/report", "kind: $_report.kind, id: $_report.id, reason: $_report.reason")
-	reportSettled  = Settle("_report.op", "$_report.ok = o.ok, $_report.msg = o.ok ? 'Thank you. A moderator will look at it.' : o.msg")
+	reportSignals = `{_report: {op: '', kind: '', id: '', reason: '', msg: '', ok: false}}`
+	reportOpen    = `$_report.kind = el.dataset.reportKind, $_report.id = el.dataset.reportId, $_report.reason = '', $_report.msg = '', $_report.ok = false, el.closest('[popover]')?.hidePopover(), document.getElementById('` + ReportID + `').showModal()`
+	reportSend    = `$_report.reason.trim() && ` + Act("_report.op", "/cmd/report", "kind: $_report.kind, id: $_report.id, reason: $_report.reason")
+	// A report sent disables Report: the focus goes to Close, the one thing left.
+	reportSettled  = Settle("_report.op", "$_report.ok = o.ok, $_report.msg = o.ok ? 'Thank you. A moderator will look at it.' : o.msg, o.ok && el.querySelector('[commandfor="+ReportID+"]').focus()")
 	reportFailed   = Failed("_report.op")
 	accountSignals = `{_pw: {op: '', ok: false, msg: '', current: '', password: '', again: ''}}`
 	pwChange       = `$_pw.password !== $_pw.again ? ($_pw.ok = false, $_pw.msg = 'The new passwords differ.') : ` + Act("_pw.op", "/cmd/account/password", "current: $_pw.current, password: $_pw.password")

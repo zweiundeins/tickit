@@ -1041,7 +1041,7 @@ func SettingsRegion(l SettingsLive) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				templ_7745c5c3_Err = ui.Select(ui.SelectProps{ID: "role-" + m.Person, Size: ui.SizeSM, Options: roleOptions(m.Role),
-					Attrs: map[string]any{"aria-label": "Role of " + l.People[m.Person].Name, "data-person": m.Person, "data-on:change": setRole, "data-attr:disabled": Pending("_ms.op")}}).Render(ctx, templ_7745c5c3_Buffer)
+					Attrs: merge(templ.Attributes{"aria-label": "Role of " + l.People[m.Person].Name, "data-person": m.Person, "data-on:change": setRole}, OffKeepFocus("false", Pending("_ms.op")))}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

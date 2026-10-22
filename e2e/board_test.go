@@ -310,12 +310,16 @@ func TestBacklogRank(t *testing.T) {
 	a.Wait(t, first, time.Second)
 	a.Wait(t, `!document.querySelector('#backlog .tk-blrow[data-state]')`, 3*time.Second)
 	c.Wait(t, first, 3*time.Second)
-	// Two checked rows to the bottom.
+	// Two checked rows to the bottom, by Enter on Bottom; with nothing
+	// checked the bar's buttons turn disabled, and the focus goes to the
+	// first moved row's box rather than the page (NFR-47).
 	a.Eval(t, `(() => { const rows = document.querySelectorAll('#backlog .tk-blrow'); [rows[0], rows[1]].forEach(r => r.querySelector('.tk-blrow__check').click()); return true })()`, nil)
-	a.Eval(t, `document.querySelector('[data-bulk="bottom"]').click()`, nil)
+	a.Eval(t, `(document.querySelector('[data-bulk="bottom"]').focus(), true)`, nil)
+	enter(t, a)
 	end := `(() => { const r = [...document.querySelectorAll('#backlog .tk-blrow')].map(r => r.id); return r[r.length - 2] === '` + last + `' && r[r.length - 1] === '` + ids[0] + `' })()`
 	c.Wait(t, end, 3*time.Second)
 	a.Wait(t, end+` && !document.querySelector('.tk-blrow__check:checked')`, 3*time.Second)
+	a.Wait(t, `document.activeElement?.classList.contains('tk-blrow__check') && document.activeElement.closest('.tk-blrow').id === '`+last+`'`, time.Second)
 	for _, p := range []*browsertest.Page{a, c} {
 		if errs := p.Errors(); len(errs) > 0 {
 			t.Errorf("the page reported: %q", errs)

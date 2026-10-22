@@ -30,12 +30,12 @@ templ WorkflowRegion(w WorkflowLive) {
 							</td>
 							<td>
 								@ui.Select(ui.SelectProps{ID: "wf-cat-" + st.ID, Size: ui.SizeSM, Options: categoryOptions(st.Category),
-									Attrs: map[string]any{"aria-label": "Category of " + st.Name, "data-on:change": wfCategory, "data-attr:disabled": Pending("_wf.op")}})
+									Attrs: merge(templ.Attributes{"aria-label": "Category of " + st.Name, "data-on:change": wfCategory}, OffKeepFocus("false", Pending("_wf.op")))})
 							</td>
 							<td class="tk-wf__follows">{ followsText(w, st) }</td>
 							<td>
 								@ui.Select(ui.SelectProps{ID: "wf-col-" + st.ID, Size: ui.SizeSM, Options: columnOptions(w.Columns, st.Column),
-									Attrs: map[string]any{"aria-label": "Board column of " + st.Name, "data-on:change": wfMap, "data-attr:disabled": Pending("_wf.op")}})
+									Attrs: merge(templ.Attributes{"aria-label": "Board column of " + st.Name, "data-on:change": wfMap}, OffKeepFocus("false", Pending("_wf.op")))})
 							</td>
 							<td class="tk-num">{ itoa(w.Held[st.ID]) }</td>
 							<td>

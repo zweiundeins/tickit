@@ -145,7 +145,7 @@ func WorkflowRegion(w WorkflowLive) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				templ_7745c5c3_Err = ui.Select(ui.SelectProps{ID: "wf-cat-" + st.ID, Size: ui.SizeSM, Options: categoryOptions(st.Category),
-					Attrs: map[string]any{"aria-label": "Category of " + st.Name, "data-on:change": wfCategory, "data-attr:disabled": Pending("_wf.op")}}).Render(ctx, templ_7745c5c3_Buffer)
+					Attrs: merge(templ.Attributes{"aria-label": "Category of " + st.Name, "data-on:change": wfCategory}, OffKeepFocus("false", Pending("_wf.op")))}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -167,7 +167,7 @@ func WorkflowRegion(w WorkflowLive) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				templ_7745c5c3_Err = ui.Select(ui.SelectProps{ID: "wf-col-" + st.ID, Size: ui.SizeSM, Options: columnOptions(w.Columns, st.Column),
-					Attrs: map[string]any{"aria-label": "Board column of " + st.Name, "data-on:change": wfMap, "data-attr:disabled": Pending("_wf.op")}}).Render(ctx, templ_7745c5c3_Buffer)
+					Attrs: merge(templ.Attributes{"aria-label": "Board column of " + st.Name, "data-on:change": wfMap}, OffKeepFocus("false", Pending("_wf.op")))}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

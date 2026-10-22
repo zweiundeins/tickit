@@ -27,12 +27,12 @@ const bulkNone = "Select issues to change several at once."
 var (
 	bulkSignals = `{_bulk: {ids: [], op: '', msg: '', ok: true, field: '', value: '', ref: ''}}`
 	bulkCount   = `$_bulk.ids.length === 0 ? '` + bulkNone + `' : $_bulk.ids.length === 1 ? '1 issue selected' : $_bulk.ids.length + ' issues selected'`
-	bulkEmpty   = `$_bulk.ids.length === 0 || $_bulk.op !== ''`
+	bulkNoIDs   = `$_bulk.ids.length === 0`
 	// bulkDeleteText is the delete dialog's question.
 	bulkDeleteText = `$_bulk.ids.length === 1 ? 'The selected issue will be deleted.' : $_bulk.ids.length + ' issues will be deleted.'`
 )
 
-func bulkOff() templ.Attributes { return templ.Attributes{"data-attr:disabled": bulkEmpty} }
+func bulkOff() templ.Attributes { return OffKeepFocus(bulkNoIDs, Pending("_bulk.op")) }
 
 // bulkChoice is a control that changes field to value for the selection.
 func bulkChoice(field, value string) templ.Attributes {
@@ -102,7 +102,7 @@ el.sync()`
 // one at a time.
 var bulkClick = `const b = evt.target.closest('[data-bulk], [data-bulk-clear]')
 if (!b || !el.contains(b) || b.disabled) return
-if (b.dataset.bulkClear) { $_bulk.ids = []; $_bulk.msg = ''; return }
+if (b.dataset.bulkClear) { $_bulk.ids = []; $_bulk.msg = ''; ` + bulkRefocus + `; return }
 if ($_bulk.op !== '' || $_bulk.ids.length === 0) return
 let value = b.dataset.value || ''
 if (b.dataset.bulk === '` + tracker.FieldLabels + `') {
@@ -120,6 +120,10 @@ $_problem = ''
 $_bulk.op = ` + newOp + `
 @post('/cmd/issues/bulk', {payload: {tab: $_tab, op: $_bulk.op, issues: $_bulk.ids, field: $_bulk.field, value: $_bulk.value, ref: $_bulk.ref}, requestCancellation: 'disabled'})`
 
+// bulkRefocus moves the focus out of the bar once nothing is selected and
+// its controls turn disabled: to the page's box, else to the count.
+const bulkRefocus = `(document.querySelector('.list-check-all') || document.querySelector('.list-bulk__count')).focus()`
+
 // bulkLabelEnter adds the typed label on Enter.
 const bulkLabelEnter = `evt.key === 'Enter' && (evt.preventDefault(), el.closest('[popover]').querySelector('[data-ref="add"]').click())`
 
@@ -131,7 +135,9 @@ const o = $_outcomes[op]
 if (!o) return
 $_bulk.ok = o.ok
 $_bulk.msg = o.msg || (o.ok ? 'Done.' : 'This did not go through.')
+const had = document.getElementById('` + BulkID + `').contains(document.activeElement)
 if (o.data && o.data.refused) $_bulk.ids = o.data.refused.map((r) => r.id)
+if (had && $_bulk.ids.length === 0) ` + bulkRefocus + `
 if (o.ok && $_bulk.field === '` + tracker.FieldLabels + `') document.getElementById('bulk-label').value = ''
 $_bulk.op = ''`
 

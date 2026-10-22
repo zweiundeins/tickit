@@ -320,6 +320,7 @@ func TestAdminRowMenu(t *testing.T) {
 		}
 		p.Eval(t, `(`+bea+`.click(), true)`, nil)
 		p.Wait(t, menu+`.matches(':popover-open')`, 2*time.Second)
+		time.Sleep(400 * time.Millisecond) // the menu fades in
 		p.Eval(t, string(axe)+";true", nil)
 		var res []struct{ ID, Impact, Help string }
 		p.Eval(t, `axe.run(document, {resultTypes: ['violations']}).then(r => r.violations.map(v => ({id: v.id, impact: v.impact, help: v.help})))`, &res)
@@ -354,4 +355,42 @@ func TestAdminRowMenu(t *testing.T) {
 		noErrors(t, q)
 		q.Close(t)
 	}
+}
+
+// NFR-47: a control that turns disabled after its own action does not drop
+// the focus to the page. A member's role select keeps it while the change
+// is on its way, and a sent report moves it to the dialog's Close.
+func TestFocusAfterOwnAction(t *testing.T) {
+	e, ids := seededDemo(t)
+	b := browsertest.Start(t)
+	p := staffPage(t, e, b, "ada@example.com", 1280)
+	p.Navigate(t, e.URL+"/projects/WEB/settings")
+	p.Wait(t, `document.getElementById('reconnecting')?.hidden && document.querySelector('select[id^="role-"]')`, 10*time.Second)
+	var sel string
+	p.Eval(t, `((s) => (s.focus(), s.id))(document.querySelector('select[id^="role-"]:not([id$="`+ids["ada"]+`"])') || document.querySelector('select[id^="role-"]'))`, &sel)
+	var before string
+	p.Eval(t, `document.getElementById(`+jsQuote(sel)+`).value`, &before)
+	// The change the keyboard makes on a closed select.
+	p.Eval(t, `((s) => (s.selectedIndex = (s.selectedIndex + 1) % s.options.length, s.dispatchEvent(new Event('change', {bubbles: true})), true))(document.getElementById(`+jsQuote(sel)+`))`, nil)
+	p.Wait(t, `document.getElementById(`+jsQuote(sel)+`).getAttribute('aria-disabled') === 'true'`, time.Second)
+	p.Wait(t, `!document.getElementById(`+jsQuote(sel)+`).hasAttribute('aria-disabled') && document.getElementById(`+jsQuote(sel)+`).value !== `+jsQuote(before), 5*time.Second)
+	var active string
+	p.Eval(t, `document.activeElement?.id || document.activeElement?.localName`, &active)
+	if active != sel {
+		t.Errorf("after the role change the focus is on %s, not %s", active, sel)
+	}
+
+	var page string
+	e.DB.R.QueryRow(`SELECT id FROM pages WHERE title = 'Deploy to production'`).Scan(&page)
+	g := b.NewPage(t, 1280, 900)
+	g.Navigate(t, e.URL+wiki.PageURL("ENG", page, "Deploy to production"))
+	g.Wait(t, `document.getElementById('reconnecting')?.hidden && document.querySelector('[data-report-kind]')`, 10*time.Second)
+	g.Eval(t, `(document.querySelector('[data-report-kind]').click(), true)`, nil)
+	g.Wait(t, `document.getElementById('report').open`, 2*time.Second)
+	g.Eval(t, `(document.getElementById('report-reason').focus(), true)`, nil)
+	typeKeys(t, g, "Spam")
+	g.Eval(t, `(document.querySelector('[form=report-form][type=submit]').focus(), true)`, nil)
+	enter(t, g)
+	g.Wait(t, `document.querySelector('#report [role=status]').textContent.startsWith('Thank you') && document.activeElement?.getAttribute('commandfor') === 'report'`, 5*time.Second)
+	noErrors(t, p, g)
 }

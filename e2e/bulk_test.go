@@ -99,6 +99,9 @@ func TestBulkStatusLive(t *testing.T) {
 	enter(t, p)
 	quoted, _ = json.Marshal("No issue was changed.\nSEC-1: Only members of this project can change its issues.")
 	p.Wait(t, `document.querySelector('.list-bulk__msg').textContent === `+string(quoted)+` && document.querySelector('.list-bulk__msg').dataset.kind === 'refused'`, 5*time.Second)
+	// SEC-1 stays selected, and the focus stays on the menu's button,
+	// which was aria-disabled while the change was on its way.
+	p.Wait(t, `document.activeElement?.getAttribute('popovertarget') === 'bulk-priority' && !document.activeElement.disabled && document.activeElement.getAttribute('aria-disabled') !== 'true'`, time.Second)
 
 	for _, pg := range []*browsertest.Page{p, other} {
 		for _, err := range pg.Errors() {
@@ -143,5 +146,15 @@ func TestBulkAssignByTyping(t *testing.T) {
 	if left != "" {
 		t.Errorf("the picker kept %q", left)
 	}
+	// Nothing is selected any more and the bar's buttons are disabled: the
+	// focus is on the page's box, not lost to the document (NFR-47).
+	p.Wait(t, `document.activeElement?.classList.contains('list-check-all')`, time.Second)
+
+	// So it is after Clear selection by keyboard.
+	p.Eval(t, `(`+rowOf(keys[0])+`.querySelector('.list-check').click(), true)`, nil)
+	p.Wait(t, `document.querySelector('.list-bulk__count').textContent === '1 issue selected'`, 5*time.Second)
+	p.Eval(t, `(document.querySelector('[data-bulk-clear]').focus(), true)`, nil)
+	enter(t, p)
+	p.Wait(t, `document.querySelector('.list-bulk__count').textContent === 'Select issues to change several at once.' && document.activeElement?.classList.contains('list-check-all')`, time.Second)
 	noErrors(t, p)
 }

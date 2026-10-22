@@ -19,7 +19,7 @@ templ bulkBar(p ListPage) {
 		data-on:datastar-fetch={ bulkFailed }
 		data-effect={ bulkSettle }
 	>
-		<p class="list-bulk__count" aria-live="polite" data-text={ bulkCount } data-attr:aria-busy={ Busy("_bulk.op") }>{ bulkNone }</p>
+		<p class="list-bulk__count" tabindex="-1" aria-live="polite" data-text={ bulkCount } data-attr:aria-busy={ Busy("_bulk.op") }>{ bulkNone }</p>
 		@ui.Menu(ui.MenuProps{ID: "bulk-status", Label: "Set status", Caret: true, Size: ui.SizeSM, Variant: ui.Secondary, Attrs: bulkOff()}) {
 			for i, s := range p.Options.Statuses {
 				@ui.MenuItem(ui.MenuItemProps{Label: s.Name, Autofocus: i == 0, Attrs: bulkChoice(tracker.FieldStatus, s.ID)})
@@ -68,7 +68,7 @@ templ bulkBar(p ListPage) {
 				<p data-text={ bulkDeleteText }></p>
 			}
 		}
-		@ui.Button(ui.ButtonProps{Label: "Clear selection", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: templ.Attributes{"data-bulk-clear": "1", "data-attr:disabled": bulkEmpty}})
+		@ui.Button(ui.ButtonProps{Label: "Clear selection", Size: ui.SizeSM, Variant: ui.Ghost, Attrs: merge(templ.Attributes{"data-bulk-clear": "1"}, bulkOff())})
 	</div>
 	<p class="tk-outcome list-bulk__msg" role="status" hidden data-attr:hidden="!$_bulk.msg" data-attr:data-kind="$_bulk.ok ? 'ok' : 'refused'" data-text="$_bulk.msg"></p>
 }

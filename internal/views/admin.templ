@@ -418,7 +418,7 @@ templ AdminDemoTab(d AdminDemo) {
 		<section class="tk-box" aria-labelledby="demo-next">
 			<header>
 				<h2 class="tk-eyebrow" id="demo-next">Nightly reset</h2>
-				@ui.Button(ui.ButtonProps{Label: "Reset now", Icon: "restore", Variant: ui.Danger, Size: ui.SizeSM, Disabled: d.Status.Resetting, Attrs: templ.Attributes{"data-on:click": adminReset, "data-on:datastar-fetch": adminFailed, "data-attr:aria-busy": adminBusy}})
+				@ui.Button(ui.ButtonProps{Label: "Reset now", Icon: "restore", Variant: ui.Danger, Size: ui.SizeSM, Attrs: templ.Attributes{"aria-disabled": boolText(d.Status.Resetting), "data-on:click": "el.getAttribute('aria-disabled') !== 'true' && (" + adminReset + ")", "data-on:datastar-fetch": adminFailed, "data-attr:aria-busy": adminBusy}})
 			</header>
 			if d.Status.Resetting {
 				<p>The demo is resetting now.</p>

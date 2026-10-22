@@ -1,5 +1,7 @@
 package views
 
+import "github.com/a-h/templ"
+
 // The document's Datastar expressions, as constants: no value from a
 // person goes into one (NFR-13). Values reach the page as escaped HTML or
 // as signals. Areas build their actions with Act, Pending, Busy, Settle and
@@ -96,6 +98,16 @@ func Act(op, path, payload string) string {
 
 // Pending is true from the click until the stream brings the outcome.
 func Pending(op string) string { return `$` + op + ` !== ''` }
+
+// OffKeepFocus disables a control while off holds, and while pending
+// holds unless it has the focus: that one is aria-disabled instead, since
+// Chromium drops the focus of an element that turns disabled.
+func OffKeepFocus(off, pending string) templ.Attributes {
+	return templ.Attributes{
+		"data-attr:disabled":      `(` + off + `) || ((` + pending + `) && document.activeElement !== el)`,
+		"data-attr:aria-disabled": `!(` + off + `) && (` + pending + `) && document.activeElement === el ? 'true' : false`,
+	}
+}
 
 // Busy is Pending for aria-busy: data-attr writes true as an empty value,
 // which aria-busy reads as false.
