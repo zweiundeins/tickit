@@ -997,13 +997,9 @@
 		color: var(--tk-accent-text);
 	}
 
-	/* sb-context-menu places itself by its trigger or the pointer. */
-	sb-context-menu.tk-menu {
-		position-area: none;
-
-		&:not(:popover-open) {
-			display: none;
-		}
+	/* Not a popover until its bundle runs: hide the empty box till then. */
+	sb-context-menu.tk-menu:not(:popover-open) {
+		display: none;
 	}
 
 	.tk-menu__item[aria-checked] {
@@ -1394,12 +1390,6 @@
 	.tk-tree {
 		min-inline-size: 0;
 		font-size: var(--tk-text-sm);
-
-		/* One column no wider than the tree, so long titles cut rather
-		 * than push it out of the sidebar. */
-		&::part(tree) {
-			grid-template-columns: minmax(0, 1fr);
-		}
 
 		&::part(item) {
 			min-block-size: var(--tk-row-height);
