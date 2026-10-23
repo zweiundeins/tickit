@@ -162,10 +162,6 @@ const Ended = `(evt.detail.type === 'retries-failed' || evt.detail.type === 'err
 // problem is what the page says of an op Ended: only the page knows it.
 const problem = `(evt.detail.type === 'retries-failed' ? 'The connection is down. Try again once it is back.' : 'This did not work. Reload the page and try again.')`
 
-// Unavailable is what a page says of a 503: the demo's reset while the
-// demo alert says one runs, else a restart.
-const Unavailable = `(document.querySelector('#` + DemoAlertID + `[data-resetting]') ? 'The demo is resetting. Try again in a minute.' : 'The server is restarting. Try again in a moment.')`
-
 // The rename form of the person menu (FR-121).
 var (
 	rename        = `$_rename.name.trim() && ` + Act("_rename.op", "/cmd/people/rename", "name: $_rename.name")

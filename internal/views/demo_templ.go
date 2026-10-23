@@ -22,7 +22,7 @@ const DemoAlertID = "demo-alert"
 // DemoAlert warns every open page of a reset to come (DM-03.2) and says
 // while one is under way (DM-03.4); empty, it shows nothing. Unlike the
 // demo notice, it cannot be dismissed. While a reset runs it carries
-// data-resetting, which Unavailable reads.
+// data-resetting, which the editor's problem line reads (editorFetch).
 func DemoAlert(msg string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

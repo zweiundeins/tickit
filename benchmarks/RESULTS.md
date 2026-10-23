@@ -167,6 +167,21 @@ The fold (NFR-43.3): `wiki.Fold` and `tracker.FoldDescriptions` found their boun
 
 21 October 2026, the same machine, `767960d` (lith v0.4.2, whose `events.Compact` bounds its DELETE and `StateAt` by version and starts its cut after the kind's compacted position), with `collab_uncut`. `tickit-load fold` on three fresh copies of the v0.3.0 control's sustained database, as above, p50 of 20 commands per limit of 200, 100, 50, 25 and 10 events: 4.6 to 5.5, 2.4 to 2.6, 1.4 to 1.6, 0.9 to 1.1, 0.7 to 0.8 ms. The max per limit from 100 down is 3.2 ms; at 200 it is the first command after the open (41 to 830 ms: migrations and a cold cache). Against 19 to 31 ms before, NFR-43.3's 5 ms holds for every batch but the first.
 
+## Control on lith v0.5.0
+
+23 October 2026, the same machine and command, 120 s without sustain (`go tool task load LOAD_DIR=... LOAD_SECONDS=120 SERVER_CPUS=0-5 LOAD_CPUS=12-19`, the cached `base.db` copied into each directory), Go 1.27.3. `7cfebb5` is `rewrite` on lith v0.4.2, `fff80bb` the move to lith v0.5.0 with notices, the ops that end on the stream, `Stopping` and the refresh after a deploy. Two pairs back to back, the second in the other order; other agents ran on the machine, so the load average is given at the start and end of each run.
+
+| Run (load at start / end) | move p50 / p95 | field p50 / p95 | commit p50 / p95 | overruns | NFR-36 actions p50 / p95 / p99 | NFR-42 stop, streams back p50 / max |
+| --- | --- | --- | --- | --- | --- | --- |
+| fff80bb (12.7 / 6.5) | 77.3 / 163.7 ms | 51.2 / 85.9 ms | 41.4 / 78.9 ms | 2 of 2,382 | 0.7 / 5.0 / 60.4 ms | 53 ms, 1.02 / 1.04 s |
+| 7cfebb5 (6.5 / 5.7) | 49.1 / 72.1 ms | 44.0 / 67.9 ms | 36.5 / 63.0 ms | 0 of 2,399 | 0.6 / 2.5 / 9.9 ms | 53 ms, 1.03 / 1.05 s |
+| 7cfebb5 (4.2 / 5.3) | 49.1 / 76.5 ms | 44.4 / 69.8 ms | 37.3 / 64.7 ms | 0 of 2,397 | 0.6 / 2.6 / 8.6 ms | 111 ms, 0.97 / 0.99 s |
+| fff80bb (5.3 / 6.6) | 52.0 / 79.0 ms | 46.5 / 71.0 ms | 38.5 / 67.5 ms | 0 of 2,392 | 0.6 / 3.0 / 21.4 ms | 104 ms, 0.95 / 0.97 s |
+
+The first run started at twice the others' load and is out of line in every row, the baseline's included in its renders; at the same load the builds differ by 1 to 3 ms at the median and 2 to 4 ms at p95. The load test sends no action over a limit and no failed write, so it never takes the notice path, and its streams report no build, so no refresh runs. Every run passed NFR-38.1, the 201st stream's 503, MP-05.1 and NFR-42's state after the restart.
+
+The fold, `tickit-load fold -n 20` on a fresh copy of `/tmp/tickit-load-030/run.db` with v0.5.0's tool, p50 per limit of 200, 100, 50, 25 and 10 events: 5.5, 2.7, 1.7, 1.2, 0.7 ms (max 3.2 ms from 100 down, 715 ms for the first command at 200), as on lith v0.4.2: lith v0.5.0 did not change `events`.
+
 ## The race detector
 
 20 October 2026, same machine: `go test -race -count=1 -timeout 40m ./...` found no data race. The first run, before the merge of `rewrite`, timed out in `internal/web` after 10 minutes, in `TestSearchSpeed` (10,000 issues), and `internal/search`'s `TestRebuild` missed its 20 s wait for the rebuild; the run after the merge passed every package in 4 min 3 s but `internal/people`'s `TestHashesAtOnce`, a heap measurement that read 171 MiB under `-race` with the suite running (it passes alone, with and without `-race`). Timing and heap measurements now skip under `-race` (each package's `raceDetector`, true in a test file built with the `race` tag), and the rebuild test waits 2 minutes there; `internal/web` takes 3 min 46 s and `internal/search` 1 min 17 s under the detector.
