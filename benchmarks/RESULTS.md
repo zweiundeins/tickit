@@ -182,6 +182,19 @@ The first run started at twice the others' load and is out of line in every row,
 
 The fold, `tickit-load fold -n 20` on a fresh copy of `/tmp/tickit-load-030/run.db` with v0.5.0's tool, p50 per limit of 200, 100, 50, 25 and 10 events: 5.5, 2.7, 1.7, 1.2, 0.7 ms (max 3.2 ms from 100 down, 715 ms for the first command at 200), as on lith v0.4.2: lith v0.5.0 did not change `events`.
 
+## Control on lith v0.5.1
+
+23 October 2026 (evening), the same machine and command, 120 s without sustain, each build's own `tickit-load` and a fresh copy of the cached `base.db`. `6d6e6bd` is `rewrite` on lith v0.5.0, `68d3443` the move to lith v0.5.1 (`ReadTimeout` 15 s, `Tab-Id` and `Op-Id` headers, the page's build as signals, views rendered into the frame buffer, uploads through `edge.Upload`). Four runs back to back, alternating; other agents ran on the machine.
+
+| Run (load at start / end) | move p50 / p95 | field p50 / p95 | commit p50 / p95 | overruns | NFR-36 actions p50 / p95 / p99 | NFR-42 stop, streams back p50 / max |
+| --- | --- | --- | --- | --- | --- | --- |
+| 68d3443 (7.2 / 9.0) | 68.5 / 161.3 ms | 45.8 / 80.6 ms | 38.3 / 71.0 ms | 1 of 2,384 | 0.6 / 3.8 / 55.0 ms | 121 ms, 0.95 / 0.97 s |
+| 6d6e6bd (9.0 / 6.3) | 57.5 / 97.7 ms | 46.5 / 75.2 ms | 38.2 / 67.4 ms | 2 of 2,387 | 0.6 / 3.7 / 34.6 ms | 164 ms, 0.91 / 0.93 s |
+| 6d6e6bd (6.3 / 10.2) | 52.4 / 83.8 ms | 46.2 / 77.4 ms | 39.0 / 71.6 ms | 25 of 2,392 | 0.6 / 3.8 / 16.2 ms | 62 ms, 1.05 / 1.07 s |
+| 68d3443 (10.2 / 6.0) | 53.0 / 78.2 ms | 47.4 / 73.7 ms | 38.7 / 68.6 ms | 9 of 2,392 | 0.6 / 3.8 / 20.9 ms | 75 ms, 0.97 / 1.00 s |
+
+The machine was busier than in the morning (load 6 to 10), and the runs move with it more than with the build: commits and fields are within 1 ms at the median across all four, moves range from 52 to 69 ms on both builds, and the overruns follow the load at the end of each run. No regression shows; lith's cheaper ticks and the frame buffer do not show at this load either, whose ticks are reads in SQLite. Every run passed NFR-38.1, the 201st stream's 503, MP-05.1 and NFR-42's state after the restart, and with `ReadTimeout` set every one of the 200 streams lasted the whole run.
+
 ## The race detector
 
 20 October 2026, same machine: `go test -race -count=1 -timeout 40m ./...` found no data race. The first run, before the merge of `rewrite`, timed out in `internal/web` after 10 minutes, in `TestSearchSpeed` (10,000 issues), and `internal/search`'s `TestRebuild` missed its 20 s wait for the rebuild; the run after the merge passed every package in 4 min 3 s but `internal/people`'s `TestHashesAtOnce`, a heap measurement that read 171 MiB under `-race` with the suite running (it passes alone, with and without `-race`). Timing and heap measurements now skip under `-race` (each package's `raceDetector`, true in a test file built with the `race` tag), and the rebuild test waits 2 minutes there; `internal/web` takes 3 min 46 s and `internal/search` 1 min 17 s under the detector.
