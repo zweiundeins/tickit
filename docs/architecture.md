@@ -1,6 +1,6 @@
 # tickit architecture
 
-tickit is a multiplayer issue tracker and wiki on lith v0.5.0: one Go binary, one SQLite file, server-rendered views pushed over SSE, Datastar 1.0.4 (Starbase's patched build with Rocket) in the browser. `docs/requirements.md` says what it must do; this file says how the code is cut, so that several people (and agents) can work on it at once without stepping on each other. Requirement IDs (FR-11.2, MP-08.3) are cited in code comments and test names where a test proves a criterion.
+tickit is a multiplayer issue tracker and wiki on lith v0.5.1: one Go binary, one SQLite file, server-rendered views pushed over SSE, Datastar 1.0.4 (Starbase's patched build with Rocket) in the browser. `docs/requirements.md` says what it must do; this file says how the code is cut, so that several people (and agents) can work on it at once without stepping on each other. Requirement IDs (FR-11.2, MP-08.3) are cited in code comments and test names where a test proves a criterion.
 
 ## Packages
 
