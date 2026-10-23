@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/zweiundeins/lith/edge"
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/zweiundeins/tickit/internal/access"
@@ -21,8 +22,10 @@ import (
 
 // Image uploads (FR-85, NFR-15). sb-rich-editor posts a file to its upload
 // attribute, the editor's data-cmd and "/image", as a multipart body with
-// the tab, the op id and the file, and Datastar's header for edge.CSRF.
-// The handler checks the limits and the right, converts the file outside
+// the tab, the op id and the file, the Tab-Id and Op-Id headers, and
+// Datastar's header for edge.CSRF. The handler checks the limits, and the
+// right and the stream before it reads the body, which it reads through
+// edge.Upload (a minimum rate, not ReadTimeout), converts the file outside
 // the writer (images.Process) and stores it through tabs.Act. It answers
 // the stored image's {id, width, height} as JSON, or why not in words: 413
 // for a file over 5 MB, 422 for a file it does not take or a refusal, 403
@@ -82,6 +85,9 @@ func (w *worded) finish() {
 	http.Error(w.ResponseWriter, msg, w.code)
 }
 
+// Unwrap lets edge.Upload set the connection's deadlines.
+func (w *worded) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
 func (s *Server) uploadImage(subject string) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		w := &worded{ResponseWriter: rw}
@@ -89,40 +95,55 @@ func (s *Server) uploadImage(subject string) http.HandlerFunc {
 		if !s.allow(w, r, classUpload) {
 			return
 		}
-		r.Body = http.MaxBytesReader(w, r.Body, classUpload.body)
+		ctx, id := r.Context(), r.PathValue("id")
+		var a action
+		// check takes the action of p and checks the right, from a read,
+		// and the tab's stream: before the body when the Tab-Id and Op-Id
+		// headers name the tab and op, else after it, from the form.
+		check := func(p *Payload) bool {
+			var ok bool
+			if a, ok = s.actionOf(w, r, p); !ok {
+				return false
+			}
+			allowed, err := s.db.ViewValue(ctx, func(tx *sql.Tx) (bool, error) {
+				if subject == images.OnPage {
+					p, sp, err := readable(ctx, tx, a.By.Actor, id)
+					return err == nil && p.State == wiki.Current && canIn(ctx, tx, a.By.Actor, access.EditIssues, sp.ID), err
+				}
+				_, ok, err := editableIssue(ctx, tx, a.By.Actor, id)
+				return ok, err
+			})
+			switch {
+			case err != nil:
+				s.failOp(w, r, a, err)
+				return false
+			case !allowed:
+				http.Error(w, "You cannot add images here.", http.StatusForbidden)
+				return false
+			}
+			return s.connected(w, r, a.By.Actor, a.Tab) && !s.paused(w, r, a.By.Actor)
+		}
+		early := Payload{Tab: r.Header.Get("Tab-Id"), Op: r.Header.Get("Op-Id")}
+		if early.Tab != "" && !check(&early) {
+			return
+		}
+		// A slow honest upload finishes, a trickle is cut off (and
+		// ReadTimeout no longer applies).
+		body, err := edge.Upload(w, r, edge.UploadLimits{Max: classUpload.body})
+		if err != nil {
+			s.log.Debug("upload deadlines", "err", err) // the body, still capped, reads without them
+		}
+		r.Body = body
 		p, file, err := readUpload(r)
-		var tooLarge *http.MaxBytesError
 		switch {
-		case errors.Is(err, errFileTooLarge), errors.As(err, &tooLarge):
+		case errors.Is(err, errFileTooLarge), edge.TooLarge(err):
 			http.Error(w, images.MsgTooLarge, http.StatusRequestEntityTooLarge)
 			return
 		case err != nil:
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		a, ok := s.actionOf(w, r, &p)
-		if !ok {
-			return
-		}
-		ctx, id := r.Context(), r.PathValue("id")
-		// The right first, from a read: converting costs a second or two.
-		allowed, err := s.db.ViewValue(ctx, func(tx *sql.Tx) (bool, error) {
-			if subject == images.OnPage {
-				p, sp, err := readable(ctx, tx, a.By.Actor, id)
-				return err == nil && p.State == wiki.Current && canIn(ctx, tx, a.By.Actor, access.EditIssues, sp.ID), err
-			}
-			_, ok, err := editableIssue(ctx, tx, a.By.Actor, id)
-			return ok, err
-		})
-		switch {
-		case err != nil:
-			s.failOp(w, r, a, err)
-			return
-		case !allowed:
-			http.Error(w, "You cannot add images here.", http.StatusForbidden)
-			return
-		}
-		if !s.connected(w, r, a.By.Actor, a.Tab) || s.paused(w, r, a.By.Actor) {
+		if early.Tab == "" && !check(&p) {
 			return
 		}
 		wait, cancel := context.WithTimeout(ctx, convertWait)

@@ -180,6 +180,37 @@ func TestUploadRateLimit(t *testing.T) {
 	}
 }
 
+// NFR-15: an upload whose Tab-Id and Op-Id headers name its tab and op is
+// checked before its body: one into a page that does not exist, and one
+// from a tab without a stream, hear so though the body is not even
+// multipart.
+func TestUploadCheckedBeforeItsBody(t *testing.T) {
+	e := startWiki(t)
+	c := webtest.Client(t)
+	webtest.Get(t, c, e.URL+"/")
+	space, home := wikiSpace(t, e, c, "ENG")
+	page := wikiPage(t, e, c, space, home, "Notes")
+	post := func(page, tab string) (int, string) {
+		req, _ := http.NewRequest("POST", e.URL+"/cmd/pages/"+page+"/image", strings.NewReader("no form"))
+		for k, v := range map[string]string{"Content-Type": "multipart/form-data; boundary=x", "Datastar-Request": "true", "Sec-Fetch-Site": "same-origin", "Tab-Id": tab, "Op-Id": "early1"} {
+			req.Header.Set(k, v)
+		}
+		res, err := c.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		b, _ := io.ReadAll(res.Body)
+		return res.StatusCode, strings.TrimSpace(string(b))
+	}
+	if code, body := post("0192d000-0000-7000-8000-000000000001", "tab1"); code != http.StatusNotFound || body != "This was deleted or moved meanwhile." {
+		t.Errorf("an upload into a page that does not exist: %d %q", code, body)
+	}
+	if code, body := post(page, "no-stream"); code != http.StatusConflict || body != "This tab is not connected. Reload the page." {
+		t.Errorf("an upload from a tab without a stream: %d %q", code, body)
+	}
+}
+
 // FR-85.2, DM-07.1: a moderator hides an uploaded image: every open page
 // that shows it says so, and it is no longer served; a delete removes its
 // bytes for good.

@@ -50,7 +50,6 @@ func TestRateLimits(t *testing.T) {
 	webtest.Get(t, ada, e.URL+"/")
 	stream := webtest.Listen(t, ada, e.URL+"/stream?tab=tab1&v=", nil)
 	webtest.Next(t, stream, `"_outcomes"`)
-	limited := ""
 	n := 0
 	for i := range 30 {
 		code, body := webtest.Post(t, ada, e.URL+"/cmd/people/rename", fmt.Sprintf(`{"tab":"tab1","op":"op%d","name":"Ada %d"}`, i, i))
@@ -58,9 +57,6 @@ func TestRateLimits(t *testing.T) {
 		case http.StatusNoContent:
 		case http.StatusTooManyRequests:
 			n++
-			if limited == "" {
-				limited = fmt.Sprintf("op%d", i)
-			}
 			if body != "" {
 				t.Errorf("429 says %q", body)
 			}
@@ -71,9 +67,21 @@ func TestRateLimits(t *testing.T) {
 	if n < 5 || n > 10 {
 		t.Errorf("%d of 30 quick changes limited, with a burst of 20", n)
 	}
-	if limited != "" {
-		webtest.Next(t, stream, `"`+limited+`":{"ok":false,"msg":"Too many changes at once. Wait a moment.","field":"","failed":true}`)
+	// The notice goes to the tab and op of the Tab-Id and Op-Id headers,
+	// before the body is read: this one would answer 400.
+	req, _ := http.NewRequest("POST", e.URL+"/cmd/people/rename", strings.NewReader(`not json`))
+	for k, v := range map[string]string{"Content-Type": "application/json", "Datastar-Request": "true", "Sec-Fetch-Site": "same-origin", "Tab-Id": "tab1", "Op-Id": "late1"} {
+		req.Header.Set(k, v)
 	}
+	res, err := ada.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("a limited action with a body that does not parse: %d", res.StatusCode)
+	}
+	webtest.Next(t, stream, `"late1":{"ok":false,"msg":"Too many changes at once. Wait a moment.","field":"","failed":true}`)
 	if code, _ := webtest.Post(t, bob, e.URL+"/cmd/people/rename", `{"tab":"tab1","op":"op1","name":"Bob"}`); code != http.StatusNoContent {
 		t.Errorf("another session at the same address: %d", code)
 	}

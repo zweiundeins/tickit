@@ -144,20 +144,17 @@ func (s *Server) within(r *http.Request, c class) bool {
 }
 
 // decode reads an action of class c into v. It answers 429 over a limit,
-// with a notice that ends the op, and 400 for a body that is too large,
-// not JSON, or without valid tab and op ids (NFR-16), and then reports
-// false.
+// before it reads the body, with a notice to the tab and op its Tab-Id
+// and Op-Id headers name (views.Send), and 400 for a body that is too
+// large, not JSON, or without valid tab and op ids (NFR-16), and then
+// reports false. The action itself takes the payload's tab and op.
 func (s *Server) decode(w http.ResponseWriter, r *http.Request, c class, v payloader) (action, bool) {
-	ok := s.within(r, c)
-	err := sse.ReadSignalsLimit(w, r, v, c.body)
-	switch {
-	case !ok:
-		if err == nil {
-			s.notice(r, v.payload().Tab, v.payload().Op, tooMany)
-		}
+	if !s.within(r, c) {
+		s.notice(r, r.Header.Get("Tab-Id"), r.Header.Get("Op-Id"), tooMany)
 		w.WriteHeader(http.StatusTooManyRequests)
 		return action{}, false
-	case err != nil:
+	}
+	if err := sse.ReadSignalsLimit(w, r, v, c.body); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return action{}, false
 	}

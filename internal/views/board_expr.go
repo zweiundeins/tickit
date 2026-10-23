@@ -289,7 +289,7 @@ el.bd.scrollEdge(evt.clientX)`
 
 // post sends the move in hand: requestCancellation 'disabled', so that a
 // move never cancels one before it to the same URL.
-const boardPost = `tkOps.send($_board.op, @post('/cmd/board/move', {payload: {tab: $_tab, op: $_board.op, issue: $_board.move.issue, column: $_board.move.column, before: $_board.move.before, after: $_board.move.after, seen: $_board.move.seen}, requestCancellation: 'disabled'}))`
+const boardPost = `tkOps.send($_board.op, @post('/cmd/board/move', {headers: {'Tab-Id': $_tab, 'Op-Id': $_board.op}, payload: {tab: $_tab, op: $_board.op, issue: $_board.move.issue, column: $_board.move.column, before: $_board.move.before, after: $_board.move.after, seen: $_board.move.seen}, requestCancellation: 'disabled'}))`
 
 // boardRelease drops the card where the drag aims.
 const boardRelease = `const p = el.bd.press

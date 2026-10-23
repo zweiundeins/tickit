@@ -1,7 +1,6 @@
 package web
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -207,6 +206,14 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
+	var page struct { // the page's signals, for the refresh after a deploy (views/expr.go, openStream)
+		Build string `json:"_build"`
+		Dirty bool   `json:"_dirty"`
+	}
+	if sse.ReadSignals(w, r, &page) != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	client, ok := s.streams.open(w, r)
 	if !ok {
 		return
@@ -254,8 +261,8 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		Reconnect: views.StreamID,
 		Slow:      edge.SlowLink(r),
 		Ack:       ackEvent(tab), // paced once the page reports it fell behind (pace.go)
-		Build:     r.Header.Get("Page-Build"),
-		Dirty:     r.Header.Get("Page-Dirty") == "true",
+		Build:     page.Build,
+		Dirty:     page.Dirty,
 		Refresh:   refresh,
 	}
 	ctx, ended := s.track(r, spec.ID, &openStream{actor: actor, sid: sid, tab: tab, specs: specs})
@@ -502,11 +509,13 @@ func querier(ctx context.Context, tx *sql.Tx) sqlite.Querier {
 	return tx
 }
 
-// patch renders c as an event that morphs it into the page by its id.
+// patch renders c as an event that morphs it into the page by its id,
+// straight into the event, in a buffer the size of the view's last frame
+// (live.FrameBuffer; nil outside a render).
 func patch(ctx context.Context, c templ.Component, p ...sse.Patch) ([]byte, error) {
-	var buf bytes.Buffer
-	if err := c.Render(ctx, &buf); err != nil {
+	e := sse.NewElements(live.FrameBuffer(ctx), p...)
+	if err := c.Render(ctx, e); err != nil {
 		return nil, err
 	}
-	return sse.PatchElements(buf.Bytes(), p...), nil
+	return e.Event(), nil
 }

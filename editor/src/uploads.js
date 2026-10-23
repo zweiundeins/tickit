@@ -66,13 +66,17 @@ const opID = () => 'up' + Math.random().toString(36).slice(2, 12) + Date.now().t
 // resolves {id, width, height} or rejects with a message for the person.
 export function send(url, tab, file, progress) {
 	return new Promise((resolve, reject) => {
+		const op = opID()
 		const form = new FormData()
 		form.append('tab', tab)
-		form.append('op', opID())
+		form.append('op', op)
 		form.append('file', file, 'image')
 		const xhr = new XMLHttpRequest()
 		xhr.open('POST', url)
 		xhr.setRequestHeader('Datastar-Request', 'true')
+		// The server checks the right and the tab's stream before the body.
+		xhr.setRequestHeader('Tab-Id', tab)
+		xhr.setRequestHeader('Op-Id', op)
 		xhr.upload.onprogress = (e) => e.lengthComputable && progress(e.loaded / e.total)
 		xhr.onload = () => {
 			if (xhr.status === 200) {

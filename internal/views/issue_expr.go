@@ -56,7 +56,7 @@ const curVersion = `+(document.getElementById('issue-main')?.dataset.v || 0)`
 const issueSendFn = `((f, v, s, r) => (v = ['comment', 'cedit'].includes(f) ? ` + mentionIDs + `(v) : v, !$_is.ro || f === 'comment' || f === 'cedit' || f === 'cdelete') && $_is.ops[f] === '' && ($_is.msg[f] = '', $_is.fail[f] = '', $_is.conflict[f] = false, $_is.want[f] = v, $_is.sent[f] = s, $_is.refs[f] = r, $_is.ops[f] = ` + newOp + `, ` + issuePost + `))`
 
 // issuePost sends field f's pending op.
-const issuePost = `tkOps.send($_is.ops[f], @post('/cmd/issues/' + $_is.id + '/' + f, {payload: {tab: $_tab, op: $_is.ops[f], seen: $_is.sent[f], value: $_is.want[f], ref: $_is.refs[f]}, requestCancellation: 'disabled', retryMaxCount: 2}))`
+const issuePost = `tkOps.send($_is.ops[f], @post('/cmd/issues/' + $_is.id + '/' + f, {headers: {'Tab-Id': $_tab, 'Op-Id': $_is.ops[f]}, payload: {tab: $_tab, op: $_is.ops[f], seen: $_is.sent[f], value: $_is.want[f], ref: $_is.refs[f]}, requestCancellation: 'disabled', retryMaxCount: 2}))`
 
 // menuOpened keeps the version a menu showed when it opened: a choice in
 // it sends that version, so a change someone made while the menu was open
@@ -331,7 +331,7 @@ const (
 // issue is $_goto (the issue's page) or, on a page with the issue panel,
 // $_new.created, which opens the new issue in the panel.
 const (
-	createSubmit = `$_new.op === '' && ($_new.msg = '', $_new.field = '', $_new.fail = '', $_new.created = '', $_new.op = ` + newOp + `, tkOps.send($_new.op, @post('/cmd/issues/create', {payload: {tab: $_tab, op: $_new.op, project: $_new.project, type: $_new.type, summary: $_new.summary, description: $_new.description, priority: $_new.priority, assignee: $_new.assignee, labels: $_new.labels, parent: $_new.parent, status: $_new.status, stay: !!document.getElementById('issue-panel')}, requestCancellation: 'disabled', retryMaxCount: 2})))`
+	createSubmit = `$_new.op === '' && ($_new.msg = '', $_new.field = '', $_new.fail = '', $_new.created = '', $_new.op = ` + newOp + `, tkOps.send($_new.op, @post('/cmd/issues/create', {headers: {'Tab-Id': $_tab, 'Op-Id': $_new.op}, payload: {tab: $_tab, op: $_new.op, project: $_new.project, type: $_new.type, summary: $_new.summary, description: $_new.description, priority: $_new.priority, assignee: $_new.assignee, labels: $_new.labels, parent: $_new.parent, status: $_new.status, stay: !!document.getElementById('issue-panel')}, requestCancellation: 'disabled', retryMaxCount: 2})))`
 	createSettle = `$_new.op !== '' && $_outcomes[$_new.op] && ((o) => { $_new.op = ''; if (o.failed) $_new.fail = o.msg; else if (!o.ok) { $_new.msg = o.msg || 'This was refused.'; $_new.field = o.field || '' } })($_outcomes[$_new.op])`
 	createFailed = `evt.detail.el === el && ` + Ended + ` && ($_new.op = '', $_new.fail = ` + problem + `)`
 	createdOpen  = `$_new.created && ((c) => { $_new.created = ''; $_new.summary = ''; $_new.description = ''; $_new.labels = ''; $_new.parent = ''; el.close(); const a = Object.assign(document.createElement('a'), {href: '/' + c.split(' ')[1]}); a.setAttribute('` + IssueLink + `', c.split(' ')[0]); a.hidden = true; document.body.append(a); a.click(); a.remove() })($_new.created)`

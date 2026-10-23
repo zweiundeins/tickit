@@ -97,7 +97,7 @@ B.bulk = (how, sprint) => {
 	return B.begin(rows)
 }`
 
-const backlogPost = `tkOps.send($_bl.op, @post('/cmd/backlog/plan', {payload: {tab: $_tab, op: $_bl.op, project: el.dataset.project, issues: $_bl.move.issues, sprint: $_bl.move.sprint, rank: $_bl.move.rank, before: $_bl.move.before, after: $_bl.move.after}, requestCancellation: 'disabled'}))`
+const backlogPost = `tkOps.send($_bl.op, @post('/cmd/backlog/plan', {headers: {'Tab-Id': $_tab, 'Op-Id': $_bl.op}, payload: {tab: $_tab, op: $_bl.op, project: el.dataset.project, issues: $_bl.move.issues, sprint: $_bl.move.sprint, rank: $_bl.move.rank, before: $_bl.move.before, after: $_bl.move.after}, requestCancellation: 'disabled'}))`
 
 const backlogPress = `if (evt.button !== 0 || $_bl.op || !el.dataset.edit) return
 const li = evt.target.closest('.tk-blrow')
@@ -140,7 +140,7 @@ if (b.dataset.sprint !== undefined && b.closest('#bl-sprints')) {
 	B.bulk('sprint', b.dataset.sprint) && ` + backlogPost + `
 	return
 }
-if (b.dataset.start) { $_ss.op === '' && ($_ss.msg = '', $_ss.op = ` + newOp + `, tkOps.send($_ss.op, @post('/cmd/sprints/start', {payload: {tab: $_tab, op: $_ss.op, project: el.dataset.project, sprint: b.dataset.start}, requestCancellation: 'disabled'}))) }`
+if (b.dataset.start) { $_ss.op === '' && ($_ss.msg = '', $_ss.op = ` + newOp + `, tkOps.send($_ss.op, @post('/cmd/sprints/start', {headers: {'Tab-Id': $_tab, 'Op-Id': $_ss.op}, payload: {tab: $_tab, op: $_ss.op, project: el.dataset.project, sprint: b.dataset.start}, requestCancellation: 'disabled'}))) }`
 
 // backlogCount counts the checked rows.
 const backlogCount = `evt.target.classList.contains('tk-blrow__check') && ($_bl.n = el.querySelectorAll('.tk-blrow__check:checked').length)`

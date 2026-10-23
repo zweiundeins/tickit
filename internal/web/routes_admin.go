@@ -520,20 +520,18 @@ func (s *Server) accountPage(w http.ResponseWriter, r *http.Request) {
 // (NFR-09); the command keeps this session and ends the others.
 func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 	ctx, now := r.Context(), time.Now()
-	allowed := s.signIn.Allow(edge.ClientKey(r), 1, now)
+	if !s.signIn.Allow(edge.ClientKey(r), 1, now) {
+		s.metrics.limited.WithLabelValues("sign-in").Inc()
+		s.notice(r, r.Header.Get("Tab-Id"), r.Header.Get("Op-Id"), "Too many attempts. Wait a minute.")
+		w.WriteHeader(http.StatusTooManyRequests)
+		return
+	}
 	var req struct {
 		Payload
 		Current  string `json:"current"`
 		Password string `json:"password"`
 	}
-	err := sse.ReadSignalsLimit(w, r, &req, 4<<10)
-	if !allowed {
-		s.metrics.limited.WithLabelValues("sign-in").Inc()
-		s.notice(r, req.Tab, req.Op, "Too many attempts. Wait a minute.")
-		w.WriteHeader(http.StatusTooManyRequests)
-		return
-	}
-	if err != nil || !validID(req.Tab) || !validID(req.Op) {
+	if err := sse.ReadSignalsLimit(w, r, &req, 4<<10); err != nil || !validID(req.Tab) || !validID(req.Op) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

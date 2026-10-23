@@ -19,11 +19,13 @@ const slowLink = `((c, n) => c ? c.saveData || ['slow-2g', '2g', '3g'].includes(
 // so a stream opened again aborts the old request. retry 'error' retries
 // through network errors and every 4xx and 5xx and never gives up, but
 // leaves a stream the server ends closed: on a deploy the server ends it
-// with sse.Reconnect, which runs this again. Its headers report the build
-// that rendered the page and whether the person typed, for the refresh
-// after a deploy (web.refresh). The page is out of sync until the tab
-// view's first frame (opsSynced).
-const openStream = `($_synced = false, @get('/stream?tab=' + $_tab + '&alive=1&v=' + encodeURIComponent($_views), {headers: {'Page-Build': $_build, 'Page-Dirty': String($_dirty), ...($_slow ? {'Save-Data': 'on'} : {})}, retry: 'error', retryMaxCount: Infinity, retryMaxWait: 10000}))`
+// with sse.Reconnect, which runs this again. It reports the build that
+// rendered the page and whether the person typed as signals, for the
+// refresh after a deploy (web.refresh): Datastar builds the headers once,
+// and its own reopens (a retry, a tab shown again) read the signals afresh.
+// The exclude keeps the default from dropping every _ signal. The page is
+// out of sync until the tab view's first frame (opsSynced).
+const openStream = `($_synced = false, @get('/stream?tab=' + $_tab + '&alive=1&v=' + encodeURIComponent($_views), {headers: $_slow ? {'Save-Data': 'on'} : {}, filterSignals: {include: /^_(build|dirty)$/, exclude: /(?!)/}, retry: 'error', retryMaxCount: Infinity, retryMaxWait: 10000}))`
 
 // behind asks the server to pace the tab's stream each time newest-frame.js
 // reports that the page fell behind it (newest-frame-behind); /pace counts
@@ -115,13 +117,14 @@ func Act(op, path, payload string) string {
 		payload = ", " + payload
 	}
 	return `$` + op + ` === '' && ($_problem = '', $` + op + ` = ` + newOp + `, ` +
-		Send(`$`+op, `@post('`+path+`', {payload: {tab: $_tab, op: $`+op+payload+`}, requestCancellation: 'disabled'})`) + `)`
+		Send(`$`+op, `@post('`+path+`', {headers: {'Tab-Id': $_tab, 'Op-Id': $`+op+`}, payload: {tab: $_tab, op: $`+op+payload+`}, requestCancellation: 'disabled'})`) + `)`
 }
 
 // Send hands the request of an op to tkOps (static/ops.js), which ends the
 // op when the stream reconnects without its outcome: op is the expression
 // of its id, post the @post that sends it. Every action with an op goes
-// out through Send.
+// out through Send, and its @post sends the Tab-Id and Op-Id headers, so a
+// rate limit answers with a notice before it reads the body (web.decode).
 func Send(op, post string) string { return `tkOps.send(` + op + `, ` + post + `)` }
 
 // Pending is true from the click until the stream brings the outcome.

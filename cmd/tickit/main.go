@@ -178,8 +178,11 @@ func serve(args []string) error {
 	srv := &http.Server{
 		Handler:           mux,
 		ReadHeaderTimeout: 10 * time.Second,
-		IdleTimeout:       2 * time.Minute,
-		ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelWarn),
+		// A body that does not arrive ends here, read or not; streams have
+		// none, and an upload moves its own deadline (edge.Upload).
+		ReadTimeout: 15 * time.Second,
+		IdleTimeout: 2 * time.Minute,
+		ErrorLog:    slog.NewLogLogger(log.Handler(), slog.LevelWarn),
 		// No WriteTimeout: a stream gives each of its writes a deadline.
 	}
 

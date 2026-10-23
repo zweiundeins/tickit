@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
 	"regexp"
 	"strings"
 	"sync"
@@ -136,28 +137,28 @@ func TestReconnect(t *testing.T) {
 
 // A page that a former build rendered offers a reload as its stream opens
 // after a deploy, in other words when it held input, and its build signal
-// follows the views' frames, so the next reconnect refreshes nothing.
+// follows the views' frames, so the next reconnect refreshes nothing. The
+// page reports its build and input as signals, which Datastar reads afresh
+// on each reopen.
 func TestRefreshAfterDeploy(t *testing.T) {
 	e := webtest.Start(t)
 	_, page := webtest.Get(t, webtest.Client(t), e.URL+"/")
-	if !strings.Contains(page, "_build: &#34;"+webtest.Build+"&#34;") || !strings.Contains(page, "&#39;Page-Build&#39;: $_build") {
+	if !strings.Contains(page, "_build: &#34;"+webtest.Build+"&#34;") || !strings.Contains(page, "filterSignals: {include: /^_(build|dirty)$/, exclude: /(?!)/}") {
 		t.Errorf("the page does not report its build:\n%s", page)
 	}
-	for _, c := range []struct {
-		header http.Header
-		want   string
-	}{
-		{http.Header{"Page-Build": {"old"}}, `{"_updated":"new"}`},
-		{http.Header{"Page-Build": {"old"}, "Page-Dirty": {"true"}}, `{"_updated":"typed"}`},
+	signals := func(s string) string { return "&datastar=" + url.QueryEscape(s) }
+	for _, c := range []struct{ signals, want string }{
+		{`{"_build":"old"}`, `{"_updated":"new"}`},
+		{`{"_build":"old","_dirty":true}`, `{"_updated":"typed"}`},
 	} {
-		events := webtest.Listen(t, webtest.Client(t), e.URL+"/stream?tab=tab1", c.header)
+		events := webtest.Listen(t, webtest.Client(t), e.URL+"/stream?tab=tab1"+signals(c.signals), nil)
 		if first := webtest.Next(t, events, "event:"); !strings.Contains(first, c.want) {
-			t.Errorf("%v: the stream's first event is %q", c.header, first)
+			t.Errorf("%s: the stream's first event is %q", c.signals, first)
 		}
 		webtest.Next(t, events, `"_outcomes"`)
 		webtest.Next(t, events, `{"_build":"`+webtest.Build+`"}`)
 	}
-	events := webtest.Listen(t, webtest.Client(t), e.URL+"/stream?tab=tab2", http.Header{"Page-Build": {webtest.Build}})
+	events := webtest.Listen(t, webtest.Client(t), e.URL+"/stream?tab=tab2"+signals(`{"_build":"`+webtest.Build+`"}`), nil)
 	webtest.Next(t, events, `"_outcomes"`)
 	webtest.Silent(t, events, `_updated`, 100*time.Millisecond)
 }
@@ -175,7 +176,7 @@ func TestSlowLink(t *testing.T) {
 	if got := res.Header.Get("Accept-CH"); got != edge.NetworkHints {
 		t.Errorf("Accept-CH: %q", got)
 	}
-	if !strings.Contains(string(page), "_slow: ((c, n) =&gt;") || !strings.Contains(string(page), "...($_slow ? {&#39;Save-Data&#39;: &#39;on&#39;} : {})") {
+	if !strings.Contains(string(page), "_slow: ((c, n) =&gt;") || !strings.Contains(string(page), "headers: $_slow ? {&#39;Save-Data&#39;: &#39;on&#39;} : {}") {
 		t.Errorf("the page does not measure its link:\n%s", page)
 	}
 	events := webtest.Listen(t, webtest.Client(t), e.URL+"/stream?tab=tab1", http.Header{"Save-Data": {"on"}})
