@@ -298,7 +298,7 @@ func (l *streamLimits) open(w http.ResponseWriter, r *http.Request) (client stri
 	}
 	addr := edge.ClientKey(r)
 	if !l.opens.Allow(addr, 1, time.Now()) {
-		http.Error(w, tooMany, http.StatusTooManyRequests)
+		w.WriteHeader(http.StatusTooManyRequests)
 		return "", false
 	}
 	return addr, true

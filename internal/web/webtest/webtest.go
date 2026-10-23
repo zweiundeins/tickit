@@ -226,8 +226,8 @@ func dump(tx *sql.Tx, table string) ([]string, error) {
 // Client is a browser's cookie jar, which follows no redirect. Like a
 // page, it has a stream open for the tab it acts from: before an action
 // from a tab without one of its streams, it opens the tab's stream until
-// the test ends, and so it does when an action answers web.NotConnected
-// (a login changed who the session is), then sending the action again.
+// the test ends, and so it does when an action answers a 409 without a
+// body (a login changed who the session is), then sending the action again.
 func Client(t testing.TB) *http.Client {
 	t.Helper()
 	jar, err := cookiejar.New(nil)

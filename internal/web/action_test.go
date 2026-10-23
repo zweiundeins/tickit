@@ -42,26 +42,37 @@ func TestMalformedActions(t *testing.T) {
 }
 
 // DM-04: actions are limited per session and per address, the address
-// getting four times the session's allowance.
+// getting four times the session's allowance. DM-04.2: a limited action
+// answers 429 alone, and its tab hears why in a notice that ends the op.
 func TestRateLimits(t *testing.T) {
 	e := webtest.Start(t)
 	ada, bob := webtest.Client(t), webtest.Client(t)
-	limited := 0
+	webtest.Get(t, ada, e.URL+"/")
+	stream := webtest.Listen(t, ada, e.URL+"/stream?tab=tab1&v=", nil)
+	webtest.Next(t, stream, `"_outcomes"`)
+	limited := ""
+	n := 0
 	for i := range 30 {
 		code, body := webtest.Post(t, ada, e.URL+"/cmd/people/rename", fmt.Sprintf(`{"tab":"tab1","op":"op%d","name":"Ada %d"}`, i, i))
 		switch code {
 		case http.StatusNoContent:
 		case http.StatusTooManyRequests:
-			limited++
-			if strings.TrimSpace(body) != "Too many changes at once. Wait a moment." {
+			n++
+			if limited == "" {
+				limited = fmt.Sprintf("op%d", i)
+			}
+			if body != "" {
 				t.Errorf("429 says %q", body)
 			}
 		default:
 			t.Fatalf("rename %d: %d %s", i, code, body)
 		}
 	}
-	if limited < 5 || limited > 10 {
-		t.Errorf("%d of 30 quick changes limited, with a burst of 20", limited)
+	if n < 5 || n > 10 {
+		t.Errorf("%d of 30 quick changes limited, with a burst of 20", n)
+	}
+	if limited != "" {
+		webtest.Next(t, stream, `"`+limited+`":{"ok":false,"msg":"Too many changes at once. Wait a moment.","field":"","failed":true}`)
 	}
 	if code, _ := webtest.Post(t, bob, e.URL+"/cmd/people/rename", `{"tab":"tab1","op":"op1","name":"Bob"}`); code != http.StatusNoContent {
 		t.Errorf("another session at the same address: %d", code)

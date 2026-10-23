@@ -73,7 +73,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	addr := edge.ClientKey(r)
 	if !s.signIn.Allow(addr, 1, now) {
 		s.metrics.limited.WithLabelValues("sign-in").Inc()
-		http.Error(w, tooMany, http.StatusTooManyRequests)
+		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
 	var req loginRequest
@@ -145,7 +145,7 @@ func localPath(next string) string {
 // browser continues as a new guest.
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	if !s.signIn.Allow(edge.ClientKey(r), 1, time.Now()) {
-		http.Error(w, tooMany, http.StatusTooManyRequests)
+		w.WriteHeader(http.StatusTooManyRequests)
 		return
 	}
 	if err := s.w.Do(r.Context(), people.Logout{Session: edge.SessionID(r.Context()), At: time.Now()}); err != nil {

@@ -161,7 +161,7 @@ func (s *Server) notifySeen(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		case err != nil:
-			s.failAction(w, r, err)
+			s.failOp(w, r, a, err)
 			return
 		}
 		cmd = also{cmd, recent.Record{By: a.By, Kind: req.Kind, Subject: req.Subject}}

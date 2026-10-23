@@ -1243,8 +1243,12 @@ func (s *Server) movePage(w http.ResponseWriter, r *http.Request) {
 		cmd.Space = id
 	case "page":
 		parent, err := s.db.ViewValue(r.Context(), func(tx *sql.Tx) (wiki.Page, error) { return wiki.PageByID(r.Context(), tx, id) })
-		if err != nil {
-			http.Error(w, "bad target", http.StatusBadRequest)
+		switch {
+		case errors.Is(err, access.ErrNotFound): // deleted since the dialog listed it
+			s.act(w, r, a, refuse("target", "That page is gone. Pick another place."))
+			return
+		case err != nil:
+			s.failOp(w, r, a, err)
 			return
 		}
 		cmd.Space, cmd.Parent = parent.Space, parent.ID

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/zweiundeins/lith/edge"
@@ -86,8 +85,15 @@ var (
 
 var classes = []class{classCreate, classComment, classField, classEditBatch, classCaret, classCreateScope, classUpload, classView, classBulk}
 
-// tooMany is what a request over a limit hears (DM-04.2).
-const tooMany = "Too many changes at once. Wait a moment."
+// What the notice of an op that reached no outcome says (tabs.Notice): a
+// request over a limit (DM-04.2), a failed write, the demo's reset, a
+// server that stops.
+const (
+	tooMany    = "Too many changes at once. Wait a moment."
+	notSaved   = "This did not go through. Try again in a moment."
+	resetting  = demo.MsgResetting + ". Try again in a minute."
+	restarting = "The server is restarting. Try again in a moment."
+)
 
 type limiter struct{ byAddr, bySession *edge.Limiter }
 
@@ -109,9 +115,20 @@ func newLimits() *limits {
 	return l
 }
 
-// allow checks the limits of class c for the request's address, then for
-// its person (an address first: a client chooses its session for free).
+// allow checks the limits of class c and answers 429 over one, with no
+// notice: for requests sent without an op.
 func (s *Server) allow(w http.ResponseWriter, r *http.Request, c class) bool {
+	if s.within(r, c) {
+		return true
+	}
+	w.WriteHeader(http.StatusTooManyRequests)
+	return false
+}
+
+// within reports whether the request is within the limits of class c for
+// its address, then for its person (an address first: a client chooses
+// its session for free), and counts it against them.
+func (s *Server) within(r *http.Request, c class) bool {
 	l, ok := s.limits.classes[c.name]
 	if !ok {
 		panic("web: no rate-limit class " + c.name)
@@ -121,24 +138,41 @@ func (s *Server) allow(w http.ResponseWriter, r *http.Request, c class) bool {
 	if (!c.separate && !s.limits.site.Allow(addr, 1, now)) || !l.byAddr.Allow(addr, 1, now) ||
 		!l.bySession.Allow(people.Actor(r.Context()).ID, 1, now) {
 		s.metrics.limited.WithLabelValues(c.name).Inc()
-		http.Error(w, tooMany, http.StatusTooManyRequests)
 		return false
 	}
 	return true
 }
 
-// decode reads an action of class c into v, after the rate limits. It
-// answers 429 over a limit and 400 for a body that is too large, not JSON,
-// or without valid tab and op ids (NFR-16), and then reports false.
+// decode reads an action of class c into v. It answers 429 over a limit,
+// with a notice that ends the op, and 400 for a body that is too large,
+// not JSON, or without valid tab and op ids (NFR-16), and then reports
+// false.
 func (s *Server) decode(w http.ResponseWriter, r *http.Request, c class, v payloader) (action, bool) {
-	if !s.allow(w, r, c) {
+	ok := s.within(r, c)
+	err := sse.ReadSignalsLimit(w, r, v, c.body)
+	switch {
+	case !ok:
+		if err == nil {
+			s.notice(r, v.payload().Tab, v.payload().Op, tooMany)
+		}
+		w.WriteHeader(http.StatusTooManyRequests)
 		return action{}, false
-	}
-	if err := sse.ReadSignalsLimit(w, r, v, c.body); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+	case err != nil:
+		w.WriteHeader(http.StatusBadRequest)
 		return action{}, false
 	}
 	return s.actionOf(w, r, v.payload())
+}
+
+// notice sends the tab's open stream the notice that ends op with msg
+// (tabs.Notice), for an op that reached no outcome. The stream is the
+// actor's own: a tab id names nobody else's.
+func (s *Server) notice(r *http.Request, tab, op, msg string) {
+	actor := people.Actor(r.Context())
+	if actor.IsZero() || !validID(tab) || !validID(op) {
+		return
+	}
+	s.hub.Notify(streamID(actor, tab), "notice:"+op, tabs.Notice(op, msg))
 }
 
 // actionOf is the action of a request whose payload p was read: 400
@@ -147,7 +181,7 @@ func (s *Server) decode(w http.ResponseWriter, r *http.Request, c class, v paylo
 func (s *Server) actionOf(w http.ResponseWriter, r *http.Request, p *Payload) (action, bool) {
 	actor := people.Actor(r.Context())
 	if !validID(p.Tab) || !validID(p.Op) || actor.IsZero() {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		w.WriteHeader(http.StatusBadRequest)
 		return action{}, false
 	}
 	if mustChange(w, actor) {
@@ -160,7 +194,7 @@ func (s *Server) actionOf(w http.ResponseWriter, r *http.Request, p *Payload) (a
 // password before anything else (FR-141.1), and then reports true.
 func mustChange(w http.ResponseWriter, actor people.Person) bool {
 	if actor.MustChange {
-		http.Error(w, "Change your password first.", http.StatusForbidden)
+		w.WriteHeader(http.StatusForbidden)
 	}
 	return actor.MustChange
 }
@@ -175,7 +209,7 @@ func (s *Server) paused(w http.ResponseWriter, r *http.Request, actor people.Per
 	case err == nil:
 		return false
 	case errors.As(err, &denial):
-		http.Error(w, denial.Msg, http.StatusForbidden)
+		w.WriteHeader(http.StatusForbidden)
 	default:
 		s.failAction(w, r, err)
 	}
@@ -209,7 +243,7 @@ func (s *Server) runNoted(w http.ResponseWriter, r *http.Request, a action, cmd 
 	cmd = s.demo.Guard(a.By.Actor, a.Addr, cmd)
 	op := writer.OnceResult(a.Session+":"+r.URL.Path+":"+a.By.Op, tabs.Act{Session: a.Session, Tab: a.Tab, By: a.By, Cmd: cmd, Note: note})
 	if err := s.w.Do(r.Context(), op); err != nil {
-		s.failAction(w, r, err)
+		s.failOp(w, r, a, err)
 		return result{}, false
 	}
 	res := result{tabs.ParseResult(op.Result()), op.Replayed()}
@@ -227,7 +261,7 @@ func (s *Server) act(w http.ResponseWriter, r *http.Request, a action, cmd write
 	switch {
 	case !ok:
 	case res.Denied:
-		http.Error(w, "forbidden", http.StatusForbidden)
+		w.WriteHeader(http.StatusForbidden)
 	default:
 		w.WriteHeader(http.StatusNoContent)
 	}
@@ -249,7 +283,7 @@ func (s *Server) actResult(w http.ResponseWriter, r *http.Request, a action, cmd
 	switch {
 	case !ok:
 	case res.Denied:
-		http.Error(w, "forbidden", http.StatusForbidden)
+		w.WriteHeader(http.StatusForbidden)
 	case !res.OK:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -270,34 +304,42 @@ func (s *Server) signals(w http.ResponseWriter, v any) {
 	w.Write(sse.PatchSignals(b, false))
 }
 
-// failAction answers an action that reached no outcome: 400 for a command
-// that Validate refused, 404 for an id that names nothing the actor may
-// see, 503 while the server stops or the demo resets, 500 for the rest
-// (logged).
+// failAction answers an action that reached no outcome, with the status
+// alone: 400 for a command that Validate refused (no page of ours sends
+// one), 404 for an id that names nothing the actor may see, 503 while the
+// server stops or the demo resets, 500 for the rest (logged).
 func (s *Server) failAction(w http.ResponseWriter, r *http.Request, err error) {
-	switch {
-	case errors.Is(err, writer.ErrInvalid):
-		http.Error(w, strings.TrimPrefix(err.Error(), writer.ErrInvalid.Error()+": "), http.StatusBadRequest)
-	case errors.Is(err, access.ErrNotFound), errors.Is(err, people.ErrNoAccount):
-		http.Error(w, "not found", http.StatusNotFound)
-	case errors.Is(err, demo.ErrResetting):
-		http.Error(w, demo.MsgResetting+". Try again in a minute.", http.StatusServiceUnavailable)
-	case errors.Is(err, writer.ErrClosed), errors.Is(err, writer.ErrQueueFull), r.Context().Err() != nil:
-		http.Error(w, "The server is restarting. Try again in a moment.", http.StatusServiceUnavailable)
-	default:
-		s.fail(w, r, err)
-	}
+	s.failOp(w, r, action{}, err)
 }
 
-// NotConnected is what an action from a tab without an open stream hears
-// (409): its outcome would reach no page, and its row would come from a
-// tab id the client made up.
-const NotConnected = "This tab is not connected. Reload the page."
+// failOp is failAction for action a, whose tab hears why in a notice that
+// ends the op where the page does not: a 503 or a 500.
+func (s *Server) failOp(w http.ResponseWriter, r *http.Request, a action, err error) {
+	code, msg := http.StatusInternalServerError, notSaved
+	switch {
+	case errors.Is(err, writer.ErrInvalid):
+		code, msg = http.StatusBadRequest, ""
+	case errors.Is(err, access.ErrNotFound), errors.Is(err, people.ErrNoAccount):
+		code, msg = http.StatusNotFound, ""
+	case errors.Is(err, demo.ErrResetting):
+		code, msg = http.StatusServiceUnavailable, resetting
+	case errors.Is(err, writer.ErrClosed), errors.Is(err, writer.ErrQueueFull), r.Context().Err() != nil:
+		code, msg = http.StatusServiceUnavailable, restarting
+	default:
+		s.log.Error("request failed", "method", r.Method, "path", r.URL.Path, "err", err)
+	}
+	if msg != "" && a.Tab != "" {
+		s.notice(r, a.Tab, a.By.Op, msg)
+	}
+	w.WriteHeader(code)
+}
 
 // connected reports whether the tab's stream is open, waiting up to
 // Config.StreamWait for it, and answers 409 otherwise, or 503 once the hub
-// has stopped. An action that
-// stores tab state checks it before its command (lith's live.Hub.HasStream).
+// has stopped: with no notice, since no stream would carry it. The page
+// waits for its stream, whose tab view ends the op (views/expr.go). An
+// action that stores tab state checks it before its command (lith's
+// live.Hub.HasStream).
 func (s *Server) connected(w http.ResponseWriter, r *http.Request, actor people.Person, tab string) bool {
 	id := streamID(actor, tab)
 	if s.hub.HasStream(id) {
@@ -317,10 +359,10 @@ func (s *Server) connected(w http.ResponseWriter, r *http.Request, actor people.
 		case <-deadline.C:
 		case <-r.Context().Done():
 		case <-s.hub.Done(): // a deploy: no stream comes, and the shutdown waits for this
-			http.Error(w, "The server is restarting. Try again in a moment.", http.StatusServiceUnavailable)
+			w.WriteHeader(http.StatusServiceUnavailable)
 			return false
 		}
-		http.Error(w, NotConnected, http.StatusConflict)
+		w.WriteHeader(http.StatusConflict)
 		return false
 	}
 }

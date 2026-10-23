@@ -631,7 +631,7 @@ func (s *Server) moveCard(w http.ResponseWriter, r *http.Request) {
 	}
 	ids, err := s.issueIDs(r.Context(), req.Issue, req.Before, req.After)
 	if err != nil {
-		s.failAction(w, r, err)
+		s.failOp(w, r, a, err)
 		return
 	}
 	s.act(w, r, a, tracker.Move{By: a.By, Issue: ids[0], Status: req.Status, Column: req.Column, Before: ids[1], After: ids[2], Seen: req.Seen})
@@ -741,7 +741,7 @@ func (s *Server) planIssues(w http.ResponseWriter, r *http.Request) {
 	}
 	ids, err := s.issueIDs(r.Context(), keys...)
 	if err != nil {
-		s.failAction(w, r, err)
+		s.failOp(w, r, a, err)
 		return
 	}
 	cmd := tracker.PlanIssues{By: a.By, Sprint: req.Sprint, Rank: req.Rank, Before: ids[0], After: ids[1]}

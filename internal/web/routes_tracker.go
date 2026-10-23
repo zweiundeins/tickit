@@ -627,7 +627,7 @@ func (s *Server) issueAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.failAction(w, r, err)
+		s.failOp(w, r, a, err)
 		return
 	}
 	s.act(w, r, a, cmd)
@@ -823,7 +823,7 @@ func (s *Server) createIssue(w http.ResponseWriter, r *http.Request) {
 	}
 	cmd, err := s.createCommand(r.Context(), a, req)
 	if err != nil {
-		s.failAction(w, r, err)
+		s.failOp(w, r, a, err)
 		return
 	}
 	res, ok := s.run(w, r, a, cmd)

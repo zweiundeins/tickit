@@ -24,7 +24,6 @@ import (
 	"github.com/zweiundeins/tickit/internal/access"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/views"
-	"github.com/zweiundeins/tickit/internal/web"
 	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
@@ -334,7 +333,7 @@ func TestActionNeedsAStream(t *testing.T) {
 		{"/cmd/watch", `{"tab":"made-up","view":"demo:"}`},
 		{"/cmd/list/view", `{"tab":"made-up","view":"","query":"sort=updated"}`},
 	} {
-		if code, body := webtest.Post(t, ada, e.URL+act.path, act.body); code != http.StatusConflict || strings.TrimSpace(body) != web.NotConnected {
+		if code, body := webtest.Post(t, ada, e.URL+act.path, act.body); code != http.StatusConflict || body != "" {
 			t.Errorf("%s from a tab without a stream: %d %q", act.path, code, body)
 		}
 	}

@@ -39,8 +39,53 @@ func (s *Server) routesImages() {
 // convertWait is how long an upload waits for another one's conversion.
 const convertWait = 20 * time.Second
 
+// worded puts words into the bare statuses an upload answers (a rate
+// limit, a tab without a stream, a failed write): sb-rich-editor sends it
+// with a plain fetch, which reads the body, and has no op tracking.
+type worded struct {
+	http.ResponseWriter
+	code  int
+	wrote bool
+}
+
+func (w *worded) WriteHeader(code int) {
+	if code < 400 || w.wrote {
+		w.wrote = true
+		w.ResponseWriter.WriteHeader(code)
+		return
+	}
+	w.code = code
+}
+
+func (w *worded) Write(b []byte) (int, error) {
+	if !w.wrote && w.code != 0 {
+		w.ResponseWriter.WriteHeader(w.code)
+	}
+	w.wrote = true
+	return w.ResponseWriter.Write(b)
+}
+
+// finish answers a status the handler left bare in words.
+func (w *worded) finish() {
+	if w.wrote || w.code == 0 {
+		return
+	}
+	msg := map[int]string{
+		http.StatusTooManyRequests:     tooMany,
+		http.StatusConflict:            "This tab is not connected. Reload the page.",
+		http.StatusForbidden:           "You cannot add images here.",
+		http.StatusNotFound:            "This was deleted or moved meanwhile.",
+		http.StatusServiceUnavailable:  restarting,
+		http.StatusInternalServerError: notSaved,
+	}[w.code]
+	w.wrote = true
+	http.Error(w.ResponseWriter, msg, w.code)
+}
+
 func (s *Server) uploadImage(subject string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		w := &worded{ResponseWriter: rw}
+		defer w.finish()
 		if !s.allow(w, r, classUpload) {
 			return
 		}
@@ -71,7 +116,7 @@ func (s *Server) uploadImage(subject string) http.HandlerFunc {
 		})
 		switch {
 		case err != nil:
-			s.failAction(w, r, err)
+			s.failOp(w, r, a, err)
 			return
 		case !allowed:
 			http.Error(w, "You cannot add images here.", http.StatusForbidden)

@@ -341,12 +341,29 @@ type signal struct {
 	Msg   string          `json:"msg"`
 	Field string          `json:"field"`
 	Data  json.RawMessage `json:"data,omitempty"`
+	// Failed: the op reached no outcome (Notice), so nothing ran and a
+	// retry may run it again.
+	Failed bool `json:"failed,omitempty"`
+}
+
+// Notice is the frame that ends op on its page when it reached no outcome,
+// with msg, for live.Hub.Notify: a rate limit, a failed write, a reset. It
+// puts the op in $_outcomes as the tab's view would, marked failed, and
+// the row never holds it.
+func Notice(op, msg string) []byte {
+	b, err := json.Marshal(map[string]any{"_outcomes": map[string]signal{op: {Msg: msg, Failed: true}}})
+	if err != nil {
+		panic(err) // strings
+	}
+	return sse.PatchSignals(b, false)
 }
 
 // View is the tab's own view: it patches the signal _outcomes, an object
-// from op id to {ok, msg, field, data}, from the tab's row. Its key holds the
-// tab id and a hash of the session, which it closes over: another session
-// naming the same tab id gets a view of its own (NFR-02.3).
+// from op id to {ok, msg, field, data}, from the tab's row, and _synced,
+// which tells the page that its stream brought the row (views/expr.go,
+// tkOps). Its key holds the tab id and a hash of the session, which it
+// closes over: another session naming the same tab id gets a view of its
+// own (NFR-02.3).
 func View(sid, tab string) live.View {
 	return live.View{
 		Key:    Topic(tab) + "." + sessionKey(sid),
@@ -364,7 +381,7 @@ func View(sid, tab string) live.View {
 			for _, o := range s.Outcomes {
 				outcomes[o.Op] = signal{OK: o.OK, Msg: o.Msg, Field: o.Field, Data: o.Data}
 			}
-			b, err := json.Marshal(map[string]any{"_outcomes": outcomes})
+			b, err := json.Marshal(map[string]any{"_outcomes": outcomes, "_synced": true})
 			if err != nil {
 				return nil, err
 			}

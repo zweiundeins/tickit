@@ -194,10 +194,10 @@ func TestResetNow(t *testing.T) {
 	// DM-03.4: actions answer 503 while a reset holds the demo.
 	release := e.Server.Demo().Hold()
 	webtest.Next(t, stream, demo.MsgResetting)
-	code, body := webtest.Post(t, g, e.URL+"/cmd/people/rename", `{"tab":"tab1","op":"op2","name":"Later"}`)
-	if code != http.StatusServiceUnavailable || !strings.Contains(body, demo.MsgResetting) {
-		t.Errorf("an action during a reset: %d %q", code, body)
+	if code, _ := webtest.Post(t, g, e.URL+"/cmd/people/rename", `{"tab":"tab1","op":"op2","name":"Later"}`); code != http.StatusServiceUnavailable {
+		t.Errorf("an action during a reset: %d", code)
 	}
+	webtest.Next(t, stream, `"op2":{"ok":false,"msg":"`+demo.MsgResetting+`. Try again in a minute."`)
 	if _, page := webtest.Get(t, g, e.URL+"/privacy"); !strings.Contains(page, demo.MsgResetting) {
 		t.Error("a page during a reset does not say so")
 	}

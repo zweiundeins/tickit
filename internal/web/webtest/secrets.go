@@ -12,8 +12,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-
-	"github.com/zweiundeins/tickit/internal/web"
 )
 
 // The secrets of every test: passwords sent and session ids handed out.
@@ -106,7 +104,7 @@ func (rec *recorder) RoundTrip(req *http.Request) (*http.Response, error) {
 	answer, _ := io.ReadAll(res.Body)
 	res.Body.Close()
 	res.Body = io.NopCloser(bytes.NewReader(answer))
-	if strings.TrimSpace(string(answer)) != web.NotConnected {
+	if len(bytes.TrimSpace(answer)) > 0 { // a 409 of the editor's ("stale"), not of a tab without a stream
 		return res, nil
 	}
 	return rec.connect(req, res, body, tab)
