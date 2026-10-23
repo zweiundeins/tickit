@@ -70,8 +70,10 @@ const keepPlace = `(() => { let at = null, top = 0; ` +
 const startStream = `$_beat = Date.now(); ` + openStream
 
 // beat notes a sign of life: the hub patches $_ping every 20 s
-// (live.Options.HeartbeatSignal), frames or not.
-const beat = `$_ping, $_beat = Date.now(), $_stale = false`
+// (live.Options.HeartbeatSignal), frames or not. It never writes $_stale:
+// an effect re-runs on the signals it writes, so it undid every stale. A
+// new stream's first frame clears it (web's connected view).
+const beat = `$_ping, $_beat = Date.now()`
 
 // watchdog opens the stream again when no heartbeat came for 50 s: a
 // connection that went quiet without closing, as a laptop's after sleep
@@ -79,7 +81,7 @@ const beat = `$_ping, $_beat = Date.now(), $_stale = false`
 const watchdog = `!document.hidden && Date.now() - $_beat > 50000 && ($_beat = Date.now(), $_stale = true, ` + openStream + `)`
 
 // streamFailed shows "Reconnecting" at once when the stream's request
-// fails; the next heartbeat, or the first frame of a new stream, hides it.
+// fails; the first frame of a new stream hides it.
 const streamFailed = `evt.detail.el === el && ['error', 'retrying', 'retries-failed'].includes(evt.detail.type) && ($_stale = true, $_synced = false)`
 
 // opsSynced hands $_outcomes to tkOps when the stream connected and the
