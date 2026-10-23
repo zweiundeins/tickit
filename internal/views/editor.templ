@@ -47,7 +47,7 @@ const (
 
 	titleInput   = `$_title.focus = true`
 	titleBlur    = `$_title.focus = false`
-	titleRename  = `$_title.value.trim() && ` + `$_title.op === '' && ($_title.op = ` + newOp + `, @post('/cmd/pages/rename', {payload: {tab: $_tab, op: $_title.op, page: el.dataset.page, title: $_title.value}}))`
+	titleRename  = `$_title.value.trim() && ` + `$_title.op === '' && ($_title.op = ` + newOp + `, tkOps.send($_title.op, @post('/cmd/pages/rename', {payload: {tab: $_tab, op: $_title.op, page: el.dataset.page, title: $_title.value}, requestCancellation: 'disabled'})))`
 	titleSettled = `$_title.op !== '' && $_outcomes[$_title.op] && ((o => ($_title.msg = o.ok ? '' : o.msg))($_outcomes[$_title.op]), $_title.op = '')`
 	// titleSync takes another editor's rename while the person is not in
 	// the field (FR-86.2: a refused title stays as typed).

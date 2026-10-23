@@ -12,7 +12,7 @@ var (
 	upperKey             = `$_np.key = $_np.key.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 6)`
 	createProjectSubmit  = `$_np.err.name = ''; $_np.err.key = ''; $_np.err.description = ''; $_np.err.any = ''; ` + Act("_np.op", "/cmd/projects/create", "name: $_np.name, key: $_np.key, description: $_np.description")
 	createProjectSettled = Settle("_np.op", "o.ok || (o.field === 'key' ? ($_np.err.key = o.msg) : o.field === 'name' ? ($_np.err.name = o.msg) : o.field === 'description' ? ($_np.err.description = o.msg) : ($_np.err.any = o.msg))")
-	createProjectFailed  = `evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && evt.detail.argsRaw.status !== '403' && ($_np.op = '', $_np.err.any = ` + problem + `)`
+	createProjectFailed  = `evt.detail.el === el && ` + Ended + ` && ($_np.op = '', $_np.err.any = ` + problem + `)`
 
 	saveDetails    = Act("_pd.op", "/cmd/projects/edit", "project: "+settingsProject+", name: $_pd.name, description: $_pd.description, lead: $_pd.lead")
 	detailsSettled = Settle("_pd.op", "$_pd.msg = o.ok ? 'Saved.' : o.msg, $_pd.field = o.ok ? '' : (o.field || '')")

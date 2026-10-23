@@ -289,7 +289,7 @@ el.bd.scrollEdge(evt.clientX)`
 
 // post sends the move in hand: requestCancellation 'disabled', so that a
 // move never cancels one before it to the same URL.
-const boardPost = `@post('/cmd/board/move', {payload: {tab: $_tab, op: $_board.op, issue: $_board.move.issue, column: $_board.move.column, before: $_board.move.before, after: $_board.move.after, seen: $_board.move.seen}, requestCancellation: 'disabled'})`
+const boardPost = `tkOps.send($_board.op, @post('/cmd/board/move', {payload: {tab: $_tab, op: $_board.op, issue: $_board.move.issue, column: $_board.move.column, before: $_board.move.before, after: $_board.move.after, seen: $_board.move.seen}, requestCancellation: 'disabled'}))`
 
 // boardRelease drops the card where the drag aims.
 const boardRelease = `const p = el.bd.press
@@ -372,6 +372,11 @@ B.mark(li, '')
 if (o.ok) {
 	const lane = li && B.laneOf(li)
 	B.say($_board.pcard + ' is in ' + (lane ? B.name(lane) : 'its new place') + '.')
+} else if (o.failed) {
+	// It ran nowhere (tabs.Notice): Retry sends it again as a new op.
+	B.back(li)
+	$_board.problem = o.msg
+	$_board.retry = ` + newOp + `
 } else {
 	// A frame that came with the outcome may still wait in its view
 	// transition: the card goes back only once the lanes are up to date
@@ -388,20 +393,18 @@ $_board.op = ''
 $_board.pcard = ''
 B.refocus(li)`
 
-// boardFailed ends a pending move whose request reached no outcome (the
-// network, a rate limit, the server stopping, a malformed move): the card
-// goes back, and Retry sends it again with the same op id. A 403's
-// refusal comes on the stream.
+// boardFailed ends a pending move whose request reached no outcome and
+// that nothing on the stream will end (Ended: the network, a malformed
+// move): the card goes back, and Retry sends it again with the same op
+// id. A rate limit or the server stopping comes as a notice (boardSettle),
+// a 403's refusal on the stream.
 const boardFailed = `if (evt.detail.el !== el || !$_board.op) return
-const t = evt.detail.type
-if (t === 'retrying') { $_board.problem = 'The server does not answer. Trying again.'; return }
-if (t !== 'error' && t !== 'retries-failed') return
-const status = evt.detail.argsRaw?.status
-if (status === '403') return
+if (evt.detail.type === 'retrying') { $_board.problem = 'The server does not answer. Trying again.'; return }
+if (!` + Ended + `) return
 const li = el.bd.slot($_board.pcard)
 el.bd.mark(li, '')
 el.bd.back(li)
-$_board.problem = status === '429' ? 'Too many changes at once. Wait a moment.' : status === '503' ? ` + Unavailable + ` : 'This did not go through.'
+$_board.problem = ` + problem + `
 $_board.retry = $_board.op
 $_board.op = ''
 $_board.pcard = ''`

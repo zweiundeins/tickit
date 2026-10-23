@@ -189,16 +189,16 @@ func dashFaces(l DashboardList) []ui.Person {
 // it (NFR-13: no person's value in an expression).
 var (
 	dashSignals = `{_dash: {op: '', msg: '', name: '', kind: '', project: '', filter: '', g: ''}}`
-	dashCreate  = `$_dash.name.trim() && ` + `$_dash.op === '' && ($_problem = '', $_dash.op = ` + newOp + `, @post('/cmd/dashboards/create', {payload: {tab: $_tab, op: $_dash.op, name: $_dash.name}}))`
-	dashRename  = `$_dash.name.trim() && $_dash.op === '' && ($_problem = '', $_dash.op = ` + newOp + `, @post('/cmd/dashboards/rename', {payload: {tab: $_tab, op: $_dash.op, dashboard: el.dataset.d, name: $_dash.name}}))`
-	dashDelete  = `$_dash.op === '' && ($_problem = '', $_dash.op = ` + newOp + `, @post('/cmd/dashboards/delete', {payload: {tab: $_tab, op: $_dash.op, dashboard: el.dataset.d}}))`
-	dashAdd     = `$_dash.kind && $_dash.op === '' && ($_problem = '', $_dash.op = ` + newOp + `, @post('/cmd/dashboards/gadget', {payload: {tab: $_tab, op: $_dash.op, dashboard: el.dataset.d, kind: $_dash.kind, project: $_dash.project, filter: $_dash.filter}}))`
+	dashCreate  = `$_dash.name.trim() && ` + `$_dash.op === '' && ($_problem = '', $_dash.op = ` + newOp + `, ` + Send(`$_dash.op`, `@post('/cmd/dashboards/create', {payload: {tab: $_tab, op: $_dash.op, name: $_dash.name}, requestCancellation: 'disabled'})`) + `)`
+	dashRename  = `$_dash.name.trim() && $_dash.op === '' && ($_problem = '', $_dash.op = ` + newOp + `, ` + Send(`$_dash.op`, `@post('/cmd/dashboards/rename', {payload: {tab: $_tab, op: $_dash.op, dashboard: el.dataset.d, name: $_dash.name}, requestCancellation: 'disabled'})`) + `)`
+	dashDelete  = `$_dash.op === '' && ($_problem = '', $_dash.op = ` + newOp + `, ` + Send(`$_dash.op`, `@post('/cmd/dashboards/delete', {payload: {tab: $_tab, op: $_dash.op, dashboard: el.dataset.d}, requestCancellation: 'disabled'})`) + `)`
+	dashAdd     = `$_dash.kind && $_dash.op === '' && ($_problem = '', $_dash.op = ` + newOp + `, ` + Send(`$_dash.op`, `@post('/cmd/dashboards/gadget', {payload: {tab: $_tab, op: $_dash.op, dashboard: el.dataset.d, kind: $_dash.kind, project: $_dash.project, filter: $_dash.filter}, requestCancellation: 'disabled'})`) + `)`
 	// dashClick runs a gadget's move or remove, on the grid's container.
 	dashClick = `((b) => b && $_dash.op === '' && ($_problem = '', $_dash.g = b.dataset.g, $_dash.op = ` + newOp + `,
-	b.dataset.act === 'gremove' ? @post('/cmd/dashboards/gadget/remove', {payload: {tab: $_tab, op: $_dash.op, dashboard: el.dataset.d, gadget: $_dash.g}})
-	: @post('/cmd/dashboards/gadget/move', {payload: {tab: $_tab, op: $_dash.op, dashboard: el.dataset.d, gadget: $_dash.g, earlier: b.dataset.act === 'gearlier'}})))(evt.target.closest('button[data-act]'))`
+	tkOps.send($_dash.op, b.dataset.act === 'gremove' ? @post('/cmd/dashboards/gadget/remove', {payload: {tab: $_tab, op: $_dash.op, dashboard: el.dataset.d, gadget: $_dash.g}, requestCancellation: 'disabled'})
+	: @post('/cmd/dashboards/gadget/move', {payload: {tab: $_tab, op: $_dash.op, dashboard: el.dataset.d, gadget: $_dash.g, earlier: b.dataset.act === 'gearlier'}, requestCancellation: 'disabled'}))))(evt.target.closest('button[data-act]'))`
 	dashSettled  = Settle("_dash.op", "$_dash.msg = o.ok ? '' : o.msg, o.ok && ($_dash.kind = '', document.querySelectorAll('#dash-rename[open], #dash-delete[open]').forEach((d) => d.close()))")
-	dashFailed   = `evt.detail.type && ['error', 'retries-failed'].includes(evt.detail.type) && evt.detail.argsRaw.status !== '403' && ($_dash.op = '', $_problem = ` + problem + `)`
+	dashFailed   = `$_dash.op !== '' && ` + Ended + ` && ($_dash.op = '', $_problem = ` + problem + `)`
 	dashBusy     = `$_dash.op !== '' ? 'true' : false`
 	dashPending  = `$_dash.op !== ''`
 	needsProject = `$_dash.kind === 'status' || $_dash.kind === 'created'`

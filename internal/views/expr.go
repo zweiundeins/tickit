@@ -17,10 +17,13 @@ const slowLink = `((c, n) => c ? c.saveData || ['slow-2g', '2g', '3g'].includes(
 // openStream opens the tab's stream with the page's views. On a slow link,
 // measured as the page starts, it sends Save-Data: on (edge.SlowLink). The URL stays the same,
 // so a stream opened again aborts the old request. retry 'error' retries
-// through network errors, 502s and 503s and never gives up, but leaves a
-// stream the server ends closed: on a deploy the server ends it with
-// sse.Reconnect, which runs this again.
-const openStream = `@get('/stream?tab=' + $_tab + '&alive=1&v=' + encodeURIComponent($_views), {headers: $_slow ? {'Save-Data': 'on'} : {}, retry: 'error', retryMaxCount: Infinity, retryMaxWait: 10000})`
+// through network errors and every 4xx and 5xx and never gives up, but
+// leaves a stream the server ends closed: on a deploy the server ends it
+// with sse.Reconnect, which runs this again. Its headers report the build
+// that rendered the page and whether the person typed, for the refresh
+// after a deploy (web.refresh). The page is out of sync until the tab
+// view's first frame (opsSynced).
+const openStream = `($_synced = false, @get('/stream?tab=' + $_tab + '&alive=1&v=' + encodeURIComponent($_views), {headers: {'Page-Build': $_build, 'Page-Dirty': String($_dirty), ...($_slow ? {'Save-Data': 'on'} : {})}, retry: 'error', retryMaxCount: Infinity, retryMaxWait: 10000}))`
 
 // behind asks the server to pace the tab's stream each time newest-frame.js
 // reports that the page fell behind it (newest-frame-behind); /pace counts
@@ -77,7 +80,22 @@ const watchdog = `!document.hidden && Date.now() - $_beat > 50000 && ($_beat = D
 
 // streamFailed shows "Reconnecting" at once when the stream's request
 // fails; the next heartbeat, or the first frame of a new stream, hides it.
-const streamFailed = `evt.detail.el === el && ['error', 'retrying', 'retries-failed'].includes(evt.detail.type) && ($_stale = true)`
+const streamFailed = `evt.detail.el === el && ['error', 'retrying', 'retries-failed'].includes(evt.detail.type) && ($_stale = true, $_synced = false)`
+
+// opsSynced hands $_outcomes to tkOps when the stream connected and the
+// tab's view brought the row (tabs.View sets _synced), which ends the ops
+// the row has no outcome for. opsSyncPatches keeps it to _synced, so a
+// click never runs it. tabHidden: Datastar closes a hidden tab's stream
+// and opens it again on show, without data-init and without retrying.
+const (
+	opsSynced      = `$_synced && tkOps.synced($_outcomes)`
+	opsSyncPatches = `{include: /^_synced$/}`
+	tabHidden      = `document.hidden && ($_synced = false)`
+)
+
+// typed marks the page as holding input, which the refresh after a deploy
+// would lose to a reload.
+const typed = `$_dirty = true`
 
 // follow goes where an action's answer says ($_goto, writer.OnceResult).
 const follow = `$_goto && location.assign($_goto)`
@@ -88,13 +106,21 @@ const newOp = `Date.now().toString(36) + Math.random().toString(36).slice(2, 7)`
 
 // Act posts an action to path with a new op id kept in the signal op,
 // unless one is pending there. payload adds fields to {tab, op}, as
-// "name: $_rename.name".
+// "name: $_rename.name". requestCancellation 'disabled': Datastar cancels
+// a request when another goes to the same URL, from any element.
 func Act(op, path, payload string) string {
 	if payload != "" {
 		payload = ", " + payload
 	}
-	return `$` + op + ` === '' && ($_problem = '', $` + op + ` = ` + newOp + `, @post('` + path + `', {payload: {tab: $_tab, op: $` + op + payload + `}}))`
+	return `$` + op + ` === '' && ($_problem = '', $` + op + ` = ` + newOp + `, ` +
+		Send(`$`+op, `@post('`+path+`', {payload: {tab: $_tab, op: $`+op+payload+`}, requestCancellation: 'disabled'})`) + `)`
 }
+
+// Send hands the request of an op to tkOps (static/ops.js), which ends the
+// op when the stream reconnects without its outcome: op is the expression
+// of its id, post the @post that sends it. Every action with an op goes
+// out through Send.
+func Send(op, post string) string { return `tkOps.send(` + op + `, ` + post + `)` }
 
 // Pending is true from the click until the stream brings the outcome.
 func Pending(op string) string { return `$` + op + ` !== ''` }
@@ -121,14 +147,20 @@ func Settle(op, then string) string {
 }
 
 // Failed, on data-on:datastar-fetch, ends the pending state when the
-// action's request reached no outcome (MP-09.3). A 403 brings its reason
-// on the stream like any refusal.
+// action's request reached no outcome and nothing on the stream will say
+// so (Ended, MP-09.3).
 func Failed(op string) string {
-	return `evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && evt.detail.argsRaw.status !== '403' && ($` + op + ` = '', $_problem = ` + problem + `)`
+	return `evt.detail.el === el && ` + Ended + ` && ($` + op + ` = '', $_problem = ` + problem + `)`
 }
 
-// problem is what the page says of a request that reached no outcome.
-const problem = `evt.detail.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : evt.detail.argsRaw.status === '503' ? ` + Unavailable + ` : evt.detail.argsRaw.status === '409' ? 'This tab is not connected. Reload the page.' : 'This did not go through. Try again in a moment.'`
+// Ended is true of a datastar-fetch event that ends an op on the page: its
+// retries failed, or it answered a 4xx that comes with no notice. A 403
+// brings its refusal on the stream; a 409 (no stream for the tab), a 429
+// and a 5xx a notice, or the stream that connects again (tkOps).
+const Ended = `(evt.detail.type === 'retries-failed' || evt.detail.type === 'error' && ((s) => s >= 400 && s < 500 && ![403, 409, 429].includes(s))(+evt.detail.argsRaw.status))`
+
+// problem is what the page says of an op Ended: only the page knows it.
+const problem = `(evt.detail.type === 'retries-failed' ? 'The connection is down. Try again once it is back.' : 'This did not work. Reload the page and try again.')`
 
 // Unavailable is what a page says of a 503: the demo's reset while the
 // demo alert says one runs, else a restart.
@@ -183,8 +215,14 @@ var (
 	dismissBusy     = Busy("_dismiss.op")
 	demoHidden      = `$_prefs.hideDemo`
 	hintHidden      = `$_prefs.hideHint`
-	reconnectHidden = `!$_stale`
+	reconnectHidden = `!$_stale && !$_updating`
 	problemHidden   = `!$_problem`
+	// reconnectText: a server that stops says so first (web.stopping).
+	reconnectText = `$_updating ? 'Updating, back in a moment.' : 'Reconnecting…'`
+	// The refresh after a deploy (web.refresh) sets _updated, "typed" when
+	// the page held input.
+	updatedHidden = `!$_updated`
+	updatedText   = `$_updated === 'typed' ? 'tickit has a new version. Reloading clears what you have not sent yet.' : 'tickit has a new version.'`
 )
 
 // ConfirmID is the document's dialog that asks before an action that

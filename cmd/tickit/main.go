@@ -139,7 +139,7 @@ func serve(args []string) error {
 		return err
 	}
 	hub := live.New(live.Options{Read: db.R, MaxStreams: *streams, MaxStreamsPerClient: web.MaxStreamsPerAddr, HeartbeatSignal: "_ping", Log: log,
-		OnTick: func(d time.Duration) { tickSeconds.Observe(d.Seconds()) }})
+		OnTick: func(d time.Duration) { tickSeconds.Observe(d.Seconds()) }, Stopping: web.Stopping})
 	w, err := writer.New(db, writer.Options{OnCommit: hub.Changed, Log: log})
 	if err != nil {
 		return errors.Join(err, db.Close())

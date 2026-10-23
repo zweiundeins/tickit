@@ -35,6 +35,10 @@ import (
 	"github.com/zweiundeins/tickit/migrations"
 )
 
+// Build is the build the test server's hub runs (live.Options.Build): a
+// page that reports another one gets the refresh after a deploy.
+const Build = "test-build"
+
 // Options change how Start runs the server.
 type Options struct {
 	Store      *events.Store // the event store; an empty one by default
@@ -78,7 +82,8 @@ func StartWith(t testing.TB, o Options) *Env {
 	}
 	logs := &syncBuffer{}
 	log := slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	hub := live.New(live.Options{Read: db.R, Workers: 2, Tick: 10 * time.Millisecond, MaxStreamsPerClient: web.MaxStreamsPerAddr, HeartbeatSignal: "_ping", Log: log})
+	hub := live.New(live.Options{Read: db.R, Workers: 2, Tick: 10 * time.Millisecond, MaxStreamsPerClient: web.MaxStreamsPerAddr, HeartbeatSignal: "_ping", Log: log,
+		Stopping: web.Stopping, Build: Build})
 	w, err := writer.New(db, writer.Options{OnCommit: hub.Changed, Log: log})
 	if err != nil {
 		t.Fatal(err)

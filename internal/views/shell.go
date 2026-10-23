@@ -49,6 +49,8 @@ type Shell struct {
 	Nonce       string // the request's CSP nonce, for the import map
 	CSS, JS     string // URLs of the stylesheet bundle and of Datastar
 	NewestFrame string // URL of lith's newest-frame.js (live.NewestFrame)
+	Ops         string // URL of static/ops.js, which follows the page's ops (Send)
+	Build       string // the build that renders the page (live.Hub.Build)
 	Mark        string // URL of the favicon
 	Fonts       []string
 	// Scripts are module URLs that load after Datastar: Starbase's
@@ -105,12 +107,16 @@ func jsString(s string) string {
 
 // signals are the document's, all local (_): actions send only their
 // payload. _views holds the stream's views for openStream, _outcomes the
-// outcomes the tab's view brings (op id to {ok, msg, field}), _prefs the
-// session's preferences (tabs.PrefsView).
+// outcomes the tab's view brings (op id to {ok, msg, field}), _synced its
+// frames' mark (tkOps), _prefs the session's preferences
+// (tabs.PrefsView). _build is the build that rendered the page and _dirty
+// whether the person typed, for the refresh after a deploy, which sets
+// _updated; _updating is the notice of a server that stops.
 func signals(s Shell) string {
 	prefs, _ := json.Marshal(s.Prefs.Normal())
 	return "{_tab: " + jsString(s.Tab) + ", _views: " + jsString(strings.Join(s.Views, ",")) + ", _slow: " + slowLink +
-		", _outcomes: {}, _ping: 0, _beat: 0, _input: 0, _revoked: false, _stale: false, _goto: '', _problem: '', _prefs: " + string(prefs) +
+		", _outcomes: {}, _synced: false, _ping: 0, _beat: 0, _input: 0, _revoked: false, _stale: false, _updating: false, _goto: '', _problem: '', _prefs: " + string(prefs) +
+		", _build: " + jsString(s.Build) + ", _dirty: false, _updated: ''" +
 		", _display: {op: ''}, _dismiss: {op: ''}, _rename: {op: '', name: '', msg: '', ok: false}}"
 }
 

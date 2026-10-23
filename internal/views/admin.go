@@ -279,7 +279,7 @@ var (
 	accountSignals = `{_pw: {op: '', ok: false, msg: '', current: '', password: '', again: ''}}`
 	pwChange       = `$_pw.password !== $_pw.again ? ($_pw.ok = false, $_pw.msg = 'The new passwords differ.') : ` + Act("_pw.op", "/cmd/account/password", "current: $_pw.current, password: $_pw.password")
 	pwSettled      = Settle("_pw.op", "$_pw.ok = o.ok, $_pw.msg = o.ok ? 'Your password is changed. Your other sessions ended.' : o.msg, o.ok && ($_pw.current = '', $_pw.password = '', $_pw.again = '', $_goto = '/account')")
-	pwFailed       = `evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && ($_pw.op = '', $_pw.ok = false, $_pw.msg = evt.detail.argsRaw.status === '429' ? 'Too many attempts. Wait a minute.' : 'This did not go through. Try again in a moment.')`
+	pwFailed       = `evt.detail.el === el && ` + Ended + ` && ($_pw.op = '', $_pw.ok = false, $_pw.msg = ` + problem + `)`
 	pwBusy         = Busy("_pw.op")
 	pwKind         = `$_pw.msg ? ($_pw.ok ? 'ok' : 'refused') : false`
 	sessionEnd     = Act("_pw.op", "/cmd/account/end-session", "session: el.dataset.session")

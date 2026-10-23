@@ -97,7 +97,7 @@ B.bulk = (how, sprint) => {
 	return B.begin(rows)
 }`
 
-const backlogPost = `@post('/cmd/backlog/plan', {payload: {tab: $_tab, op: $_bl.op, project: el.dataset.project, issues: $_bl.move.issues, sprint: $_bl.move.sprint, rank: $_bl.move.rank, before: $_bl.move.before, after: $_bl.move.after}, requestCancellation: 'disabled'})`
+const backlogPost = `tkOps.send($_bl.op, @post('/cmd/backlog/plan', {payload: {tab: $_tab, op: $_bl.op, project: el.dataset.project, issues: $_bl.move.issues, sprint: $_bl.move.sprint, rank: $_bl.move.rank, before: $_bl.move.before, after: $_bl.move.after}, requestCancellation: 'disabled'}))`
 
 const backlogPress = `if (evt.button !== 0 || $_bl.op || !el.dataset.edit) return
 const li = evt.target.closest('.tk-blrow')
@@ -140,7 +140,7 @@ if (b.dataset.sprint !== undefined && b.closest('#bl-sprints')) {
 	B.bulk('sprint', b.dataset.sprint) && ` + backlogPost + `
 	return
 }
-if (b.dataset.start) { $_ss.op === '' && ($_ss.msg = '', $_ss.op = ` + newOp + `, @post('/cmd/sprints/start', {payload: {tab: $_tab, op: $_ss.op, project: el.dataset.project, sprint: b.dataset.start}})) }`
+if (b.dataset.start) { $_ss.op === '' && ($_ss.msg = '', $_ss.op = ` + newOp + `, tkOps.send($_ss.op, @post('/cmd/sprints/start', {payload: {tab: $_tab, op: $_ss.op, project: el.dataset.project, sprint: b.dataset.start}, requestCancellation: 'disabled'}))) }`
 
 // backlogCount counts the checked rows.
 const backlogCount = `evt.target.classList.contains('tk-blrow__check') && ($_bl.n = el.querySelectorAll('.tk-blrow__check:checked').length)`
@@ -167,11 +167,9 @@ B.origin = null
 $_bl.op = ''
 $_bl.rows = ''`
 
-const backlogFailed = `if (evt.detail.el !== el || !$_bl.op) return
-const t = evt.detail.type
-if (t !== 'error' && t !== 'retries-failed') return
-const status = evt.detail.argsRaw?.status
-if (status === '403') return
+// backlogFailed ends a pending move that nothing on the stream will end
+// (Ended); a rate limit or a restart comes as a notice (backlogSettle).
+const backlogFailed = `if (evt.detail.el !== el || !$_bl.op || !` + Ended + `) return
 const B = el.bl, rows = $_bl.rows.split(' ').filter(Boolean).map(B.row)
 rows.forEach((r) => B.mark(r, ''))
 if (B.origin && rows[0]) B.put(B.origin.list, rows[0], B.origin.next && B.origin.next.parentElement === B.origin.list ? B.origin.next : null)

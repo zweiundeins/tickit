@@ -118,7 +118,7 @@ $_bulk.ref = b.dataset.ref || ''
 $_bulk.msg = ''
 $_problem = ''
 $_bulk.op = ` + newOp + `
-@post('/cmd/issues/bulk', {payload: {tab: $_tab, op: $_bulk.op, issues: $_bulk.ids, field: $_bulk.field, value: $_bulk.value, ref: $_bulk.ref}, requestCancellation: 'disabled'})`
+tkOps.send($_bulk.op, @post('/cmd/issues/bulk', {payload: {tab: $_tab, op: $_bulk.op, issues: $_bulk.ids, field: $_bulk.field, value: $_bulk.value, ref: $_bulk.ref}, requestCancellation: 'disabled'}))`
 
 // bulkRefocus moves the focus out of the bar once nothing is selected and
 // its controls turn disabled: to the page's box, else to the count.

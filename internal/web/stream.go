@@ -254,6 +254,9 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		Reconnect: views.StreamID,
 		Slow:      edge.SlowLink(r),
 		Ack:       ackEvent(tab), // paced once the page reports it fell behind (pace.go)
+		Build:     r.Header.Get("Page-Build"),
+		Dirty:     r.Header.Get("Page-Dirty") == "true",
+		Refresh:   refresh,
 	}
 	ctx, ended := s.track(r, spec.ID, &openStream{actor: actor, sid: sid, tab: tab, specs: specs})
 	defer ended()
@@ -343,12 +346,33 @@ func unique(list []live.View) []live.View {
 }
 
 // connectedView tells a page that a new stream delivers: its one frame
-// goes out first thing on every stream, and hides "Reconnecting".
+// goes out first thing on every stream, and hides "Reconnecting" and the
+// notice of a server that stopped (Stopping).
 var connectedView = live.View{
 	Key: "connected",
 	Render: func(context.Context, *sql.Tx) (any, error) {
-		return sse.PatchSignals([]byte(`{"_stale":false}`), false), nil
+		return sse.PatchSignals([]byte(`{"_stale":false,"_updating":false}`), false), nil
 	},
+}
+
+// Stopping is live.Options.Stopping: as the hub stops, every page shows
+// "Updating, back in a moment" where it says "Reconnecting", until the
+// next process's stream connects (NFR-42).
+func Stopping(live.Spec) [][]byte {
+	return [][]byte{sse.PatchSignals([]byte(`{"_stale":true,"_updating":true}`), false)}
+}
+
+// refresh is live.Spec.Refresh, for a page that a former build rendered:
+// its views render afresh on the new stream, and the rest of the page
+// offers a reload. It never morphs the page: areas keep their state in
+// signals declared in their markup, and custom elements (the editor, the
+// board) hold more, which a morph would reset or run again.
+func refresh(_ context.Context, rq live.RefreshRequest) ([][]byte, error) {
+	v := `{"_updated":"new"}`
+	if rq.Dirty {
+		v = `{"_updated":"typed"}`
+	}
+	return [][]byte{sse.PatchSignals([]byte(v), false)}, nil
 }
 
 // watchRequest names a view to add to the tab's stream, or to take off it.

@@ -32,6 +32,9 @@ templ Layout(s Shell) {
 			}
 			<link rel="stylesheet" href={ s.CSS }/>
 			@meStyle(s.Me.ID)
+			if s.Ops != "" {
+				<script src={ s.Ops }></script>
+			}
 			@importMap(s)
 			<script type="module" src={ s.JS }></script>
 			<script type="module" src={ s.NewestFrame }></script>
@@ -44,6 +47,7 @@ templ Layout(s Shell) {
 			<span hidden data-effect={ displaySettled + "; " + dismissSettled }></span>
 			<span hidden data-effect={ alive }></span>
 			<span hidden data-effect={ revoked }></span>
+			<span hidden data-on-signal-patch={ opsSynced } data-on-signal-patch-filter={ opsSyncPatches } data-on:visibilitychange__window={ tabHidden } data-on:input__window={ typed }></span>
 			<span hidden data-init={ keepPlace }></span>
 			<span
 				hidden
@@ -71,7 +75,11 @@ templ Layout(s Shell) {
 			<div class="tk-float">
 				@DemoAlert(s.DemoAlert)
 				@ui.Notice(ui.NoticeProps{Tone: ui.ToneWarn, Icon: "clock", Live: true, Class: "tk-reconnecting", Attrs: templ.Attributes{"id": "reconnecting", "hidden": true, "data-attr:hidden": reconnectHidden}}) {
-					<p>Reconnecting…</p>
+					<p data-text={ reconnectText }>Reconnecting…</p>
+				}
+				@ui.Notice(ui.NoticeProps{Tone: ui.ToneInfo, Live: true, Class: "tk-updated", Attrs: templ.Attributes{"id": "updated", "hidden": true, "data-attr:hidden": updatedHidden},
+					Action: ui.Button(ui.ButtonProps{Label: "Reload", Icon: "restore", Size: ui.SizeSM, Attrs: templ.Attributes{"data-on:click": reloadPage}})}) {
+					<p data-text={ updatedText }>tickit has a new version.</p>
 				}
 				@ui.Notice(ui.NoticeProps{Tone: ui.ToneDanger, Class: "tk-problem", Attrs: templ.Attributes{"id": "problem", "role": "alert", "hidden": true, "data-attr:hidden": problemHidden}}) {
 					<p data-text="$_problem"></p>

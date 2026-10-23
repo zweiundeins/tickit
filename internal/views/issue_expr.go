@@ -53,7 +53,10 @@ const curVersion = `+(document.getElementById('issue-main')?.dataset.v || 0)`
 
 // issueSendFn sends field f with value v, seen s and ref r, unless f is
 // pending: a new op id in ops[f], the value kept in want[f] for a retry.
-const issueSendFn = `((f, v, s, r) => (v = ['comment', 'cedit'].includes(f) ? ` + mentionIDs + `(v) : v, !$_is.ro || f === 'comment' || f === 'cedit' || f === 'cdelete') && $_is.ops[f] === '' && ($_is.msg[f] = '', $_is.fail[f] = '', $_is.conflict[f] = false, $_is.want[f] = v, $_is.sent[f] = s, $_is.refs[f] = r, $_is.ops[f] = ` + newOp + `, @post('/cmd/issues/' + $_is.id + '/' + f, {payload: {tab: $_tab, op: $_is.ops[f], seen: s, value: v, ref: r}, retryMaxCount: 2})))`
+const issueSendFn = `((f, v, s, r) => (v = ['comment', 'cedit'].includes(f) ? ` + mentionIDs + `(v) : v, !$_is.ro || f === 'comment' || f === 'cedit' || f === 'cdelete') && $_is.ops[f] === '' && ($_is.msg[f] = '', $_is.fail[f] = '', $_is.conflict[f] = false, $_is.want[f] = v, $_is.sent[f] = s, $_is.refs[f] = r, $_is.ops[f] = ` + newOp + `, ` + issuePost + `))`
+
+// issuePost sends field f's pending op.
+const issuePost = `tkOps.send($_is.ops[f], @post('/cmd/issues/' + $_is.id + '/' + f, {payload: {tab: $_tab, op: $_is.ops[f], seen: $_is.sent[f], value: $_is.want[f], ref: $_is.refs[f]}, requestCancellation: 'disabled', retryMaxCount: 2}))`
 
 // menuOpened keeps the version a menu showed when it opened: a choice in
 // it sends that version, so a change someone made while the menu was open
@@ -78,7 +81,7 @@ const issuePickFocus = `evt.target.closest?.('[data-act=pick]') && !evt.target.c
 
 // issueRetry sends field f's request that reached no outcome again with
 // its op id, so that it applies once (MP-09.3, MP-09.4).
-const issueRetryFn = `((f) => $_is.ops[f] === '' && $_is.last[f] !== '' && ($_is.fail[f] = '', $_is.ops[f] = $_is.last[f], @post('/cmd/issues/' + $_is.id + '/' + f, {payload: {tab: $_tab, op: $_is.ops[f], seen: $_is.sent[f], value: $_is.want[f], ref: $_is.refs[f]}, retryMaxCount: 2})))`
+const issueRetryFn = `((f) => $_is.ops[f] === '' && $_is.last[f] !== '' && ($_is.fail[f] = '', $_is.ops[f] = $_is.last[f], ` + issuePost + `))`
 
 // issueAnywayFn sends field f's refused value again against the version
 // the conflict reports (MP-08.3: "Use Critical anyway").
@@ -178,6 +181,10 @@ const issueSettle = `Object.keys($_is.ops).forEach(f => {
 		if (f === 'pagelink') { $_is.pq = ''; document.getElementById('` + PagePickID + `')?.replaceChildren() }
 		if (f === 'cedit') $_is.cedit = ''
 		if (f === 'delete') document.getElementById('issue-delete')?.close()
+	} else if (o.failed) {
+		// It ran nowhere (tabs.Notice): Retry sends it again as a new op.
+		$_is.last[f] = ` + newOp + `
+		$_is.fail[f] = o.msg
 	} else {
 		$_is.msg[f] = o.msg || 'This was refused.'
 		$_is.conflict[f] = o.data && o.data.kind === 'conflict' ? o.data : false
@@ -188,14 +195,14 @@ const issueSettle = `Object.keys($_is.ops).forEach(f => {
 })`
 
 // issueFailed, on data-on:datastar-fetch, marks the field of a request
-// that reached no outcome (network, rate limit, a restart): "This did not
-// go through" with Retry, and the person's input stays (MP-09.3). A 403
-// brings its reason on the stream like any refusal. A request the frame's
-// delegated handler sent marks every pending field: a retry sends the
-// same op, which applies once.
+// that reached no outcome and that nothing on the stream will end (Ended):
+// the page's words with Retry, and the person's input stays (MP-09.3). A
+// rate limit or a restart comes as a notice, which issueSettle marks the
+// same way. A request the frame's delegated handler sent marks every
+// pending field: a retry sends the same op, which applies once.
 const issueFailed = `((d) => {
-	if (!['error', 'retries-failed'].includes(d.type) || d.argsRaw.status === '403' || !d.el?.closest?.('#issue')) return
-	const msg = d.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : d.argsRaw.status === '503' ? ` + Unavailable + ` : 'This did not go through.'
+	if (!` + Ended + ` || !d.el?.closest?.('#issue')) return
+	const msg = ` + problem + `
 	const f = d.el.dataset.field
 	for (const g of f && f in $_is.ops ? [f] : Object.keys($_is.ops)) if ($_is.ops[g] !== '') { $_is.last[g] = $_is.ops[g]; $_is.ops[g] = ''; $_is.fail[g] = msg }
 })(evt.detail)`
@@ -324,9 +331,9 @@ const (
 // issue is $_goto (the issue's page) or, on a page with the issue panel,
 // $_new.created, which opens the new issue in the panel.
 const (
-	createSubmit = `$_new.op === '' && ($_new.msg = '', $_new.field = '', $_new.fail = '', $_new.created = '', $_new.op = ` + newOp + `, @post('/cmd/issues/create', {payload: {tab: $_tab, op: $_new.op, project: $_new.project, type: $_new.type, summary: $_new.summary, description: $_new.description, priority: $_new.priority, assignee: $_new.assignee, labels: $_new.labels, parent: $_new.parent, status: $_new.status, stay: !!document.getElementById('issue-panel')}, retryMaxCount: 2}))`
-	createSettle = `$_new.op !== '' && $_outcomes[$_new.op] && ((o) => { $_new.op = ''; if (!o.ok) { $_new.msg = o.msg || 'This was refused.'; $_new.field = o.field || '' } })($_outcomes[$_new.op])`
-	createFailed = `evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && evt.detail.argsRaw.status !== '403' && ($_new.op = '', $_new.fail = evt.detail.argsRaw.status === '429' ? 'Too many changes at once. Wait a moment.' : 'This did not go through.')`
+	createSubmit = `$_new.op === '' && ($_new.msg = '', $_new.field = '', $_new.fail = '', $_new.created = '', $_new.op = ` + newOp + `, tkOps.send($_new.op, @post('/cmd/issues/create', {payload: {tab: $_tab, op: $_new.op, project: $_new.project, type: $_new.type, summary: $_new.summary, description: $_new.description, priority: $_new.priority, assignee: $_new.assignee, labels: $_new.labels, parent: $_new.parent, status: $_new.status, stay: !!document.getElementById('issue-panel')}, requestCancellation: 'disabled', retryMaxCount: 2})))`
+	createSettle = `$_new.op !== '' && $_outcomes[$_new.op] && ((o) => { $_new.op = ''; if (o.failed) $_new.fail = o.msg; else if (!o.ok) { $_new.msg = o.msg || 'This was refused.'; $_new.field = o.field || '' } })($_outcomes[$_new.op])`
+	createFailed = `evt.detail.el === el && ` + Ended + ` && ($_new.op = '', $_new.fail = ` + problem + `)`
 	createdOpen  = `$_new.created && ((c) => { $_new.created = ''; $_new.summary = ''; $_new.description = ''; $_new.labels = ''; $_new.parent = ''; el.close(); const a = Object.assign(document.createElement('a'), {href: '/' + c.split(' ')[1]}); a.setAttribute('` + IssueLink + `', c.split(' ')[0]); a.hidden = true; document.body.append(a); a.click(); a.remove() })($_new.created)`
 	createBusy   = `$_new.op !== '' ? 'true' : false`
 	createType   = `evt.target.name === 'type' && ($_new.type = evt.target.value)`
