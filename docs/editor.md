@@ -29,7 +29,7 @@ The `limits` object of schema.json holds DM-05's and DM-06's numbers, which the 
 
 ## HTML of a document
 
-The Go renderer (reader view, comments, descriptions, versions) and the browser's `toDOM` produce the same elements, so one stylesheet (`static/css/prose.css`) styles both. The container is `<div class="prose">`. `docnodes.RenderHTML` renders the blocks, with a renderer per node type on prosemirror-go's `HTML`; the caller writes the container. Every text and attribute is escaped.
+The Go renderer (reader view, comments, descriptions, versions) and the browser's `toDOM` produce the same elements, so one stylesheet (`static/css/prose.css`) styles both. The container is `<div class="prose">`. `docnodes.RenderHTML` renders the blocks, with a renderer per node type on prosemirror-go's `HTML`; the caller writes the container. The reader view's `docnodes.BlockCache` keeps each top-level block's HTML until the block changes or one of its atoms shows something else (`HTML.DynamicKey`: a chip's issue, a mention's name and face, a page link's title, a hidden image, an issue list's rows), so an issue's new status renders the blocks that show it and no others (`BenchmarkReaderChip*`: 114 µs for a page of 161 blocks before, 39 µs after; a frame while typing costs 45 µs instead of 35 µs, for the keys). Every text and attribute is escaped.
 
 | Node or mark | HTML |
 | --- | --- |
@@ -137,6 +137,7 @@ What anchors cost instead, and how it is paid:
 
 The rest is a page comment's: an inline comment is a comment with the subject `page` (its body, replies one level deep, edit, delete, hide by a moderator, search, the watchers' notifications, the feeds) plus its stream `inline`, keyed by the comment's id, with `inline.anchored`, `.resolved` and `.reopened` (`ResolveInline`, `POST /cmd/pages/comment/resolve {comment, resolved}`, anyone who may comment). The page's comments below it leave inline ones out.
 
+- **Text only.** coedit and prosemirror-go can also anchor a comment to a node by a stable id (`IDs`, `idPlugin`); no node type of tickit carries one. Adding an id attribute to the image or the issue list would rewrite the JSON of every stored document that holds one, and a restore of a version from before would be refused by the id rule, so the requirements' comments on selected text stay the only kind.
 - **Readers.** The reader view renders the head with `docnodes.RenderHighlighted`: the text of each open comment (not resolved, hidden, deleted or detached) in `<mark class="tk-ic" data-c="<ids>">`, atoms left alone; the block cache renders a block again when the highlights inside it change. The editor's decorations make the same element.
 - **The list.** The shared view `inline:<page>` (topics `inline:<page>`, which every inline comment, every comment on the page and every detached anchor touches, and `people`) renders `#page-inline`: the comments on text in the order of the text, then the detached ones, then the resolved ones folded away. It sits beside the text from a page 64rem wide, and below it on a narrower one.
 - **Versions and compare** render their documents as before, without highlights: anchors belong to the head, so a resolved or detached comment never reaches an old version's render.
