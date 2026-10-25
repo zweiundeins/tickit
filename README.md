@@ -32,7 +32,7 @@ Open [tickit.zweiundeins.gmbh](https://tickit.zweiundeins.gmbh) in two windows, 
 
 ## Develop
 
-You need Go 1.27.3 (`go` fetches it with `GOTOOLCHAIN=auto`). No Node: the editor's bundle is committed.
+You need Go 1.27.3 (`go` fetches it with `GOTOOLCHAIN=auto`). No Node: the editor's bundle is committed. Until prosemirror-go and coedit are published, check them out beside this repository (`../prosemirror-go`, `../coedit`): go.mod replaces them with those paths.
 
 ```sh
 go tool task dev     # http://127.0.0.1:8080, seeded on first start, rebuilt on every change
@@ -98,15 +98,16 @@ On a development machine (i5-13500), against the built binary with 10,000 issues
 | Path | What it holds |
 | --- | --- |
 | `cmd/tickit` | the binary: `serve`, `backup`, `seed`, `account create`, `migrations-pending` |
-| `internal/` | domain packages (`people`, `access`, `tabs`, `tracker`, `wiki`, `collab`, `doc`, `markup`, `search`, `notify`, `activity`, `dashboards`, `recent`, `images`, `demo`), the design system (`ui`), the pages (`views`) and the server (`web`) |
+| `internal/` | domain packages (`people`, `access`, `tabs`, `tracker`, `wiki`, `docnodes`, `editing`, `markup`, `search`, `notify`, `activity`, `dashboards`, `recent`, `images`, `demo`), the design system (`ui`), the pages (`views`) and the server (`web`) |
 | `editor/` | the source of the `sb-rich-editor` component; its bundle is committed in `internal/web/static/editor/` |
+| `../prosemirror-go`, `../coedit` | not in this repository: the Go port of ProseMirror's model and steps, and co-editing for lith apps (Go package `collab`, the editor's shared JavaScript), which go.mod replaces with local checkouts until they are published |
 | `e2e/` | browser tests of the multiplayer criteria |
 | `cmd/tickit-load`, `benchmarks/` | the load test and the measured numbers |
 | `cmd/vendor-starbase` | copies the pinned Starbase components and fonts into `internal/web/static` |
 
 ## Credits
 
-Built on [lith](https://github.com/zweiundeins/lith), with components from [Starbase](https://github.com/zweiundeins/starbase) and the pattern of lith's board, Town in time and cursor party demos. The editor is [ProseMirror](https://prosemirror.net) with the commit protocol of [prosemirror-collab-commit](https://github.com/stepwisehq/prosemirror-collab-commit).
+Built on [lith](https://github.com/zweiundeins/lith), [prosemirror-go](https://github.com/zweiundeins/prosemirror-go) and [coedit](https://github.com/zweiundeins/coedit), with components from [Starbase](https://github.com/zweiundeins/starbase) and the pattern of lith's board, Town in time and cursor party demos. The editor is [ProseMirror](https://prosemirror.net) with the commit protocol of [prosemirror-collab-commit](https://github.com/stepwisehq/prosemirror-collab-commit).
 
 ## Licences
 
