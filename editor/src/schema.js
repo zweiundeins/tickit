@@ -6,6 +6,7 @@
 // Nothing here touches the DOM until ProseMirror parses or serialises, so the
 // test authority builds the same schema in a worker.
 import { Schema } from 'prosemirror-model'
+import { schemaSpec } from 'coedit'
 import spec from '../../internal/docnodes/schema.json' with { type: 'json' }
 
 export { spec }
@@ -291,11 +292,7 @@ const DOM = {
 // buildSchema returns the schema of spec; with dom false, without the DOM
 // rules (what the server sees).
 export function buildSchema({ dom = true } = {}) {
-	const nodes = {}
-	for (const { name, ...n } of spec.nodes) nodes[name] = dom ? { ...n, ...DOM.nodes[name] } : n
-	const marks = {}
-	for (const { name, ...m } of spec.marks) marks[name] = dom ? { ...m, ...DOM.marks[name] } : m
-	return new Schema({ nodes, marks, topNode: spec.topNode })
+	return new Schema(schemaSpec(spec, dom ? DOM : {}))
 }
 
 export const schema = buildSchema()
