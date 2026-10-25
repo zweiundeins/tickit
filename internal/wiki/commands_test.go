@@ -16,6 +16,7 @@ import (
 	"github.com/zweiundeins/tickit/internal/collab"
 	"github.com/zweiundeins/tickit/internal/search"
 	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/migrations"
 )
 
 func TestCreateSpace(t *testing.T) {
@@ -439,6 +440,38 @@ func TestFoldTrashedPage(t *testing.T) {
 	e.must(DeletePage{By: e.by(admin), Page: b})
 	if n := e.row(uncut, b); n != "0" {
 		t.Errorf("%s uncut rows of a deleted page", n)
+	}
+}
+
+// NFR-43.1: migration 089 deletes the rows that trashed and deleted pages
+// kept before TrashPage released them, and keeps those of current pages.
+func TestMigrationReleasesGonePages(t *testing.T) {
+	e := newEnv(t)
+	sp, _ := e.space("ENG", true)
+	var ids []string
+	for _, title := range []string{"Current", "Trashed", "Deleted"} {
+		p := e.page(sunny, CreatePage{Space: sp, Title: title})
+		e.commit(sunny, p, 1, title, steps(insert(1, "x")))
+		ids = append(ids, p)
+	}
+	e.must(TrashPage{By: e.by(sunny), Page: ids[1]})
+	e.must(TrashPage{By: e.by(sunny), Page: ids[2]})
+	e.must(DeletePage{By: e.by(admin), Page: ids[2]})
+	sqlText, err := migrations.FS.ReadFile("089_collab_uncut_gone.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.must(writer.Func(func(tx *writer.Tx) error {
+		for _, id := range ids[1:] { // as a commit before the trash left them
+			if _, err := tx.Exec(`INSERT OR REPLACE INTO collab_uncut (kind, id, at) VALUES ('pagedoc', ?, 0)`, id); err != nil {
+				return err
+			}
+		}
+		_, err := tx.Exec(string(sqlText))
+		return err
+	}))
+	if got := e.row(`SELECT group_concat(id) FROM collab_uncut WHERE kind = 'pagedoc'`); got != ids[0] {
+		t.Errorf("uncut rows %q, want %q", got, ids[0])
 	}
 }
 

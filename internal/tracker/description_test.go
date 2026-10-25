@@ -16,6 +16,7 @@ import (
 	"github.com/zweiundeins/tickit/internal/collab"
 	"github.com/zweiundeins/tickit/internal/doc"
 	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/migrations"
 )
 
 // insert is a step that inserts text at pos.
@@ -296,6 +297,37 @@ func TestDescriptionFoldGoneIssue(t *testing.T) {
 	e.commitDesc(sunny, hidden, e.descState(hidden).Version, "h2", steps(insert(1, "z")))
 	if n := e.row(uncut, hidden); n != "1" {
 		t.Errorf("%s uncut rows after a commit to an unhidden issue", n)
+	}
+}
+
+// NFR-43.1: migration 089 deletes the rows that deleted and hidden issues
+// kept, and keeps those of the others.
+func TestMigrationReleasesGoneIssues(t *testing.T) {
+	e := newEnv(t)
+	p := e.project("WEB", true)
+	var ids []string
+	for _, s := range []string{"Kept", "Deleted", "Hidden"} {
+		id := e.issue(sunny, CreateIssue{Project: p, Description: PlainDoc(s)})
+		e.commitDesc(sunny, id, 1, s, steps(insert(1, "x")))
+		ids = append(ids, id)
+	}
+	e.must(DeleteIssue{By: e.by(moderator), Issue: ids[1]})
+	e.must(HideIssue{By: e.by(moderator), Issue: ids[2], Hidden: true})
+	sqlText, err := migrations.FS.ReadFile("089_collab_uncut_gone.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.must(writer.Func(func(tx *writer.Tx) error {
+		for _, id := range ids[1:] { // as a commit before the delete left them
+			if _, err := tx.Exec(`INSERT OR REPLACE INTO collab_uncut (kind, id, at) VALUES ('issuedoc', ?, 0)`, id); err != nil {
+				return err
+			}
+		}
+		_, err := tx.Exec(string(sqlText))
+		return err
+	}))
+	if got := e.row(`SELECT group_concat(id) FROM collab_uncut WHERE kind = 'issuedoc'`); got != ids[0] {
+		t.Errorf("uncut rows %q, want %q", got, ids[0])
 	}
 }
 
