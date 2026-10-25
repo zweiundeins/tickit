@@ -667,17 +667,9 @@ class Editor {
 	// --- Host API ---------------------------------------------------------
 
 	insertNode(type, attrs) {
-		if (!this.editable()) return false
-		let node
-		try {
-			node = schema.nodes[type].create(attrs)
-			node.check()
-		} catch {
-			return false
-		}
-		this.view.dispatch(this.view.state.tr.replaceSelectionWith(node).scrollIntoView())
-		return true
+		return this.session.insertNode(type, attrs)
 	}
+
 
 	// --- Issue lists (FR-104): rows from the page's lists element ---------
 
