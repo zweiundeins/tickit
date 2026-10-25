@@ -220,7 +220,7 @@ const (
 	DescBodyID   = "issue-desc-body"
 	DescEditorID = "issue-desc-editor"
 
-	descEditorSignals = `{_editor: {status: 'saved', stopped: '', unsaved: 0, problem: ''}, _carets: '[]', _pick: {kind: '', q: '', label: ''}}`
+	descEditorSignals = `{_editor: {status: 'saved', stopped: '', unsaved: 0, problem: ''}, _carets: '[]', _edchips: '{}', _edcomments: '', _pick: {kind: '', q: '', label: ''}}`
 	descOpen          = `($_is.desc = true, $_editor.status = 'saved', $_editor.stopped = '', $_editor.problem = '', @get('/issues/' + $_is.id + '/description/editor', {retry: 'error', retryMaxCount: 5}))`
 	descEditFn        = `!$_is.ro && $_is.at === 0 && !$_is.desc && (document.getElementById('issue-panel') ? location.assign('/' + $_is.key + '?edit=description') : ` + descOpen + `)`
 	descEditInit      = `!$_is.ro && new URLSearchParams(location.search).get('edit') === 'description' && ` + descOpen

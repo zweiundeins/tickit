@@ -49,6 +49,8 @@ func (s *Server) routesEditor() {
 	s.post("POST /cmd/pages/{id}/presence", s.presence)
 	s.views.Register("editor", s.editorView)
 	s.views.Register("carets", s.caretsView)
+	s.views.Register("editchips", s.editorChipsView)
+	s.views.Register("editcomments", s.editorCommentsView)
 	s.views.Register("pagetitle", s.titleView)
 }
 
@@ -104,7 +106,7 @@ func (s *Server) editorPage(w http.ResponseWriter, r *http.Request) {
 		}
 		return Page{
 			Title: "Editing " + p.Title, Nav: "spaces", Sidebar: sidebar, SidebarLabel: "Space",
-			Views:      []string{"pagepeople:" + p.ID, "carets:" + p.ID, "pagetitle:" + p.ID, "inline:" + p.ID, "tree:" + p.ID, "pagelists:" + p.ID},
+			Views:      []string{"pagepeople:" + p.ID, "carets:" + p.ID, "editchips:" + p.ID, "editcomments:" + p.ID, "pagetitle:" + p.ID, "inline:" + p.ID, "tree:" + p.ID, "pagelists:" + p.ID},
 			Scripts:    []string{"editor/sb-rich-editor.min.js", inlineScript, views.TreeScript},
 			Components: treeComponents,
 			Body:       views.EditorPage(views.EditorProps{PageProps: props, Host: host}),
@@ -204,7 +206,8 @@ func (s *Server) openEditor(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	res, ok := s.run(w, r, a, wiki.OpenEditor{By: a.By, Session: a.Session, Tab: a.Tab, Page: page, Base: req.Base, Client: req.Client})
+	spec := wiki.EditorView(page, a.Tab)
+	res, ok := s.runWatching(w, r, a, wiki.OpenEditor{By: a.By, Session: a.Session, Tab: a.Tab, Page: page, Base: req.Base, Client: req.Client}, []tabs.Watched{{View: spec, Key: spec}})
 	switch {
 	case !ok:
 		return
@@ -213,12 +216,6 @@ func (s *Server) openEditor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	if res.OK {
-		if err := s.w.Do(ctx, writer.Func(func(tx *writer.Tx) error { return wiki.WatchEditor(tx, a.Session, a.Tab, page, time.Now()) })); err != nil {
-			s.failAction(w, r, err)
-			return
-		}
-	}
 	vs, err := s.db.ViewValue(ctx, func(tx *sql.Tx) ([]live.View, error) {
 		return s.resolve(ctx, tx, a.By.Actor, wiki.EditorView(page, a.Tab))
 	})
@@ -344,8 +341,8 @@ func (s *Server) presence(w http.ResponseWriter, r *http.Request) {
 }
 
 // editorView is one editing tab's view (docs/editor.md): it patches the
-// host with every commit after the tab's acknowledged version, the chips
-// and the tab's state, so a skipped frame loses nothing (MP-05.9). Its
+// host with every commit after the tab's acknowledged version and the
+// tab's state (the chips and comments are the page's shared views), so a skipped frame loses nothing (MP-05.9). Its
 // arg is "<page>.<tab>"; only the tab's person may watch it.
 func (s *Server) editorView(ctx context.Context, q sqlite.Querier, actor people.Person, arg string) (live.View, error) {
 	page, tab, _ := strings.Cut(arg, ".")
@@ -359,20 +356,20 @@ func (s *Server) editorView(ctx context.Context, q sqlite.Querier, actor people.
 		// The person too: another who names the tab id gets a view of
 		// their own, never the tab's (NFR-02.3).
 		Key:    wiki.EditorView(page, tab) + "." + actor.ID,
-		Topics: []string{wiki.DocTopic(page), wiki.ChipsTopic(page), wiki.PageTopic(page), wiki.InlineTopic(page), wiki.EditorTopic(tab), people.Topic},
-		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
+		Topics: []string{wiki.DocTopic(page), wiki.PageTopic(page), wiki.EditorTopic(tab)},
+		Render: timed(EditorRenders, func(ctx context.Context, tx *sql.Tx) (any, error) {
 			host, err := editorHost(ctx, querier(ctx, tx), actor, page, tab)
 			if err != nil {
 				return nil, err
 			}
 			return patch(ctx, views.EditorHostEl(host))
-		},
+		}),
 	}, nil
 }
 
 // editorHost is the host element of a tab's frame.
 func editorHost(ctx context.Context, q sqlite.Querier, actor people.Person, page, tab string) (views.EditorHost, error) {
-	host := views.EditorHost{Page: page, Batches: "[]", Chips: "{}", Images: imagesJSON(), State: "ok"}
+	host := views.EditorHost{Page: page, Batches: "[]", State: "ok"}
 	row, err := wiki.Editor(ctx, q, tab, actor.ID)
 	if err != nil || row.ID != page {
 		host.State = "reset" // the tab's row is gone: a reset, or a sweep
@@ -410,16 +407,70 @@ func editorHost(ctx context.Context, q sqlite.Querier, actor people.Person, page
 		return host, err
 	}
 	host.Batches = string(b)
-	if host.Chips, err = chipsJSON(ctx, q, h.Doc); err != nil {
-		return host, err
-	}
-	if host.Comments, err = commentsJSON(ctx, q, page, h.Version); err != nil {
-		return host, err
-	}
 	if isPaused || !canIn(ctx, q, actor, access.EditIssues, p.Space) {
 		host.State, host.Readonly = "readonly", true
 	}
 	return host, nil
+}
+
+// editorChipsView is what the chips, mentions and page links of a page's
+// head show, shared by its editors as the signal $_edchips, which each
+// host's chips attribute follows: one render a commit for every tab.
+func (s *Server) editorChipsView(ctx context.Context, q sqlite.Querier, actor people.Person, arg string) (live.View, error) {
+	p, _, err := readable(ctx, q, actor, arg)
+	if err != nil {
+		return live.View{}, err
+	}
+	return live.View{
+		Key:    "editchips:" + p.ID,
+		Topics: []string{wiki.DocTopic(p.ID), wiki.ChipsTopic(p.ID), people.Topic},
+		Render: timed(EditorRenders, func(ctx context.Context, tx *sql.Tx) (any, error) {
+			q := querier(ctx, tx)
+			h, err := wiki.HeadOf(ctx, q, p.ID)
+			if err != nil {
+				return nil, nil
+			}
+			return chipsSignal(ctx, q, h.Doc)
+		}),
+	}, nil
+}
+
+// chipsSignal is the signal $_edchips of a head document's chips.
+func chipsSignal(ctx context.Context, q sqlite.Querier, d prosemirror.Doc) ([]byte, error) {
+	chips, err := chipsJSON(ctx, q, d)
+	if err != nil {
+		return nil, err
+	}
+	sig, _ := json.Marshal(map[string]string{"_edchips": chips})
+	return sse.PatchSignals(sig, false), nil
+}
+
+// editorCommentsView is the inline comments' ranges at a page's head
+// (FR-91), shared by its editors as $_edcomments, which each host's
+// comments attribute follows; their version places them whichever frame
+// comes first.
+func (s *Server) editorCommentsView(ctx context.Context, q sqlite.Querier, actor people.Person, arg string) (live.View, error) {
+	p, _, err := readable(ctx, q, actor, arg)
+	if err != nil {
+		return live.View{}, err
+	}
+	return live.View{
+		Key:    "editcomments:" + p.ID,
+		Topics: []string{wiki.DocTopic(p.ID), wiki.InlineTopic(p.ID)},
+		Render: timed(EditorRenders, func(ctx context.Context, tx *sql.Tx) (any, error) {
+			q := querier(ctx, tx)
+			h, err := wiki.HeadOf(ctx, q, p.ID)
+			if err != nil {
+				return nil, nil
+			}
+			marks, err := commentsJSON(ctx, q, p.ID, h.Version)
+			if err != nil {
+				return nil, err
+			}
+			sig, _ := json.Marshal(map[string]string{"_edcomments": marks})
+			return sse.PatchSignals(sig, false), nil
+		}),
+	}, nil
 }
 
 // caretsView is the carets of a page's editors (MP-06), shared by them
@@ -437,14 +488,14 @@ func (s *Server) caretsView(ctx context.Context, q sqlite.Querier, actor people.
 		Topics:   []string{wiki.CaretsTopic(p.ID), people.Topic},
 		Presence: true,
 		Every:    10 * time.Second, // idle carets hide their names
-		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
+		Render: timed(EditorRenders, func(ctx context.Context, tx *sql.Tx) (any, error) {
 			q := querier(ctx, tx)
 			rows, err := wiki.Editors(ctx, q, p.ID)
 			if err != nil {
 				return nil, err
 			}
 			return s.caretsSignal(ctx, q, key, rows)
-		},
+		}),
 	}, nil
 }
 
@@ -665,10 +716,32 @@ type Times struct {
 	list []time.Duration
 	next int
 	n    int64
+	sum  time.Duration
 }
 
 // CommitTimes are the writer's times of the newest commits.
 var CommitTimes = &Times{}
+
+// EditorRenders are the render times of the editor's views: the editing
+// tabs' own and the shared ones (carets, chips, comments), for the render
+// time per commit of the load (benchmarks/RESULTS.md).
+var EditorRenders = &Times{}
+
+// timed records how long render takes in t.
+func timed(t *Times, render func(ctx context.Context, tx *sql.Tx) (any, error)) func(ctx context.Context, tx *sql.Tx) (any, error) {
+	return func(ctx context.Context, tx *sql.Tx) (any, error) {
+		start := time.Now()
+		defer func() { t.Observe(time.Since(start)) }()
+		return render(ctx, tx)
+	}
+}
+
+// Sum is the total of every duration observed.
+func (t *Times) Sum() time.Duration {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.sum
+}
 
 // Observe records a duration.
 func (t *Times) Observe(d time.Duration) {
@@ -681,6 +754,7 @@ func (t *Times) Observe(d time.Duration) {
 		t.next = (t.next + 1) % len(t.list)
 	}
 	t.n++
+	t.sum += d
 }
 
 // Percentiles returns how many were observed and the p50, p95 and max of
@@ -700,6 +774,6 @@ func (t *Times) Percentiles() (n int64, p50, p95, max time.Duration) {
 // Reset forgets every duration.
 func (t *Times) Reset() {
 	t.mu.Lock()
-	t.list, t.next, t.n = nil, 0, 0
+	t.list, t.next, t.n, t.sum = nil, 0, 0, 0
 	t.mu.Unlock()
 }

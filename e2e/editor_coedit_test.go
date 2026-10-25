@@ -339,3 +339,17 @@ func breakdown(t *testing.T, pages []*browsertest.Page, typed [][]int64, letters
 	}
 	t.Logf("breakdown: keystroke to its commit %s; commit to the frame at the others %s; frame to the text %s", pct(wait), pct(wire), pct(apply))
 }
+
+// withChips gives a page k paragraphs of issue chips and mentions below an
+// empty one the load types into, as a real page has (LOAD_CHIPS).
+func (s *realServer) withChips(t testing.TB, page string, k int) {
+	t.Helper()
+	blocks := []string{`{"type":"paragraph"}`}
+	for i := 0; i < k; i++ {
+		blocks = append(blocks, fmt.Sprintf(`{"type":"paragraph","content":[{"type":"text","text":"see "},{"type":"issue_chip","attrs":{"key":"WEB-%d"}},{"type":"text","text":" with "},{"type":"mention","attrs":{"personId":%q,"label":"Ada"}}]}`, i+1, people.Seeded[0].ID))
+	}
+	doc := `{"type":"doc","content":[` + strings.Join(blocks, ",") + `]}`
+	if err := s.do(wiki.SetDocument{By: tabs.By{Actor: people.Seeded[0], Op: "chips", At: time.Now()}, Page: page, Doc: json.RawMessage(doc)}); err != nil {
+		t.Fatal(err)
+	}
+}

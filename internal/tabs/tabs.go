@@ -214,6 +214,10 @@ type Act struct {
 	// Note, when set, turns the result of a Cmd that went through into
 	// its outcome's message and data: what a bulk edit refused (FR-58.2).
 	Note func(result []byte) (msg string, data json.RawMessage)
+	// Watch are views the tab's stream watches once Cmd went through,
+	// recorded in its row with the outcome, so that a stream that
+	// reconnects watches them again (AddWatched).
+	Watch []Watched
 }
 
 func (a Act) Validate() error {
@@ -283,6 +287,11 @@ func (a Act) ApplyResult(tx *writer.Tx) ([]byte, error) {
 	case a.Note != nil:
 		o.Msg, o.Data = a.Note(value)
 	}
+	if mark == markOK {
+		for _, v := range a.Watch {
+			state.watch(v)
+		}
+	}
 	state.record(o)
 	if err := Save(tx, a.Session, a.Tab, state, a.By.At); err != nil {
 		return nil, err
@@ -313,13 +322,20 @@ func AddWatched(tx *writer.Tx, sid, tab string, v Watched, at time.Time) (droppe
 	if err != nil {
 		return nil, err
 	}
+	dropped = s.watch(v)
+	return dropped, Save(tx, sid, tab, s, at)
+}
+
+// watch adds v to the watched views, keeping MaxWatched, and returns the
+// keys it dropped.
+func (s *State) watch(v Watched) (dropped []string) {
 	s.Watched = slices.DeleteFunc(s.Watched, func(w Watched) bool { return w.Key == v.Key })
 	s.Watched = append(s.Watched, v)
 	for len(s.Watched) > MaxWatched {
 		dropped = append(dropped, s.Watched[0].Key)
 		s.Watched = s.Watched[1:]
 	}
-	return dropped, Save(tx, sid, tab, s, at)
+	return dropped
 }
 
 // RemoveWatched records that a tab's stream no longer watches the view key.

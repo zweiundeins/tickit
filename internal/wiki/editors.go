@@ -25,7 +25,8 @@ func EditorView(page, tab string) string { return "editor:" + page + "." + tab }
 
 // OpenEditor starts editing a page in a tab: the tab's row in
 // page_editors, acknowledging version Base (the one its page rendered)
-// (docs/editor.md). A Member does (FR-86.1). WatchEditor records its view.
+// (docs/editor.md). A Member does (FR-86.1); the action records its view
+// in the tab's row (tabs.Act's Watch).
 type OpenEditor struct {
 	By           tabs.By
 	Session, Tab string
@@ -49,14 +50,6 @@ func (c OpenEditor) Apply(tx *writer.Tx) error {
 		return err
 	}
 	return pageDocs.Open(tx, collab.Open{Session: c.Session, Tab: c.Tab, ID: c.Page, Person: c.By.Actor.ID, Base: c.Base, Client: c.Client, At: at(c.By)})
-}
-
-// WatchEditor records the tab's editor view in its row, so a stream that
-// reconnects watches it again. Run it after OpenEditor's tabs.Act, which
-// saves the row it read before its command.
-func WatchEditor(tx *writer.Tx, session, tab, page string, at time.Time) error {
-	_, err := tabs.AddWatched(tx, session, tab, tabs.Watched{View: EditorView(page, tab), Key: EditorView(page, tab)}, at)
-	return err
 }
 
 // CloseEditor ends a tab's editing: its row goes, and with it its caret.

@@ -12,7 +12,7 @@ import (
 // data-cmd says where: /cmd/pages/<id> for a page, /cmd/issues/<id>/
 // description for an issue's description (an id the server made).
 const (
-	editorSignals = `{_editor: {status: 'saved', stopped: '', unsaved: 0, problem: '', reason: ''}, _carets: '[]', _wkTitle: '',` +
+	editorSignals = `{_editor: {status: 'saved', stopped: '', unsaved: 0, problem: '', reason: ''}, _carets: '[]', _edchips: '{}', _edcomments: '', _wkTitle: '',` +
 		` _title: {focus: false, op: '', msg: ''}, _pick: {kind: '', q: '', label: ''}}`
 	editorCommit = `@post(el.dataset.cmd + '/commit', {payload: {...evt.detail, tab: $_tab, client: el.getAttribute('client')}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0})` +
 		`.then(() => el.posted(evt.detail.ref, true), () => el.posted(evt.detail.ref, false))`
@@ -152,9 +152,11 @@ templ EditorPage(p EditorProps) {
 }
 
 // EditorHostEl is the sb-rich-editor element (docs/editor.md, "Editor
-// frame"). carets come from the page's shared carets view through
-// $_carets, which data-preserve-attr keeps through the tab's frames, as it
-// keeps tab, which the editor's image uploads carry (FR-85).
+// frame"). carets, chips and comments come from the page's shared views
+// through $_carets, $_edchips and $_edcomments, which data-preserve-attr
+// keeps through the tab's frames, as it keeps tab, which the editor's
+// image uploads carry (FR-85), and images, which only the GET renders.
+// The tab's own frames bring the batches, the state and the refusal.
 templ EditorHostEl(h EditorHost) {
 	<sb-rich-editor
 		id={ EditorID }
@@ -165,11 +167,14 @@ templ EditorHostEl(h EditorHost) {
 		base={ i64(h.Base) }
 		head={ i64(h.Head) }
 		batches={ h.Batches }
-		chips={ h.Chips }
-		comments={ h.Comments }
+		if h.Doc != "" {
+			chips={ h.Chips }
+			comments={ h.Comments }
+			images={ h.Images }
+			data-signals={ h.signals() }
+		}
 		state={ h.State }
 		refusal={ h.Refusal }
-		images={ h.Images }
 		upload={ h.cmd() + "/image" }
 		label={ h.label() }
 		lists={ h.lists() }
@@ -177,8 +182,10 @@ templ EditorHostEl(h EditorHost) {
 		if h.Readonly {
 			readonly
 		}
-		data-preserve-attr="carets tab"
+		data-preserve-attr="carets tab chips comments images"
 		data-attr:carets="$_carets"
+		data-attr:chips="$_edchips"
+		data-attr:comments="$_edcomments"
 		data-attr:tab="$_tab"
 		data-init={ editorOpen }
 		data-on:sb-commit={ editorCommit }

@@ -2,6 +2,7 @@ package views
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"strings"
 	"time"
@@ -197,6 +198,14 @@ type EditorHost struct {
 	// Cmd is where its commits, presence and open go: /cmd/pages/<id>
 	// when empty. Label names its text area: "Page content" when empty.
 	Cmd, Label string
+}
+
+// signals are the chips and comments the page's GET renders the host
+// with; the shared views editchips and editcomments (desc-chips) bring
+// them after (docs/editor.md).
+func (h EditorHost) signals() string {
+	b, _ := json.Marshal(map[string]string{"_edchips": h.Chips, "_edcomments": h.Comments})
+	return string(b)
 }
 
 func (h EditorHost) cmd() string {

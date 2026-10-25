@@ -46,6 +46,7 @@ func (s *Server) routesDescription() {
 	s.post("POST /cmd/issues/{id}/description/presence", s.presenceDesc)
 	s.views.Register("desc-editor", s.descEditorView)
 	s.views.Register("desc-carets", s.descCaretsView)
+	s.views.Register("desc-chips", s.descChipsView)
 	s.views.Register("issue-desc", s.descReaderView)
 }
 
@@ -159,12 +160,13 @@ func (s *Server) descEditorHost(w http.ResponseWriter, r *http.Request) {
 	w.Write(frame)
 }
 
-// descViews are the two views a tab that edits a description watches:
-// its own editor view and the shared carets of the description's editors.
+// descViews are the views a tab that edits a description watches: its
+// own editor view, and the shared carets and chips of the description's
+// editors.
 func (s *Server) descViews(ctx context.Context, actor people.Person, issue, tab string) ([]live.View, error) {
 	return s.db.ViewValue(ctx, func(tx *sql.Tx) ([]live.View, error) {
 		var out []live.View
-		for _, spec := range []string{tracker.DescEditorView(issue, tab), tracker.DescCaretsView(issue)} {
+		for _, spec := range []string{tracker.DescEditorView(issue, tab), tracker.DescCaretsView(issue), descChipsSpec(issue)} {
 			vs, err := s.resolve(ctx, tx, actor, spec)
 			if err != nil {
 				return nil, err
@@ -175,9 +177,10 @@ func (s *Server) descViews(ctx context.Context, actor people.Person, issue, tab 
 	})
 }
 
-// openDesc starts the tab's editing of the description: its row, then
-// its two views on its stream (hub.Watch), which its row's watched views
-// restore after a reconnect.
+// openDesc starts the tab's editing of the description: its row and,
+// in the same command, its views in the row's watched views, which
+// restore them after a reconnect; then the views on its stream
+// (hub.Watch).
 func (s *Server) openDesc(w http.ResponseWriter, r *http.Request) {
 	var req openRequest
 	a, ok := s.decode(w, r, classView, &req)
@@ -189,7 +192,17 @@ func (s *Server) openDesc(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	res, ok := s.run(w, r, a, tracker.OpenDescription{By: a.By, Session: a.Session, Tab: a.Tab, Issue: issue, Base: req.Base, Client: req.Client})
+	ctx := r.Context()
+	vs, err := s.descViews(ctx, a.By.Actor, issue, a.Tab)
+	if err != nil {
+		s.failAction(w, r, err)
+		return
+	}
+	var watch []tabs.Watched
+	for i, spec := range []string{tracker.DescEditorView(issue, a.Tab), tracker.DescCaretsView(issue), descChipsSpec(issue)} {
+		watch = append(watch, tabs.Watched{View: spec, Key: vs[i].Key})
+	}
+	res, ok := s.runWatching(w, r, a, tracker.OpenDescription{By: a.By, Session: a.Session, Tab: a.Tab, Issue: issue, Base: req.Base, Client: req.Client}, watch)
 	switch {
 	case !ok:
 		return
@@ -198,25 +211,6 @@ func (s *Server) openDesc(w http.ResponseWriter, r *http.Request) {
 		return
 	case !res.OK:
 		w.WriteHeader(http.StatusNoContent) // the refusal is the tab's outcome
-		return
-	}
-	ctx := r.Context()
-	vs, err := s.descViews(ctx, a.By.Actor, issue, a.Tab)
-	if err != nil {
-		s.failAction(w, r, err)
-		return
-	}
-	// After tabs.Act, which saves the row it read before its command.
-	err = s.w.Do(ctx, writer.Func(func(tx *writer.Tx) error {
-		for i, spec := range []string{tracker.DescEditorView(issue, a.Tab), tracker.DescCaretsView(issue)} {
-			if _, err := tabs.AddWatched(tx, a.Session, a.Tab, tabs.Watched{View: spec, Key: vs[i].Key}, time.Now()); err != nil {
-				return err
-			}
-		}
-		return nil
-	}))
-	if err != nil {
-		s.failAction(w, r, err)
 		return
 	}
 	for _, v := range vs {
@@ -247,7 +241,7 @@ func (s *Server) closeDesc(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	keys := []string{tracker.DescEditorView(issue, a.Tab) + "." + a.By.Actor.ID, tracker.DescCaretsView(issue)}
+	keys := []string{tracker.DescEditorView(issue, a.Tab) + "." + a.By.Actor.ID, tracker.DescCaretsView(issue), descChipsSpec(issue)}
 	err := s.w.Do(r.Context(), writer.Func(func(tx *writer.Tx) error {
 		for _, k := range keys {
 			if err := tabs.RemoveWatched(tx, a.Session, a.Tab, k, time.Now()); err != nil {
@@ -307,7 +301,7 @@ func (s *Server) descEditorView(ctx context.Context, q sqlite.Querier, actor peo
 		// The person too: another who names the tab id gets a view of
 		// their own, never the tab's (NFR-02.3).
 		Key:    tracker.DescEditorView(issue, tab) + "." + actor.ID,
-		Topics: []string{tracker.DescTopic(issue), tracker.IssueTopic(issue), tracker.DescEditorTopic(tab), people.Topic},
+		Topics: []string{tracker.DescTopic(issue), tracker.IssueTopic(issue), tracker.DescEditorTopic(tab)},
 		Render: func(ctx context.Context, tx *sql.Tx) (any, error) {
 			host, err := descHost(ctx, querier(ctx, tx), actor, issue, tab)
 			if err != nil {
@@ -323,7 +317,7 @@ func (s *Server) descEditorView(ctx context.Context, q sqlite.Querier, actor peo
 // hidden issue, gap when the commits after its ack were folded, readonly
 // without the right to edit.
 func descHost(ctx context.Context, q sqlite.Querier, actor people.Person, issue, tab string) (views.EditorHost, error) {
-	host := views.EditorHost{Page: issue, Cmd: descCmd(issue), Label: "Description", Batches: "[]", Chips: "{}", Images: imagesJSON(), State: "ok"}
+	host := views.EditorHost{Page: issue, Cmd: descCmd(issue), Label: "Description", Batches: "[]", State: "ok"}
 	row, err := tracker.DescriptionEditor(ctx, q, tab, actor.ID)
 	if err != nil || row.ID != issue {
 		host.State = "reset" // the tab's row is gone: a reset, or a sweep
@@ -361,13 +355,33 @@ func descHost(ctx context.Context, q sqlite.Querier, actor people.Person, issue,
 		return host, err
 	}
 	host.Batches = string(b)
-	if host.Chips, err = chipsJSON(ctx, q, h.Doc); err != nil {
-		return host, err
-	}
 	if ok, _ := access.Can(ctx, q, actor, access.EditIssues, access.ProjectScope(d.ProjectID)); !ok || isPaused {
 		host.State, host.Readonly = "readonly", true
 	}
 	return host, nil
+}
+
+// descChipsSpec is the view of what a description's chips show.
+func descChipsSpec(issue string) string { return "desc-chips:" + issue }
+
+// descChipsView is what a description's chips and mentions show, shared
+// by its editors as $_edchips, as editorChipsView is a page's.
+func (s *Server) descChipsView(ctx context.Context, q sqlite.Querier, actor people.Person, arg string) (live.View, error) {
+	if _, err := readableIssue(ctx, q, actor, arg); err != nil {
+		return live.View{}, err
+	}
+	return live.View{
+		Key:    descChipsSpec(arg),
+		Topics: []string{tracker.DescTopic(arg), people.Topic},
+		Render: timed(EditorRenders, func(ctx context.Context, tx *sql.Tx) (any, error) {
+			q := querier(ctx, tx)
+			h, err := tracker.DescriptionHead(ctx, q, arg)
+			if err != nil {
+				return nil, nil
+			}
+			return chipsSignal(ctx, q, h.Doc)
+		}),
+	}, nil
 }
 
 // descCaretsView is the carets of a description's editors (MP-06), shared

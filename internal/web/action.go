@@ -226,19 +226,29 @@ type result struct {
 // an OK that would start what it may not (a reset). It answers the
 // requests that reached no outcome itself and reports false then.
 func (s *Server) run(w http.ResponseWriter, r *http.Request, a action, cmd writer.Command) (result, bool) {
-	return s.runNoted(w, r, a, cmd, nil)
+	return s.runAct(w, r, a, cmd, nil, nil)
 }
 
 // runNoted is run with tabs.Act's Note, which makes the result of a
 // command that went through its outcome's message and data.
 func (s *Server) runNoted(w http.ResponseWriter, r *http.Request, a action, cmd writer.Command, note func([]byte) (string, json.RawMessage)) (result, bool) {
+	return s.runAct(w, r, a, cmd, note, nil)
+}
+
+// runWatching is run with tabs.Act's Watch: views the tab's row records
+// with the outcome once cmd went through.
+func (s *Server) runWatching(w http.ResponseWriter, r *http.Request, a action, cmd writer.Command, watch []tabs.Watched) (result, bool) {
+	return s.runAct(w, r, a, cmd, nil, watch)
+}
+
+func (s *Server) runAct(w http.ResponseWriter, r *http.Request, a action, cmd writer.Command, note func([]byte) (string, json.RawMessage), watch []tabs.Watched) (result, bool) {
 	if !s.connected(w, r, a.By.Actor, a.Tab) {
 		return result{}, false
 	}
 	// The demo's guard refuses while it resets, for a blocked guest, and
 	// past the caps (DM-03.4, DM-07.2, DM-04.3).
 	cmd = s.demo.Guard(a.By.Actor, a.Addr, cmd)
-	op := writer.OnceResult(a.Session+":"+r.URL.Path+":"+a.By.Op, tabs.Act{Session: a.Session, Tab: a.Tab, By: a.By, Cmd: cmd, Note: note})
+	op := writer.OnceResult(a.Session+":"+r.URL.Path+":"+a.By.Op, tabs.Act{Session: a.Session, Tab: a.Tab, By: a.By, Cmd: cmd, Note: note, Watch: watch})
 	if err := s.w.Do(r.Context(), op); err != nil {
 		s.failOp(w, r, a, err)
 		return result{}, false

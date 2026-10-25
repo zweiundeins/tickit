@@ -60,7 +60,7 @@ func newLoadEditor(t *testing.T, base string, page string, i int) *loadEditor {
 	e.head, _ = strconv.ParseInt(string(m[2]), 10, 64)
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	req, _ := http.NewRequestWithContext(ctx, "GET", base+"/stream?tab="+e.tab+"&v=carets:"+page+",pagepeople:"+page, nil)
+	req, _ := http.NewRequestWithContext(ctx, "GET", base+"/stream?tab="+e.tab+"&v=carets:"+page+",editchips:"+page+",editcomments:"+page+",pagepeople:"+page, nil)
 	req.Header.Set("Accept-Encoding", "identity")
 	req.Header.Set("X-Real-IP", e.addr())
 	sres, err := e.c.Do(req)
@@ -151,6 +151,11 @@ func TestCoEditingLoad(t *testing.T) {
 	}
 	s := newRealServer(t)
 	page, _ := s.wikiPage(t)
+	chipsText := 0 // the characters withChips's paragraphs hold
+	if k, err := strconv.Atoi(os.Getenv("LOAD_CHIPS")); err == nil && k > 0 {
+		s.withChips(t, page, k)
+		chipsText = len([]rune(headText(t, s, page)))
+	}
 	base := s.URL
 	// MP-05.3's link: LOAD_DELAY each way (25ms for the 50 ms round trip).
 	if delay, err := time.ParseDuration(os.Getenv("LOAD_DELAY")); err == nil && delay > 0 {
@@ -167,6 +172,7 @@ func TestCoEditingLoad(t *testing.T) {
 	}
 	commits := make([][]sent, n)
 	web.CommitTimes.Reset()
+	web.EditorRenders.Reset()
 	var wg sync.WaitGroup
 	d := time.Duration(secs) * time.Second
 	start := time.Now()
@@ -240,7 +246,7 @@ func TestCoEditingLoad(t *testing.T) {
 		t.Fatal("no samples")
 	}
 	got := headText(t, s, page)
-	if len([]rune(got)) != total {
+	if len([]rune(got)) != total+chipsText {
 		t.Errorf("MP-05.1: the document holds %d characters, %d were typed", len([]rune(got)), total)
 	}
 	cn, w50, w95, wmax := web.CommitTimes.Percentiles()
@@ -248,5 +254,9 @@ func TestCoEditingLoad(t *testing.T) {
 		WriterCommits: cn, WriterP50: w50, WriterP95: w95, WriterMax: wmax}
 	t.Logf("Go clients, %d editors, %v, %d keystrokes: keystroke to the others p50 %v p95 %v max %v (%d samples); writer per commit (%d) p50 %v p95 %v max %v",
 		n, d, total, r.P50, r.P95, r.Max, r.Samples, cn, w50, w95, wmax)
+	rn, _, _, _ := web.EditorRenders.Percentiles()
+	if cn > 0 {
+		t.Logf("editor views: %d renders, %v in all, %v per commit", rn, web.EditorRenders.Sum().Round(time.Millisecond), (web.EditorRenders.Sum() / time.Duration(cn)).Round(time.Microsecond))
+	}
 	writeResult(t, r)
 }
