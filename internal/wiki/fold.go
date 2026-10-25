@@ -22,8 +22,8 @@ const (
 // of them, rewritten as a pagedoc.snapshot of the document then. Compact
 // cuts the kind at one position, the first event stored after a time;
 // Fold picks the time so that no commit after its page's last version is
-// folded: FoldAfter ago, or the time of the oldest commit not in a
-// version yet, whichever is earlier. A page that someone edits without
+// folded: FoldAfter ago, or the time of the oldest commit or rename not
+// in a version yet, whichever is earlier. A page that someone edits without
 // pause holds the fold back by at most CutInterval, when its next
 // version is cut. Rebuilds, versions and as-of reads still work: versions
 // hold their documents in page.version_cut, never folded, and a document

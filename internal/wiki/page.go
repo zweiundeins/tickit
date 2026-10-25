@@ -507,7 +507,10 @@ func (c RenamePage) Apply(tx *writer.Tx) error {
 	if err := claimTitle(tx, s.Space, c.Page, title); err != nil {
 		return err
 	}
-	return events.Execute(Store(), tx, renamePage, PageStream.ID(c.Page), events.Any, PageRenamed{To: title}, meta(c.By))
+	if err := events.Execute(Store(), tx, renamePage, PageStream.ID(c.Page), events.Any, PageRenamed{To: title}, meta(c.By)); err != nil {
+		return err
+	}
+	return pageDocs.Mark(tx, c.Page, at(c.By))
 }
 
 // MovePage puts a page under another parent ("" for the top of the
@@ -786,6 +789,9 @@ func (c TrashPage) Apply(tx *writer.Tx) error {
 	if _, err := tx.Exec(`DELETE FROM page_parents WHERE page_id = ?`, c.Page); err != nil {
 		return err
 	}
+	if err := pageDocs.Release(tx, c.Page); err != nil {
+		return err
+	}
 	return events.Execute(Store(), tx, trashPage, PageStream.ID(c.Page), events.Any, PageTrashed{}, m)
 }
 
@@ -857,6 +863,14 @@ func (c RestorePage) Apply(tx *writer.Tx) error {
 	if err := setParent(tx, c.Page, s.Space, parent); err != nil {
 		return err
 	}
+	if err := pageDocs.Hold(tx, c.Page, s.CutUpto); err != nil {
+		return err
+	}
+	if s.Title != s.CutTitle {
+		if err := pageDocs.Mark(tx, c.Page, at(c.By)); err != nil {
+			return err
+		}
+	}
 	return events.Execute(Store(), tx, restorePage, PageStream.ID(c.Page), events.Any, PageRestored{Parent: parent, Rank: rank}, meta(c.By))
 }
 
@@ -885,6 +899,9 @@ func (c DeletePage) Apply(tx *writer.Tx) error {
 		return err
 	}
 	if _, err := tx.Exec(`DELETE FROM page_titles WHERE page_id = ?`, c.Page); err != nil {
+		return err
+	}
+	if err := pageDocs.Release(tx, c.Page); err != nil {
 		return err
 	}
 	return events.Execute(Store(), tx, deletePage, PageStream.ID(c.Page), events.Any, c, meta(c.By))

@@ -1447,6 +1447,9 @@ func (c DeleteIssue) Apply(tx *writer.Tx) error {
 	if err := setParentRow(tx, c.Issue, ""); err != nil {
 		return err
 	}
+	if err := descDocs.Release(tx, c.Issue); err != nil {
+		return err
+	}
 	return acted(tx, s.Project, c.By.Actor.ID, at(c.By))
 }
 
