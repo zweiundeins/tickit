@@ -87,7 +87,7 @@ groups:
                 refId: E
                 type: threshold
           noDataState: OK
-          execErrState: Alerting
+          execErrState: KeepLast
           for: 5m
           annotations:
             summary: 'tickit.zweiundeins.gmbh answers more than 1% of its requests with a 5xx, for 5 minutes'
@@ -138,7 +138,7 @@ groups:
                 refId: C
                 type: threshold
           noDataState: OK
-          execErrState: Alerting
+          execErrState: KeepLast
           for: 0s
           annotations:
             summary: '{{ $labels.app }} ({{ $labels.slot }}): a demo reset failed in the last hour; see {job="tickit", level="ERROR"}'
@@ -189,7 +189,7 @@ groups:
                 refId: C
                 type: threshold
           noDataState: OK
-          execErrState: Alerting
+          execErrState: KeepLast
           for: 10m
           annotations:
             summary: '{{ $labels.app }} ({{ $labels.slot }}) has not reset the demo for 26 hours (due daily at 04:00 Europe/Zurich)'
