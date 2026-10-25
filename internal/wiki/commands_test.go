@@ -475,6 +475,55 @@ func TestMigrationReleasesGonePages(t *testing.T) {
 	}
 }
 
+// FR-87.1: CutDue finds a page renamed since its last version as it
+// finds one with commits, and a title changed back leaves nothing to cut.
+func TestCutDueRenamed(t *testing.T) {
+	e := newEnv(t)
+	sp, _ := e.space("ENG", true)
+	p := e.page(sunny, CreatePage{Space: sp, Title: "Plan"})
+	uncut := `SELECT count(*) FROM collab_uncut WHERE kind = 'pagedoc' AND id = ?`
+	e.must(RenamePage{By: e.by(sunny), Page: p, Title: "Plan B"})
+	if n := e.row(uncut, p); n != "1" {
+		t.Errorf("%s uncut rows after a rename", n)
+	}
+	e.must(CutDue{At: e.now})
+	if s := e.pageState(p); s.Versions != 2 || s.CutTitle != "Plan B" {
+		t.Errorf("after a rename: version %d titled %q", s.Versions, s.CutTitle)
+	}
+	e.must(RenamePage{By: e.by(sunny), Page: p, Title: "Plan C"})
+	e.must(RenamePage{By: e.by(sunny), Page: p, Title: "Plan B"})
+	e.must(CutDue{At: e.now})
+	if n, v := e.row(uncut, p), e.pageState(p).Versions; n != "0" || v != 2 {
+		t.Errorf("renamed back: %s uncut rows, version %d", n, v)
+	}
+
+	// Migration 090: a rename from before it gets its row.
+	e.must(RenamePage{By: e.by(sunny), Page: p, Title: "Plan D"})
+	sqlText, err := migrations.FS.ReadFile("090_collab_uncut_renames.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.must(writer.Func(func(tx *writer.Tx) error {
+		if _, err := tx.Exec(`DELETE FROM collab_uncut`); err != nil {
+			return err
+		}
+		_, err := tx.Exec(string(sqlText))
+		return err
+	}))
+	e.must(CutDue{At: e.now})
+	if s := e.pageState(p); s.Versions != 3 || s.CutTitle != "Plan D" {
+		t.Errorf("after migration 090: version %d titled %q", s.Versions, s.CutTitle)
+	}
+	// Renamed, trashed before its version, then restored.
+	e.must(RenamePage{By: e.by(sunny), Page: p, Title: "Plan E"})
+	e.must(TrashPage{By: e.by(sunny), Page: p})
+	e.must(RestorePage{By: e.by(admin), Page: p})
+	e.must(CutDue{At: e.now})
+	if s := e.pageState(p); s.Versions != 4 || s.CutTitle != "Plan E" {
+		t.Errorf("restored: version %d titled %q", s.Versions, s.CutTitle)
+	}
+}
+
 // FR-90: comments and replies.
 func TestComments(t *testing.T) {
 	e := newEnv(t)

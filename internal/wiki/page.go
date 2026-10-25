@@ -507,7 +507,10 @@ func (c RenamePage) Apply(tx *writer.Tx) error {
 	if err := claimTitle(tx, s.Space, c.Page, title); err != nil {
 		return err
 	}
-	return events.Execute(Store(), tx, renamePage, PageStream.ID(c.Page), events.Any, PageRenamed{To: title}, meta(c.By))
+	if err := events.Execute(Store(), tx, renamePage, PageStream.ID(c.Page), events.Any, PageRenamed{To: title}, meta(c.By)); err != nil {
+		return err
+	}
+	return pageDocs.Mark(tx, c.Page, at(c.By))
 }
 
 // MovePage puts a page under another parent ("" for the top of the
@@ -862,6 +865,11 @@ func (c RestorePage) Apply(tx *writer.Tx) error {
 	}
 	if err := pageDocs.Hold(tx, c.Page, s.CutUpto); err != nil {
 		return err
+	}
+	if s.Title != s.CutTitle {
+		if err := pageDocs.Mark(tx, c.Page, at(c.By)); err != nil {
+			return err
+		}
 	}
 	return events.Execute(Store(), tx, restorePage, PageStream.ID(c.Page), events.Any, PageRestored{Parent: parent, Rank: rank}, meta(c.By))
 }
