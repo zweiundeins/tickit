@@ -786,6 +786,9 @@ func (c TrashPage) Apply(tx *writer.Tx) error {
 	if _, err := tx.Exec(`DELETE FROM page_parents WHERE page_id = ?`, c.Page); err != nil {
 		return err
 	}
+	if err := pageDocs.Release(tx, c.Page); err != nil {
+		return err
+	}
 	return events.Execute(Store(), tx, trashPage, PageStream.ID(c.Page), events.Any, PageTrashed{}, m)
 }
 
@@ -857,6 +860,9 @@ func (c RestorePage) Apply(tx *writer.Tx) error {
 	if err := setParent(tx, c.Page, s.Space, parent); err != nil {
 		return err
 	}
+	if err := pageDocs.Hold(tx, c.Page, s.CutUpto); err != nil {
+		return err
+	}
 	return events.Execute(Store(), tx, restorePage, PageStream.ID(c.Page), events.Any, PageRestored{Parent: parent, Rank: rank}, meta(c.By))
 }
 
@@ -885,6 +891,9 @@ func (c DeletePage) Apply(tx *writer.Tx) error {
 		return err
 	}
 	if _, err := tx.Exec(`DELETE FROM page_titles WHERE page_id = ?`, c.Page); err != nil {
+		return err
+	}
+	if err := pageDocs.Release(tx, c.Page); err != nil {
 		return err
 	}
 	return events.Execute(Store(), tx, deletePage, PageStream.ID(c.Page), events.Any, c, meta(c.By))

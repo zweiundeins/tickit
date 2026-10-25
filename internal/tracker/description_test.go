@@ -256,6 +256,49 @@ func TestDescriptionFold(t *testing.T) {
 	}
 }
 
+// NFR-43.1: an issue deleted or hidden while someone edits its
+// description holds back no other description's fold; unhidden, its
+// commits hold the fold back again.
+func TestDescriptionFoldGoneIssue(t *testing.T) {
+	e := newEnv(t)
+	p := e.project("WEB", true)
+	uncut := `SELECT count(*) FROM collab_uncut WHERE kind = 'issuedoc' AND id = ?`
+	deleted := e.issue(sunny, CreateIssue{Project: p, Description: PlainDoc("Gone")})
+	hidden := e.issue(sunny, CreateIssue{Project: p, Description: PlainDoc("Spam")})
+	e.commitDesc(sunny, deleted, 1, "d1", steps(insert(1, "x")))
+	e.commitDesc(sunny, hidden, 1, "h1", steps(insert(1, "x")))
+	e.must(DeleteIssue{By: e.by(moderator), Issue: deleted})
+	e.must(HideIssue{By: e.by(moderator), Issue: hidden, Hidden: true})
+	for _, id := range []string{deleted, hidden} {
+		if n := e.row(uncut, id); n != "0" {
+			t.Errorf("%s uncut rows of a gone issue", n)
+		}
+	}
+	e.must(HideIssue{By: e.by(moderator), Issue: hidden, Hidden: false})
+	if got, want := e.row(`SELECT at FROM collab_uncut WHERE kind = 'issuedoc' AND id = ?`, hidden), e.row(`SELECT at FROM lith_events WHERE stream = 'issuedoc' AND stream_id = ? AND version = 2`, hidden); got != want {
+		t.Errorf("unhidden: oldest uncut commit at %q, want %q", got, want)
+	}
+	e.must(HideIssue{By: e.by(moderator), Issue: hidden, Hidden: true})
+
+	e.now = e.now.Add(time.Hour)
+	id := e.issue(sunny, CreateIssue{Project: p, Description: PlainDoc("Hello")})
+	for i := range 5 {
+		e.commitDesc(sunny, id, e.descState(id).Version, fmt.Sprintf("s%d", i), steps(insert(1, "x")))
+	}
+	e.must(CutDescriptions{At: e.now})
+	e.commitDesc(sunny, id, e.descState(id).Version, "after", steps(insert(1, "y")))
+	f := &FoldDescriptions{At: e.now.Add(collab.FoldAfter + time.Minute)}
+	e.must(f)
+	if n := e.row(`SELECT count(*) FROM lith_events WHERE stream = 'issuedoc' AND stream_id = ? AND type = 'issuedoc.committed'`, id); f.Deleted == 0 || n != "1" {
+		t.Errorf("the fold deleted %d events, %s commits of the edited description left", f.Deleted, n)
+	}
+	e.must(HideIssue{By: e.by(moderator), Issue: hidden, Hidden: false})
+	e.commitDesc(sunny, hidden, e.descState(hidden).Version, "h2", steps(insert(1, "z")))
+	if n := e.row(uncut, hidden); n != "1" {
+		t.Errorf("%s uncut rows after a commit to an unhidden issue", n)
+	}
+}
+
 // MP-13: a reset starts the description anew, in another epoch.
 func TestDescriptionReset(t *testing.T) {
 	e := newEnv(t)

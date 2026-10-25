@@ -392,6 +392,56 @@ func TestFold(t *testing.T) {
 	}
 }
 
+// NFR-43.1: a page trashed while someone edits it holds back no other
+// page's fold; restored, its commits hold the fold back again.
+func TestFoldTrashedPage(t *testing.T) {
+	e := newEnv(t)
+	sp, _ := e.space("ENG", true)
+	uncut := `SELECT count(*) FROM collab_uncut WHERE kind = 'pagedoc' AND id = ?`
+	b := e.page(sunny, CreatePage{Space: sp, Title: "Trashed"})
+	e.commit(sunny, b, 1, "b1", steps(insert(1, "b")))
+	e.must(TrashPage{By: e.by(sunny), Page: b})
+	if n := e.row(uncut, b); n != "0" {
+		t.Errorf("%s uncut rows of a trashed page", n)
+	}
+	e.must(RestorePage{By: e.by(admin), Page: b})
+	if got, want := e.row(`SELECT at FROM collab_uncut WHERE kind = 'pagedoc' AND id = ?`, b), e.row(`SELECT at FROM lith_events WHERE stream = 'pagedoc' AND stream_id = ? AND version = 2`, b); got != want {
+		t.Errorf("restored: oldest uncut commit at %q, want %q", got, want)
+	}
+	e.must(TrashPage{By: e.by(sunny), Page: b})
+
+	e.now = e.now.Add(time.Hour)
+	a := e.page(sunny, CreatePage{Space: sp, Title: "Edited"})
+	for i := range 5 {
+		e.commit(sunny, a, int64(i+1), "a"+strings.Repeat("x", i), steps(insert(1, "a")))
+	}
+	e.must(CutVersion{By: e.by(sunny), Page: a})
+	e.commit(sunny, a, 6, "after", steps(insert(1, "c")))
+	f := &Fold{At: e.now.Add(FoldAfter + time.Minute)}
+	e.must(f)
+	if n := e.row(`SELECT count(*) FROM lith_events WHERE stream = 'pagedoc' AND stream_id = ? AND type = 'pagedoc.committed'`, a); f.Deleted == 0 || n != "1" {
+		t.Errorf("the fold deleted %d events, %s commits of the edited page left", f.Deleted, n)
+	}
+
+	// Restored after the fold took its commits, its next commits count.
+	e.must(RestorePage{By: e.by(admin), Page: b})
+	e.must(CutDue{At: e.now})
+	if n := e.row(uncut, b); n != "0" {
+		t.Errorf("%s uncut rows after a version of the head", n)
+	}
+	e.commit(sunny, b, e.docState(b).Version, "b2", steps(insert(1, "d")))
+	if n := e.row(uncut, b); n != "1" {
+		t.Errorf("%s uncut rows after a commit to a restored page", n)
+	}
+	e.must(TrashPage{By: e.by(sunny), Page: b})
+	e.must(RestorePage{By: e.by(admin), Page: b})
+	e.must(TrashPage{By: e.by(sunny), Page: b})
+	e.must(DeletePage{By: e.by(admin), Page: b})
+	if n := e.row(uncut, b); n != "0" {
+		t.Errorf("%s uncut rows of a deleted page", n)
+	}
+}
+
 // FR-90: comments and replies.
 func TestComments(t *testing.T) {
 	e := newEnv(t)
