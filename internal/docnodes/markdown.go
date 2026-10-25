@@ -36,6 +36,7 @@ func mdList(w *mdWriter, n *prosemirror.Node) {
 // nodes are written for a reader of the file, not as directives: a chip
 // as its key, a mention as @name, a page link as a link.
 var markdown = &prosemirror.Markdown[Resolver]{
+	Verbatim: []string{"code"},
 	Nodes: map[string]func(w *mdWriter, n *prosemirror.Node){
 		"paragraph": func(w *mdWriter, n *prosemirror.Node) {
 			for _, l := range strings.Split(w.Inline(n), "\n") {

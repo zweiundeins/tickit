@@ -52,3 +52,13 @@ func TestMarkdown(t *testing.T) {
 		t.Errorf("markdown:\n%s\nwant\n%s", got, want)
 	}
 }
+
+// FR-152: the spaces at the edges of bold or italic text go outside the
+// delimiters, which CommonMark reads as emphasis only then; code keeps
+// them.
+func TestMarkdownEdgeSpaces(t *testing.T) {
+	d := mustDoc(t, inPara(text("start")+`,`+text(" early ", strong)+`,`+text("on", em)+`,`+text(" x", `{"type":"code"}`)+`,`+text(" s", `{"type":"strike"}`)))
+	if got, want := Markdown(d, nil), "start **early** *on*` x` ~~s~~\n"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
