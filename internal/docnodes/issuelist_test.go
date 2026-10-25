@@ -37,20 +37,20 @@ func TestIssueListRules(t *testing.T) {
 
 type listResolver struct {
 	StaticResolver
-	calls int
+	rows int // what the lists show now
 }
 
 func (r *listResolver) List(l IssueList) string {
-	r.calls++
 	if l.Filter == "none" {
 		return ""
 	}
-	return `<table data-n="` + strconv.Itoa(r.calls) + `"></table>`
+	return `<table data-n="` + strconv.Itoa(r.rows) + `"></table>`
 }
 
 // FR-104: an issue list renders its filter as attributes and what a
 // ListResolver gives inside; without one (versions, comparisons) its
-// description; a BlockCache renders its block every time.
+// description; a BlockCache renders its block again when its rows
+// change.
 func TestIssueListHTML(t *testing.T) {
 	d := mustDoc(t, docOf(issueList(`{"filter":"status=todo&q=<b>"}`), issueList(`{"savedFilter":"`+savedID+`","limit":3}`), issueList(`{}`)))
 	want := `<div class="issue-list" data-filter="status=todo&amp;q=&lt;b&gt;" data-saved-filter="" data-limit="10"><p class="issue-list__desc">Issues matching <code>status=todo&amp;q=&lt;b&gt;</code>, at most 10</p></div>` +
@@ -66,7 +66,7 @@ func TestIssueListHTML(t *testing.T) {
 		t.Errorf("IssueLists: %+v", l)
 	}
 
-	r := &listResolver{}
+	r := &listResolver{rows: 1}
 	var c BlockCache
 	d = mustDoc(t, docOf(para, issueList(`{"filter":"type=bug"}`), issueList(`{"filter":"none"}`)))
 	first := c.Render(d, r)
@@ -74,8 +74,12 @@ func TestIssueListHTML(t *testing.T) {
 		!strings.Contains(first, `<p class="issue-list__desc">Issues matching <code>none</code>`) {
 		t.Errorf("with a ListResolver: %s", first)
 	}
-	if second := c.Render(d, r); !strings.Contains(second, `data-n="3"`) || !strings.HasPrefix(second, "<p>hi</p>") {
-		t.Errorf("the second render keeps the list's old rows: %s", second)
+	if second := c.Render(d, r); second != first {
+		t.Errorf("the same rows render differently: %s", second)
+	}
+	r.rows = 2
+	if third := c.Render(d, r); !strings.Contains(third, `data-n="2"`) || !strings.HasPrefix(third, "<p>hi</p>") {
+		t.Errorf("the render keeps the list's old rows: %s", third)
 	}
 	if md := Markdown(mustDoc(t, docOf(issueList(`{"filter":"q=log in"}`))), nil); !strings.Contains(md, "[issues matching q=log in](/issues?q=log+in)") {
 		t.Errorf("Markdown: %q", md)

@@ -62,6 +62,31 @@ func TestEscapes(t *testing.T) {
 	}
 }
 
+// A chip's new status, a person's new name or a hidden image renders the
+// blocks that show them again, and keeps the others (FR-100.2).
+func TestBlockCacheAtoms(t *testing.T) {
+	pIn := func(inline string) string { return `{"type":"paragraph","content":[` + inline + `]}` }
+	d := mustDoc(t, docOf(para, pIn(`{"type":"issue_chip","attrs":{"key":"WEB-12"}}`), pIn(`{"type":"mention","attrs":{"personId":"s-priya","label":"Old"}}`), `{"type":"image","attrs":{"imageId":"img-1"}}`))
+	var c BlockCache
+	r := testResolver
+	if got, want := c.Render(d, r), RenderHTML(d, r); got != want {
+		t.Fatalf("first render differs:\n%s\n%s", got, want)
+	}
+	for _, change := range []func(*StaticResolver){
+		func(r *StaticResolver) {
+			r.Issues = map[string]Chip{"WEB-12": {Summary: "Fix", Status: "Done", Category: "done", Type: "bug"}}
+		},
+		func(r *StaticResolver) { r.People = map[string]string{"s-priya": "Priya"} },
+		func(r *StaticResolver) { r.Hidden = map[string]bool{"img-1": true} },
+		func(r *StaticResolver) { r.Faces = map[string]string{"s-priya": "<i></i>"} },
+	} {
+		change(&r)
+		if got, want := c.Render(d, r), RenderHTML(d, r); got != want {
+			t.Errorf("after a change:\n got %s\nwant %s", got, want)
+		}
+	}
+}
+
 func TestBlockCache(t *testing.T) {
 	d := bigDoc(t)
 	var c BlockCache

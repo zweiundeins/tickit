@@ -718,13 +718,12 @@ func (s *Server) pageHeadView(ctx context.Context, q sqlite.Querier, actor peopl
 
 // The reader view (FR-80.3, Q18): the head document rendered once per
 // tick for every reader, from the document cache, re-rendering only the
-// blocks a commit changed (docnodes.BlockCache), and all of them when a chip,
-// a name or a linked title changes. Blocks with issue lists render every
-// time, with the reader's rows (FR-104, routes_embed.go).
+// blocks a commit changed (docnodes.BlockCache), and those whose chips,
+// names, linked titles or issue lists' rows (FR-104, routes_embed.go)
+// changed.
 type reader struct {
 	mu    sync.Mutex
 	cache docnodes.BlockCache
-	key   string // the resolver's answers the cache rendered with
 }
 
 var readers = struct {
@@ -765,7 +764,6 @@ func (s *Server) readerHTML(ctx context.Context, q sqlite.Querier, page string, 
 	if err != nil {
 		return views.PageBody{}, err
 	}
-	key, _ := json.Marshal(res)
 	var r docnodes.Resolver = res
 	if len(docnodes.IssueLists(h.Doc)) > 0 {
 		live.Depends(ctx, listTopics...)
@@ -774,10 +772,6 @@ func (s *Server) readerHTML(ctx context.Context, q sqlite.Querier, page string, 
 	rd := readerOf(page)
 	rd.mu.Lock()
 	defer rd.mu.Unlock()
-	if string(key) != rd.key {
-		rd.cache.Reset()
-		rd.key = string(key)
-	}
 	return views.PageBody{HTML: rd.cache.RenderHighlighted(h.Doc, r, hs), V: h.Version, Epoch: h.Epoch}, nil
 }
 

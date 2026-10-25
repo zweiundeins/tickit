@@ -134,7 +134,7 @@ func cell(name string) func(w *writer, n *prosemirror.Node) {
 // produces too.
 var html = &prosemirror.HTML[Resolver]{
 	HighlightClass: "tk-ic", HighlightAttr: "data-c",
-	Dynamic: []string{"issue_list"},
+	Dynamic: []string{"issue_list", "issue_chip", "mention", "page_link", "image"}, DynamicKey: dynamicKey,
 	Nodes: map[string]func(w *writer, n *prosemirror.Node){
 		"paragraph":  tag("p"),
 		"blockquote": tag("blockquote"),
@@ -276,6 +276,38 @@ var html = &prosemirror.HTML[Resolver]{
 	},
 }
 
+// dynamicKey is what an atom shows that the document does not hold, from
+// the resolver now: a block keeps its HTML in a BlockCache while the keys
+// of its atoms stay the same, so a chip's new status renders the blocks
+// that show the issue, and no other.
+func dynamicKey(r Resolver, n *prosemirror.Node) string {
+	switch n.Type().Name() {
+	case "issue_chip":
+		c, ok := r.Issue(n.AttrString("key"))
+		return "c" + strconv.FormatBool(ok) + "\x00" + c.Summary + "\x00" + c.Status + "\x00" + c.Category + "\x00" + c.Type + "\x00" + strconv.FormatBool(c.Deleted)
+	case "mention":
+		id := n.AttrString("personId")
+		name, ok := r.Person(id)
+		face := ""
+		if f, has := r.(FaceResolver); has && ok {
+			face = f.Face(id)
+		}
+		return "m" + strconv.FormatBool(ok) + "\x00" + name + "\x00" + face
+	case "page_link":
+		title, ok := r.Page(n.AttrString("pageId"))
+		return "p" + strconv.FormatBool(ok) + "\x00" + title
+	case "image":
+		h, ok := r.(imageHider)
+		return "i" + strconv.FormatBool(ok && h.ImageHidden(n.AttrString("imageId")))
+	case "issue_list":
+		if lr, ok := r.(ListResolver); ok {
+			return "l" + lr.List(IssueListOf(n))
+		}
+		return "l"
+	}
+	return ""
+}
+
 // RenderHTML renders the document's blocks as the HTML of docs/editor.md,
 // which the browser's toDOM produces too; the caller wraps it in
 // <div class="prose">. Every text and attribute is escaped, links pass
@@ -380,9 +412,9 @@ func chip(w *writer, key string) {
 
 // BlockCache renders documents block by block and keeps the HTML of each
 // top-level block by node, so a commit re-renders only the blocks it
-// changed; a block that holds an issue list renders every time. Reset it
-// when what the Resolver returns changes (a chip's status, a page's
-// title). Its zero value is ready; it is safe for concurrent use.
+// changed, and a change of what the Resolver returns (a chip's status, a
+// person's name, a page's title, an issue list's rows) only the blocks
+// that show it. Its zero value is ready; it is safe for concurrent use.
 type BlockCache struct {
 	once sync.Once
 	c    *prosemirror.BlockCache[Resolver]
