@@ -314,18 +314,15 @@ func (s *Server) commitWith(w http.ResponseWriter, r *http.Request, pause func(t
 		return
 	}
 	CommitTimes.Observe(took())
-	switch {
-	case len(res) == 0:
-		w.WriteHeader(http.StatusNoContent)
-	case collab.Answer(res[0]) == collab.Stale:
-		http.Error(w, "stale", http.StatusConflict)
-	case collab.Answer(res[0]) == collab.Refused:
-		http.Error(w, "refused", http.StatusUnprocessableEntity)
-	case collab.Answer(res[0]) == collab.Readonly:
-		http.Error(w, "forbidden", http.StatusForbidden)
-	default:
-		w.WriteHeader(http.StatusNoContent)
+	st := http.StatusNoContent
+	if len(res) > 0 {
+		st = collab.Answer(res[0]).Status()
 	}
+	if st == http.StatusNoContent {
+		w.WriteHeader(st)
+		return
+	}
+	http.Error(w, http.StatusText(st), st)
 }
 
 // presence is an editing tab's selection, sent without waiting: the next
