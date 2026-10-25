@@ -1,13 +1,13 @@
 # sb-rich-editor
 
-The browser side of co-editing pages (docs/editor.md): a Rocket component that wraps ProseMirror and speaks the commit protocol, where the writer rebases a stale commit over the commits since its base. The protocol, the remote carets and the comment highlights are coedit's shared modules (github.com/zweiundeins/coedit, `editor/`, its README); this folder holds tickit's component, node views, toolbar and notices on them, the build and the browser tests; the built files live in `internal/web/static/editor/` and are committed, so the Go build needs no Node.
+The browser side of co-editing pages (docs/editor.md): a Rocket component that wraps ProseMirror and speaks the commit protocol, where the writer rebases a stale commit over the commits since its base. The protocol, the remote carets and the comment highlights are lith-coedit's shared modules (github.com/zweiundeins/lith-coedit, `editor/`, its README); this folder holds tickit's component, node views, toolbar and notices on them, the build and the browser tests; the built files live in `internal/web/static/editor/` and are committed, so the Go build needs no Node.
 
 ## Files
 
 | Path | What it is |
 | --- | --- |
 | `src/sb-rich-editor.js` | The Rocket component: props, the shadow root (toolbar, dialogs, status line), host methods. Loads the core on first use. |
-| `src/core.js` | The editor: ProseMirror view on coedit's `Session` (frames in, commits and presence out, stopped states), tickit's attributes, toolbar state, notices, dialogs, paste. |
+| `src/core.js` | The editor: ProseMirror view on lith-coedit's `Session` (frames in, commits and presence out, stopped states), tickit's attributes, toolbar state, notices, dialogs, paste. |
 | `src/schema.js` | The schema from `internal/docnodes/schema.json` (bundled at build time) plus `toDOM` and `parseDOM` per node and mark. |
 | `src/nodeviews.js` | Node views: issue chips, mentions, page links, task items, images, issue lists with their filter form. |
 | `src/commands.js` | Toolbar commands, input rules, keymaps. |
@@ -15,8 +15,8 @@ The browser side of co-editing pages (docs/editor.md): a Rocket component that w
 | `src/uploads.js` | Image uploads (FR-85): the placeholder while a file travels, the multipart post. |
 | `src/styles.js` | Structural CSS for the light-DOM editor. |
 | `build.mjs` | The esbuild build; prints the sizes. |
-| `coedit.mjs` | Where coedit's modules are (`go list -m` of the module go.mod names), the alias `coedit` the builds use, and ProseMirror resolved from this folder's `node_modules`. |
-| `test/authority/worker.js` | The fake writer in a SharedWorker for the browser tests: coedit's `test/authority/authority.js` with tickit's seed and chips. |
+| `lith-coedit.mjs` | Where lith-coedit's modules are (`go list -m` of the module go.mod names), the alias `lith-coedit` the builds use, and ProseMirror resolved from this folder's `node_modules`. |
+| `test/authority/worker.js` | The fake writer in a SharedWorker for the browser tests: lith-coedit's `test/authority/authority.js` with tickit's seed and chips. |
 | `test/harness/`, `test/server.mjs`, `test/run.mjs` | The browser tests. |
 
 ## Markup the server renders
@@ -124,7 +124,7 @@ So `.then` means "the server answered", not "applied". The status reaches the pa
 ## What the Go side has to match
 
 - **Confirming a commit.** The writer appends a commit even when rebasing dropped some or all of its steps, with the steps as applied, so the editor finds its `ref` in `batches`. The editor compares those steps one by one (after a round through ProseMirror's JSON) with its own rebased copies of the commit's steps. Equal, the usual case, they only confirm. Different, the editor undoes its unconfirmed steps, applies the writer's and rebases the rest on top, so its confirmed document always equals the writer's; it logs a warning and counts `editor.stats.resyncs`. Undo loses the history of those steps in that case. In the Node tests, 4,200 own commits over random edits needed no resync, including commits where the writer dropped steps.
-- **The rebase** is coedit's `editor/test/authority/rebase.js` (collab-commit's `applyCommit`): map each step through the inverted earlier steps of the commit, the commits since `base` and the mapped earlier steps, with mirrors. The Go core must drop exactly the steps it drops; a test in coedit checks the file against prosemirror-go's oracle.
+- **The rebase** is lith-coedit's `editor/test/authority/rebase.js` (collab-commit's `applyCommit`): map each step through the inverted earlier steps of the commit, the commits since `base` and the mapped earlier steps, with mirrors. The Go core must drop exactly the steps it drops; a test in lith-coedit checks the file against prosemirror-go's oracle.
 - **Refusals** name the refused commit's ref in `refusal` as JSON `{"ref", "message"}`; otherwise the editor cannot take that commit's steps out and the next commit would build on steps the writer never applied.
 - **`readonly` state** keeps applying `batches` but sends nothing, and keeps the person's unsaved text in the browser (MP-14.2).
 - **Limits** in `src/limits.js`: size is the UTF-8 length of `JSON.stringify(doc.toJSON())`; blocks counts every block node except the doc; tables count `TableMap` width and height. `limits.textLength` in schema.json is not enforced: the docs do not say what it measures.
@@ -138,10 +138,10 @@ npm ci
 node build.mjs
 ```
 
-`coedit.mjs` asks `go list -m` where the coedit module is (with go.mod's `replace`, the checkout beside this one), so Go must be on the path. It writes three files to `internal/web/static/editor/`:
+`lith-coedit.mjs` asks `go list -m` where the lith-coedit module is (with go.mod's `replace`, the checkout beside this one), so Go must be on the path. It writes three files to `internal/web/static/editor/`:
 
 - `sb-rich-editor.min.js`, the component;
-- `pm-core.min.js`, ProseMirror, coedit's modules and the editor;
+- `pm-core.min.js`, ProseMirror, lith-coedit's modules and the editor;
 - `LICENSES.txt`, the licences of the bundled packages.
 
 lith's `edge.Static` serves a file as `name.<first 12 hex digits of SHA-256>.ext` with an immutable cache, and serves `*.min.js` as written. The build computes that name for the core and puts it into the component's dynamic import, so `import('./pm-core.min.<hash>.js')` resolves, relative to the component's own hashed URL, to the core's immutable URL. A test against lith v0.3.0's `edge.Static` confirmed the name and the `immutable` header. With another `StaticHashLen`, lith still finds the file by its plain name, with `no-cache`. Splitting keeps the component small and lets the toolbar render while the core loads; any change of the core changes the component's bytes and so its URL.
@@ -153,7 +153,7 @@ Sizes of the current build (brotli at quality 11, gzip at level 9):
 | `sb-rich-editor.min.js` | 15.1 KB | 5.4 KB | 4.7 KB |
 | `pm-core.min.js` | 302.5 KB | 94.8 KB | 82.2 KB |
 
-Pinned versions are in `package.json`: prosemirror-model 1.25.12, -transform 1.12.2, -view 1.42.6, -state 1.4.4, -tables 1.8.5, -history 1.5.1, -commands 1.7.2, -keymap 1.2.3, -inputrules 1.5.1, -schema-list 1.5.1, -gapcursor 1.4.1, -dropcursor 1.8.4. collab-commit is a dev dependency for its licence text: coedit's `editor/src/collab.js` holds the adapted code, because the package's `main` names a missing `dist/index.js` and the editor needs per-step tags its state does not carry. coedit's modules import prosemirror-model, -state, -transform and -view, which the build takes from this folder, so the bundle holds one copy of each; keep the versions equal to coedit's `editor/package.json`.
+Pinned versions are in `package.json`: prosemirror-model 1.25.12, -transform 1.12.2, -view 1.42.6, -state 1.4.4, -tables 1.8.5, -history 1.5.1, -commands 1.7.2, -keymap 1.2.3, -inputrules 1.5.1, -schema-list 1.5.1, -gapcursor 1.4.1, -dropcursor 1.8.4. collab-commit is a dev dependency for its licence text: lith-coedit's `editor/src/collab.js` holds the adapted code, because the package's `main` names a missing `dist/index.js` and the editor needs per-step tags its state does not carry. lith-coedit's modules import prosemirror-model, -state, -transform and -view, which the build takes from this folder, so the bundle holds one copy of each; keep the versions equal to lith-coedit's `editor/package.json`.
 
 ## Tests
 
@@ -162,7 +162,7 @@ node test/run.mjs [filter]           # the browser tests, about 90 s with CONVER
 CONVERGE_SECONDS=60 EDITORS=20 node test/run.mjs converge
 ```
 
-The browser tests need Chromium (`CHROME=/usr/bin/chromium` is the default; without it they skip). Each editor is a page of its own, with its own Datastar and component, as each person has a tab of their own. The fake writer runs in a SharedWorker: it is coedit's fake writer: it orders commits, rebases them with `rebase.js`, keeps versions, and every 50 ms renders each changed tab's frame of commits after its ack. Datastar's `@post` goes through a `fetch` shim to the worker, 25 ms each way; frames come back after 25 ms and are applied as Datastar applies a stream's `datastar-patch-elements`, as a morph of the host. A slow stream is simulated as lith's newest-frame.js behaves: a held-back frame that a newer one overtakes is never applied, and the newest always is. The pages are served with lith's DefaultCSP; one test drops `'unsafe-eval'` and runs Datastar in nonce mode. Results go to `test/out/results.json`.
+The browser tests need Chromium (`CHROME=/usr/bin/chromium` is the default; without it they skip). Each editor is a page of its own, with its own Datastar and component, as each person has a tab of their own. The fake writer runs in a SharedWorker: it is lith-coedit's fake writer: it orders commits, rebases them with `rebase.js`, keeps versions, and every 50 ms renders each changed tab's frame of commits after its ack. Datastar's `@post` goes through a `fetch` shim to the worker, 25 ms each way; frames come back after 25 ms and are applied as Datastar applies a stream's `datastar-patch-elements`, as a morph of the host. A slow stream is simulated as lith's newest-frame.js behaves: a held-back frame that a newer one overtakes is never applied, and the newest always is. The pages are served with lith's DefaultCSP; one test drops `'unsafe-eval'` and runs Datastar in nonce mode. Results go to `test/out/results.json`.
 
 The tests use no Chromium-only API except the launcher; puppeteer-core drives Firefox over WebDriver BiDi (`BROWSER=firefox CHROME=/path/to/firefox`), untried here.
 
@@ -188,4 +188,4 @@ Input rules: `# `, `## `, `### ` headings; `- ` and `* ` bulleted list; `1. ` nu
 
 Remote carets: `span.tk-caret[data-hue]` (aria-hidden) holding `span.tk-caret__tag`; `.tk-caret--tag` while the name shows (3 s after the caret moved, or near the reader's own caret), `.tk-caret--idle` after 30 s without a move. Selections: `span.tk-remote-sel[data-hue]`. Chips: `a.issue-chip[data-key]` (with `data-state` for deleted and unknown issues) holding `svg.tk-type[data-type]`, `.issue-chip__key`, `.issue-chip__summary` and `.tk-lozenge.issue-chip__status[data-cat]`. Images: `figure.doc-image` with `button.doc-image__alt`. The shadow root's parts are `toolbar`, `dialog`, `body` and `status`. The component's own CSS uses `--tk-*` tokens with fallbacks; the light-DOM rules in `src/styles.js` sit in `@layer base` behind `:where()`, so any design-system rule wins.
 
-The protocol's Node tests (converging editors, refusals, resets, the readonly state, comment ranges) are coedit's: `cd editor && npm test` in coedit.
+The protocol's Node tests (converging editors, refusals, resets, the readonly state, comment ranges) are lith-coedit's: `cd editor && npm test` in coedit.

@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zweiundeins/coedit/collab"
+	"github.com/zweiundeins/lith-coedit/collab"
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/live"
 	"github.com/zweiundeins/lith/sqlite"

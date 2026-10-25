@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/zweiundeins/coedit/collab"
+	"github.com/zweiundeins/lith-coedit/collab"
 	"github.com/zweiundeins/lith/edge"
 	"github.com/zweiundeins/lith/writer"
 

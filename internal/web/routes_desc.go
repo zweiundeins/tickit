@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zweiundeins/coedit/collab"
+	"github.com/zweiundeins/lith-coedit/collab"
 	"github.com/zweiundeins/lith/edge"
 	"github.com/zweiundeins/lith/live"
 	"github.com/zweiundeins/lith/sqlite"

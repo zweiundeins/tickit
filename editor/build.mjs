@@ -11,7 +11,7 @@
 // immutable URL; under any other hash length lith still finds the file by
 // its plain name (with no-cache).
 //
-// The core bundles coedit's shared modules (coedit.mjs says from where).
+// The core bundles lith-coedit's shared modules (lith-coedit.mjs says from where).
 //
 // node build.mjs [--watch-free]   prints the sizes (minified, gzip, brotli).
 import { build } from 'esbuild'
@@ -20,7 +20,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { brotliCompressSync, gzipSync, constants } from 'node:zlib'
-import { shared } from './coedit.mjs'
+import { shared } from './lith-coedit.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const out = join(here, '../internal/web/static/editor')
@@ -55,7 +55,7 @@ writeFileSync(
 		'sb-rich-editor bundles the following packages. Their licences follow.',
 		'',
 		...versions,
-		"@stepwisehq/prosemirror-collab-commit@1.0.5 (adapted in coedit's editor/src/collab.js)",
+		"@stepwisehq/prosemirror-collab-commit@1.0.5 (adapted in lith-coedit's editor/src/collab.js)",
 		'',
 		...pkgs.map((p) => `--- ${p}\n\n${lic(p)}\n`),
 		`--- @stepwisehq/prosemirror-collab-commit\n\n${readFileSync(join(here, 'node_modules/@stepwisehq/prosemirror-collab-commit/LICENSE'), 'utf8').trim()}\n`,

@@ -10,7 +10,7 @@ import { gapCursor } from 'prosemirror-gapcursor'
 import { dropCursor } from 'prosemirror-dropcursor'
 import { tableEditing } from 'prosemirror-tables'
 import { schema, limits, ISSUE_KEY, ID, normalizeHref, setLabelHooks, imageSrc, MAX_ALT } from './schema.js'
-import { Session, collab, caretPlugin, commentPlugin } from 'coedit'
+import { Session, collab, caretPlugin, commentPlugin } from 'lith-coedit'
 import { limitsPlugin } from './limits.js'
 import { IssueChipView, MentionView, PageLinkView, TaskItemView, ImageView, IssueListView } from './nodeviews.js'
 import { COMMANDS, rules, keymaps, inTable, inCode, setLanguage, shortcutText } from './commands.js'
@@ -187,7 +187,7 @@ class Editor {
 				dispatchTransaction: (tr) => this.dispatch(tr),
 			},
 		)
-		// The commit protocol, carets and comment highlights: coedit's
+		// The commit protocol, carets and comment highlights: lith-coedit's
 		// Session, with the design system's class names.
 		this.session = new Session({
 			view: this.view,

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zweiundeins/coedit/collab"
+	"github.com/zweiundeins/lith-coedit/collab"
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/zweiundeins/tickit/internal/access"

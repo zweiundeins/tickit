@@ -14,7 +14,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { startServer } from './server.mjs'
-import { shared } from '../coedit.mjs'
+import { shared } from '../lith-coedit.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const filter = process.argv[2] ?? ''

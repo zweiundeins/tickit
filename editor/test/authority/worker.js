@@ -1,9 +1,9 @@
-// The fake server for the browser harness (coedit's Authority), in a SharedWorker so that every
+// The fake server for the browser harness (lith-coedit's Authority), in a SharedWorker so that every
 // tab (a separate page, as separate people are) talks to one authority.
 // Each page id has its own Authority. Every 50 ms (lith's tick) it renders a
 // frame for each tab whose view changed and posts it to that tab's port.
 import { schema } from '../../src/schema.js'
-import { Authority } from 'coedit/test/authority/authority.js'
+import { Authority } from 'lith-coedit/test/authority/authority.js'
 
 const TICK = 50
 const pages = new Map() // page -> {auth, ports: Map(tab -> port)}

@@ -1,4 +1,4 @@
-// Package editing is tickit's configuration of coedit's collab, shared by
+// Package editing is tickit's configuration of lith-coedit's collab, shared by
 // the two kinds of co-edited documents, a page's body (internal/wiki) and
 // an issue's description (internal/tracker): tickit's schema, its rules
 // with the image library and the uploads of the commit's transaction, the
@@ -11,7 +11,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	"github.com/zweiundeins/coedit/collab"
+	"github.com/zweiundeins/lith-coedit/collab"
 	"github.com/zweiundeins/lith/writer"
 	"github.com/zweiundeins/prosemirror-go"
 

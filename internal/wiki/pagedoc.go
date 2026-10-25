@@ -7,7 +7,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/zweiundeins/coedit/collab"
+	"github.com/zweiundeins/lith-coedit/collab"
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
@@ -21,7 +21,7 @@ import (
 	"github.com/zweiundeins/tickit/internal/tabs"
 )
 
-// A page's document is a co-edited document of coedit's collab, of the
+// A page's document is a co-edited document of lith-coedit's collab, of the
 // kind "pagedoc", keyed by the page's id (docs/editor.md). Its head is
 // page_doc, its editing tabs page_editors.
 var pageDocs = editing.NewKind(collab.Config{

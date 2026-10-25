@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zweiundeins/coedit/collab"
+	"github.com/zweiundeins/lith-coedit/collab"
 )
 
 // NFR-43.3: one fold command, FoldBatch commits of a page of about

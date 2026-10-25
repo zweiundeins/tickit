@@ -8,7 +8,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/zweiundeins/coedit/collab"
+	"github.com/zweiundeins/lith-coedit/collab"
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
@@ -21,7 +21,7 @@ import (
 )
 
 // An issue's description is co-edited as a page is (FR-15, Q22,
-// docs/editor.md): a document of coedit's collab of the kind "issuedoc",
+// docs/editor.md): a document of lith-coedit's collab of the kind "issuedoc",
 // keyed by the issue's id, whose head is issue_doc and whose editing
 // tabs are issue_editors. CreateIssue starts it with the description it
 // is created with.

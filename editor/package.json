@@ -2,7 +2,7 @@
   "name": "tickit-editor",
   "private": true,
   "type": "module",
-  "description": "sb-rich-editor: tickit's co-editing component (ProseMirror on coedit's commit protocol), its build and its browser tests.",
+  "description": "sb-rich-editor: tickit's co-editing component (ProseMirror on lith-coedit's commit protocol), its build and its browser tests.",
   "license": "MIT",
   "scripts": {
     "build": "node build.mjs",

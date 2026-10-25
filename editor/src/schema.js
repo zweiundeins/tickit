@@ -6,7 +6,7 @@
 // Nothing here touches the DOM until ProseMirror parses or serialises, so the
 // test authority builds the same schema in a worker.
 import { Schema } from 'prosemirror-model'
-import { schemaSpec } from 'coedit'
+import { schemaSpec } from 'lith-coedit'
 import spec from '../../internal/docnodes/schema.json' with { type: 'json' }
 
 export { spec }

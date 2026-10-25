@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/zweiundeins/coedit/collab"
+	"github.com/zweiundeins/lith-coedit/collab"
 	"github.com/zweiundeins/lith/edge"
 	"github.com/zweiundeins/lith/live"
 	"github.com/zweiundeins/lith/sqlite"
@@ -275,7 +275,7 @@ func (s *Server) commit(w http.ResponseWriter, r *http.Request) {
 }
 
 // commitWith runs the commit that build makes of a commit's payload, for
-// any co-edited document (coedit's collab): a page's, an issue's
+// any co-edited document (lith-coedit's collab): a page's, an issue's
 // description. took is how long the writer spent on it; pause stops the
 // tab's editor when the demo's guard refuses the commit (MP-14.1).
 func (s *Server) commitWith(w http.ResponseWriter, r *http.Request, pause func(tx *writer.Tx, session, tab, id, msg string) error, build func(by tabs.By, sid, id string, req editorRequest) (cmd writer.ResultCommand, took func() time.Duration)) {

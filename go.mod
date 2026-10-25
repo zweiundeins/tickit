@@ -14,8 +14,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/klauspost/compress v1.20.3
 	github.com/prometheus/client_golang v1.25.0
-	github.com/zweiundeins/coedit v0.0.0
 	github.com/zweiundeins/lith v0.5.1
+	github.com/zweiundeins/lith-coedit v0.0.0
 	github.com/zweiundeins/lith/minify v0.5.1
 	github.com/zweiundeins/lith/prom v0.5.1
 	github.com/zweiundeins/prosemirror-go v0.0.0
@@ -182,11 +182,11 @@ require (
 )
 
 // LOCAL ONLY: prosemirror-go (with its nested module oracle, which the tests
-// use) and coedit are not published yet. These replace directives point at
+// use) and lith-coedit are not published yet. These replace directives point at
 // checkouts beside this one; CI cannot build tickit until they are published
 // and tagged and the directives are removed.
 replace (
-	github.com/zweiundeins/coedit => ../coedit
+	github.com/zweiundeins/lith-coedit => ../lith-coedit
 	github.com/zweiundeins/prosemirror-go => ../prosemirror-go
 	github.com/zweiundeins/prosemirror-go/oracle => ../prosemirror-go/oracle
 )
