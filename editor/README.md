@@ -83,6 +83,7 @@ All bubble and are composed. The detail never goes into a signal; commits and pr
 
 | Method | Does |
 | --- | --- |
+| `outcomes(map)` | The page hands it `$_outcomes` at every change: the editor shows the words of its own failed ops, a commit's ref (a rate limit, a failed write: the server's notice) and an upload's op (its refusal). No words come from a status. |
 | `posted(ref, ok, status?)` | The page calls it when the `@post` of commit `ref` settled. `ok` false means a network failure: the commit goes out again after 1 s, then 2, 4, 8 and 15 s. `ok` true means the server answered; the frame confirms. With a `status`: 429 and 5xx back off and resend, 409 and 422 wait for the frame that says why. |
 | `copy()` | Puts the content on the clipboard as HTML and text (MP-13). |
 | `insertImage(id, alt)`, `insertChip(key)`, `insertMention(personId, label)`, `insertPageLink(pageId)` | Insert at the selection. |
@@ -95,9 +96,11 @@ All bubble and are composed. The detail never goes into a signal; commits and pr
 ## Wiring the page
 
 ```html
-data-on:sb-commit="@post(el.dataset.cmd + '/commit',
-    {payload: {...evt.detail, tab: $_tab}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0})
-  .then(() => el.posted(evt.detail.ref, true), () => el.posted(evt.detail.ref, false))"
+data-on:sb-commit="(el.__status = 0, @post(el.dataset.cmd + '/commit',
+    {headers: {'Tab-Id': $_tab, 'Op-Id': evt.detail.ref}, payload: {...evt.detail, tab: $_tab}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0})
+  .then(() => el.posted(evt.detail.ref, true, el.__status || undefined), () => el.posted(evt.detail.ref, false)))"
+data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && (el.__status = +evt.detail.argsRaw.status)"
+data-effect="el.outcomes && el.outcomes($_outcomes)"
 data-on:sb-presence="@post(el.dataset.cmd + '/presence',
     {payload: {...evt.detail, tab: $_tab}, retry: 'never', retryMaxCount: 0}).catch(() => {})"
 data-on:sb-status="$_editor.status = evt.detail.status"
