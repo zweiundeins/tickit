@@ -404,6 +404,9 @@ func TestEveryActionRefused(t *testing.T) {
 			before := f.state()
 			code, answer := f.post(l.w, path, body)
 			want := []int{http.StatusForbidden}
+			if c.name == "pages/commit" || c.name == "issues/description/commit" {
+				want = append(want, http.StatusConflict) // collab's Readonly: the frame says readonly (docs/editor.md)
+			}
 			if l.w == wGuest && !l.open {
 				want = append(want, http.StatusNotFound)
 				if c.name == "pages/commit" || c.name == "issues/description/commit" {

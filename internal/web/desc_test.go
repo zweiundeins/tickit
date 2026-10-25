@@ -167,8 +167,8 @@ func TestDescriptionAnswers(t *testing.T) {
 	vh := descHead(t, e, issue)
 	code, _ := webtest.Post(t, vera, e.URL+"/cmd/issues/"+issue+"/description/commit",
 		fmt.Sprintf(`{"tab":"vtab","epoch":%q,"base":%d,"ref":"v2","client":"0123456789ab","steps":%s}`, vh.Epoch, vh.Version, text))
-	if code != http.StatusForbidden {
-		t.Errorf("a Viewer's commit: %d", code)
+	if code != http.StatusConflict {
+		t.Errorf("a Viewer's commit: %d", code) // collab's Readonly; the frame says readonly
 	}
 	// A deleted issue stops its editors: 409.
 	e.Do(t, tracker.DeleteIssue{By: byOf(ada, "d1"), Issue: id})
