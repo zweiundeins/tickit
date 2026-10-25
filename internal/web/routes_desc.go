@@ -10,15 +10,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/zweiundeins/coedit/collab"
 	"github.com/zweiundeins/lith/edge"
 	"github.com/zweiundeins/lith/live"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
+	"github.com/zweiundeins/prosemirror-go"
 
 	"github.com/zweiundeins/tickit/internal/access"
-	"github.com/zweiundeins/tickit/internal/collab"
 	"github.com/zweiundeins/tickit/internal/demo"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/tracker"
@@ -84,8 +85,8 @@ func descHTML(ctx context.Context, q sqlite.Querier, issue string, fallback json
 	if err != nil {
 		return "", err
 	}
-	html := doc.RenderHTML(h.Doc, r)
-	if strings.TrimSpace(doc.Text(h.Doc)) == "" && !strings.Contains(html, "<img") && len(doc.References(h.Doc).Issues) == 0 {
+	html := docnodes.RenderHTML(h.Doc, r)
+	if strings.TrimSpace(docnodes.Text(h.Doc)) == "" && !strings.Contains(html, "<img") && len(docnodes.References(h.Doc).Issues) == 0 {
 		return "", nil
 	}
 	return html, nil
@@ -114,8 +115,8 @@ func (s *Server) descEditorHost(w http.ResponseWriter, r *http.Request) {
 			// An issue from before: open starts its document at version
 			// 1 from the description it holds, in this epoch.
 			d, _ := tracker.IssueDetail(ctx, tx, id)
-			if h.Doc, err = doc.ParseDoc(d.Description); err != nil || collab.IsBlank(d.Description) {
-				h.Doc, _ = doc.ParseDoc([]byte(collab.Blank))
+			if h.Doc, err = docnodes.ParseDoc(d.Description); err != nil || docnodes.IsBlank(d.Description) {
+				h.Doc, _ = docnodes.ParseDoc([]byte(docnodes.Blank))
 			}
 			n, err := demo.Epoch(ctx, tx)
 			if err != nil {
@@ -126,7 +127,7 @@ func (s *Server) descEditorHost(w http.ResponseWriter, r *http.Request) {
 			return host, err
 		}
 		host.Epoch, host.Base, host.Head = h.Epoch, h.Version, h.Version
-		raw, err := doc.MarshalDoc(h.Doc)
+		raw, err := prosemirror.MarshalDoc(h.Doc)
 		if err != nil {
 			return host, err
 		}
@@ -452,9 +453,9 @@ func (s *Server) descVersion(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if ver.Before == nil {
-			p.HTML = doc.RenderHTML(ver.After, res)
+			p.HTML = docnodes.RenderHTML(ver.After, res)
 		} else {
-			diff := doc.Diff(ver.Before, ver.After)
+			diff := docnodes.Diff(ver.Before, ver.After)
 			p.HTML, p.Inserted, p.Deleted = diff.HTML(res), diff.Inserted, diff.Deleted
 		}
 		return Page{Title: d.Key + " description, version " + strconv.FormatInt(v, 10), Nav: "projects", Project: d.ProjectID, Width: "prose",

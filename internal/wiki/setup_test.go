@@ -13,10 +13,11 @@ import (
 
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/writer"
+	"github.com/zweiundeins/prosemirror-go"
 
 	"github.com/zweiundeins/tickit/internal/access"
 	"github.com/zweiundeins/tickit/internal/dbtest"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/tracker"
@@ -161,7 +162,7 @@ func (e *env) head(page string) string {
 	e.t.Helper()
 	var h Head
 	e.View(e.t, func(tx *sql.Tx) (err error) { h, err = HeadOf(context.Background(), tx, page); return err })
-	b, _ := doc.MarshalDoc(h.Doc)
+	b, _ := prosemirror.MarshalDoc(h.Doc)
 	return string(b)
 }
 
@@ -208,10 +209,10 @@ func paras(texts ...string) json.RawMessage {
 		content = append(content, n{"type": "paragraph", "content": []any{n{"type": "text", "text": t}}})
 	}
 	b, _ := json.Marshal(n{"type": "doc", "content": content})
-	d, err := doc.ParseDoc(b)
+	d, err := docnodes.ParseDoc(b)
 	if err != nil {
 		return b
 	}
-	out, _ := doc.MarshalDoc(d)
+	out, _ := prosemirror.MarshalDoc(d)
 	return out
 }

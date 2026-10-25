@@ -10,8 +10,8 @@ import (
 )
 
 // Descriptions and comments are rich-text documents in the editor's
-// schema (internal/doc/schema.json), stored as ProseMirror's JSON. Until
-// internal/doc validates them in full, this package checks their shape
+// schema (internal/docnodes/schema.json), stored as ProseMirror's JSON. Until
+// docnodes validates them in full, this package checks their shape
 // and size, reads their text for search and their mentions for
 // notifications, and turns plain text into a document (PlainDoc).
 

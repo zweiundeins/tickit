@@ -32,8 +32,8 @@
 // Every command carries tabs.By and checks its right with access.Require
 // inside Apply: a Member creates and edits pages, its creator, the
 // space's Admin or a moderator trashes a page (requirements 3.2). Commit
-// rebases a stale commit over the commits since its base (doc.Rebase),
-// checks the result (doc.Rules) and appends with events.Exactly(head);
+// rebases a stale commit over the commits since its base (prosemirror.Rebase),
+// checks the result (docnodes.Rules) and appends with events.Exactly(head);
 // the web layer runs it under writer.Once by its ref. CutVersion cuts a
 // version (60 s idle, the last editor gone, "Save version", every 10
 // minutes); Restore turns the page into an old version with one step and

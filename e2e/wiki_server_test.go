@@ -15,12 +15,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zweiundeins/coedit/collab"
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/live"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/zweiundeins/tickit/internal/collab"
 	"github.com/zweiundeins/tickit/internal/demo"
 	"github.com/zweiundeins/tickit/internal/demo/seed"
 	"github.com/zweiundeins/tickit/internal/notify"

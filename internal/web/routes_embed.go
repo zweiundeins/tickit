@@ -21,7 +21,7 @@ import (
 
 	"github.com/zweiundeins/tickit/internal/access"
 	"github.com/zweiundeins/tickit/internal/demo"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/tracker"
@@ -32,7 +32,7 @@ import (
 // routesEmbed registers issue lists on pages (FR-104) and issues created
 // from a page's text (FR-105).
 //
-// An issue list is a block of the document (doc.IssueList: a saved
+// An issue list is a block of the document (docnodes.IssueList: a saved
 // filter or a filter in the issue list's query syntax, and a row cap).
 // The reader view (pagedoc:<page>, routes_wiki.go) renders its rows in
 // place: its key holds the projects the reader may read, and a render of
@@ -43,7 +43,7 @@ import (
 // (listsCache). In the editor, the view pagelists:<page> patches the
 // page's hidden lists element with every list's rows and the saved
 // filters, which the editor's node views copy. Versions and comparisons
-// show a list's description (doc.ListDescription) without rows.
+// show a list's description (docnodes.ListDescription) without rows.
 //
 // POST /cmd/pages/issue {tab, op, page, project, summary, find, block,
 // nth} creates a task from a page's selected text, links the page to it
@@ -74,29 +74,29 @@ type listsFor struct {
 
 // listResolver resolves a page's atoms and fills its issue lists.
 type listResolver struct {
-	doc.StaticResolver
-	list func(doc.IssueList) string
+	docnodes.StaticResolver
+	list func(docnodes.IssueList) string
 }
 
-func (r listResolver) List(l doc.IssueList) string { return r.list(l) }
+func (r listResolver) List(l docnodes.IssueList) string { return r.list(l) }
 
 // describeLists is a version's resolver: its issue lists show their
 // filters, saved filters by their names, never rows (FR-104).
-func describeLists(ctx context.Context, q sqlite.Querier, res doc.StaticResolver) doc.Resolver {
-	return listResolver{res, func(l doc.IssueList) string {
+func describeLists(ctx context.Context, q sqlite.Querier, res docnodes.StaticResolver) docnodes.Resolver {
+	return listResolver{res, func(l docnodes.IssueList) string {
 		name := ""
 		if l.SavedFilter != "" {
 			if sf, err := tracker.SavedFilterByID(ctx, q, l.SavedFilter); err == nil {
 				name = sf.Name
 			}
 		}
-		return doc.ListDescription(l, name)
+		return docnodes.ListDescription(l, name)
 	}}
 }
 
 // listHTML is the inside of an issue list as lf sees it (FR-104); "" on
 // an error, which leaves the list's description.
-func (s *Server) listHTML(ctx context.Context, q sqlite.Querier, lf listsFor, l doc.IssueList) string {
+func (s *Server) listHTML(ctx context.Context, q sqlite.Querier, lf listsFor, l docnodes.IssueList) string {
 	h, err := s.lists.get(ctx, lf.seq, l.Key()+"\n"+rightsKey(lf.readable)+"\n"+lf.owner, func() (string, error) {
 		el, err := embeddedList(ctx, q, lf, l)
 		if err != nil {
@@ -113,23 +113,23 @@ func (s *Server) listHTML(ctx context.Context, q sqlite.Querier, lf listsFor, l 
 }
 
 // embeddedList reads an issue list's rows.
-func embeddedList(ctx context.Context, q sqlite.Querier, lf listsFor, l doc.IssueList) (views.EmbeddedList, error) {
+func embeddedList(ctx context.Context, q sqlite.Querier, lf listsFor, l docnodes.IssueList) (views.EmbeddedList, error) {
 	el := views.EmbeddedList{Limit: max(l.Limit, 1)}
 	var f tracker.Filter
 	var sort tracker.Sort
 	if l.SavedFilter != "" {
 		sf, err := tracker.SavedFilterByID(ctx, q, l.SavedFilter)
 		if errors.Is(err, access.ErrNotFound) {
-			el.Desc, el.Missing = doc.ListDescription(l, ""), "Its saved filter was deleted."
+			el.Desc, el.Missing = docnodes.ListDescription(l, ""), "Its saved filter was deleted."
 			return el, nil
 		}
 		if err != nil {
 			return el, err
 		}
-		f, sort, el.Desc = sf.Filter, sf.Sort, doc.ListDescription(l, sf.Name)
+		f, sort, el.Desc = sf.Filter, sf.Sort, docnodes.ListDescription(l, sf.Name)
 	} else {
 		v, _ := url.ParseQuery(l.Filter)
-		f, sort, el.Desc = tracker.ParseFilter(v), tracker.ParseSort(v), doc.ListDescription(l, "")
+		f, sort, el.Desc = tracker.ParseFilter(v), tracker.ParseSort(v), docnodes.ListDescription(l, "")
 	}
 	if len(f.Statuses) > 0 { // a status no project has filters nothing (FR-51.2)
 		known, err := knownStatuses(ctx, q, lf.readable)
@@ -247,9 +247,9 @@ func (s *Server) pageListsView(ctx context.Context, q sqlite.Querier, actor peop
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return nil, err
 			}
-			var lists []doc.IssueList
+			var lists []docnodes.IssueList
 			if err == nil {
-				lists = doc.IssueLists(h.Doc)
+				lists = docnodes.IssueLists(h.Doc)
 			}
 			if len(lists) > 0 {
 				live.Depends(ctx, listTopics...)

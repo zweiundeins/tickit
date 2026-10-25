@@ -13,8 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zweiundeins/prosemirror-go"
+
 	"github.com/zweiundeins/tickit/internal/browsertest"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/web"
@@ -179,7 +181,7 @@ func coedit(t *testing.T, n int, d time.Duration, rate float64) coeditResult {
 	// The server holds the same document, and the reader sees it.
 	var head wiki.Head
 	s.db.View(context.Background(), func(tx *sql.Tx) (err error) { head, err = wiki.HeadOf(context.Background(), tx, page); return err })
-	serverDoc, _ := doc.MarshalDoc(head.Doc)
+	serverDoc, _ := prosemirror.MarshalDoc(head.Doc)
 	if !sameDoc(string(serverDoc), docs[0]) {
 		t.Errorf("the server's document differs from the editors'\n%s\n%s", serverDoc, docs[0])
 	}
@@ -242,16 +244,16 @@ func countAll(j, letters string) int {
 // docText is the text of a document's JSON, blocks joined without
 // separators, as textContent reads it.
 func docText(j string) string {
-	d, err := doc.ParseDoc([]byte(j))
+	d, err := docnodes.ParseDoc([]byte(j))
 	if err != nil {
 		return ""
 	}
-	return strings.ReplaceAll(doc.Text(d), "\n", "")
+	return strings.ReplaceAll(docnodes.Text(d), "\n", "")
 }
 
 func sameDoc(a, b string) bool {
-	da, err1 := doc.ParseDoc([]byte(a))
-	db, err2 := doc.ParseDoc([]byte(b))
+	da, err1 := docnodes.ParseDoc([]byte(a))
+	db, err2 := docnodes.ParseDoc([]byte(b))
 	return err1 == nil && err2 == nil && da.Eq(db)
 }
 

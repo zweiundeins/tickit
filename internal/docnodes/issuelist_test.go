@@ -1,75 +1,16 @@
-package doc
+package docnodes
 
 import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/zweiundeins/prosemirror-go"
 )
 
 const savedID = "0192f0c4-7b1e-7cc3-9d2a-5f6e7a8b9c0d"
 
 func issueList(attrs string) string { return `{"type":"issue_list","attrs":` + attrs + `}` }
-
-// FR-104: the issue list block agrees with prosemirror-model: valid and
-// invalid documents, its defaults, and attr steps on it, applied and
-// written back as V8 does.
-func TestIssueListAgreesWithOracle(t *testing.T) {
-	o := theOracle(t)
-	cases := []string{
-		docOf(`{"type":"issue_list"}`),
-		docOf(issueList(`{"filter":"status=todo&project=WEB","limit":5}`)),
-		docOf(issueList(`{"savedFilter":"`+savedID+`"}`), para),
-		docOf(issueList(`{"limit":"5"}`)),
-		docOf(issueList(`{"filter":7}`)),
-		docOf(`{"type":"paragraph","content":[{"type":"issue_list"}]}`),
-		docOf(`{"type":"bullet_list","content":[{"type":"list_item","content":[` + para + `,{"type":"issue_list"}]}]}`),
-		docOf(`{"type":"issue_list","content":[` + para + `]}`),
-	}
-	for i, c := range cases {
-		want := o.must(t, "check", c)
-		_, err := ParseDoc([]byte(c))
-		got := ""
-		if err != nil {
-			got = err.Error()
-		}
-		if got != want {
-			t.Errorf("case %d %s:\n go: %q\n js: %q", i, c, got, want)
-		}
-		if err == nil {
-			d, _ := ParseDoc([]byte(c))
-			if out, _ := MarshalDoc(d); string(out) != o.must(t, "roundtrip", c) {
-				t.Errorf("case %d: writes %s", i, out)
-			}
-		}
-	}
-
-	start := docOf(para, issueList(`{"filter":"status=todo"}`), para)
-	d := mustDoc(t, start)
-	id, _ := strconv.Atoi(o.must(t, "load", start))
-	defer o.call("free", id)
-	for _, raw := range []string{
-		`{"stepType":"attr","pos":4,"attr":"filter","value":"assignee=unassigned&q=login"}`,
-		`{"stepType":"attr","pos":4,"attr":"limit","value":25}`,
-		`{"stepType":"attr","pos":4,"attr":"savedFilter","value":"` + savedID + `"}`,
-		`{"stepType":"replace","from":4,"to":5}`,
-		`{"stepType":"replace","from":0,"to":0,"slice":{"content":[{"type":"issue_list","attrs":{"filter":"type=bug","savedFilter":"","limit":3}}]}}`,
-	} {
-		st, err := tickit.ParseStep([]byte(raw))
-		if err != nil {
-			t.Fatalf("%s: %v", raw, err)
-		}
-		if res := o.must(t, "apply", id, raw); res != "" {
-			t.Fatalf("%s: oracle %s", raw, res)
-		}
-		if d, err = st.Apply(d); err != nil {
-			t.Fatalf("%s: %v", raw, err)
-		}
-		got, _ := MarshalDoc(d)
-		if want := o.must(t, "json", id); string(got) != want {
-			t.Fatalf("%s:\n go: %s\n js: %s", raw, got, want)
-		}
-	}
-}
 
 // FR-104, DM-05: the server's rules for an issue list.
 func TestIssueListRules(t *testing.T) {
@@ -162,7 +103,7 @@ func TestFindInBlock(t *testing.T) {
 		{"page page", 0, 0, 0, false},
 		{"hi", 0, 0, 0, false},
 	} {
-		from, to, ok := FindInBlock(d, 1, c.find, c.nth)
+		from, to, ok := prosemirror.FindInBlock(d, 1, c.find, c.nth)
 		if ok != c.ok || ok && (from != c.from || to != c.to) {
 			t.Errorf("%q #%d: %d %d %v, want %d %d %v", c.find, c.nth, from, to, ok, c.from, c.to, c.ok)
 		}

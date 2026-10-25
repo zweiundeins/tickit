@@ -13,7 +13,7 @@ import (
 	"unicode/utf8"
 )
 
-// schema is internal/doc/schema.json, read the way the Go core reads it.
+// schema is internal/docnodes/schema.json, read the way the Go core reads it.
 type schema struct {
 	TopNode string       `json:"topNode"`
 	Nodes   []schemaNode `json:"nodes"`
@@ -60,7 +60,7 @@ type validator struct {
 
 func loadSchema(t testing.TB) *validator {
 	t.Helper()
-	b, err := os.ReadFile("../../doc/schema.json")
+	b, err := os.ReadFile("../../docnodes/schema.json")
 	if err != nil {
 		t.Fatal(err)
 	}

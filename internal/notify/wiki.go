@@ -7,7 +7,7 @@ import (
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/wiki"
 )
@@ -36,11 +36,11 @@ func pageAt(tx *writer.Tx, id string, upto int64) (Subject, []string, error) {
 // version before did not.
 var pageReactions = events.NewProjector(wiki.PageStream, "notify_pages", 1,
 	events.After(wiki.VersionCutType, func(ctx context.Context, r events.Record[string, wiki.VersionCut]) error {
-		d, err := doc.ParseDoc(r.Data.Doc)
+		d, err := docnodes.ParseDoc(r.Data.Doc)
 		if err != nil {
 			return nil
 		}
-		now := doc.References(d).People
+		now := docnodes.References(d).People
 		if len(now) == 0 {
 			return nil
 		}
@@ -54,8 +54,8 @@ var pageReactions = events.NewProjector(wiki.PageStream, "notify_pages", 1,
 				return s, nil, err
 			}
 			var before []string
-			if pd, err := doc.ParseDoc(prev); err == nil && prev != nil {
-				before = doc.References(pd).People
+			if pd, err := docnodes.ParseDoc(prev); err == nil && prev != nil {
+				before = docnodes.References(pd).People
 			}
 			var added []string
 			for _, p := range now {

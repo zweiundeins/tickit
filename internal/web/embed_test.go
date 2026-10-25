@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/zweiundeins/lith/writer"
+	"github.com/zweiundeins/prosemirror-go"
 
 	"github.com/zweiundeins/tickit/internal/access"
-	"github.com/zweiundeins/tickit/internal/doc"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/web/webtest"
@@ -197,7 +197,7 @@ func TestCreateIssueFromPage(t *testing.T) {
 		t.Fatalf("create: %d %s", code, body)
 	}
 	h := head(t, e, w.page)
-	raw, _ := doc.MarshalDoc(h.Doc)
+	raw, _ := prosemirror.MarshalDoc(h.Doc)
 	if want := `{"type":"text","text":"Ship the new  login page, then the "},{"type":"issue_chip","attrs":{"key":"WEB-3"}},{"type":"text","text":" tests."}`; !strings.Contains(string(raw), want) {
 		t.Errorf("FR-105.1: the chip is not in place of the second occurrence: %s", raw)
 	}

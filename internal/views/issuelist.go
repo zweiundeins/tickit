@@ -16,7 +16,7 @@ const ListsID = "wk-lists"
 // description, its rows as one reader may see them, and the issue list
 // with its filter.
 type EmbeddedList struct {
-	Desc    string // trusted HTML: doc.ListDescription
+	Desc    string // trusted HTML: docnodes.ListDescription
 	Note    string
 	Missing string // why it shows no rows: its saved filter was deleted
 	Results tracker.Results
@@ -34,7 +34,7 @@ func (l EmbeddedList) Shown() []tracker.Issue {
 }
 
 // ListRows is one issue list's rows in the editor's lists element, by
-// the list's key (doc.IssueList.Key): trusted HTML of IssueListEmbed.
+// the list's key (docnodes.IssueList.Key): trusted HTML of IssueListEmbed.
 type ListRows struct {
 	Key  string
 	HTML string

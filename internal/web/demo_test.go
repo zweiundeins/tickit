@@ -13,7 +13,7 @@ import (
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/zweiundeins/tickit/internal/demo"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/tracker"
@@ -488,7 +488,7 @@ func TestEraseAccount(t *testing.T) {
 	}
 	// A mention keeps the name it was made with in its document; pages
 	// name the erased account as deleted.
-	res, err := wiki.Resolve(context.Background(), e.DB.R, doc.Refs{People: []string{bob}})
+	res, err := wiki.Resolve(context.Background(), e.DB.R, docnodes.Refs{People: []string{bob}})
 	if name, _ := res.Person(bob); err != nil || name != people.DeletedName {
 		t.Errorf("a mention of the erased account: %q %v", name, err)
 	}

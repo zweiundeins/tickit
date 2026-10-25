@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zweiundeins/coedit/collab"
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/zweiundeins/tickit/internal/collab"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/people"
 )
 
@@ -53,7 +53,7 @@ func (e *env) descHead(issue string) string {
 	e.t.Helper()
 	var h DescHead
 	e.View(e.t, func(tx *sql.Tx) (err error) { h, err = DescriptionHead(context.Background(), tx, issue); return err })
-	return doc.Text(h.Doc)
+	return docnodes.Text(h.Doc)
 }
 
 // FR-15, MP-05: an issue's description is a co-edited document from its
@@ -70,7 +70,7 @@ func TestDescriptionCommits(t *testing.T) {
 	}
 	// An issue created without one has a blank document to edit.
 	blank := e.issue(sunny, CreateIssue{Project: p})
-	if got := e.row(`SELECT doc FROM issue_doc WHERE issue_id = ?`, blank); got != collab.Blank {
+	if got := e.row(`SELECT doc FROM issue_doc WHERE issue_id = ?`, blank); got != docnodes.Blank {
 		t.Errorf("blank %s", got)
 	}
 	if a := e.commitDesc(sunny, id, 1, "s1", steps(insert(6, " world"))); a != collab.Applied {
@@ -266,7 +266,7 @@ func TestDescriptionReset(t *testing.T) {
 		if _, err := events.Forget(Store(), tx, DescDocStream.ID(id)); err != nil {
 			return err
 		}
-		return events.Execute(Store(), tx, collab.CreateDecider, DescDocStream.ID(id), events.NoStream, collab.Created{Epoch: "e-after", Doc: json.RawMessage(collab.Blank)}, meta(e.by(ada)))
+		return events.Execute(Store(), tx, descDocs.CreateDecider, DescDocStream.ID(id), events.NoStream, collab.Created{Epoch: "e-after", Doc: json.RawMessage(docnodes.Blank)}, meta(e.by(ada)))
 	}))
 	c := &CommitDescription{By: e.by(sunny), Session: "s", Tab: "t", Issue: id, Epoch: old, Base: 1, Ref: "x", Steps: json.RawMessage(steps(insert(1, "x")))}
 	b, err := e.W.DoValue(context.Background(), func(tx *writer.Tx) ([]byte, error) { return c.ApplyResult(tx) })

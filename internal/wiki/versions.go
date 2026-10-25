@@ -9,9 +9,11 @@ import (
 
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/writer"
+	"github.com/zweiundeins/prosemirror-go"
 
 	"github.com/zweiundeins/tickit/internal/access"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
+	"github.com/zweiundeins/tickit/internal/editing"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tabs"
 )
@@ -116,11 +118,11 @@ func (c CutVersion) Apply(tx *writer.Tx) error {
 // commitWhole replaces a page's document with d in one commit made on the
 // head (collab.CommitWhole): open editors keep their places outside what
 // changed. The client is "" (no tab); ref names it.
-func commitWhole(tx *writer.Tx, by tabs.By, page string, d doc.Doc, ref string) error {
+func commitWhole(tx *writer.Tx, by tabs.By, page string, d prosemirror.Doc, ref string) error {
 	if by.At.IsZero() {
 		by.At = at(by)
 	}
-	_, err := pageDocs.CommitWhole(tx, by, page, d, ref, "body", nil)
+	_, err := editing.CommitWhole(pageDocs, tx, by, page, d, ref, "body", nil)
 	return err
 }
 
@@ -152,7 +154,7 @@ func (c RestoreVersion) Apply(tx *writer.Tx) error {
 	if hidden && !access.SiteCan(c.By.Actor, access.Moderate) { // DM-07.1
 		return errVersionHidden
 	}
-	old, err := doc.ParseDoc([]byte(raw))
+	old, err := docnodes.ParseDoc([]byte(raw))
 	if err != nil {
 		return err
 	}

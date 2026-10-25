@@ -8,18 +8,20 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/zweiundeins/coedit/collab"
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
+	"github.com/zweiundeins/prosemirror-go"
 
 	"github.com/zweiundeins/tickit/internal/access"
-	"github.com/zweiundeins/tickit/internal/collab"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
+	"github.com/zweiundeins/tickit/internal/editing"
 	"github.com/zweiundeins/tickit/internal/tabs"
 )
 
 // An issue's description is co-edited as a page is (FR-15, Q22,
-// docs/editor.md): a document of internal/collab of the kind "issuedoc",
+// docs/editor.md): a document of coedit's collab of the kind "issuedoc",
 // keyed by the issue's id, whose head is issue_doc and whose editing
 // tabs are issue_editors. CreateIssue starts it with the description it
 // is created with.
@@ -33,7 +35,7 @@ import (
 // readers' lists see a description as it was at its versions, while the
 // issue's page shows the document live. The commits up to a version are
 // folded FoldAfter after it (NFR-43).
-var descDocs = collab.NewKind(collab.Config{
+var descDocs = editing.NewKind(collab.Config{
 	Name: "issuedoc", Noun: "description", Store: func() *events.Store { return Store() },
 	Head: "issue_doc", Editors: "issue_editors", Key: "issue_id",
 	EditorTopic: DescEditorTopic, CaretsTopic: DescCaretsTopic,
@@ -105,16 +107,16 @@ func DescriptionEditors(ctx context.Context, q sqlite.Querier, issue string) ([]
 
 // descDoc parses a description a command brings: a document of the
 // schema within the rules, the blank document when empty.
-func descDoc(raw json.RawMessage) (doc.Doc, error) {
-	if collab.IsBlank(raw) {
-		raw = json.RawMessage(collab.Blank)
+func descDoc(raw json.RawMessage) (prosemirror.Doc, error) {
+	if docnodes.IsBlank(raw) {
+		raw = json.RawMessage(docnodes.Blank)
 	}
-	d, err := doc.ParseDoc(raw)
+	d, err := docnodes.ParseDoc(raw)
 	if err != nil {
 		return nil, tabs.Refuse(FieldDescription, "The description is not a document.")
 	}
-	if err := descDocs.Rules().Check(nil, d); err != nil {
-		var re *doc.RuleError
+	if err := editing.LibraryRules.Check(nil, d); err != nil {
+		var re *prosemirror.RuleError
 		if errors.As(err, &re) {
 			return nil, tabs.Refuse(FieldDescription, re.Msg)
 		}
@@ -125,9 +127,9 @@ func descDoc(raw json.RawMessage) (doc.Doc, error) {
 
 // descRaw is the description an issue's events hold for a document: nil
 // for a blank one, so that an empty description stays empty.
-func descRaw(d doc.Doc) json.RawMessage {
-	raw := collab.Marshal(d)
-	if string(raw) == collab.Blank {
+func descRaw(d prosemirror.Doc) json.RawMessage {
+	raw := docnodes.Marshal(d)
+	if string(raw) == docnodes.Blank {
 		return nil
 	}
 	return canonical(raw)
@@ -135,11 +137,11 @@ func descRaw(d doc.Doc) json.RawMessage {
 
 // checkDesc is DM-05's limits of a description beyond the schema's, for
 // a commit: its text and its mentions.
-func checkDesc(_, next doc.Doc) string {
-	if utf8.RuneCountInString(doc.Text(next)) > MaxIssueText {
+func checkDesc(_, next prosemirror.Doc) string {
+	if utf8.RuneCountInString(docnodes.Text(next)) > MaxIssueText {
 		return "A description has at most 20,000 characters."
 	}
-	if len(doc.References(next).People) > MaxDescriptionMentions {
+	if len(docnodes.References(next).People) > MaxDescriptionMentions {
 		return "A description mentions 50 people at most."
 	}
 	return ""
@@ -180,9 +182,9 @@ func ensureDesc(tx *writer.Tx, by tabs.By, issue string, s IssueState) error {
 	if _, err := descDocs.State(tx, issue); !errors.Is(err, access.ErrNotFound) {
 		return err
 	}
-	d, err := doc.ParseDoc(s.Description)
-	if err != nil || collab.IsBlank(s.Description) {
-		d, _ = doc.ParseDoc(json.RawMessage(collab.Blank))
+	d, err := docnodes.ParseDoc(s.Description)
+	if err != nil || docnodes.IsBlank(s.Description) {
+		d, _ = docnodes.ParseDoc(json.RawMessage(docnodes.Blank))
 	}
 	_, err = descDocs.Create(tx, issue, d, meta(by))
 	return err
@@ -212,7 +214,7 @@ func (c *CommitDescription) Validate() error {
 		return err
 	}
 	by, issue := c.By, c.Issue
-	c.c = &collab.Commit{Kind: descDocs, By: c.By, Session: c.Session, Tab: c.Tab, ID: c.Issue, Epoch: c.Epoch, Base: c.Base,
+	c.c = &collab.Commit{Kind: descDocs, Meta: c.By.Meta(), Session: c.Session, Tab: c.Tab, ID: c.Issue, Epoch: c.Epoch, Base: c.Base,
 		Ref: c.Ref, Client: c.Client, Steps: c.Steps, Check: checkDesc,
 		Gate: func(tx *writer.Tx) error { return DescriptionEditable(tx, by, issue) }}
 	if err := c.c.Validate(); err != nil {
@@ -376,7 +378,7 @@ func (c SetDescription) Apply(tx *writer.Tx) error {
 	if by.At.IsZero() {
 		by.At = at(by)
 	}
-	if _, err := descDocs.CommitWhole(tx, by, c.Issue, d, "set-"+c.By.Op, FieldDescription, checkDesc); err != nil {
+	if _, err := editing.CommitWhole(descDocs, tx, by, c.Issue, d, "set-"+c.By.Op, FieldDescription, checkDesc); err != nil {
 		return err
 	}
 	if err := acted(tx, s.Project, c.By.Actor.ID, at(c.By)); err != nil {
@@ -495,7 +497,7 @@ type DescVersion struct {
 	Actor         string
 	At            time.Time
 	Editors       []string
-	Before, After doc.Doc
+	Before, After prosemirror.Doc
 }
 
 // DescriptionVersion reads the version of an issue's description that
@@ -505,13 +507,13 @@ func DescriptionVersion(ctx context.Context, q sqlite.Querier, issue string, v i
 	var out DescVersion
 	var prev json.RawMessage
 	found := false
-	parse := func(raw json.RawMessage) doc.Doc {
-		if collab.IsBlank(raw) {
-			raw = json.RawMessage(collab.Blank)
+	parse := func(raw json.RawMessage) prosemirror.Doc {
+		if docnodes.IsBlank(raw) {
+			raw = json.RawMessage(docnodes.Blank)
 		}
-		d, err := doc.ParseDoc(raw)
+		d, err := docnodes.ParseDoc(raw)
 		if err != nil {
-			d, _ = doc.ParseDoc(json.RawMessage(collab.Blank))
+			d, _ = docnodes.ParseDoc(json.RawMessage(docnodes.Blank))
 		}
 		return d
 	}

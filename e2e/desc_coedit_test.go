@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zweiundeins/prosemirror-go"
+
 	"github.com/zweiundeins/tickit/internal/browsertest"
-	"github.com/zweiundeins/tickit/internal/doc"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/tracker"
@@ -113,7 +114,7 @@ func TestDescriptionCoEditing(t *testing.T) {
 		head, err = tracker.DescriptionHead(context.Background(), tx, id)
 		return err
 	})
-	serverDoc, _ := doc.MarshalDoc(head.Doc)
+	serverDoc, _ := prosemirror.MarshalDoc(head.Doc)
 	if !sameDoc(string(serverDoc), docs[0]) {
 		t.Errorf("the server's description differs from the editors'\n%s\n%s", serverDoc, docs[0])
 	}

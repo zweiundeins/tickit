@@ -9,11 +9,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/zweiundeins/coedit/collab"
 	"github.com/zweiundeins/lith/edge"
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/zweiundeins/tickit/internal/access"
-	"github.com/zweiundeins/tickit/internal/collab"
 	"github.com/zweiundeins/tickit/internal/images"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/tracker"

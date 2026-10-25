@@ -5,11 +5,11 @@ import (
 	"errors"
 	"time"
 
+	"github.com/zweiundeins/coedit/collab"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
 	"github.com/zweiundeins/tickit/internal/access"
-	"github.com/zweiundeins/tickit/internal/collab"
 	"github.com/zweiundeins/tickit/internal/tabs"
 )
 

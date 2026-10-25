@@ -7,9 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zweiundeins/coedit/collab"
 	"github.com/zweiundeins/lith/writer"
-
-	"github.com/zweiundeins/tickit/internal/collab"
 )
 
 // dump is every row of a table, in order, as text.

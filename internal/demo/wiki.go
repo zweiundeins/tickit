@@ -15,7 +15,7 @@ import (
 
 	"github.com/zweiundeins/tickit/internal/access"
 	"github.com/zweiundeins/tickit/internal/demo/seed"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/wiki"
 )
@@ -170,11 +170,11 @@ func newestImages(ctx context.Context, q sqlite.Querier, limit int) ([]Target, e
 		if err := rows.Scan(&raw, &title, &by, &at, &key, &space); err != nil {
 			return nil, err
 		}
-		d, err := doc.ParseDoc([]byte(raw))
+		d, err := docnodes.ParseDoc([]byte(raw))
 		if err != nil {
 			continue
 		}
-		for _, id := range doc.References(d).Images {
+		for _, id := range docnodes.References(d).Images {
 			if seen[id] || titles[id] == "" {
 				continue
 			}

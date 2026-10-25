@@ -3,7 +3,7 @@
 // gear, with six people, three projects of issues, two spaces of pages, five
 // page templates and a library of images. Load reads it from the files
 // embedded below data/; Check checks it; Parse turns its markup into
-// documents of internal/doc/schema.json. The commands that write it into
+// documents of internal/docnodes/schema.json. The commands that write it into
 // the database live elsewhere.
 //
 // # Files

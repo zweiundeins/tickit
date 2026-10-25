@@ -6,7 +6,7 @@ import (
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/search"
 )
 
@@ -60,8 +60,8 @@ var pageSearch = events.NewProjector(PageStream, search.PagesProjector, search.P
 	}),
 	events.Handle(VersionCutType, func(tx *writer.Tx, r events.Record[string, VersionCut]) error {
 		text := ""
-		if d, err := doc.ParseDoc(r.Data.Doc); err == nil {
-			text = doc.Text(d)
+		if d, err := docnodes.ParseDoc(r.Data.Doc); err == nil {
+			text = docnodes.Text(d)
 		}
 		return search.Patch(tx, search.Page, r.ID, func(d *search.Doc) {
 			d.Body, d.Updated = strings.TrimSpace(text), r.At

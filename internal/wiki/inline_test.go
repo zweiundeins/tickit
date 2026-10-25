@@ -9,9 +9,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/zweiundeins/coedit/collab"
+	"github.com/zweiundeins/prosemirror-go"
+
 	"github.com/zweiundeins/tickit/internal/access"
-	"github.com/zweiundeins/tickit/internal/collab"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/tracker"
 )
 
@@ -22,9 +24,9 @@ func (e *env) inline(page string) []InlineComment {
 	return list
 }
 
-func (e *env) highlights(page string) []doc.Highlight {
+func (e *env) highlights(page string) []prosemirror.Highlight {
 	e.t.Helper()
-	var list []doc.Highlight
+	var list []prosemirror.Highlight
 	e.View(e.t, func(tx *sql.Tx) (err error) { list, err = Highlights(context.Background(), tx, page); return err })
 	return list
 }
@@ -57,7 +59,7 @@ func TestInlineComment(t *testing.T) {
 	if len(list) != 1 || list[0].ID != c || list[0].Quote != "hello" || list[0].From != 5 || list[0].To != 10 || list[0].Detached || list[0].Author != viewer.ID {
 		t.Fatalf("inline %+v", list)
 	}
-	if hs := e.highlights(p); !slices.Equal(hs, []doc.Highlight{{ID: c, From: 5, To: 10}}) {
+	if hs := e.highlights(p); !slices.Equal(hs, []prosemirror.Highlight{{ID: c, From: 5, To: 10}}) {
 		t.Errorf("highlights %v", hs)
 	}
 	var page []Comment
@@ -128,9 +130,9 @@ func TestInlineAnchorsFollow(t *testing.T) {
 	}
 	head := e.headDoc(p)
 	for _, h := range hs {
-		got, _ := doc.InlineText(head, h.From, h.To)
+		got, _ := prosemirror.InlineText(head, h.From, h.To)
 		if want := map[string]string{hello: "hello", team: "team"}[h.ID]; got != want {
-			t.Errorf("%s is on %q, want %q (%s)", h.ID, got, want, doc.Text(head))
+			t.Errorf("%s is on %q, want %q (%s)", h.ID, got, want, docnodes.Text(head))
 		}
 	}
 	// Deleting the word detaches it: InlineTopic tells the views.
@@ -230,9 +232,9 @@ func TestInlineAfterFold(t *testing.T) {
 	e.result(AddInlineComment{By: e.by(rainy), Page: p, Epoch: ds.Epoch, Base: ds.Version, From: 6, To: 11, Text: "hello", Body: paras("A")})
 }
 
-func (e *env) headDoc(page string) doc.Doc {
+func (e *env) headDoc(page string) prosemirror.Doc {
 	e.t.Helper()
-	d, err := doc.ParseDoc([]byte(e.head(page)))
+	d, err := docnodes.ParseDoc([]byte(e.head(page)))
 	if err != nil {
 		e.t.Fatal(err)
 	}

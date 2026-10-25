@@ -225,7 +225,7 @@ func TestPeopleImagesTemplates(t *testing.T) {
 	}
 }
 
-// Every document the seed produces fits internal/doc/schema.json.
+// Every document the seed produces fits internal/docnodes/schema.json.
 func TestDocumentsFitTheSchema(t *testing.T) {
 	c := load(t)
 	v := loadSchema(t)

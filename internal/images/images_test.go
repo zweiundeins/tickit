@@ -17,7 +17,7 @@ import (
 
 	"github.com/zweiundeins/lith/writer"
 
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 )
 
 // picture is a w by h image with a red top-left corner, a green top-right
@@ -371,11 +371,11 @@ func TestNewID(t *testing.T) {
 			t.Fatalf("%q", id)
 		}
 		seen[id] = true
-		d, err := doc.ParseDoc([]byte(`{"type":"doc","content":[{"type":"image","attrs":{"imageId":"` + id + `","src":"/img/lib/` + id + `","alt":""}}]}`))
+		d, err := docnodes.ParseDoc([]byte(`{"type":"doc","content":[{"type":"image","attrs":{"imageId":"` + id + `","src":"/img/lib/` + id + `","alt":""}}]}`))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := (doc.Rules{}).Check(nil, d); err != nil {
+		if err := (docnodes.Rules{}).Check(nil, d); err != nil {
 			t.Fatalf("%s: %v", id, err)
 		}
 	}

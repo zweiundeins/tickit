@@ -14,7 +14,7 @@ import (
 	"github.com/zweiundeins/tickit/internal/ui"
 )
 
-// doc is a document with every block type, as internal/doc renders one
+// doc is a document with every block type, as internal/docnodes renders one
 // (docs/editor.md, "HTML of a document").
 func doc(p Props, carets bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -243,7 +243,7 @@ func proseSection(p Props) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = section("prose", "Prose", "Pages, descriptions and comments in one stylesheet: .prose styles exactly the elements internal/doc renders and the editor's toDOM writes, so reading and editing look the same.").Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = section("prose", "Prose", "Pages, descriptions and comments in one stylesheet: .prose styles exactly the elements internal/docnodes renders and the editor's toDOM writes, so reading and editing look the same.").Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

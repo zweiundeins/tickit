@@ -22,7 +22,7 @@ import (
 
 	"github.com/zweiundeins/tickit/internal/access"
 	"github.com/zweiundeins/tickit/internal/demo"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/markup"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/recent"
@@ -473,7 +473,7 @@ func renderDoc(raw json.RawMessage, r *docResolver) (string, string, error) {
 	if len(raw) == 0 || string(raw) == "null" {
 		return "", "", nil
 	}
-	d, err := doc.ParseDoc(raw)
+	d, err := docnodes.ParseDoc(raw)
 	if err != nil {
 		return "", "", nil // a document the schema refuses shows as nothing, not as an error page
 	}
@@ -481,8 +481,8 @@ func renderDoc(raw json.RawMessage, r *docResolver) (string, string, error) {
 	if err != nil {
 		text = ""
 	}
-	html := doc.RenderHTML(d, r)
-	if strings.TrimSpace(doc.Text(d)) == "" && !strings.Contains(html, "<img") {
+	html := docnodes.RenderHTML(d, r)
+	if strings.TrimSpace(docnodes.Text(d)) == "" && !strings.Contains(html, "<img") {
 		return "", text, nil
 	}
 	return html, text, nil
@@ -497,16 +497,16 @@ type docResolver struct {
 	people map[string]people.Person
 }
 
-func (r *docResolver) Issue(key string) (doc.Chip, bool) {
+func (r *docResolver) Issue(key string) (docnodes.Chip, bool) {
 	ref, err := tracker.RefByKey(r.ctx, r.q, key)
 	if err != nil || ref == nil {
-		return doc.Chip{}, false
+		return docnodes.Chip{}, false
 	}
 	cat := string(ref.Category)
 	if ref.Category == tracker.InProgress {
 		cat = "progress"
 	}
-	return doc.Chip{Summary: ref.Summary, Status: ref.StatusName, Category: cat, Type: string(ref.Type), Deleted: ref.Deleted}, true
+	return docnodes.Chip{Summary: ref.Summary, Status: ref.StatusName, Category: cat, Type: string(ref.Type), Deleted: ref.Deleted}, true
 }
 
 func (r *docResolver) Person(id string) (string, bool) {

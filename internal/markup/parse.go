@@ -28,7 +28,7 @@ type Resolver interface {
 	Image(id string) bool
 }
 
-// Limits of a document, from internal/doc/schema.json and DM-05.
+// Limits of a document, from internal/docnodes/schema.json and DM-05.
 const (
 	maxTextLength = 2000
 	maxAttrLength = 2048

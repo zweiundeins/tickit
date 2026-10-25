@@ -6,7 +6,7 @@ import (
 	"github.com/zweiundeins/tickit/internal/ui"
 )
 
-// doc is a document with every block type, as internal/doc renders one
+// doc is a document with every block type, as internal/docnodes renders one
 // (docs/editor.md, "HTML of a document").
 templ doc(p Props, carets bool) {
 	<h2>Before the release</h2>
@@ -59,7 +59,7 @@ templ doc(p Props, carets bool) {
 }
 
 templ proseSection(p Props) {
-	@section("prose", "Prose", "Pages, descriptions and comments in one stylesheet: .prose styles exactly the elements internal/doc renders and the editor's toDOM writes, so reading and editing look the same.") {
+	@section("prose", "Prose", "Pages, descriptions and comments in one stylesheet: .prose styles exactly the elements internal/docnodes renders and the editor's toDOM writes, so reading and editing look the same.") {
 		@spec("Every block: headings, lists, task list, quote, code with its language, table, rule, image, chips, mentions, page links, a diff", "<div class=\"prose\">…the document's HTML…</div>") {
 			<div class="prose sg-prose">
 				@doc(p, false)

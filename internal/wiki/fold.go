@@ -4,9 +4,8 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/zweiundeins/coedit/collab"
 	"github.com/zweiundeins/lith/writer"
-
-	"github.com/zweiundeins/tickit/internal/collab"
 )
 
 // The fold (NFR-43): the commits of a page's document up to a version are

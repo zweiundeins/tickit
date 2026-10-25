@@ -13,15 +13,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/zweiundeins/coedit/collab"
 	"github.com/zweiundeins/lith/edge"
 	"github.com/zweiundeins/lith/live"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/sse"
 	"github.com/zweiundeins/lith/writer"
+	"github.com/zweiundeins/prosemirror-go"
 
 	"github.com/zweiundeins/tickit/internal/access"
-	"github.com/zweiundeins/tickit/internal/collab"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
+	"github.com/zweiundeins/tickit/internal/editing"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/tracker"
@@ -75,7 +77,7 @@ func (s *Server) editorPage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return Page{}, err
 		}
-		raw, err := doc.MarshalDoc(h.Doc)
+		raw, err := prosemirror.MarshalDoc(h.Doc)
 		if err != nil {
 			return Page{}, err
 		}
@@ -147,8 +149,8 @@ var imagesJSON = sync.OnceValue(func() string {
 
 // chipsJSON is the editor's chips attribute: what the document's issue
 // chips, mentions and page links show now (editor/README.md).
-func chipsJSON(ctx context.Context, q sqlite.Querier, d doc.Doc) (string, error) {
-	refs := doc.References(d)
+func chipsJSON(ctx context.Context, q sqlite.Querier, d prosemirror.Doc) (string, error) {
+	refs := docnodes.References(d)
 	res, err := wiki.Resolve(ctx, q, refs)
 	if err != nil {
 		return "", err
@@ -251,7 +253,7 @@ func (s *Server) decodeEditor(w http.ResponseWriter, r *http.Request, c class) (
 		return req, people.Person{}, false
 	}
 	actor := people.Actor(r.Context())
-	if err := sse.ReadSignalsLimit(w, r, &req, c.body); err != nil || !validID(req.Tab) || actor.IsZero() || !collab.ValidID(r.PathValue("id")) {
+	if err := sse.ReadSignalsLimit(w, r, &req, c.body); err != nil || !validID(req.Tab) || actor.IsZero() || !editing.ValidID(r.PathValue("id")) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return req, actor, false
 	}
@@ -273,7 +275,7 @@ func (s *Server) commit(w http.ResponseWriter, r *http.Request) {
 }
 
 // commitWith runs the commit that build makes of a commit's payload, for
-// any co-edited document (internal/collab): a page's, an issue's
+// any co-edited document (coedit's collab): a page's, an issue's
 // description. took is how long the writer spent on it; pause stops the
 // tab's editor when the demo's guard refuses the commit (MP-14.1).
 func (s *Server) commitWith(w http.ResponseWriter, r *http.Request, pause func(tx *writer.Tx, session, tab, id, msg string) error, build func(by tabs.By, sid, id string, req editorRequest) (cmd writer.ResultCommand, took func() time.Duration)) {

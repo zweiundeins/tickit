@@ -12,7 +12,7 @@ import (
 
 	"github.com/zweiundeins/tickit/internal/access"
 	"github.com/zweiundeins/tickit/internal/activity"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/ui"
@@ -125,7 +125,7 @@ func (s *Server) profileView(ctx context.Context, q sqlite.Querier, actor people
 
 // resolveFaces is wiki.Resolve with the faces of the people a document
 // mentions, which its mentions show beside their names (FR-67.2).
-func resolveFaces(ctx context.Context, q sqlite.Querier, refs doc.Refs) (doc.StaticResolver, error) {
+func resolveFaces(ctx context.Context, q sqlite.Querier, refs docnodes.Refs) (docnodes.StaticResolver, error) {
 	res, err := wiki.Resolve(ctx, q, refs)
 	if err != nil || len(res.People) == 0 {
 		return res, err

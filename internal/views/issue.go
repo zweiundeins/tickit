@@ -33,7 +33,7 @@ type Issue struct {
 	Epics      []tracker.IssueRef // the epic picker's
 	Others     []tracker.Issue    // issues of the project, for linking by key or summary
 	Comments   []Comment
-	DescHTML   string // the description as it is now, rendered (doc.RenderHTML)
+	DescHTML   string // the description as it is now, rendered (docnodes.RenderHTML)
 	// Pages are the pages whose head document shows the issue as a chip
 	// (FR-101), live: the wiki touches the issue's topic.
 	Pages []wiki.PageRef

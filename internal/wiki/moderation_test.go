@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/zweiundeins/tickit/internal/access"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 )
 
 // DM-07.1: a moderator hides a page's version, never its newest, and shows
@@ -62,15 +62,15 @@ func TestHideImage(t *testing.T) {
 	if err := e.do(HideImage{By: e.by(moderator), Image: "no-such-image", Hidden: true}); !errors.Is(err, access.ErrNotFound) {
 		t.Errorf("an unknown image: %v", err)
 	}
-	d, err := doc.ParseDoc([]byte(`{"type":"doc","content":[{"type":"image","attrs":{"imageId":"` + img + `","alt":"A diagram"}}]}`))
+	d, err := docnodes.ParseDoc([]byte(`{"type":"doc","content":[{"type":"image","attrs":{"imageId":"` + img + `","alt":"A diagram"}}]}`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	render := func() string {
 		var html string
 		e.View(t, func(tx *sql.Tx) error {
-			res, err := Resolve(context.Background(), tx, doc.References(d))
-			html = doc.RenderHTML(d, res)
+			res, err := Resolve(context.Background(), tx, docnodes.References(d))
+			html = docnodes.RenderHTML(d, res)
 			return err
 		})
 		return html

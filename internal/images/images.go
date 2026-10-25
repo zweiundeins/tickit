@@ -56,7 +56,7 @@ var idRe = regexp.MustCompile(`^up-[a-z2-7]{26}$`)
 var b32 = base32.StdEncoding.WithPadding(base32.NoPadding)
 
 // NewID is an uploaded image's id: "up-" and 128 random bits in base32.
-// It matches the documents' image ids (internal/doc) and no library id.
+// It matches the documents' image ids (internal/docnodes) and no library id.
 func NewID() string {
 	b := make([]byte, 16)
 	rand.Read(b)

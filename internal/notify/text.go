@@ -13,7 +13,7 @@ import (
 const MaxText = 160
 
 // node is a node of a document as ProseMirror's JSON holds it (the
-// editor's schema, internal/doc/schema.json).
+// editor's schema, internal/docnodes/schema.json).
 type node struct {
 	Type    string          `json:"type"`
 	Text    string          `json:"text,omitempty"`

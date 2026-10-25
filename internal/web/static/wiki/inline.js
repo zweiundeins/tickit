@@ -6,7 +6,7 @@
 // wiring is Datastar's: this module dispatches tk-ic-select on the composer
 // and listens for tk-ic-made.
 //
-// In view the positions come from the reader's HTML, which internal/doc
+// In view the positions come from the reader's HTML, which internal/docnodes
 // renders with one element per node (docs/editor.md, "HTML of a document");
 // the server compares the selected characters with the document's and asks
 // for a new selection when they differ. In the editor the editor's

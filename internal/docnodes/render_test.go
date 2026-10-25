@@ -1,34 +1,9 @@
-package doc
+package docnodes
 
 import (
 	"strings"
 	"testing"
 )
-
-var testResolver = StaticResolver{
-	Issues: map[string]Chip{
-		"WEB-12": {Summary: "Fix the <login>", Status: "In Review", Category: "progress", Type: "bug"},
-		"WEB-13": {Deleted: true},
-	},
-	People: map[string]string{"s-priya": "Ada \"Countess\""},
-	Pages:  map[string]string{"0192f0c4-7b1e-7cc3-9d2a-5f6e7a8b9c0d": "Release <plan>"},
-}
-
-func text(s string, marks ...string) string {
-	if len(marks) == 0 {
-		return `{"type":"text","text":` + string(appendString(nil, s)) + `}`
-	}
-	return `{"type":"text","text":` + string(appendString(nil, s)) + `,"marks":[` + strings.Join(marks, ",") + `]}`
-}
-
-const (
-	strong = `{"type":"strong"}`
-	em     = `{"type":"em"}`
-)
-
-func link(href string) string {
-	return `{"type":"link","attrs":{"href":` + string(appendString(nil, href)) + `}}`
-}
 
 // The HTML table of docs/editor.md, node by node (DM-06).
 func TestRenderHTML(t *testing.T) {
@@ -88,12 +63,12 @@ func TestEscapes(t *testing.T) {
 }
 
 func TestBlockCache(t *testing.T) {
-	d := mustDoc(t, string(readFixture(t, "f20k-doc.json")))
+	d := bigDoc(t)
 	var c BlockCache
 	if got, want := c.Render(d, testResolver), RenderHTML(d, testResolver); got != want {
 		t.Fatal("cache renders differently")
 	}
-	st, _ := tickit.ParseStep([]byte(`{"stepType":"replace","from":3,"to":3,"slice":{"content":[{"type":"text","text":"<x>"}]}}`))
+	st, _ := schema.ParseStep([]byte(`{"stepType":"replace","from":3,"to":3,"slice":{"content":[{"type":"text","text":"<x>"}]}}`))
 	d2, err := st.Apply(d)
 	if err != nil {
 		t.Fatal(err)

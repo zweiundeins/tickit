@@ -1,57 +1,8 @@
-package doc
+package docnodes
 
 import (
-	"encoding/json"
-	"strconv"
-	"strings"
 	"testing"
 )
-
-var diffPairs = [][2]string{
-	{"f20k-doc", "f20k-final"}, {"f20k-doc", "f20k-k5-final"}, {"f20k-k0-final", "f20k-k20-final"},
-	{"f200k-doc", "f200k-final"}, {"f20k-final", "f20k-doc"},
-}
-
-// FindDiffStart and FindDiffEnd agree with prosemirror-model, and the
-// restore step turns the current version into the old one (FR-89).
-func TestRestoreStep(t *testing.T) {
-	o := theOracle(t)
-	for _, p := range diffPairs {
-		ja, jb := readFixture(t, p[0]+".json"), readFixture(t, p[1]+".json")
-		a, b := mustDoc(t, string(ja)), mustDoc(t, string(jb))
-		start, ok := FindDiffStart(a.content, b.content, 0)
-		if want := o.must(t, "diffStart", string(ja), string(jb)); (ok && strconv.Itoa(start) != want) || (!ok && want != "null") {
-			t.Errorf("%v: diffStart %d, oracle %s", p, start, want)
-		}
-		ea, eb, _ := FindDiffEnd(a.content, b.content, a.content.size, b.content.size)
-		var end struct{ A, B int }
-		json.Unmarshal([]byte(o.must(t, "diffEnd", string(ja), string(jb))), &end)
-		if ea != end.A || eb != end.B {
-			t.Errorf("%v: diffEnd %d %d, oracle %+v", p, ea, eb, end)
-		}
-		st := RestoreStep(a, b)
-		got, err := st.Apply(a)
-		if err != nil || !got.Eq(b) {
-			t.Fatalf("%v: restore step %v", p, err)
-		}
-		if rs := st.(*ReplaceStep); rs.From == 0 && rs.To == a.content.size {
-			t.Logf("%v: the restore replaces the whole document", p)
-		}
-	}
-	d := mustDoc(t, docOf(para))
-	if RestoreStep(d, d) != nil {
-		t.Fatal("restore of an equal document")
-	}
-	// Emoji: the step never cuts a pair.
-	a := mustDoc(t, inPara(text("x😀y")))
-	b := mustDoc(t, inPara(text("x😁y")))
-	if s, _ := FindDiffStart(a.content, b.content, 0); s != 2 {
-		t.Fatalf("diff start in an emoji: %d", s)
-	}
-	if got, err := RestoreStep(a, b).Apply(a); err != nil || !got.Eq(b) {
-		t.Fatal(err)
-	}
-}
 
 // FR-88: added text is marked as added, removed text as removed.
 func TestDiff(t *testing.T) {
@@ -80,12 +31,6 @@ func TestDiff(t *testing.T) {
 	}
 	if !Diff(a, a).Equal() {
 		t.Error("a document differs from itself")
-	}
-	// Large documents compare in reasonable time and render.
-	f := mustDoc(t, string(readFixture(t, "f200k-doc.json")))
-	g := mustDoc(t, string(readFixture(t, "f200k-final.json")))
-	if h := Diff(f, g).HTML(nil); !strings.Contains(h, "diff-ins") {
-		t.Error("no insertions in the fixture diff")
 	}
 }
 

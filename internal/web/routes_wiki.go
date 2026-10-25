@@ -21,9 +21,10 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/sse"
 	"github.com/zweiundeins/lith/writer"
+	"github.com/zweiundeins/prosemirror-go"
 
 	"github.com/zweiundeins/tickit/internal/access"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/images"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/recent"
@@ -391,7 +392,7 @@ func pageRefs(ctx context.Context, q sqlite.Querier, page string) (views.PageRef
 			keys = append(keys, k)
 		}
 	}
-	res, err := wiki.Resolve(ctx, q, doc.Refs{Issues: keys})
+	res, err := wiki.Resolve(ctx, q, docnodes.Refs{Issues: keys})
 	if err != nil {
 		return refs, err
 	}
@@ -403,7 +404,7 @@ func pageRefs(ctx context.Context, q sqlite.Querier, page string) (views.PageRef
 }
 
 // chipProps is an issue chip as internal/ui draws it.
-func chipProps(key string, res doc.StaticResolver) ui.IssueChipProps {
+func chipProps(key string, res docnodes.StaticResolver) ui.IssueChipProps {
 	c, ok := res.Issues[key]
 	switch {
 	case !ok:
@@ -426,15 +427,15 @@ func comments(ctx context.Context, q sqlite.Querier, page string) ([]views.Comme
 // commentItems are threads of comments with their authors and bodies.
 func commentItems(ctx context.Context, q sqlite.Querier, list []wiki.Comment) ([]views.CommentItem, error) {
 	var ids []string
-	var refs doc.Refs
-	docs := map[string]doc.Doc{}
+	var refs docnodes.Refs
+	docs := map[string]prosemirror.Doc{}
 	var walk func([]wiki.Comment)
 	walk = func(cs []wiki.Comment) {
 		for _, c := range cs {
 			ids = append(ids, c.Author)
-			if d, err := doc.ParseDoc(c.Body); err == nil && !c.Deleted && !c.Hidden {
+			if d, err := docnodes.ParseDoc(c.Body); err == nil && !c.Deleted && !c.Hidden {
 				docs[c.ID] = d
-				r := doc.References(d)
+				r := docnodes.References(d)
 				refs.Issues, refs.People, refs.Pages = append(refs.Issues, r.Issues...), append(refs.People, r.People...), append(refs.Pages, r.Pages...)
 			}
 			walk(c.Replies)
@@ -455,7 +456,7 @@ func commentItems(ctx context.Context, q sqlite.Querier, list []wiki.Comment) ([
 		for _, c := range cs {
 			it := views.CommentItem{Comment: c, Author: who[c.Author], Replies: conv(c.Replies)}
 			if d, ok := docs[c.ID]; ok {
-				it.HTML, it.Text = doc.RenderHTML(d, res), doc.Text(d)
+				it.HTML, it.Text = docnodes.RenderHTML(d, res), docnodes.Text(d)
 			}
 			out = append(out, it)
 		}
@@ -717,12 +718,12 @@ func (s *Server) pageHeadView(ctx context.Context, q sqlite.Querier, actor peopl
 
 // The reader view (FR-80.3, Q18): the head document rendered once per
 // tick for every reader, from the document cache, re-rendering only the
-// blocks a commit changed (doc.BlockCache), and all of them when a chip,
+// blocks a commit changed (docnodes.BlockCache), and all of them when a chip,
 // a name or a linked title changes. Blocks with issue lists render every
 // time, with the reader's rows (FR-104, routes_embed.go).
 type reader struct {
 	mu    sync.Mutex
-	cache doc.BlockCache
+	cache docnodes.BlockCache
 	key   string // the resolver's answers the cache rendered with
 }
 
@@ -756,7 +757,7 @@ func (s *Server) readerHTML(ctx context.Context, q sqlite.Querier, page string, 
 	if err != nil {
 		return views.PageBody{}, err
 	}
-	res, err := resolveFaces(ctx, q, doc.References(h.Doc))
+	res, err := resolveFaces(ctx, q, docnodes.References(h.Doc))
 	if err != nil {
 		return views.PageBody{}, err
 	}
@@ -765,10 +766,10 @@ func (s *Server) readerHTML(ctx context.Context, q sqlite.Querier, page string, 
 		return views.PageBody{}, err
 	}
 	key, _ := json.Marshal(res)
-	var r doc.Resolver = res
-	if len(doc.IssueLists(h.Doc)) > 0 {
+	var r docnodes.Resolver = res
+	if len(docnodes.IssueLists(h.Doc)) > 0 {
 		live.Depends(ctx, listTopics...)
-		r = listResolver{res, func(l doc.IssueList) string { return s.listHTML(ctx, q, lf, l) }}
+		r = listResolver{res, func(l docnodes.IssueList) string { return s.listHTML(ctx, q, lf, l) }}
 	}
 	rd := readerOf(page)
 	rd.mu.Lock()
@@ -978,8 +979,8 @@ func (s *Server) oldVersion(w http.ResponseWriter, r *http.Request, from, n int)
 				vp.Version = it
 			}
 		}
-		refs := doc.References(d)
-		var old doc.Doc
+		refs := docnodes.References(d)
+		var old prosemirror.Doc
 		if from > 0 {
 			var ov wiki.VersionInfo
 			if ov, old, err = wiki.Version(ctx, q, p.ID, from); err != nil {
@@ -988,8 +989,8 @@ func (s *Server) oldVersion(w http.ResponseWriter, r *http.Request, from, n int)
 			if ov.Hidden && !staff(me) {
 				return Page{}, access.ErrNotFound
 			}
-			o := doc.References(old)
-			refs = doc.Refs{Issues: append(refs.Issues, o.Issues...), People: append(refs.People, o.People...), Pages: append(refs.Pages, o.Pages...), Images: append(refs.Images, o.Images...)}
+			o := docnodes.References(old)
+			refs = docnodes.Refs{Issues: append(refs.Issues, o.Issues...), People: append(refs.People, o.People...), Pages: append(refs.Pages, o.Pages...), Images: append(refs.Images, o.Images...)}
 		}
 		res, err := resolveFaces(ctx, q, refs)
 		if err != nil {
@@ -997,10 +998,10 @@ func (s *Server) oldVersion(w http.ResponseWriter, r *http.Request, from, n int)
 		}
 		lists := describeLists(ctx, q, res)
 		if old != nil {
-			diff := doc.Diff(old, d)
+			diff := docnodes.Diff(old, d)
 			vp.Compare, vp.From, vp.HTML, vp.Inserted, vp.Deleted = true, from, diff.HTML(lists), diff.Inserted, diff.Deleted
 		} else {
-			vp.HTML = doc.RenderHTML(d, lists)
+			vp.HTML = docnodes.RenderHTML(d, lists)
 		}
 		sidebar, err := s.sidebar(ctx, q, sp, p.ID, "")
 		if err != nil {
@@ -1119,7 +1120,7 @@ func (s *Server) labelPage(w http.ResponseWriter, r *http.Request) {
 			keys = append(keys, k)
 		}
 		rows.Close()
-		res, err := wiki.Resolve(ctx, q, doc.Refs{Issues: keys})
+		res, err := wiki.Resolve(ctx, q, docnodes.Refs{Issues: keys})
 		if err != nil {
 			return Page{}, err
 		}

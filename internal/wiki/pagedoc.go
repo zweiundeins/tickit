@@ -7,21 +7,24 @@ import (
 	"errors"
 	"time"
 
+	"github.com/zweiundeins/coedit/collab"
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
+	"github.com/zweiundeins/prosemirror-go"
 
 	"github.com/zweiundeins/tickit/internal/access"
-	"github.com/zweiundeins/tickit/internal/collab"
 	"github.com/zweiundeins/tickit/internal/demo/seed"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
+	"github.com/zweiundeins/tickit/internal/editing"
+	"github.com/zweiundeins/tickit/internal/images"
 	"github.com/zweiundeins/tickit/internal/tabs"
 )
 
-// A page's document is a co-edited document of internal/collab, of the
+// A page's document is a co-edited document of coedit's collab, of the
 // kind "pagedoc", keyed by the page's id (docs/editor.md). Its head is
 // page_doc, its editing tabs page_editors.
-var pageDocs = collab.NewKind(collab.Config{
+var pageDocs = editing.NewKind(collab.Config{
 	Name: "pagedoc", Noun: "page", Store: func() *events.Store { return Store() },
 	Head: "page_doc", Editors: "page_editors", Key: "page_id",
 	EditorTopic: EditorTopic, CaretsTopic: CaretsTopic,
@@ -49,35 +52,35 @@ var (
 )
 
 var (
-	createDocDecider = collab.CreateDecider
-	commitDecider    = collab.CommitDecider
+	createDocDecider = pageDocs.CreateDecider
+	commitDecider    = pageDocs.CommitDecider
 	errStale         = collab.ErrStale
-	evolveDoc        = collab.Evolve
+	evolveDoc        = pageDocs.Evolve
 )
 
 func docState(tx *writer.Tx, page string) (DocState, error) { return pageDocs.State(tx, page) }
 
 // Images are the library's images in the seed's order.
-func Images() []seed.Image { return collab.Images() }
+func Images() []seed.Image { return images.Library() }
 
 // ImageExists reports whether id is in the image library (FR-84).
-func ImageExists(id string) bool { return collab.ImageExists(id) }
+func ImageExists(id string) bool { return images.InLibrary(id) }
 
 // blank is the document of a new blank page.
-const blank = collab.Blank
+const blank = docnodes.Blank
 
 // parseDoc reads a whole document that a command brings (a template, a
 // restore) and checks it; empty is a blank page.
-func parseDoc(raw json.RawMessage) (doc.Doc, error) {
+func parseDoc(raw json.RawMessage) (prosemirror.Doc, error) {
 	if len(bytes.TrimSpace(raw)) == 0 || string(raw) == "null" {
 		raw = json.RawMessage(blank)
 	}
-	d, err := doc.ParseDoc(raw)
+	d, err := docnodes.ParseDoc(raw)
 	if err != nil {
 		return nil, tabs.Refuse("body", "This is not a page's document.")
 	}
-	if err := pageDocs.Rules().Check(nil, d); err != nil {
-		var re *doc.RuleError
+	if err := editing.LibraryRules.Check(nil, d); err != nil {
+		var re *prosemirror.RuleError
 		if errors.As(err, &re) {
 			return nil, tabs.Refuse("body", re.Msg)
 		}
@@ -86,7 +89,7 @@ func parseDoc(raw json.RawMessage) (doc.Doc, error) {
 	return d, nil
 }
 
-func marshalDoc(d doc.Doc) json.RawMessage { return collab.Marshal(d) }
+func marshalDoc(d prosemirror.Doc) json.RawMessage { return docnodes.Marshal(d) }
 
 // Head is a page's document as it is now, from the cache: for the reader
 // view, the versions and the jobs.
@@ -134,7 +137,7 @@ func (c *Commit) Validate() error {
 		return errors.New("wiki: a malformed commit")
 	}
 	by, page := c.By, c.Page
-	c.c = &collab.Commit{Kind: pageDocs, By: c.By, Session: c.Session, Tab: c.Tab, ID: c.Page, Epoch: c.Epoch, Base: c.Base,
+	c.c = &collab.Commit{Kind: pageDocs, Meta: c.By.Meta(), Session: c.Session, Tab: c.Tab, ID: c.Page, Epoch: c.Epoch, Base: c.Base,
 		Ref: c.Ref, Client: c.Client, Steps: c.Steps,
 		Gate: func(tx *writer.Tx) error { return DocEditable(tx, by, page) }}
 	if err := c.c.Validate(); err != nil {

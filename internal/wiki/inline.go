@@ -7,13 +7,14 @@ import (
 	"slices"
 	"time"
 
+	"github.com/zweiundeins/coedit/collab"
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
+	"github.com/zweiundeins/prosemirror-go"
 
 	"github.com/zweiundeins/tickit/internal/access"
-	"github.com/zweiundeins/tickit/internal/collab"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/tabs"
 )
 
@@ -123,7 +124,7 @@ func (c AddInlineComment) Validate() error {
 	if err := checkBy(c.By); err != nil {
 		return err
 	}
-	if c.ID != "" && !ValidID(c.ID) || !ValidID(c.Page) || c.Base < 0 || c.From < 0 || c.To <= c.From && c.On == "" || len(c.Text) > doc.Tickit().Limits().StoredBytes {
+	if c.ID != "" && !ValidID(c.ID) || !ValidID(c.Page) || c.Base < 0 || c.From < 0 || c.To <= c.From && c.On == "" || len(c.Text) > docnodes.SchemaLimits().StoredBytes {
 		return errors.New("wiki: a malformed inline comment")
 	}
 	return nil
@@ -155,7 +156,7 @@ func (c AddInlineComment) ApplyResult(tx *writer.Tx) ([]byte, error) {
 			return nil, err
 		}
 		var ok bool
-		if c.From, c.To, ok = doc.Find(head, c.On); !ok {
+		if c.From, c.To, ok = prosemirror.Find(head, c.On); !ok {
 			return nil, tabs.Refuse("anchor", "Select some text of the page to comment on.")
 		}
 		c.Epoch, c.Base, c.Text = ds.Epoch, ds.Version, c.On
@@ -174,8 +175,8 @@ func (c AddInlineComment) ApplyResult(tx *writer.Tx) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	from, to, _ := doc.MapRange(head, steps, c.From, c.To)
-	text, ok := doc.InlineText(head, from, to)
+	from, to, _ := prosemirror.MapRange(head, steps, c.From, c.To)
+	text, ok := prosemirror.InlineText(head, from, to)
 	switch {
 	case !ok || text == "":
 		return nil, tabs.Refuse("anchor", "Select some text of the page to comment on.")
@@ -188,7 +189,7 @@ func (c AddInlineComment) ApplyResult(tx *writer.Tx) ([]byte, error) {
 	if _, err := (AddComment{By: c.By, ID: c.ID, Page: c.Page, Body: c.Body}).ApplyResult(tx); err != nil {
 		return nil, err
 	}
-	e := InlineAnchored{Page: c.Page, V: ds.Version, From: from, To: to, Quote: doc.Quote(head, from, to, MaxQuote)}
+	e := InlineAnchored{Page: c.Page, V: ds.Version, From: from, To: to, Quote: prosemirror.Quote(head, from, to, MaxQuote)}
 	if err := events.Execute(Store(), tx, anchorDecider, InlineStream.ID(c.ID), events.NoStream, e, meta(c.By)); err != nil {
 		return nil, err
 	}
@@ -239,7 +240,7 @@ func (c ResolveInline) Apply(tx *writer.Tx) error {
 
 // mapAnchors maps a page's anchors through a commit's steps, in the
 // commit's command (FR-91.2), and detaches those whose text went.
-func mapAnchors(tx *writer.Tx, page string, steps []doc.Step, next doc.Doc) error {
+func mapAnchors(tx *writer.Tx, page string, steps []prosemirror.Step, next prosemirror.Doc) error {
 	if len(steps) == 0 {
 		return nil
 	}
@@ -265,7 +266,7 @@ func mapAnchors(tx *writer.Tx, page string, steps []doc.Step, next doc.Doc) erro
 		return err
 	}
 	for _, a := range list {
-		from, to, gone := doc.MapRange(next, steps, a.from, a.to)
+		from, to, gone := prosemirror.MapRange(next, steps, a.from, a.to)
 		if from == a.from && to == a.to && !gone {
 			continue
 		}
@@ -385,7 +386,7 @@ func boolOrder(first bool) int {
 // Highlights are the ranges of a page's head document that its readers
 // and editors see marked: its inline comments on text, neither resolved,
 // hidden nor deleted. They are at page_doc's version in the same read.
-func Highlights(ctx context.Context, q sqlite.Querier, page string) ([]doc.Highlight, error) {
+func Highlights(ctx context.Context, q sqlite.Querier, page string) ([]prosemirror.Highlight, error) {
 	rows, err := q.QueryContext(ctx, `SELECT a.comment_id, a.from_pos, a.to_pos FROM page_anchors a
 		JOIN page_inline i ON i.comment_id = a.comment_id JOIN comments c ON c.id = a.comment_id
 		WHERE a.page_id = ? AND a.detached = 0 AND i.resolved_at IS NULL AND c.deleted_at IS NULL AND c.hidden_at IS NULL
@@ -394,9 +395,9 @@ func Highlights(ctx context.Context, q sqlite.Querier, page string) ([]doc.Highl
 		return nil, err
 	}
 	defer rows.Close()
-	var out []doc.Highlight
+	var out []prosemirror.Highlight
 	for rows.Next() {
-		var h doc.Highlight
+		var h prosemirror.Highlight
 		if err := rows.Scan(&h.ID, &h.From, &h.To); err != nil {
 			return nil, err
 		}

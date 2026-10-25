@@ -13,9 +13,10 @@ import (
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
+	"github.com/zweiundeins/prosemirror-go"
 
 	"github.com/zweiundeins/tickit/internal/demo/seed"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/people"
 )
 
@@ -279,7 +280,7 @@ func Versions(ctx context.Context, q sqlite.Querier, page string) ([]VersionInfo
 }
 
 // Version reads one version with its document.
-func Version(ctx context.Context, q sqlite.Querier, page string, number int) (VersionInfo, doc.Doc, error) {
+func Version(ctx context.Context, q sqlite.Querier, page string, number int) (VersionInfo, prosemirror.Doc, error) {
 	var v VersionInfo
 	var editors, raw string
 	var at int64
@@ -294,7 +295,7 @@ func Version(ctx context.Context, q sqlite.Querier, page string, number int) (Ve
 	}
 	json.Unmarshal([]byte(editors), &v.Editors)
 	v.At = time.UnixMilli(at)
-	d, err := doc.ParseDoc([]byte(raw))
+	d, err := docnodes.ParseDoc([]byte(raw))
 	return v, d, err
 }
 
@@ -438,10 +439,10 @@ func LinkedIssues(ctx context.Context, q sqlite.Querier, page string) ([]string,
 // Resolve is what a document's chips, mentions and page links show now
 // (docs/editor.md): the issues by key from the tracker's tables, people's
 // names, pages' titles.
-func Resolve(ctx context.Context, q sqlite.Querier, refs doc.Refs) (doc.StaticResolver, error) {
-	r := doc.StaticResolver{Issues: map[string]doc.Chip{}, People: map[string]string{}, Pages: map[string]string{}}
+func Resolve(ctx context.Context, q sqlite.Querier, refs docnodes.Refs) (docnodes.StaticResolver, error) {
+	r := docnodes.StaticResolver{Issues: map[string]docnodes.Chip{}, People: map[string]string{}, Pages: map[string]string{}}
 	for _, k := range refs.Issues {
-		var c doc.Chip
+		var c docnodes.Chip
 		var deleted bool
 		err := q.QueryRowContext(ctx, `SELECT i.summary, coalesce(s.name, i.status), i.status_category, i.type, i.deleted_at IS NOT NULL OR i.hidden_at IS NOT NULL
 			FROM issue_keys k JOIN issues i ON i.id = k.issue_id LEFT JOIN statuses s ON s.project_id = i.project_id AND s.id = i.status

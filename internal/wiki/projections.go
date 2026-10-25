@@ -5,11 +5,12 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/zweiundeins/coedit/collab"
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/writer"
+	"github.com/zweiundeins/prosemirror-go"
 
-	"github.com/zweiundeins/tickit/internal/collab"
-	"github.com/zweiundeins/tickit/internal/doc"
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/tracker"
 )
 
@@ -224,10 +225,10 @@ var versionsProjector = events.NewProjector(PageStream, "wiki_versions", version
 	}),
 ).Tables("page_versions")
 
-// canonical is a document's JSON as internal/doc writes it: the stored
+// canonical is a document's JSON as prosemirror-go writes it: the stored
 // event's JSON escapes <, > and &, the event in a live command does not,
 // and a rebuild must write what the live projection wrote.
-func canonical(raw json.RawMessage) string { return collab.Canonical(raw) }
+func canonical(raw json.RawMessage) string { return docnodes.Canonical(raw) }
 
 func nonNil(s []string) []string {
 	if s == nil {
@@ -245,8 +246,8 @@ var docsProjector = pageDocs.Projector("wiki_docs", docsVersion, refsChanged, "p
 // touches what shows them: the page's chips, the issues whose lists of
 // pages change (FR-101.2), the pages that gain or lose a link from it
 // (FR-103.2).
-func refsChanged(tx *writer.Tx, page string, d doc.Doc) error {
-	refs := doc.References(d)
+func refsChanged(tx *writer.Tx, page string, d prosemirror.Doc) error {
+	refs := docnodes.References(d)
 	var issues []string
 	keys, err := column(tx, `SELECT key FROM page_chips WHERE page_id = ? ORDER BY key`, page)
 	if err != nil {
