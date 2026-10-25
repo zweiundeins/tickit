@@ -59,13 +59,20 @@ var hideIssueDecider = issueDecider(func(c HideIssue, s IssueState) ([]IssueEven
 })
 
 func (c HideIssue) Apply(tx *writer.Tx) error {
-	if _, err := issueState(tx, c.Issue); err != nil {
+	s, err := issueState(tx, c.Issue)
+	if err != nil {
 		return err
 	}
 	if err := access.Require(tx, c.By.Actor, access.Moderate, access.Scope{}); err != nil {
 		return err
 	}
-	return events.Execute(Store(), tx, hideIssueDecider, IssueStream.ID(c.Issue), events.Any, c, meta(c.By))
+	if err := events.Execute(Store(), tx, hideIssueDecider, IssueStream.ID(c.Issue), events.Any, c, meta(c.By)); err != nil {
+		return err
+	}
+	if c.Hidden {
+		return descDocs.Release(tx, c.Issue)
+	}
+	return descDocs.Hold(tx, c.Issue, s.DescUpto)
 }
 
 // projectHidden and projectUnhidden are the issues projector's handlers.

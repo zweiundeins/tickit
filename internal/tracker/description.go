@@ -457,8 +457,9 @@ func (c CutDescriptions) Apply(tx *writer.Tx) error {
 // into snapshots (NFR-43), as wiki.Fold does pages': the commits stored
 // before FoldAfter ago, or before the oldest commit not in a version yet,
 // whichever is earlier, at most Limit (collab.FoldBatch when 0). A
-// deleted issue's commits hold nothing back. It reports how many events
-// it deleted; the job sends it again while it deletes some.
+// deleted or hidden issue's commits hold nothing back: DeleteIssue and
+// HideIssue release them. It reports how many events it deleted; the job
+// sends it again while it deletes some.
 type FoldDescriptions struct {
 	At    time.Time
 	Limit int
@@ -472,8 +473,7 @@ func (c *FoldDescriptions) Apply(tx *writer.Tx) error {
 	defer func() { c.Took = time.Since(start) }()
 	since := c.At.Add(-collab.FoldAfter)
 	var oldest sql.NullInt64
-	err := tx.QueryRow(`SELECT min(u.at) FROM collab_uncut u JOIN issues i ON i.id = u.id AND i.deleted_at IS NULL
-		WHERE u.kind = 'issuedoc'`).Scan(&oldest)
+	err := tx.QueryRow(`SELECT min(at) FROM collab_uncut WHERE kind = 'issuedoc'`).Scan(&oldest)
 	if err != nil {
 		return err
 	}

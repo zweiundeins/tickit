@@ -47,7 +47,7 @@ func cutVersion(tx *writer.Tx, m events.Meta, page string, s PageState, message,
 		if save {
 			return false, &writer.Refusal{Msg: fmt.Sprintf("Nothing changed since version %d.", s.Versions)}
 		}
-		return false, nil
+		return false, pageDocs.Cut(tx, page, ds.Version) // a title changed back leaves its row
 	}
 	head, err := pageDocs.StateDoc(ctx, tx, page, ds)
 	if err != nil {
@@ -201,8 +201,9 @@ func (c SetDocument) Apply(tx *writer.Tx) error {
 // CutDue cuts the versions that are due (FR-87.1): of each page with
 // changes since its last version, after CutIdle without a commit, at once
 // when nobody edits it any more (Editing false), or when its first change
-// since the last version is CutInterval old. The job sends it every few
-// seconds; it cuts at most 20 pages a run.
+// since the last version is CutInterval old. The pages are those with a
+// row in collab_uncut: a commit or a rename marks one, a version clears
+// it. The job sends it every few seconds; it cuts at most 20 pages a run.
 type CutDue struct {
 	At time.Time
 	// Editing reports whether someone has the page open in the editor;
@@ -217,11 +218,9 @@ type due struct {
 }
 
 func (c CutDue) Apply(tx *writer.Tx) error {
-	rows, err := tx.Query(`SELECT d.page_id, d.last_at, coalesce((SELECT e.at FROM lith_events e WHERE e.stream = 'pagedoc' AND e.stream_id = d.page_id AND e.version = v.upto + 1), d.last_at)
-		FROM page_doc d JOIN pages p ON p.id = d.page_id
-		JOIN (SELECT page_id, max(upto) upto, max(number) number FROM page_versions GROUP BY page_id) v ON v.page_id = d.page_id
-		JOIN page_versions lv ON lv.page_id = v.page_id AND lv.number = v.number
-		WHERE p.state = 'current' AND (d.version > v.upto OR lv.title != p.title) LIMIT 200`)
+	rows, err := tx.Query(`SELECT u.id, d.last_at, u.at FROM collab_uncut u
+		JOIN page_doc d ON d.page_id = u.id JOIN pages p ON p.id = u.id
+		WHERE u.kind = 'pagedoc' AND p.state = 'current' LIMIT 200`)
 	if err != nil {
 		return err
 	}

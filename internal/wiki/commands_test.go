@@ -16,6 +16,7 @@ import (
 	"github.com/zweiundeins/tickit/internal/access"
 	"github.com/zweiundeins/tickit/internal/search"
 	"github.com/zweiundeins/tickit/internal/tracker"
+	"github.com/zweiundeins/tickit/migrations"
 )
 
 func TestCreateSpace(t *testing.T) {
@@ -389,6 +390,137 @@ func TestFold(t *testing.T) {
 	e.must(CutVersion{By: e.by(sunny), Page: p})
 	if n := e.row(`SELECT count(*) FROM collab_uncut WHERE id = ?`, p); n != "0" {
 		t.Errorf("%s uncut rows after a version of the head", n)
+	}
+}
+
+// NFR-43.1: a page trashed while someone edits it holds back no other
+// page's fold; restored, its commits hold the fold back again.
+func TestFoldTrashedPage(t *testing.T) {
+	e := newEnv(t)
+	sp, _ := e.space("ENG", true)
+	uncut := `SELECT count(*) FROM collab_uncut WHERE kind = 'pagedoc' AND id = ?`
+	b := e.page(sunny, CreatePage{Space: sp, Title: "Trashed"})
+	e.commit(sunny, b, 1, "b1", steps(insert(1, "b")))
+	e.must(TrashPage{By: e.by(sunny), Page: b})
+	if n := e.row(uncut, b); n != "0" {
+		t.Errorf("%s uncut rows of a trashed page", n)
+	}
+	e.must(RestorePage{By: e.by(admin), Page: b})
+	if got, want := e.row(`SELECT at FROM collab_uncut WHERE kind = 'pagedoc' AND id = ?`, b), e.row(`SELECT at FROM lith_events WHERE stream = 'pagedoc' AND stream_id = ? AND version = 2`, b); got != want {
+		t.Errorf("restored: oldest uncut commit at %q, want %q", got, want)
+	}
+	e.must(TrashPage{By: e.by(sunny), Page: b})
+
+	e.now = e.now.Add(time.Hour)
+	a := e.page(sunny, CreatePage{Space: sp, Title: "Edited"})
+	for i := range 5 {
+		e.commit(sunny, a, int64(i+1), "a"+strings.Repeat("x", i), steps(insert(1, "a")))
+	}
+	e.must(CutVersion{By: e.by(sunny), Page: a})
+	e.commit(sunny, a, 6, "after", steps(insert(1, "c")))
+	f := &Fold{At: e.now.Add(FoldAfter + time.Minute)}
+	e.must(f)
+	if n := e.row(`SELECT count(*) FROM lith_events WHERE stream = 'pagedoc' AND stream_id = ? AND type = 'pagedoc.committed'`, a); f.Deleted == 0 || n != "1" {
+		t.Errorf("the fold deleted %d events, %s commits of the edited page left", f.Deleted, n)
+	}
+
+	// Restored after the fold took its commits, its next commits count.
+	e.must(RestorePage{By: e.by(admin), Page: b})
+	e.must(CutDue{At: e.now})
+	if n := e.row(uncut, b); n != "0" {
+		t.Errorf("%s uncut rows after a version of the head", n)
+	}
+	e.commit(sunny, b, e.docState(b).Version, "b2", steps(insert(1, "d")))
+	if n := e.row(uncut, b); n != "1" {
+		t.Errorf("%s uncut rows after a commit to a restored page", n)
+	}
+	e.must(TrashPage{By: e.by(sunny), Page: b})
+	e.must(RestorePage{By: e.by(admin), Page: b})
+	e.must(TrashPage{By: e.by(sunny), Page: b})
+	e.must(DeletePage{By: e.by(admin), Page: b})
+	if n := e.row(uncut, b); n != "0" {
+		t.Errorf("%s uncut rows of a deleted page", n)
+	}
+}
+
+// NFR-43.1: migration 089 deletes the rows that trashed and deleted pages
+// kept before TrashPage released them, and keeps those of current pages.
+func TestMigrationReleasesGonePages(t *testing.T) {
+	e := newEnv(t)
+	sp, _ := e.space("ENG", true)
+	var ids []string
+	for _, title := range []string{"Current", "Trashed", "Deleted"} {
+		p := e.page(sunny, CreatePage{Space: sp, Title: title})
+		e.commit(sunny, p, 1, title, steps(insert(1, "x")))
+		ids = append(ids, p)
+	}
+	e.must(TrashPage{By: e.by(sunny), Page: ids[1]})
+	e.must(TrashPage{By: e.by(sunny), Page: ids[2]})
+	e.must(DeletePage{By: e.by(admin), Page: ids[2]})
+	sqlText, err := migrations.FS.ReadFile("089_collab_uncut_gone.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.must(writer.Func(func(tx *writer.Tx) error {
+		for _, id := range ids[1:] { // as a commit before the trash left them
+			if _, err := tx.Exec(`INSERT OR REPLACE INTO collab_uncut (kind, id, at) VALUES ('pagedoc', ?, 0)`, id); err != nil {
+				return err
+			}
+		}
+		_, err := tx.Exec(string(sqlText))
+		return err
+	}))
+	if got := e.row(`SELECT group_concat(id) FROM collab_uncut WHERE kind = 'pagedoc'`); got != ids[0] {
+		t.Errorf("uncut rows %q, want %q", got, ids[0])
+	}
+}
+
+// FR-87.1: CutDue finds a page renamed since its last version as it
+// finds one with commits, and a title changed back leaves nothing to cut.
+func TestCutDueRenamed(t *testing.T) {
+	e := newEnv(t)
+	sp, _ := e.space("ENG", true)
+	p := e.page(sunny, CreatePage{Space: sp, Title: "Plan"})
+	uncut := `SELECT count(*) FROM collab_uncut WHERE kind = 'pagedoc' AND id = ?`
+	e.must(RenamePage{By: e.by(sunny), Page: p, Title: "Plan B"})
+	if n := e.row(uncut, p); n != "1" {
+		t.Errorf("%s uncut rows after a rename", n)
+	}
+	e.must(CutDue{At: e.now})
+	if s := e.pageState(p); s.Versions != 2 || s.CutTitle != "Plan B" {
+		t.Errorf("after a rename: version %d titled %q", s.Versions, s.CutTitle)
+	}
+	e.must(RenamePage{By: e.by(sunny), Page: p, Title: "Plan C"})
+	e.must(RenamePage{By: e.by(sunny), Page: p, Title: "Plan B"})
+	e.must(CutDue{At: e.now})
+	if n, v := e.row(uncut, p), e.pageState(p).Versions; n != "0" || v != 2 {
+		t.Errorf("renamed back: %s uncut rows, version %d", n, v)
+	}
+
+	// Migration 090: a rename from before it gets its row.
+	e.must(RenamePage{By: e.by(sunny), Page: p, Title: "Plan D"})
+	sqlText, err := migrations.FS.ReadFile("090_collab_uncut_renames.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.must(writer.Func(func(tx *writer.Tx) error {
+		if _, err := tx.Exec(`DELETE FROM collab_uncut`); err != nil {
+			return err
+		}
+		_, err := tx.Exec(string(sqlText))
+		return err
+	}))
+	e.must(CutDue{At: e.now})
+	if s := e.pageState(p); s.Versions != 3 || s.CutTitle != "Plan D" {
+		t.Errorf("after migration 090: version %d titled %q", s.Versions, s.CutTitle)
+	}
+	// Renamed, trashed before its version, then restored.
+	e.must(RenamePage{By: e.by(sunny), Page: p, Title: "Plan E"})
+	e.must(TrashPage{By: e.by(sunny), Page: p})
+	e.must(RestorePage{By: e.by(admin), Page: p})
+	e.must(CutDue{At: e.now})
+	if s := e.pageState(p); s.Versions != 4 || s.CutTitle != "Plan E" {
+		t.Errorf("restored: version %d titled %q", s.Versions, s.CutTitle)
 	}
 }
 
