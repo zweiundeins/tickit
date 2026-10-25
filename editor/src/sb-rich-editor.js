@@ -221,6 +221,7 @@ rocket('sb-rich-editor', {
 
 		const call = (name, ...args) => live.get(host)?.ed?.[name](...args)
 		defineHostProp('posted', { value: (ref, ok, status) => call('posted', ref, !!ok, status) })
+		defineHostProp('outcomes', { value: (map) => call('outcomes', map) })
 		defineHostProp('copy', { value: () => call('copy') })
 		defineHostProp('insertImage', { value: (id, alt) => call('insertImage', id, alt) })
 		defineHostProp('insertChip', { value: (key) => call('insertNode', 'issue_chip', { key }) })

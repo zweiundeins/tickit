@@ -42,16 +42,27 @@ func (s *Server) routesImages() {
 // convertWait is how long an upload waits for another one's conversion.
 const convertWait = 20 * time.Second
 
-// worded puts words into the bare statuses an upload answers (a rate
-// limit, a tab without a stream, a failed write): sb-rich-editor sends it
-// with a plain fetch, which reads the body, and has no op tracking.
-type worded struct {
+// noticed says why an upload did not go through in a notice to its tab
+// and op (the Tab-Id and Op-Id headers, else the form's), on the tab's
+// stream, and answers the bare status: the editor's code acts on the
+// status, the person reads the notice (lith's review.md).
+type noticed struct {
 	http.ResponseWriter
-	code  int
-	wrote bool
+	s       *Server
+	r       *http.Request
+	tab, op string
+	code    int
+	wrote   bool
 }
 
-func (w *worded) WriteHeader(code int) {
+// refuse answers code and sends msg as the upload's notice.
+func (w *noticed) refuse(code int, msg string) {
+	w.s.notice(w.r, w.tab, w.op, msg)
+	w.wrote = true
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *noticed) WriteHeader(code int) {
 	if code < 400 || w.wrote {
 		w.wrote = true
 		w.ResponseWriter.WriteHeader(code)
@@ -60,7 +71,7 @@ func (w *worded) WriteHeader(code int) {
 	w.code = code
 }
 
-func (w *worded) Write(b []byte) (int, error) {
+func (w *noticed) Write(b []byte) (int, error) {
 	if !w.wrote && w.code != 0 {
 		w.ResponseWriter.WriteHeader(w.code)
 	}
@@ -68,8 +79,8 @@ func (w *worded) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
-// finish answers a status the handler left bare in words.
-func (w *worded) finish() {
+// finish says why for a status the handler left bare.
+func (w *noticed) finish() {
 	if w.wrote || w.code == 0 {
 		return
 	}
@@ -80,17 +91,21 @@ func (w *worded) finish() {
 		http.StatusNotFound:            "This was deleted or moved meanwhile.",
 		http.StatusServiceUnavailable:  restarting,
 		http.StatusInternalServerError: notSaved,
+		http.StatusBadRequest:          "This upload could not be read.",
 	}[w.code]
+	if msg != "" {
+		w.s.notice(w.r, w.tab, w.op, msg)
+	}
 	w.wrote = true
-	http.Error(w.ResponseWriter, msg, w.code)
+	w.ResponseWriter.WriteHeader(w.code)
 }
 
 // Unwrap lets edge.Upload set the connection's deadlines.
-func (w *worded) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+func (w *noticed) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 func (s *Server) uploadImage(subject string) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		w := &worded{ResponseWriter: rw}
+		w := &noticed{ResponseWriter: rw, s: s, r: r, tab: r.Header.Get("Tab-Id"), op: r.Header.Get("Op-Id")}
 		defer w.finish()
 		if !s.allow(w, r, classUpload) {
 			return
@@ -118,7 +133,7 @@ func (s *Server) uploadImage(subject string) http.HandlerFunc {
 				s.failOp(w, r, a, err)
 				return false
 			case !allowed:
-				http.Error(w, "You cannot add images here.", http.StatusForbidden)
+				w.refuse(http.StatusForbidden, "You cannot add images here.")
 				return false
 			}
 			return s.connected(w, r, a.By.Actor, a.Tab) && !s.paused(w, r, a.By.Actor)
@@ -137,11 +152,14 @@ func (s *Server) uploadImage(subject string) http.HandlerFunc {
 		p, file, err := readUpload(r)
 		switch {
 		case errors.Is(err, errFileTooLarge), edge.TooLarge(err):
-			http.Error(w, images.MsgTooLarge, http.StatusRequestEntityTooLarge)
+			w.refuse(http.StatusRequestEntityTooLarge, images.MsgTooLarge)
 			return
 		case err != nil:
-			http.Error(w, "bad request", http.StatusBadRequest)
+			w.WriteHeader(http.StatusBadRequest)
 			return
+		}
+		if w.tab == "" {
+			w.tab, w.op = p.Tab, p.Op
 		}
 		if early.Tab == "" && !check(&p) {
 			return
@@ -152,10 +170,10 @@ func (s *Server) uploadImage(subject string) http.HandlerFunc {
 		var ref *writer.Refusal
 		switch {
 		case errors.As(err, &ref) && ref.Msg == images.MsgBusy:
-			http.Error(w, ref.Msg, http.StatusServiceUnavailable)
+			w.refuse(http.StatusServiceUnavailable, ref.Msg)
 			return
 		case errors.As(err, &ref):
-			http.Error(w, ref.Msg, http.StatusUnprocessableEntity)
+			w.refuse(http.StatusUnprocessableEntity, ref.Msg)
 			return
 		case err != nil:
 			s.fail(w, r, err)
@@ -166,17 +184,13 @@ func (s *Server) uploadImage(subject string) http.HandlerFunc {
 			return
 		}
 		if !res.OK {
-			msg := "This image was not stored."
-			if st, err := tabs.Get(ctx, s.db.R, a.Session, a.Tab); err == nil {
-				if o, ok := st.Outcome(a.By.Op); ok && o.Msg != "" {
-					msg = o.Msg
-				}
-			}
+			// The refusal is the op's outcome, which the tab's view brings.
 			status := http.StatusUnprocessableEntity
 			if res.Denied {
 				status = http.StatusForbidden
 			}
-			http.Error(w, msg, status)
+			w.wrote = true
+			w.ResponseWriter.WriteHeader(status)
 			return
 		}
 		h := w.Header()

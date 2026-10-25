@@ -122,8 +122,9 @@ func TestUploadIntoDescription(t *testing.T) {
 	uploaded(t, c, e.URL+"/cmd/issues/"+issue+"/description/image", "tab1", photo(t))
 }
 
-// FR-85.1, NFR-15.2: what is not an image of the limits is refused in
-// words and stores nothing; so is a request that is no upload.
+// FR-85.1, NFR-15.2: what is not an image of the limits is refused, in
+// words in a notice on the tab's stream and a bare status for the
+// editor's code, and stores nothing; so is a request that is no upload.
 func TestUploadRefusals(t *testing.T) {
 	e := webtest.StartWith(t, webtest.Options{Store: wikiStore(), Configure: web.Unlimited})
 	c := webtest.Client(t)
@@ -131,6 +132,7 @@ func TestUploadRefusals(t *testing.T) {
 	space, home := wikiSpace(t, e, c, "ENG")
 	page := wikiPage(t, e, c, space, home, "Notes")
 	url := e.URL + "/cmd/pages/" + page + "/image"
+	stream := webtest.Listen(t, c, e.URL+"/stream?tab=tabR", nil)
 	for name, want := range map[string]struct {
 		file []byte
 		code int
@@ -142,10 +144,11 @@ func TestUploadRefusals(t *testing.T) {
 		"over 5 MB":       {append(photo(t), make([]byte, images.MaxBytes)...), http.StatusRequestEntityTooLarge, images.MsgTooLarge},
 		"empty":           {[]byte{}, http.StatusUnprocessableEntity, images.MsgEmpty},
 	} {
-		code, body := uploadTo(t, c, url, "tab1", want.file)
-		if code != want.code || strings.TrimSpace(body) != want.msg {
-			t.Errorf("%s: %d %q, want %d %q", name, code, body, want.code, want.msg)
+		code, body := uploadTo(t, c, url, "tabR", want.file)
+		if code != want.code || strings.TrimSpace(body) != "" {
+			t.Errorf("%s: %d %q, want %d and no words", name, code, body, want.code)
 		}
+		webtest.Next(t, stream, `"msg":"`+want.msg+`"`)
 	}
 	if code, _ := webtest.Upload(t, c, url, map[string]string{"tab": "tab1", "op": "nofile"}, nil); code != http.StatusBadRequest {
 		t.Errorf("no file: %d", code)
@@ -171,13 +174,15 @@ func TestUploadRateLimit(t *testing.T) {
 	webtest.Get(t, c, e.URL+"/")
 	space, home := wikiSpace(t, e, c, "ENG")
 	page := wikiPage(t, e, c, space, home, "Notes")
+	stream := webtest.Listen(t, c, e.URL+"/stream?tab=tabL", nil)
 	for range 3 {
-		uploaded(t, c, e.URL+"/cmd/pages/"+page+"/image", "tab1", photo(t))
+		uploaded(t, c, e.URL+"/cmd/pages/"+page+"/image", "tabL", photo(t))
 	}
-	code, body := uploadTo(t, c, e.URL+"/cmd/pages/"+page+"/image", "tab1", photo(t))
-	if code != http.StatusTooManyRequests || !strings.Contains(body, "Too many changes at once") {
-		t.Errorf("DM-04.2: the fourth upload: %d %s", code, body)
+	code, _ := uploadTo(t, c, e.URL+"/cmd/pages/"+page+"/image", "tabL", photo(t))
+	if code != http.StatusTooManyRequests {
+		t.Errorf("DM-04.2: the fourth upload: %d", code)
 	}
+	webtest.Next(t, stream, `"msg":"Too many changes at once`)
 }
 
 // NFR-15: an upload whose Tab-Id and Op-Id headers name its tab and op is
@@ -203,11 +208,13 @@ func TestUploadCheckedBeforeItsBody(t *testing.T) {
 		b, _ := io.ReadAll(res.Body)
 		return res.StatusCode, strings.TrimSpace(string(b))
 	}
-	if code, body := post("0192d000-0000-7000-8000-000000000001", "tab1"); code != http.StatusNotFound || body != "This was deleted or moved meanwhile." {
-		t.Errorf("an upload into a page that does not exist: %d %q", code, body)
+	stream := webtest.Listen(t, c, e.URL+"/stream?tab=tabE", nil)
+	if code, _ := post("0192d000-0000-7000-8000-000000000001", "tabE"); code != http.StatusNotFound {
+		t.Errorf("an upload into a page that does not exist: %d", code)
 	}
-	if code, body := post(page, "no-stream"); code != http.StatusConflict || body != "This tab is not connected. Reload the page." {
-		t.Errorf("an upload from a tab without a stream: %d %q", code, body)
+	webtest.Next(t, stream, `"msg":"This was deleted or moved meanwhile."`)
+	if code, _ := post(page, "no-stream"); code != http.StatusConflict {
+		t.Errorf("an upload from a tab without a stream: %d", code)
 	}
 }
 

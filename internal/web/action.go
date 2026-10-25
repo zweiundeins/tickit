@@ -89,10 +89,13 @@ var classes = []class{classCreate, classComment, classField, classEditBatch, cla
 // request over a limit (DM-04.2), a failed write, the demo's reset, a
 // server that stops.
 const (
-	tooMany    = "Too many changes at once. Wait a moment."
-	notSaved   = "This did not go through. Try again in a moment."
-	resetting  = demo.MsgResetting + ". Try again in a minute."
-	restarting = "The server is restarting. Try again in a moment."
+	tooMany = "Too many changes at once. Wait a moment."
+	// editorTooMany is a commit's: the editor keeps the edits and sends
+	// them again.
+	editorTooMany = "Too many changes at once. Your edits are kept here and go out in a moment."
+	notSaved      = "This did not go through. Try again in a moment."
+	resetting     = demo.MsgResetting + ". Try again in a minute."
+	restarting    = "The server is restarting. Try again in a moment."
 )
 
 type limiter struct{ byAddr, bySession *edge.Limiter }

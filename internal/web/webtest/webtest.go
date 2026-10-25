@@ -288,6 +288,11 @@ func Upload(t testing.TB, c *http.Client, url string, fields map[string]string, 
 	req.Header.Set("Content-Type", ctype)
 	req.Header.Set("Datastar-Request", "true")
 	req.Header.Set("Sec-Fetch-Site", "same-origin")
+	// As the editor sends them: the tab and op before the body.
+	if fields["tab"] != "" {
+		req.Header.Set("Tab-Id", fields["tab"])
+		req.Header.Set("Op-Id", fields["op"])
+	}
 	res, err := c.Do(req)
 	if err != nil {
 		t.Fatal(err)

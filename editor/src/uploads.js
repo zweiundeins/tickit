@@ -60,13 +60,14 @@ export function check(file) {
 	return ''
 }
 
-const opID = () => 'up' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36)
+export const opID = () => 'up' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36)
 
-// send posts file to url as the tab and calls progress(fraction), then
-// resolves {id, width, height} or rejects with a message for the person.
-export function send(url, tab, file, progress) {
+// send posts file to url as the tab and op and calls progress(fraction),
+// then resolves {id, width, height} or rejects. A refusal rejects with no
+// message and its status: the server says why in a notice to the op on
+// the tab's stream. A post that reaches no server rejects with the words.
+export function send(url, tab, file, progress, op = opID()) {
 	return new Promise((resolve, reject) => {
-		const op = opID()
 		const form = new FormData()
 		form.append('tab', tab)
 		form.append('op', op)
@@ -86,8 +87,7 @@ export function send(url, tab, file, progress) {
 				} catch {}
 				return reject(new Error('The server answered something else than an image.'))
 			}
-			const text = xhr.responseText.trim()
-			reject(new Error(xhr.status === 400 || !text || text.length > 300 ? 'This upload could not be read.' : text))
+			reject(Object.assign(new Error(''), { status: xhr.status }))
 		}
 		xhr.onerror = () => reject(new Error('The upload did not reach the server. Try again.'))
 		xhr.send(form)

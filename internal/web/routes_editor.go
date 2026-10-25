@@ -6,7 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"log/slog"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -114,23 +114,15 @@ func (s *Server) editorPage(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// withResult runs a command with a result and keeps it.
-type withResult struct {
-	cmd writer.ResultCommand
-	res *[]byte
-}
-
-func (w withResult) Validate() error {
-	if v, ok := w.cmd.(writer.Validator); ok {
-		return v.Validate()
+// validate runs a command's Validate outside the writer, as Do does, for
+// a command that DoValue then applies: its error wraps writer.ErrInvalid.
+func validate(cmd any) error {
+	if v, ok := cmd.(writer.Validator); ok {
+		if err := v.Validate(); err != nil {
+			return fmt.Errorf("%w: %w", writer.ErrInvalid, err)
+		}
 	}
 	return nil
-}
-
-func (w withResult) Apply(tx *writer.Tx) error {
-	r, err := w.cmd.ApplyResult(tx)
-	*w.res = r
-	return err
 }
 
 // imagesJSON is the image library as the editor's Image button offers it.
@@ -246,7 +238,11 @@ type editorRequest struct {
 // sb-commit or sb-presence, with the tab and no op id.
 func (s *Server) decodeEditor(w http.ResponseWriter, r *http.Request, c class) (editorRequest, people.Person, bool) {
 	var req editorRequest
-	if !s.allow(w, r, c) {
+	if !s.within(r, c) {
+		// A commit's Tab-Id and Op-Id (its ref) hear why; the editor
+		// backs off on the status and resends.
+		s.notice(r, r.Header.Get("Tab-Id"), r.Header.Get("Op-Id"), editorTooMany)
+		w.WriteHeader(http.StatusTooManyRequests)
 		return req, people.Person{}, false
 	}
 	actor := people.Actor(r.Context())
@@ -291,9 +287,13 @@ func (s *Server) commitWith(w http.ResponseWriter, r *http.Request, pause func(t
 	// applies once by its ref (collab.Commit), so no op id is kept per
 	// commit: at 100 commits a second they would hold 1.4 GB a day
 	// (NFR-43.2).
+	cmd := s.demo.Guard(actor, edge.ClientKey(r), c.(writer.Command)).(writer.ResultCommand)
 	var res []byte
-	op := withResult{s.demo.Guard(actor, edge.ClientKey(r), c.(writer.Command)).(writer.ResultCommand), &res}
-	if err := s.w.Do(ctx, op); err != nil {
+	err := validate(cmd)
+	if err == nil {
+		res, err = s.w.DoValue(ctx, cmd.ApplyResult)
+	}
+	if err != nil {
 		var denial interface{ Denied() bool }
 		if errors.As(err, &denial) && denial.Denied() {
 			// MP-14.1: the tab's editor stops and says why (collab.Kind.Pause).
@@ -304,10 +304,12 @@ func (s *Server) commitWith(w http.ResponseWriter, r *http.Request, pause func(t
 			if err := s.w.Do(ctx, writer.Func(func(tx *writer.Tx) error { return pause(tx, sid, req.Tab, id, msg) })); err != nil {
 				s.log.Debug("pause an editor", "err", err)
 			}
-			http.Error(w, "forbidden", http.StatusForbidden)
+			w.WriteHeader(http.StatusForbidden)
 			return
 		}
-		s.failAction(w, r, err)
+		// A failed write or the demo's reset: the tab hears why, the commit
+		// (its ref the op) goes out again.
+		s.failOp(w, r, action{Tab: req.Tab, By: tabs.By{Actor: actor, Op: req.Ref}}, err)
 		return
 	}
 	CommitTimes.Observe(took())
@@ -315,11 +317,7 @@ func (s *Server) commitWith(w http.ResponseWriter, r *http.Request, pause func(t
 	if len(res) > 0 {
 		st = collab.Answer(res[0]).Status()
 	}
-	if st == http.StatusNoContent {
-		w.WriteHeader(st)
-		return
-	}
-	http.Error(w, http.StatusText(st), st)
+	w.WriteHeader(st)
 }
 
 // presence is an editing tab's selection, sent without waiting: the next
@@ -567,8 +565,8 @@ func (s *Server) titleView(ctx context.Context, q sqlite.Querier, actor people.P
 // writes: simple matches for now; search brings ranked ones.
 func (s *Server) pick(w http.ResponseWriter, r *http.Request) {
 	kind, text := r.URL.Query().Get("kind"), strings.TrimSpace(r.URL.Query().Get("q"))
-	if len(text) > 100 {
-		text = text[:100]
+	if r := []rune(text); len(r) > 100 {
+		text = string(r[:100])
 	}
 	me := people.Actor(r.Context())
 	ctx := r.Context()
@@ -706,8 +704,6 @@ func (s *Server) WikiJobs(ctx context.Context) {
 		}
 	}
 }
-
-var _ = slog.Default
 
 // Times keeps the newest durations of something, for its percentiles:
 // the writer's time per commit (benchmarks/RESULTS.md).

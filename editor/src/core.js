@@ -15,7 +15,7 @@ import { limitsPlugin } from './limits.js'
 import { IssueChipView, MentionView, PageLinkView, TaskItemView, ImageView, IssueListView } from './nodeviews.js'
 import { COMMANDS, rules, keymaps, inTable, inCode, setLanguage, shortcutText } from './commands.js'
 import { documentCSS } from './styles.js'
-import { uploadPlugin, placeholder, placed, removePlaceholder, imageFiles, check, send } from './uploads.js'
+import { uploadPlugin, placeholder, placed, removePlaceholder, imageFiles, check, send, opID } from './uploads.js'
 
 const STOPPED = {
 	reset: 'This page was reset. Your last changes were not saved.',
@@ -124,6 +124,7 @@ class Editor {
 		this.listViews = new Set()
 		this.tracked = new Map() // id to {from, to}: selections an issue's chip will replace (FR-105)
 		this.selSig = ''
+		this.ops = new Map() // op id to the notice kind of its failure: commits' refs and uploads
 
 		let start
 		try {
@@ -264,11 +265,13 @@ class Editor {
 	protocol(type, detail) {
 		switch (type) {
 			case 'commit':
+				this.ops.set(detail.ref, 'rate')
+			// falls through
 			case 'presence':
 			case 'ack':
 				return this.emit('sb-' + type, { page: this.page, ...detail })
 			case 'throttled':
-				return this.notice('Too many changes at once. Wait a moment.', { kind: 'rate' })
+				return // the server's notice says why (outcomes)
 			case 'refused': {
 				const message = detail.message || 'This change was not saved.'
 				this.notice(message, { kind: 'refusal' })
@@ -597,7 +600,9 @@ class Editor {
 			this.uploading++
 			this.updateStatus()
 			const progress = (f) => (dom.textContent = f < 1 ? `Uploading image… ${Math.round(f * 100)}%` : 'Converting image…')
-			send(upload, tab, file, progress).then(
+			const op = opID()
+			this.ops.set(op, 'refusal')
+			send(upload, tab, file, progress, op).then(
 				(r) => this.uploaded(id, r),
 				(e) => this.uploadFailed(id, e.message),
 			)
@@ -618,12 +623,29 @@ class Editor {
 		this.emit('sb-uploaded', { page: this.page, id: r.id, width: r.width, height: r.height })
 	}
 
+	// uploadFailed takes the placeholder out; a message is the editor's own
+	// (the upload did not reach the server), else the server's notice on the
+	// tab's stream says why (outcomes).
 	uploadFailed(id, message) {
 		this.uploading--
 		if (this.destroyed) return
 		this.view.dispatch(removePlaceholder(this.view.state.tr, id))
-		this.notice(message, { kind: 'refusal' })
+		if (message) this.notice(message, { kind: 'refusal' })
 		this.updateStatus()
+	}
+
+	// outcomes is the tab's $_outcomes, which the page hands over at every
+	// change: an op of this editor (a commit's ref, an upload) that failed
+	// shows its words, which the server sent on the stream, once.
+	outcomes(map) {
+		if (!map || typeof map !== 'object') return
+		for (const [op, o] of Object.entries(map)) {
+			const kind = this.ops.get(op)
+			if (!kind || !o || !o.msg || !(o.failed || o.ok === false)) continue
+			this.ops.delete(op)
+			this.notice(String(o.msg), { kind })
+		}
+		while (this.ops.size > 200) this.ops.delete(this.ops.keys().next().value)
 	}
 
 	insertImage(imageId, alt = '') {
