@@ -1,12 +1,12 @@
 // The ProseMirror schema of tickit's documents, built from the one shared
-// spec (internal/doc/schema.json, bundled at build time) plus the DOM rules
+// spec (internal/docnodes/schema.json, bundled at build time) plus the DOM rules
 // of docs/editor.md's "HTML of a document" table. The Go renderer writes the
 // same elements, so prose.css styles the editor and the reader view alike.
 //
 // Nothing here touches the DOM until ProseMirror parses or serialises, so the
 // test authority builds the same schema in a worker.
 import { Schema } from 'prosemirror-model'
-import spec from '../../internal/doc/schema.json' with { type: 'json' }
+import spec from '../../internal/docnodes/schema.json' with { type: 'json' }
 
 export { spec }
 export const limits = spec.limits

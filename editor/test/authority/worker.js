@@ -1,9 +1,9 @@
-// The fake server for the browser harness, in a SharedWorker so that every
+// The fake server for the browser harness (coedit's Authority), in a SharedWorker so that every
 // tab (a separate page, as separate people are) talks to one authority.
 // Each page id has its own Authority. Every 50 ms (lith's tick) it renders a
 // frame for each tab whose view changed and posts it to that tab's port.
 import { schema } from '../../src/schema.js'
-import { Authority } from './authority.js'
+import { Authority } from 'coedit/test/authority/authority.js'
 
 const TICK = 50
 const pages = new Map() // page -> {auth, ports: Map(tab -> port)}
@@ -27,7 +27,7 @@ const chips = {
 function pageOf(page) {
 	let p = pages.get(page)
 	if (!p) {
-		p = { auth: new Authority({ schema, doc: seed, page, chips: structuredClone(chips) }), ports: new Map() }
+		p = { auth: new Authority({ schema, doc: seed, page, attrs: { chips: structuredClone(chips) } }), ports: new Map() }
 		pages.set(page, p)
 	}
 	return p
@@ -74,7 +74,7 @@ function handle(port, m) {
 			// A stream that opens again gets a frame at once.
 			return auth.touch()
 		case 'chips':
-			auth.chips = m.chips
+			auth.attrs.chips = m.chips
 			return auth.touch()
 		case 'state':
 			return {

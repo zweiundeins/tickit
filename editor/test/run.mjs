@@ -14,6 +14,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { startServer } from './server.mjs'
+import { shared } from '../coedit.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const filter = process.argv[2] ?? ''
@@ -27,7 +28,7 @@ if (!existsSync(join(here, '../../internal/web/static/editor/sb-rich-editor.min.
 	process.exit(1)
 }
 mkdirSync(join(here, 'out'), { recursive: true })
-await build({ entryPoints: [join(here, 'authority/worker.js')], bundle: true, format: 'iife', target: 'es2022', outfile: join(here, 'out/authority.js'), logLevel: 'warning' })
+await build({ ...shared, entryPoints: [join(here, 'authority/worker.js')], bundle: true, format: 'iife', target: 'es2022', outfile: join(here, 'out/authority.js'), logLevel: 'warning' })
 
 const { server, url: base } = await startServer()
 const browser = await puppeteer.launch({

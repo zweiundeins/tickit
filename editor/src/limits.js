@@ -4,7 +4,7 @@
 // node, so a keystroke costs one block's measure.
 import { Plugin } from 'prosemirror-state'
 import { TableMap } from 'prosemirror-tables'
-import { REMOTE } from './collab.js'
+import { REMOTE } from 'coedit'
 import { limits } from './schema.js'
 
 // UTF-8 length of a string, as the stored JSON counts it.

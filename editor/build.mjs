@@ -11,6 +11,8 @@
 // immutable URL; under any other hash length lith still finds the file by
 // its plain name (with no-cache).
 //
+// The core bundles coedit's shared modules (coedit.mjs says from where).
+//
 // node build.mjs [--watch-free]   prints the sizes (minified, gzip, brotli).
 import { build } from 'esbuild'
 import { createHash } from 'node:crypto'
@@ -18,12 +20,13 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { brotliCompressSync, gzipSync, constants } from 'node:zlib'
+import { shared } from './coedit.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const out = join(here, '../internal/web/static/editor')
 mkdirSync(out, { recursive: true })
 
-const common = { bundle: true, format: 'esm', target: 'es2022', minify: true, legalComments: 'none', charset: 'utf8', logLevel: 'warning' }
+const common = { ...shared, bundle: true, format: 'esm', target: 'es2022', minify: true, legalComments: 'none', charset: 'utf8', logLevel: 'warning' }
 
 // 1. The core.
 const coreFile = 'pm-core.min.js'
@@ -52,7 +55,7 @@ writeFileSync(
 		'sb-rich-editor bundles the following packages. Their licences follow.',
 		'',
 		...versions,
-		'@stepwisehq/prosemirror-collab-commit@1.0.5 (adapted in editor/src/collab.js)',
+		"@stepwisehq/prosemirror-collab-commit@1.0.5 (adapted in coedit's editor/src/collab.js)",
 		'',
 		...pkgs.map((p) => `--- ${p}\n\n${lic(p)}\n`),
 		`--- @stepwisehq/prosemirror-collab-commit\n\n${readFileSync(join(here, 'node_modules/@stepwisehq/prosemirror-collab-commit/LICENSE'), 'utf8').trim()}\n`,
