@@ -100,7 +100,7 @@ data-on:sb-commit="(el.__status = 0, @post(el.dataset.cmd + '/commit',
     {headers: {'Tab-Id': $_tab, 'Op-Id': evt.detail.ref}, payload: {...evt.detail, tab: $_tab}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0})
   .then(() => el.posted(evt.detail.ref, true, el.__status || undefined), () => el.posted(evt.detail.ref, false)))"
 data-on:datastar-fetch="evt.detail.el === el && evt.detail.type === 'error' && (el.__status = +evt.detail.argsRaw.status)"
-data-effect="el.outcomes && el.outcomes($_outcomes)"
+data-effect="((s) => el.outcomes && el.outcomes(JSON.parse(s)))(JSON.stringify($_outcomes))"
 data-on:sb-presence="@post(el.dataset.cmd + '/presence',
     {payload: {...evt.detail, tab: $_tab}, retry: 'never', retryMaxCount: 0}).catch(() => {})"
 data-on:sb-status="$_editor.status = evt.detail.status"

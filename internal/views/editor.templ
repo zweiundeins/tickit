@@ -40,8 +40,10 @@ const (
 	// notice to the commit's ref, or the frame's refusal (MP-14.1).
 	editorFetch = `evt.detail.el === el && evt.detail.type === 'error' && (el.__status = +evt.detail.argsRaw.status)`
 	// editorOutcomes hands the tab's outcomes to the editor, which shows the
-	// words of its own failed ops (a commit's ref, an upload).
-	editorOutcomes = `el.outcomes && el.outcomes($_outcomes)`
+	// words of its own failed ops (a commit's ref, an upload). It reads every
+	// outcome first, so that the effect runs again for each new one, also
+	// when the component defines outcomes after the effect first ran.
+	editorOutcomes = `((s) => el.outcomes && el.outcomes(JSON.parse(s)))(JSON.stringify($_outcomes))`
 	// editorOpen registers the tab as an editor of the page, from the
 	// version the page rendered (docs/editor.md).
 	editorOpen = `@post(el.dataset.cmd + '/open', {payload: {tab: $_tab, op: ` + newOp + `, base: +el.getAttribute('base'), client: el.getAttribute('client')}, retry: 'error', retryMaxCount: 10})`
