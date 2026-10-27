@@ -195,7 +195,7 @@ func TestUploadCheckedBeforeItsBody(t *testing.T) {
 	webtest.Get(t, c, e.URL+"/")
 	space, home := wikiSpace(t, e, c, "ENG")
 	page := wikiPage(t, e, c, space, home, "Notes")
-	post := func(page, tab string) (int, string) {
+	post := func(c *http.Client, page, tab string) (int, string) {
 		req, _ := http.NewRequest("POST", e.URL+"/cmd/pages/"+page+"/image", strings.NewReader("no form"))
 		for k, v := range map[string]string{"Content-Type": "multipart/form-data; boundary=x", "Datastar-Request": "true", "Sec-Fetch-Site": "same-origin", "Tab-Id": tab, "Op-Id": "early1"} {
 			req.Header.Set(k, v)
@@ -209,11 +209,13 @@ func TestUploadCheckedBeforeItsBody(t *testing.T) {
 		return res.StatusCode, strings.TrimSpace(string(b))
 	}
 	stream := webtest.Listen(t, c, e.URL+"/stream?tab=tabE", nil)
-	if code, _ := post("0192d000-0000-7000-8000-000000000001", "tabE"); code != http.StatusNotFound {
+	if code, _ := post(c, "0192d000-0000-7000-8000-000000000001", "tabE"); code != http.StatusNotFound {
 		t.Errorf("an upload into a page that does not exist: %d", code)
 	}
 	webtest.Next(t, stream, `"msg":"This was deleted or moved meanwhile."`)
-	if code, _ := post(page, "no-stream"); code != http.StatusConflict {
+	other := bare(t) // a Client would open the tab's stream first, as a page has it open
+	webtest.Get(t, other, e.URL+"/")
+	if code, _ := post(other, page, "no-stream"); code != http.StatusConflict {
 		t.Errorf("an upload from a tab without a stream: %d", code)
 	}
 }

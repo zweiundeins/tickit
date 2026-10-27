@@ -531,7 +531,8 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 		Current  string `json:"current"`
 		Password string `json:"password"`
 	}
-	if err := sse.ReadSignalsLimit(w, r, &req, 4<<10); err != nil || !validID(req.Tab) || !validID(req.Op) {
+	tab, op := ids(r)
+	if err := sse.ReadSignalsLimit(w, r, &req, 4<<10); err != nil || !validID(tab) || !validID(op) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -540,7 +541,7 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	a := action{Session: edge.SessionID(ctx), Tab: req.Tab, By: tabs.By{Actor: me, Op: req.Op, At: now}, Addr: edge.ClientKey(r)}
+	a := action{Session: edge.SessionID(ctx), Tab: tab, By: tabs.By{Actor: me, Op: op, At: now}, Addr: edge.ClientKey(r)}
 	var cmd writer.Command
 	// NFR-09.2: a session cannot guess its account's password either.
 	key := people.LockoutKey(me.ID, a.Addr)

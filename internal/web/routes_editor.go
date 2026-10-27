@@ -221,7 +221,7 @@ func (s *Server) openEditor(w http.ResponseWriter, r *http.Request) {
 
 // editorRequest is a commit's or a presence post's payload.
 type editorRequest struct {
-	Tab    string          `json:"tab"`
+	Tab    string          `json:"-"` // from the Tab-Id header
 	Epoch  string          `json:"epoch"`
 	Base   int64           `json:"base"`
 	Ref    string          `json:"ref"`
@@ -246,6 +246,7 @@ func (s *Server) decodeEditor(w http.ResponseWriter, r *http.Request, c class) (
 		return req, people.Person{}, false
 	}
 	actor := people.Actor(r.Context())
+	req.Tab, _ = ids(r)
 	if err := sse.ReadSignalsLimit(w, r, &req, c.body); err != nil || !validID(req.Tab) || actor.IsZero() || !editing.ValidID(r.PathValue("id")) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return req, actor, false

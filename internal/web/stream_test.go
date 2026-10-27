@@ -381,6 +381,55 @@ func TestActionNeedsAStream(t *testing.T) {
 	webtest.Next(t, events, `"op3":{"ok":true`)
 }
 
+// NFR-02.2, NFR-02.3: the tab and op come from the Tab-Id and Op-Id
+// headers alone. A request without them answers 400 and writes nothing,
+// whatever its body says; a Tab-Id that names another person's tab
+// reaches neither that tab's stream nor its row, and a body that names it
+// is not read.
+func TestTabFromTheHeaders(t *testing.T) {
+	e := webtest.Start(t)
+	ada, bob := bare(t), bare(t)
+	webtest.Get(t, ada, e.URL+"/")
+	webtest.Get(t, bob, e.URL+"/")
+	adas := webtest.Listen(t, ada, e.URL+"/stream?tab=ada1&v=", nil)
+	webtest.Next(t, adas, `"_outcomes"`)
+	bobs := webtest.Listen(t, bob, e.URL+"/stream?tab=bob1&v=", nil)
+	webtest.Next(t, bobs, `"_outcomes"`)
+	post := func(c *http.Client, header map[string]string, body string) int {
+		t.Helper()
+		req, _ := http.NewRequest("POST", e.URL+"/cmd/people/rename", strings.NewReader(body))
+		for k, v := range map[string]string{"Content-Type": "application/json", "Datastar-Request": "true", "Sec-Fetch-Site": "same-origin"} {
+			req.Header.Set(k, v)
+		}
+		for k, v := range header {
+			req.Header.Set(k, v)
+		}
+		res, err := c.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res.StatusCode
+	}
+	before := e.Fingerprint(t)
+	if code := post(ada, nil, `{"tab":"ada1","op":"n1","name":"Ada"}`); code != http.StatusBadRequest {
+		t.Errorf("an action without the headers: %d", code)
+	}
+	if e.Fingerprint(t) != before {
+		t.Error("an action without the headers wrote")
+	}
+	// Ada forges Bob's tab in the header, her own in the body.
+	if code := post(ada, map[string]string{"Tab-Id": "bob1", "Op-Id": "f1"}, `{"tab":"ada1","op":"f1","name":"Mallory"}`); code != http.StatusConflict {
+		t.Errorf("an action with another person's Tab-Id: %d", code)
+	}
+	// Ada names Bob's tab in the body, her own in the header: hers it is.
+	if code := post(ada, map[string]string{"Tab-Id": "ada1", "Op-Id": "f2"}, `{"tab":"bob1","op":"f2","name":"Ada Header"}`); code != http.StatusNoContent {
+		t.Errorf("an action with Ada's own Tab-Id: %d", code)
+	}
+	webtest.Next(t, adas, `"f2":{"ok":true`)
+	webtest.Silent(t, bobs, `"f`, 200*time.Millisecond)
+}
+
 // A page posts some actions as it loads (the editor's open, a notification
 // seen), while its stream is still opening: the action waits for the
 // stream (web.Config.StreamWait) and goes through once it opens.

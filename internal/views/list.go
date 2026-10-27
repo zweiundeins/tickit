@@ -314,7 +314,7 @@ const listQS = `((f) => { const p = new URLSearchParams(); for (const [k, v] of 
 // posts it, which moves the tab's stream to the list's view (FR-55).
 func listSend(push string) string {
 	return `(((qs) => { const url = '/issues' + (qs ? '?' + qs : ''); if (url !== location.pathname + location.search) history[(` + push + `) ? 'pushState' : 'replaceState'](null, '', url); $_list.query = qs })(` + listQS + `), ` +
-		`@post('/cmd/list/view', {payload: {tab: $_tab, view: $_views, query: $_list.query}}))`
+		`@post('/cmd/list/view', {headers: {'Tab-Id': $_tab}, payload: {tab: $_tab, view: $_views, query: $_list.query}}))`
 }
 
 // listCounts writes how many values each filter has on its button.

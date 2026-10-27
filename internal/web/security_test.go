@@ -520,6 +520,7 @@ func TestEveryActionCrossSite(t *testing.T) {
 				if req.Header.Get("No-Datastar") == "" {
 					req.Header.Set("Datastar-Request", "true")
 				}
+				webtest.IDs(req, []byte(mustJSON(body)))
 				res, err := f.client(w).Do(req)
 				if err != nil {
 					t.Fatal(err)

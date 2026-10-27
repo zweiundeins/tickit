@@ -61,7 +61,7 @@ func TestIssueListAndCreateFromPage(t *testing.T) {
 	tb.Navigate(t, s.URL+"/"+key)
 	tb.Wait(t, `document.querySelector('#issue-main[data-pid]')`, 10*time.Second)
 	var code int
-	tb.Eval(t, fmt.Sprintf(`fetch('/cmd/issues/%s/status', {method: 'POST', headers: {'Content-Type': 'application/json', 'Datastar-Request': 'true'}, body: JSON.stringify({tab: document.body.dataset.signals.match(/_tab: "([^"]+)"/)[1], op: 'e2e-st', seen: 1099511627776, value: %q})}).then(r => r.status)`, id, to), &code)
+	tb.Eval(t, fmt.Sprintf(`((tab) => fetch('/cmd/issues/%s/status', {method: 'POST', headers: {'Content-Type': 'application/json', 'Datastar-Request': 'true', 'Tab-Id': tab, 'Op-Id': 'e2e-st'}, body: JSON.stringify({tab, op: 'e2e-st', seen: 1099511627776, value: %q})}).then(r => r.status))(document.body.dataset.signals.match(/_tab: "([^"]+)"/)[1])`, id, to), &code)
 	if code != 204 {
 		t.Fatalf("FR-16: B's status change: %d", code)
 	}

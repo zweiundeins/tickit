@@ -56,11 +56,11 @@ var (
 	// answer's $_goto; a click with a modifier, or while another action is
 	// pending, follows the link as it is (FR-115.2).
 	openOne = `evt.button === 0 && !(evt.ctrlKey || evt.metaKey || evt.shiftKey || evt.altKey) && $_notify.op === '' && (evt.preventDefault(), $_problem = '', $_notify.op = ` +
-		newOp + `, @post('/cmd/notify/open', {payload: {tab: $_tab, op: $_notify.op, id: Number(el.dataset.id)}}))`
+		newOp + `, @post('/cmd/notify/open', {headers: {'Tab-Id': $_tab, 'Op-Id': $_notify.op}, payload: {tab: $_tab, op: $_notify.op, id: Number(el.dataset.id)}}))`
 	// openFailed follows the link when the action reached no outcome.
 	openFailed = `evt.detail.el === el && ['error', 'retries-failed'].includes(evt.detail.type) && ($_notify.op = '', location.assign(el.href))`
 	// seenSubject tells the server that the page opened a subject.
-	seenSubject = `@post('/cmd/notify/seen', {payload: {tab: $_tab, op: ` + newOp + `, subject: el.dataset.subject, kind: el.dataset.kind || ''}})`
+	seenSubject = `@post('/cmd/notify/seen', {headers: {'Tab-Id': $_tab, 'Op-Id': ` + newOp + `}, payload: {tab: $_tab, subject: el.dataset.subject, kind: el.dataset.kind || ''}})`
 	// notifyEffects keep the window title's count (FR-110.2) and end the
 	// panel's pending state when the outcome arrives.
 	notifyEffects = `document.title = document.title.replace(/ \(\d+\)$/, '') + ($` + UnreadSignal + ` > 0 ? ' (' + $` + UnreadSignal + ` + ')' : ''); ` +

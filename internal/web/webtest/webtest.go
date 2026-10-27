@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -267,6 +268,7 @@ func Post(t testing.TB, c *http.Client, url, body string) (int, string) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Datastar-Request", "true")
 	req.Header.Set("Sec-Fetch-Site", "same-origin")
+	IDs(req, []byte(body))
 	res, err := c.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -274,6 +276,36 @@ func Post(t testing.TB, c *http.Client, url, body string) (int, string) {
 	defer res.Body.Close()
 	b, _ := io.ReadAll(res.Body)
 	return res.StatusCode, string(b)
+}
+
+// IDs sets the Tab-Id and Op-Id headers of req from body's "tab" and "op"
+// (a commit's "ref"), as a page sends them besides its payload, unless
+// req has them already. The handlers read the headers alone.
+func IDs(req *http.Request, body []byte) {
+	var p struct{ Tab, Op, Ref string }
+	if json.Unmarshal(body, &p) != nil {
+		return
+	}
+	if p.Op == "" {
+		p.Op = p.Ref
+	}
+	if req.Header.Get("Tab-Id") == "" && headerValue(p.Tab) {
+		req.Header.Set("Tab-Id", p.Tab)
+	}
+	if req.Header.Get("Op-Id") == "" && headerValue(p.Op) {
+		req.Header.Set("Op-Id", p.Op)
+	}
+}
+
+// headerValue reports whether s can go in a header: a fuzzer's control
+// character cannot, so that request goes without it.
+func headerValue(s string) bool {
+	for _, c := range []byte(s) {
+		if c < ' ' || c == 0x7f {
+			return false
+		}
+	}
+	return s != ""
 }
 
 // Upload sends an image upload as the editor does (FR-85): a multipart

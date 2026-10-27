@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/zweiundeins/tickit/internal/web"
+	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
 // loadEditor is an editor without a browser: it keeps its tab's stream,
@@ -84,6 +85,7 @@ func (e *loadEditor) post(t *testing.T, path, body string) int {
 	req.Header.Set("Datastar-Request", "true")
 	req.Header.Set("Sec-Fetch-Site", "same-origin")
 	req.Header.Set("X-Real-IP", e.addr())
+	webtest.IDs(req, []byte(body))
 	res, err := e.c.Do(req)
 	if err != nil {
 		return 0

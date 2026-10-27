@@ -19,7 +19,7 @@ const (
 	// status of its answer, which editorFetch keeps, goes to posted().
 	editorCommit = `(el.__status = 0, @post(el.dataset.cmd + '/commit', {headers: {'Tab-Id': $_tab, 'Op-Id': evt.detail.ref}, payload: {...evt.detail, tab: $_tab, client: el.getAttribute('client')}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0})` +
 		`.then(() => el.posted(evt.detail.ref, true, el.__status || undefined), () => el.posted(evt.detail.ref, false)))`
-	editorPresence = `@post(el.dataset.cmd + '/presence', {payload: {...evt.detail, tab: $_tab}, retry: 'never', retryMaxCount: 0}).catch(() => {})`
+	editorPresence = `@post(el.dataset.cmd + '/presence', {headers: {'Tab-Id': $_tab}, payload: {...evt.detail, tab: $_tab}, retry: 'never', retryMaxCount: 0}).catch(() => {})`
 	editorStatus   = `$_editor.status = evt.detail.status, $_editor.unsaved = evt.detail.unsaved, evt.detail.status === 'saved' && ($_editor.problem = '')`
 	editorStopped  = `$_editor.stopped = evt.detail.state, $_editor.unsaved = evt.detail.unsaved, ` + stoppedReason + `, ` + keepCopy
 	// stoppedReason is why a read-only editor stops: the refusal its frame
@@ -46,7 +46,7 @@ const (
 	editorOutcomes = `((s) => el.outcomes && el.outcomes(JSON.parse(s)))(JSON.stringify($_outcomes))`
 	// editorOpen registers the tab as an editor of the page, from the
 	// version the page rendered (docs/editor.md).
-	editorOpen = `@post(el.dataset.cmd + '/open', {payload: {tab: $_tab, op: ` + newOp + `, base: +el.getAttribute('base'), client: el.getAttribute('client')}, retry: 'error', retryMaxCount: 10})`
+	editorOpen = `@post(el.dataset.cmd + '/open', {headers: {'Tab-Id': $_tab, 'Op-Id': ` + newOp + `}, payload: {tab: $_tab, base: +el.getAttribute('base'), client: el.getAttribute('client')}, retry: 'error', retryMaxCount: 10})`
 	// copyEdits puts the editor's text on the clipboard (MP-13.1).
 	copyEdits = `document.getElementById('editor').copy()`
 

@@ -74,6 +74,9 @@ func (rec *recorder) RoundTrip(req *http.Request) (*http.Response, error) {
 			tab = multipartTab(req.Header.Get("Content-Type"), b)
 		}
 	}
+	if h := req.Header.Get("Tab-Id"); h != "" { // the tab the handler takes
+		tab = h
+	}
 	for _, c := range req.Cookies() {
 		Secret(c.Value)
 	}

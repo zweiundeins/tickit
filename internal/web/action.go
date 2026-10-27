@@ -32,10 +32,13 @@ import (
 //
 // decode checks the rate limits, reads the body and the ids; act runs the
 // command in tabs.Act and answers 204, or 403 when a right was missing.
-// The outcome travels on the tab's stream.
+// The outcome travels on the tab's stream. The tab and the op id come
+// from the Tab-Id and Op-Id headers alone (views.Send): a request without
+// them answers 400.
 
-// Payload is what every action's body holds: the tab that sends it and
-// the action's op id. Embed it in an action's request.
+// Payload is the copy of the tab and op id that a page's body holds
+// besides the headers, which no handler reads. Embed it in an action's
+// request.
 type Payload struct {
 	Tab string `json:"tab"`
 	Op  string `json:"op"`
@@ -146,22 +149,33 @@ func (s *Server) within(r *http.Request, c class) bool {
 	return true
 }
 
-// decode reads an action of class c into v. It answers 429 over a limit,
-// before it reads the body, with a notice to the tab and op its Tab-Id
-// and Op-Id headers name (views.Send), and 400 for a body that is too
-// large, not JSON, or without valid tab and op ids (NFR-16), and then
-// reports false. The action itself takes the payload's tab and op.
+// decode reads an action of class c into v. Before it reads the body, it
+// answers 429 over a limit, with a notice to the tab and op its Tab-Id
+// and Op-Id headers name (views.Send), and 400 without valid ones; then
+// 400 for a body that is too large or not JSON (NFR-16). It reports
+// false when it answered.
 func (s *Server) decode(w http.ResponseWriter, r *http.Request, c class, v payloader) (action, bool) {
 	if !s.within(r, c) {
 		s.notice(r, r.Header.Get("Tab-Id"), r.Header.Get("Op-Id"), tooMany)
 		w.WriteHeader(http.StatusTooManyRequests)
 		return action{}, false
 	}
+	a, ok := s.actionOf(w, r)
+	if !ok {
+		return action{}, false
+	}
 	if err := sse.ReadSignalsLimit(w, r, v, c.body); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return action{}, false
 	}
-	return s.actionOf(w, r, v.payload())
+	return a, true
+}
+
+// ids are the tab and the op id of a request, from its Tab-Id and Op-Id
+// headers. The tab names a stream of the session's own person only
+// (streamID), so a forged one reaches nobody else's.
+func ids(r *http.Request) (tab, op string) {
+	return r.Header.Get("Tab-Id"), r.Header.Get("Op-Id")
 }
 
 // notice sends the tab's open stream the notice that ends op with msg
@@ -175,11 +189,13 @@ func (s *Server) notice(r *http.Request, tab, op, msg string) {
 	s.hub.Notify(streamID(actor, tab), "notice:"+op, tabs.Notice(op, msg))
 }
 
-// actionOf is the action of a request whose payload p was read: 400
-// without valid tab and op ids, 403 for an account that must change its
-// password first.
-func (s *Server) actionOf(w http.ResponseWriter, r *http.Request, p *Payload) (action, bool) {
+// actionOf is the action of a request, from its headers (ids) and its
+// session: 400 without valid tab and op ids, 403 for an account that must
+// change its password first.
+func (s *Server) actionOf(w http.ResponseWriter, r *http.Request) (action, bool) {
 	actor := people.Actor(r.Context())
+	tab, op := ids(r)
+	p := Payload{Tab: tab, Op: op}
 	if !validID(p.Tab) || !validID(p.Op) || actor.IsZero() {
 		w.WriteHeader(http.StatusBadRequest)
 		return action{}, false

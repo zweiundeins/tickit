@@ -384,7 +384,7 @@ func refresh(_ context.Context, rq live.RefreshRequest) ([][]byte, error) {
 
 // watchRequest names a view to add to the tab's stream, or to take off it.
 type watchRequest struct {
-	Tab  string `json:"tab"`
+	Tab  string `json:"-"` // from the Tab-Id header
 	View string `json:"view"`
 }
 
@@ -457,6 +457,7 @@ func (s *Server) decodeWatch(w http.ResponseWriter, r *http.Request) (watchReque
 	if !s.allow(w, r, classView) {
 		return req, false
 	}
+	req.Tab, _ = ids(r)
 	if err := sse.ReadSignalsLimit(w, r, &req, classView.body); err != nil || !validID(req.Tab) || people.Actor(r.Context()).IsZero() {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return req, false

@@ -64,6 +64,7 @@ func send(t testing.TB, c *http.Client, url string, body []byte) int {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Datastar-Request", "true")
 	req.Header.Set("Sec-Fetch-Site", "same-origin")
+	webtest.IDs(req, body)
 	res, err := c.Do(req)
 	if err != nil {
 		t.Errorf("POST %s: %v", url, err)

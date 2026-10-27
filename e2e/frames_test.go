@@ -37,7 +37,7 @@ func (a *actor) post(path string, body map[string]any) {
 	var status int
 	a.p.Eval(a.t, `(async () => {
 		const tab = JSON.parse(document.body.dataset.signals.match(/_tab: ("[^"]+")/)[1])
-		const r = await fetch(`+jsQuote(path)+`, {method: 'POST', headers: {'Content-Type': 'application/json', 'Datastar-Request': 'true'}, body: JSON.stringify({tab, ...`+string(b)+`})})
+		const r = await fetch(`+jsQuote(path)+`, {method: 'POST', headers: {'Content-Type': 'application/json', 'Datastar-Request': 'true', 'Tab-Id': tab, 'Op-Id': `+jsQuote(body["op"].(string))+`}, body: JSON.stringify({tab, ...`+string(b)+`})})
 		return r.status
 	})()`, &status)
 	if status != 204 && status != 200 {

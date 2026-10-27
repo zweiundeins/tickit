@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"cmp"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
@@ -156,6 +158,12 @@ func (t *tab) post(path, body string) (int, time.Duration) {
 	req.Header.Set("Datastar-Request", "true")
 	req.Header.Set("Sec-Fetch-Site", "same-origin")
 	req.Header.Set("X-Real-IP", t.addr)
+	// The tab and op (a commit's ref) in the headers, which the server reads.
+	var ids struct{ Tab, Op, Ref string }
+	if json.Unmarshal([]byte(body), &ids) == nil {
+		req.Header.Set("Tab-Id", ids.Tab)
+		req.Header.Set("Op-Id", cmp.Or(ids.Op, ids.Ref))
+	}
 	start := time.Now()
 	res, err := t.c.Do(req)
 	if err != nil {

@@ -45,7 +45,7 @@ func TestOpsEnd(t *testing.T) {
 	// The session's burst of changes, used up from the page.
 	p.Eval(t, `(async () => {
 		const tab = document.body.getAttribute('data-signals').match(/_tab: "([^"]+)"/)[1]
-		for (let i = 0; i < 25; i++) await fetch('/cmd/people/rename', {method: 'POST', headers: {'Datastar-Request': 'true', 'Content-Type': 'application/json'}, body: JSON.stringify({tab, op: 'burst' + i, name: 'Burst ' + i})})
+		for (let i = 0; i < 25; i++) await fetch('/cmd/people/rename', {method: 'POST', headers: {'Datastar-Request': 'true', 'Content-Type': 'application/json', 'Tab-Id': tab, 'Op-Id': 'burst' + i}, body: JSON.stringify({tab, op: 'burst' + i, name: 'Burst ' + i})})
 		return true
 	})()`, nil)
 	rename("Ada Limited")

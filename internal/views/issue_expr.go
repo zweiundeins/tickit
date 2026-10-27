@@ -153,14 +153,14 @@ const issueFocusOut = `((ed) => ed && ed.dataset.editor === $_is.edit && !ed.con
 
 // issueTyping refreshes the typing indicator of the field typed in
 // (MP-07); throttled on the frame.
-const issueTyping = `((t) => t && $_is.at === 0 && @post('/cmd/issues/' + $_is.id + '/typing', {payload: {tab: $_tab, op: ` + newOp + `, field: t.dataset.typing === 'edit' ? $_is.edit : t.dataset.typing, stop: false}, retryMaxCount: 0}))(evt.target.closest?.('[data-typing]'))`
+const issueTyping = `((t) => t && $_is.at === 0 && @post('/cmd/issues/' + $_is.id + '/typing', {headers: {'Tab-Id': $_tab, 'Op-Id': ` + newOp + `}, payload: {tab: $_tab, field: t.dataset.typing === 'edit' ? $_is.edit : t.dataset.typing, stop: false}, retryMaxCount: 0}))(evt.target.closest?.('[data-typing]'))`
 
 // commentStopTyping ends the comment box's indicator when the focus
 // leaves it (MP-07.4); a comment sent ends it too.
-const commentStopTyping = `$_is.at === 0 && @post('/cmd/issues/' + $_is.id + '/typing', {payload: {tab: $_tab, op: ` + newOp + `, field: 'comment', stop: true}, retryMaxCount: 0}).catch(() => {})`
+const commentStopTyping = `$_is.at === 0 && @post('/cmd/issues/' + $_is.id + '/typing', {headers: {'Tab-Id': $_tab, 'Op-Id': ` + newOp + `}, payload: {tab: $_tab, field: 'comment', stop: true}, retryMaxCount: 0}).catch(() => {})`
 
 // issueStopTyping ends the indicator of the open editor at once (MP-07.4).
-const issueStopTyping = `(($_is.edit === 'summary' || $_is.edit === 'description') && @post('/cmd/issues/' + $_is.id + '/typing', {payload: {tab: $_tab, op: ` + newOp + `, field: $_is.edit, stop: true}, retryMaxCount: 0}))`
+const issueStopTyping = `(($_is.edit === 'summary' || $_is.edit === 'description') && @post('/cmd/issues/' + $_is.id + '/typing', {headers: {'Tab-Id': $_tab, 'Op-Id': ` + newOp + `}, payload: {tab: $_tab, field: $_is.edit, stop: true}, retryMaxCount: 0}))`
 
 // issueSettle, a data-effect, ends each field's pending state when its
 // outcome arrives in $_outcomes: a refusal stays next to the field, a
@@ -226,8 +226,8 @@ const (
 	descEditInit      = `!$_is.ro && new URLSearchParams(location.search).get('edit') === 'description' && ` + descOpen
 	descDone          = `$_is.desc && ($_editor.status === 'saving' && !$_editor.stopped ? ($_editor.problem = 'Your last changes are still being saved. Wait a moment.') : ` +
 		`($_is.desc = false, $_editor.problem = '', document.getElementById('` + DescEditorID + `').replaceChildren(), ` +
-		`@post('/cmd/issues/' + $_is.id + '/description/close', {payload: {tab: $_tab, op: ` + newOp + `}, requestCancellation: 'disabled', retryMaxCount: 2}), ` +
-		`@post('/cmd/issues/' + $_is.id + '/typing', {payload: {tab: $_tab, op: ` + newOp + `, field: 'description', stop: true}, requestCancellation: 'disabled', retryMaxCount: 0})))`
+		`@post('/cmd/issues/' + $_is.id + '/description/close', {headers: {'Tab-Id': $_tab, 'Op-Id': ` + newOp + `}, payload: {tab: $_tab}, requestCancellation: 'disabled', retryMaxCount: 2}), ` +
+		`@post('/cmd/issues/' + $_is.id + '/typing', {headers: {'Tab-Id': $_tab, 'Op-Id': ` + newOp + `}, payload: {tab: $_tab, field: 'description', stop: true}, requestCancellation: 'disabled', retryMaxCount: 0})))`
 )
 
 // The comment box (FR-65): Ctrl or Cmd Enter sends; the draft stays in the
@@ -268,8 +268,8 @@ var (
 // The as-of slider (FR-70): the version it is at, 0 for now, watched as
 // the view issue-at:<id>.<v> instead of the live one; "Now" goes back.
 const (
-	asOfInput = `((v) => { const at = v >= $_is.max ? 0 : v; if (at === $_is.at) return; const old = $_is.at; $_is.at = at; old && @post('/cmd/unwatch', {payload: {tab: $_tab, view: 'issue-at:' + $_is.id + '.' + old}, requestCancellation: 'disabled'}); at && @post('/cmd/watch', {payload: {tab: $_tab, view: 'issue-at:' + $_is.id + '.' + at}, requestCancellation: 'disabled'}) })(+el.value)`
-	asOfNow   = `((old) => { $_is.at = 0; old && @post('/cmd/unwatch', {payload: {tab: $_tab, view: 'issue-at:' + $_is.id + '.' + old}, requestCancellation: 'disabled'}) })($_is.at)`
+	asOfInput = `((v) => { const at = v >= $_is.max ? 0 : v; if (at === $_is.at) return; const old = $_is.at; $_is.at = at; old && @post('/cmd/unwatch', {headers: {'Tab-Id': $_tab}, payload: {tab: $_tab, view: 'issue-at:' + $_is.id + '.' + old}, requestCancellation: 'disabled'}); at && @post('/cmd/watch', {headers: {'Tab-Id': $_tab}, payload: {tab: $_tab, view: 'issue-at:' + $_is.id + '.' + at}, requestCancellation: 'disabled'}) })(+el.value)`
+	asOfNow   = `((old) => { $_is.at = 0; old && @post('/cmd/unwatch', {headers: {'Tab-Id': $_tab}, payload: {tab: $_tab, view: 'issue-at:' + $_is.id + '.' + old}, requestCancellation: 'disabled'}) })($_is.at)`
 	asOfValue = `$_is.at || $_is.max`
 )
 
@@ -303,7 +303,7 @@ const (
 // a modifier key follows the link.
 const (
 	panelRegions = `['issue-main', 'issue-desc', 'issue-desc-body', 'issue-related', 'issue-side', 'issue-comments', 'issue-history', 'issue-activity', 'issue-mentions', 'issue-asof', 'issue-typing-summary', 'issue-typing-description', 'issue-typing-comment'].forEach(i => document.getElementById(i)?.replaceChildren())`
-	panelUnwatch = `((id, at) => { if (!id) return; for (const v of ['issue:' + id, 'issue-desc:' + id, 'issue-typing:' + id].concat(at ? ['issue-at:' + id + '.' + at] : [])) @post('/cmd/unwatch', {payload: {tab: $_tab, view: v}, requestCancellation: 'disabled'}) })($_is.id, $_is.at)`
+	panelUnwatch = `((id, at) => { if (!id) return; for (const v of ['issue:' + id, 'issue-desc:' + id, 'issue-typing:' + id].concat(at ? ['issue-at:' + id + '.' + at] : [])) @post('/cmd/unwatch', {headers: {'Tab-Id': $_tab}, payload: {tab: $_tab, view: v}, requestCancellation: 'disabled'}) })($_is.id, $_is.at)`
 	panelOpen    = `((a) => {
 	if (!a || evt.defaultPrevented || evt.button !== 0 || evt.ctrlKey || evt.metaKey || evt.shiftKey || evt.altKey) return
 	evt.preventDefault()
@@ -319,8 +319,8 @@ const (
 	document.getElementById('issue-presence-slot').replaceChildren(Object.assign(document.createElement('ul'), {id: 'presence-issue-' + id, className: 'tk-presence'}))
 	if (d.open) history.replaceState({issuePanel: id}, '', a.href)
 	else { $_is.back = location.href; history.pushState({issuePanel: id}, '', a.href); d.showModal() }
-	for (const v of ['issue:' + id, 'issue-desc:' + id, 'issue-typing:' + id]) @post('/cmd/watch', {payload: {tab: $_tab, view: v}, requestCancellation: 'disabled'})
-	@post('/cmd/notify/seen', {payload: {tab: $_tab, op: ` + newOp + `, subject: id, kind: 'issue'}, requestCancellation: 'disabled'})
+	for (const v of ['issue:' + id, 'issue-desc:' + id, 'issue-typing:' + id]) @post('/cmd/watch', {headers: {'Tab-Id': $_tab}, payload: {tab: $_tab, view: v}, requestCancellation: 'disabled'})
+	@post('/cmd/notify/seen', {headers: {'Tab-Id': $_tab, 'Op-Id': ` + newOp + `}, payload: {tab: $_tab, subject: id, kind: 'issue'}, requestCancellation: 'disabled'})
 })(evt.target.closest?.('a[` + IssueLink + `]'))`
 	panelClose = `$_is.id && (` + panelUnwatch + `, $_is.id = '', $_is.at = 0, $_is.pop ? ($_is.pop = false) : history.state?.issuePanel ? history.back() : $_is.back && history.replaceState(null, '', $_is.back))`
 	panelPop   = `((d) => d?.open && !history.state?.issuePanel && ($_is.pop = true, d.close()))(document.getElementById('issue-panel'))`

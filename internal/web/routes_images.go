@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"time"
 
@@ -112,12 +111,11 @@ func (s *Server) uploadImage(subject string) http.HandlerFunc {
 		}
 		ctx, id := r.Context(), r.PathValue("id")
 		var a action
-		// check takes the action of p and checks the right, from a read,
-		// and the tab's stream: before the body when the Tab-Id and Op-Id
-		// headers name the tab and op, else after it, from the form.
-		check := func(p *Payload) bool {
+		// The tab and op come from the Tab-Id and Op-Id headers, so the
+		// right, from a read, and the tab's stream are checked before the body.
+		check := func() bool {
 			var ok bool
-			if a, ok = s.actionOf(w, r, p); !ok {
+			if a, ok = s.actionOf(w, r); !ok {
 				return false
 			}
 			allowed, err := s.db.ViewValue(ctx, func(tx *sql.Tx) (bool, error) {
@@ -138,8 +136,7 @@ func (s *Server) uploadImage(subject string) http.HandlerFunc {
 			}
 			return s.connected(w, r, a.By.Actor, a.Tab) && !s.paused(w, r, a.By.Actor)
 		}
-		early := Payload{Tab: r.Header.Get("Tab-Id"), Op: r.Header.Get("Op-Id")}
-		if early.Tab != "" && !check(&early) {
+		if !check() {
 			return
 		}
 		// A slow honest upload finishes, a trickle is cut off (and
@@ -149,19 +146,13 @@ func (s *Server) uploadImage(subject string) http.HandlerFunc {
 			s.log.Debug("upload deadlines", "err", err) // the body, still capped, reads without them
 		}
 		r.Body = body
-		p, file, err := readUpload(r)
+		file, err := readUpload(r)
 		switch {
 		case errors.Is(err, errFileTooLarge), edge.TooLarge(err):
 			w.refuse(http.StatusRequestEntityTooLarge, images.MsgTooLarge)
 			return
 		case err != nil:
 			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if w.tab == "" {
-			w.tab, w.op = p.Tab, p.Op
-		}
-		if early.Tab == "" && !check(&p) {
 			return
 		}
 		wait, cancel := context.WithTimeout(ctx, convertWait)
@@ -219,58 +210,42 @@ func uploadGate(subject string, by tabs.By, id string) func(tx *writer.Tx) error
 
 var errFileTooLarge = errors.New("web: the file is too large")
 
-// readUpload reads an upload's multipart body in memory: the fields tab
-// and op, and the file, of at most images.MaxBytes. Other parts are
-// skipped; the body as a whole is bounded by the caller.
-func readUpload(r *http.Request) (Payload, []byte, error) {
-	var p Payload
+// readUpload reads an upload's file, of at most images.MaxBytes, from its
+// multipart body in memory. Other parts (the tab and op the editor sends
+// too, which the headers carry) are skipped; the body as a whole is
+// bounded by the caller.
+func readUpload(r *http.Request) ([]byte, error) {
 	mr, err := r.MultipartReader()
 	if err != nil {
-		return p, nil, err
+		return nil, err
 	}
 	var file []byte
 	for range 32 {
 		part, err := mr.NextPart()
 		if errors.Is(err, io.EOF) {
 			if file == nil {
-				return p, nil, errors.New("web: an upload without a file")
+				return nil, errors.New("web: an upload without a file")
 			}
-			return p, file, nil
+			return file, nil
 		}
 		if err != nil {
-			return p, nil, err
+			return nil, err
 		}
-		switch part.FormName() {
-		case "tab":
-			p.Tab, err = small(part)
-		case "op":
-			p.Op, err = small(part)
-		case "file":
-			if file != nil {
-				return p, nil, errors.New("web: two files in an upload")
-			}
-			file, err = io.ReadAll(io.LimitReader(part, images.MaxBytes+1))
-			if err == nil && len(file) > images.MaxBytes {
-				err = errFileTooLarge
-			}
+		if part.FormName() != "file" {
+			continue
+		}
+		if file != nil {
+			return nil, errors.New("web: two files in an upload")
+		}
+		file, err = io.ReadAll(io.LimitReader(part, images.MaxBytes+1))
+		if err == nil && len(file) > images.MaxBytes {
+			err = errFileTooLarge
 		}
 		if err != nil {
-			return p, nil, err
+			return nil, err
 		}
 	}
-	return p, nil, errors.New("web: too many parts in an upload")
-}
-
-// small reads a field of at most 64 bytes, as tab and op ids are.
-func small(part *multipart.Part) (string, error) {
-	b, err := io.ReadAll(io.LimitReader(part, 65))
-	if err != nil {
-		return "", err
-	}
-	if len(b) > 64 {
-		return "", errors.New("web: a field too long")
-	}
-	return string(b), nil
+	return nil, errors.New("web: too many parts in an upload")
 }
 
 // uploadedImage serves an uploaded image (FR-85, NFR-15.2) with the media

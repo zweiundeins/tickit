@@ -46,7 +46,7 @@ const alive = `$_ping > 0 && @post('/alive?tab=' + $_tab, {requestCancellation: 
 // last reported. firstInput reports at the stream's first heartbeat when
 // nothing did before: the page's opening counts as input, but its stream
 // may not be open as it opens.
-const inputSeen = `Date.now() - $_input > 60000 && ($_input = Date.now(), @post('/cmd/input', {payload: {tab: $_tab, op: ` + newOp + `}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0}).catch(() => {}))`
+const inputSeen = `Date.now() - $_input > 60000 && ($_input = Date.now(), @post('/cmd/input', {headers: {'Tab-Id': $_tab, 'Op-Id': ` + newOp + `}, payload: {tab: $_tab}, requestCancellation: 'disabled', retry: 'never', retryMaxCount: 0}).catch(() => {}))`
 
 const firstInput = `$_ping > 0 && $_input === 0 && ` + inputSeen
 

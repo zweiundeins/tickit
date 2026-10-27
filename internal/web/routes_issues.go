@@ -265,7 +265,7 @@ func (s *Server) issueList(w http.ResponseWriter, r *http.Request) {
 // It answers the list's view name as $_views.
 func (s *Server) listChange(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Tab   string `json:"tab"`
+		Tab   string `json:"-"` // from the Tab-Id header
 		View  string `json:"view"`
 		Query string `json:"query"`
 	}
@@ -274,6 +274,7 @@ func (s *Server) listChange(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	actor, sid := people.Actor(ctx), edge.SessionID(ctx)
+	req.Tab, _ = ids(r)
 	if err := sse.ReadSignalsLimit(w, r, &req, 8<<10); err != nil || !validID(req.Tab) || actor.IsZero() {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
