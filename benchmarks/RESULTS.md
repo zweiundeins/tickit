@@ -195,6 +195,19 @@ The fold, `tickit-load fold -n 20` on a fresh copy of `/tmp/tickit-load-030/run.
 
 The machine was busier than in the morning (load 6 to 10), and the runs move with it more than with the build: commits and fields are within 1 ms at the median across all four, moves range from 52 to 69 ms on both builds, and the overruns follow the load at the end of each run. No regression shows; lith's cheaper ticks and the frame buffer do not show at this load either, whose ticks are reads in SQLite. Every run passed NFR-38.1, the 201st stream's 503, MP-05.1 and NFR-42's state after the restart, and with `ReadTimeout` set every one of the 200 streams lasted the whole run.
 
+## Control on lith v0.5.2
+
+27 October 2026, the same machine and command, 120 s without sustain, each build's own `tickit-load` on a copy of a `base.db` generated again that day (12 min 15 s; the cached one was gone). `22269ca` is `rewrite` on lith v0.5.1, `c4713c0` lith v0.5.2 with the tab and op from the `Tab-Id` and `Op-Id` headers alone (the load tool sends them). Four runs back to back, alternating; other agents ran on the machine.
+
+| Run (load at start / end) | move p50 / p95 | field p50 / p95 | commit p50 / p95 | overruns | NFR-36 actions p50 / p95 / p99 | NFR-42 stop, streams back p50 / max |
+| --- | --- | --- | --- | --- | --- | --- |
+| c4713c0 (11.1 / 6.6) | 51.2 / 82.3 ms | 46.7 / 74.1 ms | 38.0 / 67.2 ms | 2 of 2,397 | 0.7 / 4.0 / 16.4 ms | 67 ms, 1.00 / 1.03 s |
+| 22269ca (6.6 / 9.8) | 52.4 / 87.1 ms | 46.0 / 76.0 ms | 38.0 / 68.1 ms | 3 of 2,395 | 0.6 / 3.9 / 18.6 ms | 146 ms, 0.94 / 0.97 s |
+| 22269ca (9.8 / 13.4) | 58.7 / 92.5 ms | 54.7 / 90.8 ms | 42.7 / 78.7 ms | 20 of 2,379 | 1.0 / 5.6 / 23.0 ms | 68 ms, 0.99 / 1.02 s |
+| c4713c0 (13.4 / 11.2) | 55.8 / 88.0 ms | 48.0 / 75.8 ms | 38.0 / 67.4 ms | 0 of 2,397 | 0.7 / 4.2 / 19.1 ms | 96 ms, 0.94 / 0.97 s |
+
+Every action of both builds answered 204 (no 400 for a missing header), and the two builds are within 1 ms at the median where the load was alike; the third run stalled once for about 1.1 s (every kind's max), as the machine did. Every run passed NFR-38.1, the 201st stream's 503, MP-05.1 and NFR-42's state after the restart.
+
 ## Gone pages and the cut job
 
 25 October 2026, the same machine, `rw/foldfix` on `55d3628`. A page trashed, or an issue deleted or hidden, while someone edited it kept its `collab_uncut` row, and the fold's bound, the oldest row of the kind, then stopped the fold of every document; migrations 089 and 090 and the commands release those rows. `tickit-load fold -n 20` on fresh reflink copies of `/tmp/tickit-load-030/run.db` (no gone pages in it), three runs each, alternating, p50 per limit of 200, 100, 50, 25 and 10 events: before 4.7 to 5.0, 2.5 to 3.3, 1.6 to 1.7, 1.0 to 1.1, 0.7 to 0.8 ms; after 4.6 to 5.2, 2.7 to 2.8, 1.5 to 1.7, 1.1, 0.7 to 0.8 ms (one run of each during a load spike of about 4 left out: 9.1 and 2.2 ms at 100 and 10). Unchanged.
