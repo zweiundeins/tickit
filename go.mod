@@ -14,9 +14,9 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/klauspost/compress v1.20.3
 	github.com/prometheus/client_golang v1.25.0
-	github.com/zweiundeins/lith v0.5.2
+	github.com/zweiundeins/lith v0.5.3-0.20261029081929-5e259a5fe4cf
 	github.com/zweiundeins/lith-coedit v0.1.0
-	github.com/zweiundeins/lith/minify v0.5.2
+	github.com/zweiundeins/lith/minify v0.5.3-0.20261029081929-5e259a5fe4cf
 	github.com/zweiundeins/lith/prom v0.5.2
 	github.com/zweiundeins/prosemirror-go v0.1.0
 	github.com/zweiundeins/prosemirror-go/oracle v0.1.0
@@ -90,6 +90,7 @@ require (
 	github.com/elliotchance/orderedmap/v3 v3.1.1 // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.39.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
+	github.com/evanw/esbuild v0.28.2 // indirect
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect

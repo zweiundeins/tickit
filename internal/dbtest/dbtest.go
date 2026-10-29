@@ -29,12 +29,21 @@ type Env struct {
 	topics []string
 }
 
+// Synchronous is the sync mode of a test's database: OFF, no fsync at all,
+// since the database dies with the test. Outside a test binary it is NORMAL.
+func Synchronous() string {
+	if testing.Testing() {
+		return "OFF"
+	}
+	return "NORMAL"
+}
+
 // Open migrates a new database in t's temporary directory and runs a
 // writer on it, until the test ends.
 func Open(t testing.TB) *Env {
 	t.Helper()
 	db, err := sqlite.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"), sqlite.Options{
-		Synchronous: "NORMAL",
+		Synchronous: Synchronous(),
 		Migrations:  migrations.FS,
 	})
 	if err != nil {

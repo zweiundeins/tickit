@@ -21,6 +21,7 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
+	"github.com/zweiundeins/tickit/internal/dbtest"
 	"github.com/zweiundeins/tickit/internal/demo"
 	"github.com/zweiundeins/tickit/internal/demo/seed"
 	"github.com/zweiundeins/tickit/internal/notify"
@@ -82,7 +83,7 @@ func (s *realServer) Start() {
 	collab.ResetCaches() // a new process
 	log := slog.New(slog.NewTextHandler(s.logs, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	ctx := context.Background()
-	db, err := sqlite.Open(ctx, s.path, sqlite.Options{Synchronous: "NORMAL", Migrations: migrations.FS, Readers: runtime.GOMAXPROCS(0) + 4, Checkpoint: sqlite.CheckpointWriter})
+	db, err := sqlite.Open(ctx, s.path, sqlite.Options{Synchronous: dbtest.Synchronous(), Migrations: migrations.FS, Readers: runtime.GOMAXPROCS(0) + 4, Checkpoint: sqlite.CheckpointWriter})
 	if err != nil {
 		t.Fatal(err)
 	}

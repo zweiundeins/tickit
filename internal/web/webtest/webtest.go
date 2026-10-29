@@ -31,6 +31,7 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
+	"github.com/zweiundeins/tickit/internal/dbtest"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/web"
 	"github.com/zweiundeins/tickit/migrations"
@@ -75,7 +76,7 @@ func StartWith(t testing.TB, o Options) *Env {
 		o.Store = events.Must(events.New())
 	}
 	db, err := sqlite.Open(context.Background(), filepath.Join(t.TempDir(), "test.db"), sqlite.Options{
-		Synchronous: "NORMAL",
+		Synchronous: dbtest.Synchronous(),
 		Migrations:  migrations.FS,
 	})
 	if err != nil {
