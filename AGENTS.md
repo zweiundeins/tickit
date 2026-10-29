@@ -1,6 +1,6 @@
 # tickit: notes for coding agents
 
-tickit is a Go, SQLite and Datastar application on lith v0.5.2 (github.com/zweiundeins/lith), started from lith's template. Read the lith skill before changing code. Its rules shape every change here (one writer, commands that touch topics, views rendered once per tick for all tabs, outcomes on the stream, tab state in SQLite), and its references hold the recipes, the review checklist and the Datastar gotchas. The skill ships with lith, so it matches the lith version in go.mod:
+tickit is a Go, SQLite and Datastar application on lith v0.5.3 (github.com/zweiundeins/lith), started from lith's template. Read the lith skill before changing code. Its rules shape every change here (one writer, commands that touch topics, views rendered once per tick for all tabs, outcomes on the stream, tab state in SQLite), and its references hold the recipes, the review checklist and the Datastar gotchas. The skill ships with lith, so it matches the lith version in go.mod:
 
     $(go list -m -f '{{.Dir}}' github.com/zweiundeins/lith)/skills/lith/SKILL.md
 

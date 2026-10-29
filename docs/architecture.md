@@ -1,6 +1,6 @@
 # tickit architecture
 
-tickit is a multiplayer issue tracker and wiki on lith v0.5.2: one Go binary, one SQLite file, server-rendered views pushed over SSE, Datastar 1.0.4 (Starbase's patched build with Rocket) in the browser. `docs/requirements.md` says what it must do; this file says how the code is cut, so that several people (and agents) can work on it at once without stepping on each other. Requirement IDs (FR-11.2, MP-08.3) are cited in code comments and test names where a test proves a criterion.
+tickit is a multiplayer issue tracker and wiki on lith v0.5.3: one Go binary, one SQLite file, server-rendered views pushed over SSE, Datastar 1.0.4 (Starbase's patched build with Rocket) in the browser. `docs/requirements.md` says what it must do; this file says how the code is cut, so that several people (and agents) can work on it at once without stepping on each other. Requirement IDs (FR-11.2, MP-08.3) are cited in code comments and test names where a test proves a criterion.
 
 ## Packages
 
@@ -48,7 +48,7 @@ Domain packages never import `internal/web` or `internal/views`. `internal/views
 
 ## Actions
 
-Every change is `POST /cmd/<area>/<action>` with the tab and op id in the `Tab-Id` and `Op-Id` headers and a Datastar payload (NFR-02); the payload keeps a copy of both, which no handler reads (lith v0.5.2). The handler, in `internal/web`:
+Every change is `POST /cmd/<area>/<action>` with the tab and op id in the `Tab-Id` and `Op-Id` headers and a Datastar payload (NFR-02); the payload keeps a copy of both, which no handler reads (lith v0.5.3). The handler, in `internal/web`:
 
 1. checks the rate-limit class of the action per client address, then per person (DM-04, `edge.ClientKey`; the classes are in `internal/web/action.go`),
 2. takes the tab and op from the headers (`ids`; 400 without valid ones, before the body), then reads the payload with `sse.ReadSignalsLimit` and validates its shape (400 on malformed input, never 500, NFR-16),
