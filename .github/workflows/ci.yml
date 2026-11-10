@@ -63,7 +63,7 @@ jobs:
     name: Race detector
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -72,4 +72,4 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Test with the race detector
-        run: go test -race ./...
+        run: go test -race -timeout 40m ./...

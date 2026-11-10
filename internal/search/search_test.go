@@ -325,7 +325,11 @@ func (e *env) answers() string {
 // search answers from the old index and is never empty.
 func TestRebuild(t *testing.T) {
 	e := newEnv(t)
-	for i := range 300 { // enough events for many batches
+	filler := 300 // enough events for many batches
+	if raceDetector {
+		filler = 50 // still several batches; a batch takes seconds under -race
+	}
+	for i := range filler {
 		e.issue(fmt.Sprint("WEB-", i+5), tracker.CreateIssue{Project: e.web, Summary: fmt.Sprint("Filler number ", i)})
 	}
 	before := e.answers()
@@ -353,7 +357,7 @@ func TestRebuild(t *testing.T) {
 					return err
 				})
 				asked.Add(1)
-				if err != nil || res.Total != 300 {
+				if err != nil || res.Total != filler {
 					wrong.Add(1)
 				}
 			}
@@ -367,7 +371,7 @@ func TestRebuild(t *testing.T) {
 	rebuilt := false
 	wait := 20 * time.Second
 	if raceDetector {
-		wait = 2 * time.Minute
+		wait = 5 * time.Minute
 	}
 	for deadline := time.Now().Add(wait); time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
 		ps, live, versions := r.Stats().Projectors, true, true

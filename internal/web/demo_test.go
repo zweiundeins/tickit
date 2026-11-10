@@ -206,10 +206,14 @@ func TestResetNow(t *testing.T) {
 	if code, body := webtest.Post(t, admin, e.URL+"/cmd/admin/reset", `{"tab":"tab1","op":"r1"}`); code != http.StatusNoContent {
 		t.Fatalf("reset now: %d %s", code, body)
 	}
-	deadline := time.Now().Add(10 * time.Second)
+	wait := 10 * time.Second
+	if raceDetector {
+		wait = time.Minute // the reset seeds the whole demo again
+	}
+	deadline := time.Now().Add(wait)
 	for rowCount(t, e, `SELECT count(*) FROM demo_resets WHERE outcome = 'ok'`) == 0 {
 		if time.Now().After(deadline) {
-			t.Fatal("no reset in 10 s")
+			t.Fatalf("no reset in %v", wait)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
