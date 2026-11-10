@@ -10,7 +10,7 @@ tool (
 
 require (
 	github.com/a-h/templ v0.3.1070
-	github.com/andybalholm/brotli v1.2.6
+	github.com/andybalholm/brotli v1.2.7
 	github.com/google/uuid v1.6.0
 	github.com/klauspost/compress v1.20.3
 	github.com/prometheus/client_golang v1.25.0
