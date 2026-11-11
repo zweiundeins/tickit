@@ -14,10 +14,10 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/klauspost/compress v1.20.4
 	github.com/prometheus/client_golang v1.25.0
-	github.com/zweiundeins/lith v0.5.6
+	github.com/zweiundeins/lith v0.5.7
 	github.com/zweiundeins/lith-coedit v0.1.0
-	github.com/zweiundeins/lith/minify v0.5.6
-	github.com/zweiundeins/lith/prom v0.5.6
+	github.com/zweiundeins/lith/minify v0.5.7
+	github.com/zweiundeins/lith/prom v0.5.7
 	github.com/zweiundeins/prosemirror-go v0.1.0
 	github.com/zweiundeins/prosemirror-go/oracle v0.1.0
 	golang.org/x/crypto v0.58.0
@@ -142,8 +142,8 @@ require (
 	github.com/spiffe/go-spiffe/v2 v2.8.1 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/stretchr/testify v1.12.1 // indirect
-	github.com/tdewolff/minify/v2 v2.24.19 // indirect
-	github.com/tdewolff/parse/v2 v2.8.16 // indirect
+	github.com/tdewolff/minify/v2 v2.24.25 // indirect
+	github.com/tdewolff/parse/v2 v2.8.20 // indirect
 	github.com/u-root/u-root v0.16.0 // indirect
 	github.com/u-root/uio v0.0.0-20240224005618-d2acac8f3701 // indirect
 	github.com/ulikunitz/xz v0.5.16 // indirect
