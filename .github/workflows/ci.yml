@@ -44,7 +44,7 @@ jobs:
       # NFR-20: fails on a known vulnerability in code the binary calls;
       # one only in an imported package or module is listed, not fatal.
       - name: Vulnerabilities
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
       # NFR-60: static, CGO_ENABLED=0, the version from git describe.
       - name: Build
         run: go tool task build
