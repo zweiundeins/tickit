@@ -126,13 +126,14 @@ templ AdminAccountsTable(a AdminAccounts) {
 
 // adminMenu is the one menu of every account's row (sb-context-menu):
 // each row's button says which role is checked and what does not apply.
+// templ reads data-action as a URL, so "role:…" goes in as a SafeURL.
 templ adminMenu() {
 	<sb-context-menu id={ AdminMenuID } class="tk-menu tk-menu--end" aria-label="Account actions" data-ignore-morph data-on:sb-menu-action={ adminMenuAction } data-on:datastar-fetch={ adminFailed }>
 		<template data-sb-menu>
 			<div role="group" aria-label="Site role">
 				<div class="tk-menu__label-group tk-eyebrow" aria-hidden="true">Site role</div>
 				for _, role := range []people.SiteRole{people.NoRole, people.Moderator, people.Admin} {
-					<button type="button" class="tk-menu__item" role="menuitem" data-action={ "role:" + string(role) } data-menu-check="radio">
+					<button type="button" class="tk-menu__item" role="menuitem" data-action={ templ.SafeURL("role:" + string(role)) } data-menu-check="radio">
 						<span class="tk-menu__check">
 							@ui.Icon("check")
 						</span>

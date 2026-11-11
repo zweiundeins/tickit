@@ -11,6 +11,23 @@ import (
 	"github.com/zweiundeins/tickit/internal/ui"
 )
 
+// The admin menu's actions reach the page as written: templ sanitizes
+// data-action as a URL, which would turn "role:moderator" into about:invalid.
+func TestAdminMenuActions(t *testing.T) {
+	var b bytes.Buffer
+	if err := adminMenu().Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`data-action="role:none"`, `data-action="role:moderator"`, `data-action="role:admin"`} {
+		if !strings.Contains(b.String(), want) {
+			t.Errorf("no %s in the admin menu", want)
+		}
+	}
+	if strings.Contains(b.String(), "TemplFailedSanitization") {
+		t.Error("templ replaced an attribute of the admin menu")
+	}
+}
+
 // A person looks the same everywhere: people draws a guest's or an
 // account's face and hue as ui.FaceOf does, and UIPerson keeps a seeded
 // person's own hue.

@@ -255,6 +255,9 @@ func Get(t testing.TB, c *http.Client, url string) (int, string) {
 	}
 	defer res.Body.Close()
 	b, _ := io.ReadAll(res.Body)
+	if bytes.Contains(b, []byte("TemplFailedSanitization")) {
+		t.Errorf("GET %s: templ replaced an attribute value it read as a URL", url)
+	}
 	return res.StatusCode, string(b)
 }
 
