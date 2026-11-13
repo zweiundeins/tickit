@@ -98,6 +98,37 @@ func resolverOrNone(r Resolver) Resolver {
 	return r
 }
 
+// rendering is the resolver of one render: the caller's, with the
+// document's outline for its headings' ids and its tables of contents.
+type rendering struct {
+	Resolver
+	outline *outline
+}
+
+func withOutline(d prosemirror.Doc, r Resolver) Resolver {
+	return rendering{base(resolverOrNone(r)), newOutline(d)}
+}
+
+// base is the caller's resolver, which the optional interfaces
+// (FaceResolver, ListResolver, imageHider) are asked of.
+func base(r Resolver) Resolver {
+	if x, ok := r.(rendering); ok {
+		return x.Resolver
+	}
+	return r
+}
+
+func outlineOf(r Resolver) *outline {
+	if x, ok := r.(rendering); ok {
+		return x.outline
+	}
+	return nil
+}
+
+// panelLabels name a panel's kind for assistive technology, as the
+// editor's toolbar does.
+var panelLabels = map[string]string{"info": "Info", "note": "Note", "warning": "Warning", "success": "Success", "error": "Error"}
+
 type writer = prosemirror.HTMLWriter[Resolver]
 
 func tag(name string) func(w *writer, n *prosemirror.Node) {
@@ -134,13 +165,49 @@ func cell(name string) func(w *writer, n *prosemirror.Node) {
 // produces too.
 var html = &prosemirror.HTML[Resolver]{
 	HighlightClass: "tk-ic", HighlightAttr: "data-c",
-	Dynamic: []string{"issue_list", "issue_chip", "mention", "page_link", "image"}, DynamicKey: dynamicKey,
+	Dynamic: []string{"issue_list", "issue_chip", "mention", "page_link", "image", "heading", "toc"}, DynamicKey: dynamicKey,
 	Nodes: map[string]func(w *writer, n *prosemirror.Node){
 		"paragraph":  tag("p"),
 		"blockquote": tag("blockquote"),
 		"heading": func(w *writer, n *prosemirror.Node) {
-			l, _ := n.AttrInt("level")
-			tag("h"+strconv.Itoa(min(max(l, 1), 3)+1))(w, n)
+			// The page's title is its h1; level 6 has no h7.
+			id := outlineOf(w.R).id(n)
+			if l := headingLevel(n); l < 6 {
+				h := "h" + strconv.Itoa(l+1)
+				w.Open(h, "id", id)
+				w.Content(n)
+				w.Raw("</" + h + ">")
+				return
+			}
+			w.Open("p", "role", "heading", "aria-level", "7", "id", id)
+			w.Content(n)
+			w.Raw("</p>")
+		},
+		"panel": func(w *writer, n *prosemirror.Node) {
+			kind := n.AttrString("kind")
+			label := panelLabels[kind]
+			if label == "" {
+				kind, label = "note", "Note"
+			}
+			w.Open("div", "class", "doc-panel", "data-panel", kind, "role", "note", "aria-label", label)
+			w.Content(n)
+			w.Raw("</div>")
+		},
+		"toc": func(w *writer, n *prosemirror.Node) {
+			w.Open("nav", "class", "doc-toc", "aria-label", "Contents")
+			var hs []Heading
+			if o := outlineOf(w.R); o != nil {
+				hs = o.list
+			}
+			tocHTML(w, hs)
+			w.Raw("</nav>")
+		},
+		"status": func(w *writer, n *prosemirror.Node) {
+			w.Raw(`<span class="tk-lozenge doc-status" data-color="`)
+			w.Text(n.AttrString("color"))
+			w.Raw(`">`)
+			w.Text(n.AttrString("text"))
+			w.Raw(`</span>`)
 		},
 		"code_block": func(w *writer, n *prosemirror.Node) {
 			if l := n.AttrString("language"); l != "" {
@@ -190,7 +257,7 @@ var html = &prosemirror.HTML[Resolver]{
 		"table_cell":   cell("td"),
 		"table_header": cell("th"),
 		"image": func(w *writer, n *prosemirror.Node) {
-			if h, ok := w.R.(imageHider); ok && h.ImageHidden(n.AttrString("imageId")) {
+			if h, ok := base(w.R).(imageHider); ok && h.ImageHidden(n.AttrString("imageId")) {
 				w.Open("figure", "class", "doc-image doc-image--hidden")
 				w.Raw(`<p>Image hidden by a moderator</p></figure>`)
 				return
@@ -206,7 +273,7 @@ var html = &prosemirror.HTML[Resolver]{
 			l := IssueListOf(n)
 			w.Open("div", "class", "issue-list", "data-filter", l.Filter, "data-saved-filter", l.SavedFilter, "data-limit", strconv.Itoa(l.Limit))
 			inner := ""
-			if lr, ok := w.R.(ListResolver); ok {
+			if lr, ok := base(w.R).(ListResolver); ok {
 				inner = lr.List(l)
 			}
 			if inner == "" {
@@ -227,7 +294,7 @@ var html = &prosemirror.HTML[Resolver]{
 			w.Raw(`" href="/people/`)
 			w.Text(url.PathEscape(id))
 			face := ""
-			if f, ok := w.R.(FaceResolver); ok && known {
+			if f, ok := base(w.R).(FaceResolver); ok && known {
 				face = f.Face(id)
 			}
 			if face != "" {
@@ -260,6 +327,12 @@ var html = &prosemirror.HTML[Resolver]{
 		"em":     markTag("em"),
 		"strike": markTag("s"),
 		"code":   markTag("code"),
+		"text_color": {Open: func(w *writer, m *prosemirror.Mark) string {
+			w.Raw(`<span class="doc-color" data-color="`)
+			w.Text(m.AttrString("color"))
+			w.Raw(`">`)
+			return "</span>"
+		}},
 		"link": {TextOnly: true, Open: func(w *writer, m *prosemirror.Mark) string {
 			href := m.AttrString("href")
 			if title, ok := prosemirror.SafeHref(href); ok {
@@ -281,7 +354,16 @@ var html = &prosemirror.HTML[Resolver]{
 // of its atoms stay the same, so a chip's new status renders the blocks
 // that show the issue, and no other.
 func dynamicKey(r Resolver, n *prosemirror.Node) string {
+	o := outlineOf(r)
+	r = base(r)
 	switch n.Type().Name() {
+	case "heading":
+		return "h" + o.id(n)
+	case "toc":
+		if o == nil {
+			return "t"
+		}
+		return "t" + o.key
 	case "issue_chip":
 		c, ok := r.Issue(n.AttrString("key"))
 		return "c" + strconv.FormatBool(ok) + "\x00" + c.Summary + "\x00" + c.Status + "\x00" + c.Category + "\x00" + c.Type + "\x00" + strconv.FormatBool(c.Deleted)
@@ -313,9 +395,10 @@ func dynamicKey(r Resolver, n *prosemirror.Node) string {
 // <div class="prose">. Every text and attribute is escaped, links pass
 // SafeHref, images come from the library by imageId alone (DM-06). A nil
 // Resolver knows nothing.
-func RenderHTML(d prosemirror.Doc, r Resolver) string { return html.Render(d, resolverOrNone(r)) }
+func RenderHTML(d prosemirror.Doc, r Resolver) string { return html.Render(d, withOutline(d, r)) }
 
-// RenderBlock renders one block.
+// RenderBlock renders one block, without the document around it: a
+// heading's id comes from its text alone, and a toc lists nothing.
 func RenderBlock(n *prosemirror.Node, r Resolver) string {
 	return html.RenderBlock(n, resolverOrNone(r))
 }
@@ -324,7 +407,7 @@ func RenderBlock(n *prosemirror.Node, r Resolver) string {
 // inside each highlight in <mark class="tk-ic" data-c="<ids>">, the ids of
 // every highlight over it separated by spaces (FR-91.1).
 func RenderHighlighted(d prosemirror.Doc, r Resolver, hs []prosemirror.Highlight) string {
-	return html.RenderHighlighted(d, resolverOrNone(r), hs)
+	return html.RenderHighlighted(d, withOutline(d, r), hs)
 }
 
 // ListDescription is what an issue list shows in place of its rows: in
@@ -427,27 +510,30 @@ func (c *BlockCache) cache() *prosemirror.BlockCache[Resolver] {
 
 // Render renders the document, reusing the HTML of unchanged blocks.
 func (c *BlockCache) Render(d prosemirror.Doc, r Resolver) string {
-	return c.cache().Render(d, resolverOrNone(r))
+	return c.cache().Render(d, withOutline(d, r))
 }
 
 // RenderHighlighted renders as Render does, with highlights.
 func (c *BlockCache) RenderHighlighted(d prosemirror.Doc, r Resolver, hs []prosemirror.Highlight) string {
-	return c.cache().RenderHighlighted(d, resolverOrNone(r), hs)
+	return c.cache().RenderHighlighted(d, withOutline(d, r), hs)
 }
 
 // Reset forgets every block.
 func (c *BlockCache) Reset() { c.cache().Reset() }
 
 // DocDiff is a comparison of two versions of a page (FR-88).
-type DocDiff struct{ *prosemirror.DocDiff }
+type DocDiff struct {
+	*prosemirror.DocDiff
+	newer prosemirror.Doc
+}
 
 // Diff compares version a with version b.
-func Diff(a, b prosemirror.Doc) DocDiff { return DocDiff{prosemirror.Diff(a, b)} }
+func Diff(a, b prosemirror.Doc) DocDiff { return DocDiff{prosemirror.Diff(a, b), b} }
 
 // HTML renders the comparison: the newer version, with added text in
 // <ins class="diff-ins"> and removed text in <del class="diff-del">; whole
 // blocks added or removed carry data-diff="ins" or "del" (FR-88.1).
-func (d DocDiff) HTML(r Resolver) string { return html.Diff(d.DocDiff, resolverOrNone(r)) }
+func (d DocDiff) HTML(r Resolver) string { return html.Diff(d.DocDiff, withOutline(d.newer, r)) }
 
 // IssueLists returns the document's issue lists, in document order.
 func IssueLists(d prosemirror.Doc) []IssueList {

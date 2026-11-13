@@ -75,7 +75,7 @@ func TestParseText(t *testing.T) {
 		{markup.Text, "**open and `tick", `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"**open and ` + "`" + `tick"}]}]}`},
 		{markup.Text, "see [[web-3]] and [[OPS-1]] [bare", `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"see "},{"type":"issue_chip","attrs":{"key":"WEB-3"}},{"type":"text","text":" and [[OPS-1]] [bare"}]}]}`},
 		{markup.Comment, "# not a heading\n\nhi @g-aaaaaaaaaaaaaaaaaaaa, @g-bbbbbbbbbbbbbbbbbbbb", `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"# not a heading"}]},{"type":"paragraph","content":[{"type":"text","text":"hi "},{"type":"mention","attrs":{"personId":"g-aaaaaaaaaaaaaaaaaaaa","label":"Sunny Otter"}},{"type":"text","text":", @g-bbbbbbbbbbbbbbbbbbbb"}]}]}`},
-		{markup.Text, "  indented\n#### four", `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"indented"}]},{"type":"heading","attrs":{"level":3},"content":[{"type":"text","text":"four"}]}]}`},
+		{markup.Text, "  indented\n#### four", `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"indented"}]},{"type":"heading","attrs":{"level":4},"content":[{"type":"text","text":"four"}]}]}`},
 	}
 	for _, c := range cases {
 		got, err := markup.ParseMode(c.in, r, c.mode)

@@ -3,7 +3,11 @@
 // renderers and rules of its node types. Four node types are tickit's own:
 // issue_chip (an issue by key, live at render time, FR-100), mention (a
 // person, FR-67.2), page_link (a page by id, FR-103) and issue_list (the
-// rows of a filter, FR-104); the others are those of a typical editor.
+// rows of a filter, FR-104); the others are those of a typical editor,
+// with panel (a box of blocks of a kind: info, note, warning, success,
+// error), status (a coloured lozenge with a short text), toc (the
+// document's headings as links) and the text_color mark (a name of a
+// palette), which Confluence's pages bring along.
 //
 // # Rules
 //
@@ -14,8 +18,11 @@
 //   - The document: 200 KB of stored JSON and 2,000 block nodes (DM-05.1),
 //     refused only when a commit grows a document past them.
 //   - Text: no control characters but tab and newline in code blocks.
-//   - heading.level 1, 2 or 3; code_block.language empty or one of
+//   - heading.level 1 to 6; code_block.language empty or one of
 //     codeLanguages; ordered_list.order a whole number from 1 to 9,999.
+//   - panel.kind one of panelKinds; status.color one of statusColors and
+//     its text 1 to statusText (40) characters without control
+//     characters; text_color.color one of textColors.
 //   - Tables (FR-83): 50 rows, 20 columns counted with colspans and the
 //     rowspans of the rows above; colspan 1 to 20, rowspan 1 to 50;
 //     colwidth null or one number from 0 to 10,000 per spanned column.
@@ -42,8 +49,9 @@
 // and never from src, and no <a> for a link mark around an atom. What
 // chips, mentions and page links show comes from a Resolver at render
 // time; an issue list's rows come from a ListResolver, and without one it
-// shows its filter (ListDescription). BlockCache keeps the HTML of
-// unchanged blocks, except those holding an issue list. Text gives the
+// shows its filter (ListDescription). Headings carry an id from their text
+// (Outline), which a toc links to. BlockCache keeps the HTML of unchanged
+// blocks while what they show stays the same. Text gives the
 // search text, References the issue keys, person ids, page ids and images
 // of a document. Markdown exports a page (FR-152).
 //
@@ -89,6 +97,10 @@ type Limits struct {
 	LinkSchemes   []string `json:"linkSchemes"`
 	CodeLanguages []string `json:"codeLanguages"`
 	HeadingLevels []int    `json:"headingLevels"`
+	TextColors    []string `json:"textColors"`   // the palette of text_color
+	PanelKinds    []string `json:"panelKinds"`   // a panel's kinds
+	StatusColors  []string `json:"statusColors"` // a status lozenge's colours
+	StatusText    int      `json:"statusText"`   // characters of a status's text
 }
 
 var limits = sync.OnceValue(func() Limits {

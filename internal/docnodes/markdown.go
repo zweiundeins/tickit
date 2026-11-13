@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/zweiundeins/prosemirror-go"
 )
@@ -44,8 +45,21 @@ var markdown = &prosemirror.Markdown[Resolver]{
 			}
 		},
 		"heading": func(w *mdWriter, n *prosemirror.Node) {
-			l, _ := n.AttrInt("level")
-			w.Line(strings.Repeat("#", min(max(l, 1), 3)+1) + " " + strings.ReplaceAll(w.Inline(n), "\n", " "))
+			w.Line(strings.Repeat("#", min(headingLevel(n)+1, 6)) + " " + strings.ReplaceAll(w.Inline(n), "\n", " "))
+		},
+		// GitHub's alert of the panel's colour.
+		"panel": func(w *mdWriter, n *prosemirror.Node) {
+			alert := map[string]string{"info": "NOTE", "note": "IMPORTANT", "warning": "WARNING", "success": "TIP", "error": "CAUTION"}[n.AttrString("kind")]
+			if alert == "" {
+				alert = "IMPORTANT"
+			}
+			w.Line("> [!" + alert + "]")
+			w.Blocks(n.Content().Nodes(), "> ", "> ")
+		},
+		"toc": func(w *mdWriter, n *prosemirror.Node) {
+			for _, l := range tocMarkdown(w.R) {
+				w.Line(l)
+			}
 		},
 		"blockquote": func(w *mdWriter, n *prosemirror.Node) { w.Blocks(n.Content().Nodes(), "> ", "> ") },
 		"code_block": func(w *mdWriter, n *prosemirror.Node) {
@@ -98,6 +112,7 @@ var markdown = &prosemirror.Markdown[Resolver]{
 		},
 		"hard_break": func(w *mdWriter, n *prosemirror.Node) { w.Write("\\\n") },
 		"issue_chip": func(w *mdWriter, n *prosemirror.Node) { w.Write(esc(n.AttrString("key"))) },
+		"status":     func(w *mdWriter, n *prosemirror.Node) { w.Write(`\[` + esc(n.AttrString("text")) + `\]`) },
 		"mention": func(w *mdWriter, n *prosemirror.Node) {
 			name, ok := w.R.Person(n.AttrString("personId"))
 			if !ok {
@@ -145,9 +160,55 @@ var markdown = &prosemirror.Markdown[Resolver]{
 
 // Markdown exports the document as CommonMark with GitHub's tables and
 // task lists (FR-152). Headings move one level down, as the page's title
-// is its level-one heading. Chips export as their key, mentions as
-// @name, page links as links to the page; unsafe links as their text.
-func Markdown(d prosemirror.Doc, r Resolver) string { return markdown.Render(d, resolverOrNone(r)) }
+// is its level-one heading, the sixth staying at six. Chips export as
+// their key, mentions as @name, page links as links to the page; unsafe
+// links as their text. Panels export as GitHub's alerts (info a note,
+// note important, success a tip, warning a warning, error a caution),
+// statuses as their text in brackets, a toc as a list of links to the
+// headings, text colours as plain text.
+func Markdown(d prosemirror.Doc, r Resolver) string { return markdown.Render(d, withOutline(d, r)) }
+
+// tocMarkdown is a toc as a nested list of links to the headings, by the
+// anchors GitHub gives them.
+func tocMarkdown(r Resolver) []string {
+	o := outlineOf(r)
+	if o == nil {
+		return nil
+	}
+	var out []string
+	var stack []int
+	used := map[string]int{}
+	for _, h := range o.list {
+		for len(stack) > 0 && h.Level <= stack[len(stack)-1] {
+			stack = stack[:len(stack)-1]
+		}
+		anchor := githubSlug(h.Text)
+		if n := used[anchor]; n > 0 {
+			used[anchor]++
+			anchor += "-" + strconv.Itoa(n)
+		} else {
+			used[anchor] = 1
+		}
+		out = append(out, strings.Repeat("  ", len(stack))+"- ["+esc(h.Text)+"](#"+anchor+")")
+		stack = append(stack, h.Level)
+	}
+	return out
+}
+
+// githubSlug is the anchor GitHub gives a heading: its text in lower
+// case without punctuation, spaces as hyphens.
+func githubSlug(text string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(text) {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_':
+			b.WriteRune(r)
+		case r == ' ':
+			b.WriteByte('-')
+		}
+	}
+	return b.String()
+}
 
 // leaves is what tickit's leaf nodes stand for in plain text.
 var leaves = prosemirror.LeafText{
@@ -159,12 +220,14 @@ var leaves = prosemirror.LeafText{
 		return ""
 	},
 	"hard_break": func(*prosemirror.Node) string { return "\n" },
+	"status":     func(n *prosemirror.Node) string { return n.AttrString("text") },
 	"image":      func(n *prosemirror.Node) string { return n.AttrString("alt") },
 }
 
 // Text returns the document's text for search: blocks separated by
 // newlines, chips by key, mentions by their name in the document, hard
-// breaks as newlines and images by their alt text.
+// breaks as newlines, images by their alt text and statuses by their
+// text.
 func Text(d prosemirror.Doc) string { return leaves.Text(d, "\n") }
 
 // Refs are the ids a document refers to, each once and sorted.

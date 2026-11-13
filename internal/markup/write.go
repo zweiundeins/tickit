@@ -88,7 +88,7 @@ func (w *writer) block(n wnode, first, rest string) {
 			w.line(p, l)
 		}
 	case "heading":
-		level := min(max(n.num("level"), 1), 3)
+		level := min(max(n.num("level"), 1), 6)
 		w.line(first, strings.Repeat("#", level)+" "+strings.ReplaceAll(w.inline(n.Content), "\\\n", " "))
 	case "blockquote":
 		w.blocks(n.Content, first+"> ", rest+"> ")
@@ -158,6 +158,10 @@ func (w *writer) block(n wnode, first, rest string) {
 				w.line(rest, "| "+strings.Join(seps, " | ")+" |")
 			}
 		}
+	case "panel":
+		// The markup has no panels: their blocks.
+		w.blocks(n.Content, first, rest)
+	case "toc":
 	default:
 		// A block the markup cannot say: its text, as a paragraph.
 		w.line(first, w.inline(n.Content))
@@ -231,6 +235,8 @@ func (w *writer) inline(nodes []wnode) string {
 			b.WriteString("@" + n.str("personId"))
 		case "issue_chip":
 			b.WriteString("[[" + n.str("key") + "]]")
+		case "status":
+			b.WriteString(escape(n.str("text"), lineStart))
 		case "page_link":
 			ref := n.str("pageId")
 			if w.pageRef != nil {

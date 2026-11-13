@@ -45,7 +45,7 @@ func TestParse(t *testing.T) {
 
 func TestParseRefuses(t *testing.T) {
 	for _, in := range []string{
-		"#### four", "**open", "a *b", "`code", "[[OPS-1]]", "[[page:Missing]]", "@s-nobody",
+		"**open", "a *b", "`code", "[[OPS-1]]", "[[page:Missing]]", "@s-nobody",
 		"[x](javascript:alert(1))", "![alt](lib:nope)", "![](lib:map)", "text ![a](lib:map)",
 		"```cobol\nx\n```", "```go\nunclosed", "| a |\n| b |", "  indented", "[bare bracket",
 		"| a | b |\n| --- | --- |\n| 1 |",

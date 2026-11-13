@@ -15,7 +15,8 @@ import (
 // tickit's schema.json in the real prosemirror-model and
 // prosemirror-transform (prosemirror-go's package oracle): the seed's
 // documents and hand-made ones parse, check and write back as V8 does, and
-// edits of them, with tickit's atoms, apply alike.
+// edits of them, with tickit's atoms, panels, statuses, tocs and colours,
+// apply alike.
 func newOracle(t *testing.T) *oracle.Oracle {
 	o, err := oracle.New(SchemaJSON())
 	if err != nil {
@@ -72,6 +73,19 @@ func TestSchemaAgreesWithOracle(t *testing.T) {
 		inPara(`{"type":"page_link","attrs":{"pageId":"p"}},{"type":"hard_break"}`),
 		docOf(`{"type":"code_block","content":[{"type":"text","text":"x","marks":[{"type":"strong"}]}]}`),
 		docOf(`{"type":"table","content":[{"type":"table_row","content":[{"type":"table_cell","attrs":{"colwidth":[100]},"content":[`+para+`]}]}]}`),
+		docOf(`{"type":"heading","attrs":{"level":6},"content":[`+text("six")+`]}`, `{"type":"toc"}`),
+		docOf(`{"type":"toc","content":[`+para+`]}`),
+		docOf(`{"type":"toc","attrs":{"x":1}}`),
+		docOf(`{"type":"panel","attrs":{"kind":"error"},"content":[`+para+`,{"type":"panel","content":[{"type":"toc"}]}]}`),
+		docOf(`{"type":"panel","attrs":{"kind":"note"}}`),
+		docOf(`{"type":"panel","attrs":{"kind":3},"content":[`+para+`]}`),
+		docOf(`{"type":"paragraph","content":[{"type":"panel","content":[`+para+`]}]}`),
+		inPara(`{"type":"status","attrs":{"text":"DONE","color":"green"}},{"type":"status","attrs":{"text":"x"}}`),
+		inPara(`{"type":"status","attrs":{"color":"green"}}`),
+		inPara(`{"type":"status","attrs":{"text":"a"},"marks":[{"type":"text_color","attrs":{"color":"red"}},{"type":"strong"}]}`),
+		inPara(text("c", `{"type":"text_color","attrs":{"color":"red"}}`, `{"type":"code"}`, `{"type":"strong"}`)),
+		inPara(text("c", `{"type":"text_color"}`)),
+		docOf(`{"type":"code_block","content":[{"type":"text","text":"x","marks":[{"type":"text_color","attrs":{"color":"red"}}]}]}`),
 	)
 	n := 0
 	for i, c := range cases {
@@ -121,7 +135,7 @@ func TestEditsAgreeWithOracle(t *testing.T) {
 			a := rnd.IntN(size + 1)
 			b := min(size, a+rnd.IntN(12))
 			var raw string
-			switch rnd.IntN(6) {
+			switch rnd.IntN(10) {
 			case 0:
 				raw = `{"stepType":"replace","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `}`
 			case 1:
@@ -132,6 +146,14 @@ func TestEditsAgreeWithOracle(t *testing.T) {
 				raw = `{"stepType":"addMark","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `,"mark":{"type":"link","attrs":{"href":"https://x.y"}}}`
 			case 4:
 				raw = `{"stepType":"replace","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(a) + `,"slice":{"content":[{"type":"issue_list","attrs":{"filter":"type=bug","savedFilter":"","limit":3}}]}}`
+			case 5:
+				raw = `{"stepType":"replace","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `,"slice":{"content":[{"type":"status","attrs":{"text":"DONE","color":"green"}}]}}`
+			case 6:
+				raw = `{"stepType":"replace","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(a) + `,"slice":{"content":[{"type":"toc"}]}}`
+			case 7:
+				raw = `{"stepType":"addMark","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `,"mark":{"type":"text_color","attrs":{"color":"teal"}}}`
+			case 8:
+				raw = `{"stepType":"replace","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `,"slice":{"content":[{"type":"panel","attrs":{"kind":"info"},"content":[{"type":"heading","attrs":{"level":5},"content":[{"type":"text","text":"h"}]}]}],"openStart":0,"openEnd":0}}`
 			default:
 				raw = `{"stepType":"removeMark","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `,"mark":{"type":"strong"}}`
 			}

@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// DM-05, DM-06, FR-83, FR-84, FR-100, FR-103: refused documents, with the
-// sentence a person reads.
+// DM-05, DM-06, FR-82, FR-83, FR-84, FR-100, FR-103: refused documents,
+// with the sentence a person reads.
 func TestRulesRefuse(t *testing.T) {
 	cell := func(attrs string) string {
 		return `{"type":"table_cell","attrs":` + attrs + `,"content":[` + para + `]}`
@@ -15,8 +15,14 @@ func TestRulesRefuse(t *testing.T) {
 		return `{"type":"table_row","content":[` + strings.Join(cells, ",") + `]}`
 	}
 	cases := []struct{ doc, msg string }{
-		{docOf(`{"type":"heading","attrs":{"level":4}}`), "A heading has level 1, 2 or 3."},
-		{docOf(`{"type":"heading","attrs":{"level":1.5}}`), "A heading has level 1, 2 or 3."},
+		{docOf(`{"type":"heading","attrs":{"level":7}}`), "A heading has a level from 1 to 6."},
+		{docOf(`{"type":"heading","attrs":{"level":1.5}}`), "A heading has a level from 1 to 6."},
+		{docOf(`{"type":"panel","attrs":{"kind":"tip"},"content":[` + para + `]}`), "A panel is one of: info, note, warning, success, error."},
+		{inPara(`{"type":"status","attrs":{"text":"x","color":"pink"}}`), "A status is one of these colours: neutral, purple, blue, red, yellow, green."},
+		{inPara(`{"type":"status","attrs":{"text":" ","color":"red"}}`), "A status has 1 to 40 characters."},
+		{inPara(`{"type":"status","attrs":{"text":"` + strings.Repeat("x", 41) + `","color":"red"}}`), "A status has 1 to 40 characters."},
+		{inPara(`{"type":"status","attrs":{"text":"a\u0007","color":"red"}}`), "A status holds a control character."},
+		{inPara(`{"type":"text","text":"x","marks":[{"type":"text_color","attrs":{"color":"#ff0000"}}]}`), "A text colour is one of: red, orange, yellow, green, teal, blue, purple, grey."},
 		{docOf(`{"type":"code_block","attrs":{"language":"cobol"}}`), "Code blocks take one of the listed languages."},
 		{docOf(`{"type":"ordered_list","attrs":{"order":0},"content":[{"type":"list_item","content":[` + para + `]}]}`), "A numbered list starts at a number from 1 to 9,999."},
 		{docOf(`{"type":"image","attrs":{"imageId":"evil"}}`), "Images come from the image library."},
@@ -49,6 +55,8 @@ func TestRulesRefuse(t *testing.T) {
 		inPara(`{"type":"mention","attrs":{"personId":"g-abcdefghijklmnopqrst"}},{"type":"mention","attrs":{"personId":"a-0192f0c4-7b1e-7cc3-9d2a-5f6e7a8b9c0d","label":"Ada"}}`),
 		docOf(`{"type":"table","content":[` + row(cell(`{"colspan":2,"colwidth":[100,0]}`), cell(`{"colspan":18}`)) + `]}`),
 		docOf(`{"type":"image","attrs":{"imageId":"img-1","src":"/img/lib/img-1"}}`),
+		docOf(`{"type":"heading","attrs":{"level":6}}`, `{"type":"toc"}`, `{"type":"panel","attrs":{"kind":"error"},"content":[`+para+`,{"type":"panel","content":[`+para+`]}]}`),
+		inPara(`{"type":"status","attrs":{"text":"` + strings.Repeat("é", 40) + `","color":"green"}},{"type":"text","text":"x","marks":[{"type":"text_color","attrs":{"color":"grey"}}]}`),
 	}
 	for i, c := range ok {
 		if err := library.Check(nil, mustDoc(t, c)); err != nil {

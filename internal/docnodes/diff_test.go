@@ -19,7 +19,7 @@ func TestDiff(t *testing.T) {
 		`{"type":"paragraph","content":[`+text("<new>")+`]}`,
 	))
 	d := Diff(a, b)
-	want := `<h2>Release plan</h2>` +
+	want := `<h2 id="h-release-plan">Release plan</h2>` +
 		`<p>We ship the <del class="diff-del">editor</del><ins class="diff-ins"><strong>editor</strong></ins> on <del class="diff-del">Monday</del><ins class="diff-ins">Tuesday</ins>.</p>` +
 		`<ul><li><p>one</p></li><li><p><del class="diff-del">two</del><ins class="diff-ins">2</ins></p></li><li data-diff="ins"><p><ins class="diff-ins">three</ins></p></li></ul>` +
 		`<del class="diff-del"><hr data-diff="del"></del><p data-diff="ins"><ins class="diff-ins">&lt;new&gt;</ins></p>`

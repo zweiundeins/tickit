@@ -205,6 +205,7 @@ func writeText(b *strings.Builder, doc json.RawMessage) {
 		Attrs   struct {
 			Label string `json:"label"`
 			Key   string `json:"key"`
+			Text  string `json:"text"` // a status's
 		} `json:"attrs"`
 	}
 	if json.Unmarshal(doc, &n) != nil {
@@ -219,6 +220,8 @@ func writeText(b *strings.Builder, doc json.RawMessage) {
 		}
 	case "issue_chip":
 		b.WriteString(n.Attrs.Key)
+	case "status":
+		b.WriteString(n.Attrs.Text)
 	}
 	for _, c := range n.Content {
 		if b.Len() > 4*maxText {

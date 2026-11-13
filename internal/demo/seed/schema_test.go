@@ -331,7 +331,7 @@ func TestValidatorRefusesBadDocuments(t *testing.T) {
 		`{"type":"doc","content":[{"type":"text","text":"loose"}]}`,
 		`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":""}]}]}`,
 		`{"type":"doc","content":[{"type":"bullet_list","content":[{"type":"list_item","content":[{"type":"bullet_list","content":[]}]}]}]}`,
-		`{"type":"doc","content":[{"type":"heading","attrs":{"level":4},"content":[{"type":"text","text":"x"}]}]}`,
+		`{"type":"doc","content":[{"type":"heading","attrs":{"level":7},"content":[{"type":"text","text":"x"}]}]}`,
 		`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"em"},{"type":"strong"}],"text":"x"}]}]}`,
 		`{"type":"doc","content":[{"type":"code_block","attrs":{"language":"cobol"}}]}`,
 		`{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"javascript:alert(1)"}}],"text":"x"}]}]}`,

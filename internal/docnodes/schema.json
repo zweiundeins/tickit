@@ -27,6 +27,9 @@
       "attrs": {"imageId": {"validate": "string"}, "src": {"default": "", "validate": "string"}, "alt": {"default": "", "validate": "string"}}},
     {"name": "issue_list", "group": "block", "atom": true, "draggable": true,
       "attrs": {"filter": {"default": "", "validate": "string"}, "savedFilter": {"default": "", "validate": "string"}, "limit": {"default": 10, "validate": "number"}}},
+    {"name": "panel", "group": "block", "content": "block+", "defining": true,
+      "attrs": {"kind": {"default": "info", "validate": "string"}}},
+    {"name": "toc", "group": "block", "atom": true, "draggable": true},
     {"name": "text", "group": "inline"},
     {"name": "hard_break", "group": "inline", "inline": true, "selectable": false},
     {"name": "issue_chip", "group": "inline", "inline": true, "atom": true,
@@ -34,14 +37,17 @@
     {"name": "mention", "group": "inline", "inline": true, "atom": true,
       "attrs": {"personId": {"validate": "string"}, "label": {"default": "", "validate": "string"}}},
     {"name": "page_link", "group": "inline", "inline": true, "atom": true,
-      "attrs": {"pageId": {"validate": "string"}}}
+      "attrs": {"pageId": {"validate": "string"}}},
+    {"name": "status", "group": "inline", "inline": true, "atom": true,
+      "attrs": {"text": {"validate": "string"}, "color": {"default": "neutral", "validate": "string"}}}
   ],
   "marks": [
     {"name": "link", "inclusive": false, "attrs": {"href": {"validate": "string"}}},
     {"name": "strong"},
     {"name": "em"},
     {"name": "strike"},
-    {"name": "code"}
+    {"name": "code"},
+    {"name": "text_color", "attrs": {"color": {"validate": "string"}}}
   ],
   "limits": {
     "storedBytes": 204800,
@@ -53,6 +59,10 @@
     "listRows": 25,
     "linkSchemes": ["http", "https", "mailto"],
     "codeLanguages": ["", "text", "go", "js", "ts", "html", "css", "sql", "json", "yaml", "bash", "python", "java", "rust", "markdown", "diff"],
-    "headingLevels": [1, 2, 3]
+    "headingLevels": [1, 2, 3, 4, 5, 6],
+    "textColors": ["red", "orange", "yellow", "green", "teal", "blue", "purple", "grey"],
+    "panelKinds": ["info", "note", "warning", "success", "error"],
+    "statusColors": ["neutral", "purple", "blue", "red", "yellow", "green"],
+    "statusText": 40
   }
 }

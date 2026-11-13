@@ -245,12 +245,6 @@ func (p *parser) blocks(ls []line) ([]*node, error) {
 		case headingRe.MatchString(s) && p.mode != Comment:
 			m := headingRe.FindStringSubmatch(s)
 			level := len(m[1])
-			if level > 3 {
-				if !p.lenient() {
-					return nil, errAt(l, "heading level %d (levels 1 to 3 only)", level)
-				}
-				level = 3
-			}
 			inl, err := p.inline(strings.TrimSpace(m[2]), l)
 			if err != nil {
 				return nil, err

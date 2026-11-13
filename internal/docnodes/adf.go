@@ -2,7 +2,6 @@ package docnodes
 
 import (
 	"slices"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -33,19 +32,27 @@ var codeAliases = map[string]string{
 // ADF returns tickit's rules for converting Atlassian Document Format
 // (adf.Convert with Schema()) with what a reports for Jira's and
 // Confluence's references. The result passes Rules{} but for the size
-// and table limits: heading levels above 3 become 3, unknown code
-// languages none, links and cards that are not http, https or mailto
-// plain text, and control characters spaces (CR a newline in code).
+// and table limits: unknown code languages become none, links and cards
+// that are not http, https or mailto plain text, control characters
+// spaces (CR a newline in code), and a status's text is cut to
+// statusText characters. Panels, statuses, text colours, the toc macro
+// and the six heading levels map to tickit's own (adf.Defaults);
+// backgroundColor is dropped, as tickit has no highlight.
 func ADF(a Atlassian) *adf.Mapping {
 	lim := SchemaLimits()
-	m := adf.Defaults(adf.DefaultNames)
+	names := adf.DefaultNames
+	names.Highlight = ""
+	names.HeadingLevels = slices.Max(lim.HeadingLevels)
+	m := adf.Defaults(names)
 	m.Text = adfText
-	m.Nodes["heading"] = func(n *adf.Node) adf.Result {
-		l, _ := n.Number("level")
-		if l > 3 {
-			return adf.To("heading", map[string]any{"level": 3}).Kind("level-" + strconv.Itoa(int(l)))
+	m.Nodes["status"] = func(n *adf.Node) adf.Result {
+		color := n.Attr("color")
+		text := []rune(strings.Join(strings.Fields(adfText(n.Attr("text"), "")), " "))
+		if len(text) == 0 {
+			return adf.Drop().Kind(color)
 		}
-		return adf.To("heading", map[string]any{"level": max(int(l), 1)})
+		text = text[:min(len(text), lim.StatusText)]
+		return adf.To("status", map[string]any{"text": strings.TrimSpace(string(text)), "color": adf.StatusColor(color)}).Kind(color)
 	}
 	m.Nodes["codeBlock"] = func(n *adf.Node) adf.Result {
 		lang := strings.ToLower(n.Attr("language"))

@@ -41,7 +41,7 @@
 //
 // Blocks, separated by blank lines:
 //
-//	# Heading            levels 1 to 3 (#, ##, ###)
+//	# Heading            levels 1 to 6 (# to ######)
 //	plain lines          a paragraph; lines join with a space, and a line
 //	                     ending in \ ends with a hard break
 //	> quoted             a quote holding blocks

@@ -11,7 +11,7 @@ import (
 )
 
 // Rules are tickit's rules beyond the schema (DM-05, DM-06, FR-83, FR-84,
-// FR-100, FR-103, FR-104). The zero value checks the formats; Image adds
+// FR-100, FR-103, FR-104, and the panels, statuses and colours of FR-82). The zero value checks the formats; Image adds
 // the image library.
 type Rules struct {
 	// Image reports whether an image id is in the library or an approved
@@ -63,6 +63,12 @@ func (r Rules) Rules() prosemirror.Rules {
 	return prosemirror.Rules{
 		Noun: "page", MaxBytes: lim.StoredBytes, MaxBlocks: lim.Blocks, MaxAttrLength: lim.AttrLength,
 		Marks: map[string]func(m *prosemirror.Mark, n *prosemirror.Node) error{
+			"text_color": func(m *prosemirror.Mark, _ *prosemirror.Node) error {
+				if !slices.Contains(lim.TextColors, m.AttrString("color")) {
+					return refuse("A text colour is one of: %s.", strings.Join(lim.TextColors, ", "))
+				}
+				return nil
+			},
 			"link": func(m *prosemirror.Mark, _ *prosemirror.Node) error {
 				if _, ok := prosemirror.SafeHref(m.AttrString("href")); !ok {
 					return refuse("A link must start with http://, https:// or mailto: and be at most 2,048 characters.")
@@ -82,7 +88,28 @@ func (r Rules) Rules() prosemirror.Rules {
 			},
 			"heading": func(n, _ *prosemirror.Node) error {
 				if l, ok := n.AttrInt("level"); !ok || (len(lim.HeadingLevels) > 0 && !slices.Contains(lim.HeadingLevels, l)) {
-					return refuse("A heading has level 1, 2 or 3.")
+					return refuse("A heading has a level from 1 to %d.", slices.Max(append([]int{1}, lim.HeadingLevels...)))
+				}
+				return nil
+			},
+			"panel": func(n, _ *prosemirror.Node) error {
+				if !slices.Contains(lim.PanelKinds, n.AttrString("kind")) {
+					return refuse("A panel is one of: %s.", strings.Join(lim.PanelKinds, ", "))
+				}
+				return nil
+			},
+			"status": func(n, _ *prosemirror.Node) error {
+				if !slices.Contains(lim.StatusColors, n.AttrString("color")) {
+					return refuse("A status is one of these colours: %s.", strings.Join(lim.StatusColors, ", "))
+				}
+				t := n.AttrString("text")
+				if l := utf8.RuneCountInString(t); l == 0 || l > lim.StatusText || strings.TrimSpace(t) == "" {
+					return refuse("A status has 1 to %d characters.", lim.StatusText)
+				}
+				for _, c := range t {
+					if c < 0x20 || (c >= 0x7f && c <= 0x9f) {
+						return refuse("A status holds a control character.")
+					}
 				}
 				return nil
 			},

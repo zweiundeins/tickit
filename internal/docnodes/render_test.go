@@ -12,7 +12,7 @@ func TestRenderHTML(t *testing.T) {
 	}
 	cases := []struct{ doc, html string }{
 		{docOf(`{"type":"paragraph"}`), `<p></p>`},
-		{docOf(`{"type":"heading","attrs":{"level":1},"content":[`+text("A")+`]}`, `{"type":"heading","attrs":{"level":3},"content":[`+text("C")+`]}`), `<h2>A</h2><h4>C</h4>`},
+		{docOf(`{"type":"heading","attrs":{"level":1},"content":[`+text("A")+`]}`, `{"type":"heading","attrs":{"level":3},"content":[`+text("C")+`]}`), `<h2 id="h-a">A</h2><h4 id="h-c">C</h4>`},
 		{docOf(`{"type":"blockquote","content":[` + para + `]}`), `<blockquote><p>hi</p></blockquote>`},
 		{docOf(`{"type":"code_block","attrs":{"language":"go"},"content":[`+text("a < b\n")+`]}`, `{"type":"code_block"}`), `<pre data-language="go"><code>a &lt; b` + "\n" + `</code></pre><pre><code></code></pre>`},
 		{docOf(`{"type":"horizontal_rule"}`), `<hr>`},

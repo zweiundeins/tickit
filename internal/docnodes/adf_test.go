@@ -39,6 +39,8 @@ const sampleADF = `{"type":"doc","version":1,"content":[
 		{"type":"mention","attrs":{"id":"acc-1","text":"@Ada Example"}},
 		{"type":"mention","attrs":{"id":"acc-2","text":"@Someone Else"}},
 		{"type":"status","attrs":{"text":"IN PROGRESS","color":"blue"}},
+		{"type":"status","attrs":{"text":"LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL","color":"#8777D9"}},
+		{"type":"text","text":" shaded","marks":[{"type":"backgroundColor","attrs":{"color":"#fff0b3"}}]},
 		{"type":"date","attrs":{"timestamp":"1763078400000"}},
 		{"type":"emoji","attrs":{"shortName":":thumbsup:","text":"👍"}},
 		{"type":"inlineExtension","attrs":{"extensionKey":"anchor","extensionType":"com.atlassian.confluence.macro.core"}},
@@ -82,7 +84,13 @@ func TestADF(t *testing.T) {
 	}
 	got := string(Marshal(doc))
 	for _, want := range []string{
-		`{"type":"heading","attrs":{"level":3}`,
+		`{"type":"heading","attrs":{"level":5}`,
+		`{"type":"panel","attrs":{"kind":"warning"},"content":[{"type":"paragraph","content":[{"type":"text","text":"careful"}]}]}`,
+		`{"type":"toc"}`,
+		`{"type":"status","attrs":{"text":"IN PROGRESS","color":"blue"}}`,
+		`{"type":"status","attrs":{"text":"` + strings.Repeat("L", 40) + `","color":"purple"}}`,
+		`{"type":"text","marks":[{"type":"text_color","attrs":{"color":"red"}}],"text":" color"}`,
+		`{"type":"text","text":" shaded2025-11-14👍"}`,
 		`{"type":"issue_chip","attrs":{"key":"AB-1"}}`,
 		`{"type":"page_link","attrs":{"pageId":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"}}`,
 		`{"type":"mention","attrs":{"personId":"a-0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c","label":"Ada Example"}}`,
@@ -115,7 +123,7 @@ func TestADF(t *testing.T) {
 		}
 	}
 	for _, m := range []string{"code", "link", "strong", "strike", "em", "underline", "breakout", "alignment",
-		"annotation", "textColor", "subsup", "indentation", "border"} {
+		"annotation", "textColor", "backgroundColor", "subsup", "indentation", "border"} {
 		if r.Marks[m] == nil {
 			t.Errorf("mark %s is not in the report", m)
 		}
@@ -129,10 +137,14 @@ func TestADF(t *testing.T) {
 		"media/file":                     {Converted: 1},
 		"media/file-unresolved":          {Dropped: 1},
 		"mediaInline/file":               {Converted: 1},
-		"heading/level-5":                {Converted: 1},
+		"panel/warning":                  {Converted: 1},
+		"status/blue":                    {Converted: 1},
+		"status/(other)":                 {Converted: 1},
+		"textColor/red":                  {Converted: 1},
+		"backgroundColor/yellow":         {Dropped: 1},
 		"codeBlock/language-other":       {Converted: 1},
 		"link/unsafe-url":                {Dropped: 1},
-		"extension/toc":                  {Dropped: 1},
+		"extension/toc":                  {Converted: 1},
 	} {
 		if c := r.Kinds[key]; c == nil || *c != want {
 			t.Errorf("%s: %+v, want %+v", key, c, want)

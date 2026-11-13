@@ -13,10 +13,11 @@
 // commentRange() says.
 
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
-const ATOM = 'a.issue-chip, a.mention, .page-link'
+const ATOM = 'a.issue-chip, a.mention, .page-link, .doc-status'
 const TEXTBLOCK = /^(P|H[1-6]|PRE)$/
-// The elements of nodes with block content; any other block element is a
-// leaf of size 1 (an image, a rule, an atom block such as an issue list).
+// The elements of nodes with block content (a panel is a div.doc-panel); any
+// other block element is a leaf of size 1 (an image, a rule, an atom block
+// such as an issue list or a table of contents).
 const CONTAINER = /^(BLOCKQUOTE|UL|OL|LI|TABLE|TR|TD|TH)$/
 
 // blocks are an element's children that are document nodes.
@@ -48,7 +49,7 @@ function segments(root) {
 			pos += 1
 			inline(el)
 			pos += 1
-		} else if (CONTAINER.test(el.tagName)) {
+		} else if (CONTAINER.test(el.tagName) || el.classList.contains('doc-panel')) {
 			pos += 1
 			for (const c of blocks(el)) block(c)
 			pos += 1
