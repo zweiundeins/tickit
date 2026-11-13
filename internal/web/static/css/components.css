@@ -2359,7 +2359,8 @@
 		.tk-av[data-face]::before,
 		.tk-board--flat .tk-card > button::before,
 		:is(.tk-board--flat, .tk-blrow) .tk-due::before,
-		.page-link::before {
+		.page-link::before,
+		.prose .doc-panel::before {
 			forced-color-adjust: none;
 			background: CanvasText;
 		}

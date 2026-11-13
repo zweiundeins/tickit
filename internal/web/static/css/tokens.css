@@ -84,6 +84,14 @@
 		--tk-hue-medium: 80;
 		--tk-hue-high: 50;
 		--tk-hue-critical: 22;
+		/* The palette of documents: text colours, statuses and panels. */
+		--tk-hue-red: 25;
+		--tk-hue-orange: 55;
+		--tk-hue-yellow: 85;
+		--tk-hue-green: 150;
+		--tk-hue-teal: 195;
+		--tk-hue-blue: 250;
+		--tk-hue-purple: 300;
 
 		/* Space: a 4px rhythm with a 2px half step. */
 		--tk-space-0_5: 0.125rem;
@@ -284,7 +292,7 @@
 	 * a hue set --h, by one of the attributes below; the tokens are declared
 	 * where --h is, so each element derives its own.
 	 */
-	:where([data-hue], [data-type], [data-prio], [data-cat], [data-face]) {
+	:where([data-hue], [data-type], [data-prio], [data-cat], [data-face], [data-color], [data-panel]) {
 		--tk-hue-text: light-dark(oklch(45% 0.13 var(--h)), oklch(82% 0.11 var(--h)));
 		--tk-hue-fill: light-dark(oklch(52% 0.14 var(--h)), oklch(76% 0.12 var(--h)));
 		--tk-hue-on: light-dark(var(--tk-paper), var(--tk-slate-13));
@@ -327,7 +335,25 @@
 	[data-cat="progress"] { --h: var(--tk-hue-progress); }
 	[data-cat="done"] { --h: var(--tk-hue-done); }
 
-	/* To do is neutral: the surface and the second text colour. */
+	/* A document's palette: text colours and statuses by name, panels by
+	 * kind (docs/editor.md). */
+	[data-color="red"],
+	[data-panel="error"] { --h: var(--tk-hue-red); }
+	[data-color="orange"] { --h: var(--tk-hue-orange); }
+	[data-color="yellow"],
+	[data-panel="warning"] { --h: var(--tk-hue-yellow); }
+	[data-color="green"],
+	[data-panel="success"] { --h: var(--tk-hue-green); }
+	[data-color="teal"] { --h: var(--tk-hue-teal); }
+	[data-color="blue"],
+	[data-panel="info"] { --h: var(--tk-hue-blue); }
+	[data-color="purple"],
+	[data-panel="note"] { --h: var(--tk-hue-purple); }
+
+	/* To do is neutral: the surface and the second text colour. So are a
+	 * grey text and a neutral status. */
+	[data-color="grey"],
+	[data-color="neutral"],
 	[data-cat="todo"] {
 		--h: var(--tk-hue-todo);
 		--tk-hue-text: var(--tk-text-2);

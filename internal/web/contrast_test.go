@@ -66,9 +66,11 @@ func TestContrast(t *testing.T) {
 		{"ok", "ok-subtle"},
 		{"info", "info-subtle"},
 	}
-	// The hues: categories (tokens.css) and the sixteen of faces.
+	// The hues: categories, the palette of documents (tokens.css) and the
+	// sixteen of faces.
 	hues := map[string]float64{}
-	for _, name := range []string{"progress", "done", "epic", "story", "task", "bug", "subtask", "low", "medium", "high", "critical"} {
+	for _, name := range []string{"progress", "done", "epic", "story", "task", "bug", "subtask", "low", "medium", "high", "critical",
+		"red", "orange", "yellow", "green", "teal", "blue", "purple"} {
 		v, err := strconv.ParseFloat(vars["--tk-hue-"+name], 64)
 		if err != nil {
 			t.Fatalf("--tk-hue-%s: %v", name, err)
@@ -104,6 +106,8 @@ func TestContrast(t *testing.T) {
 				surface := r.color(t, "--tk-"+s)
 				// A lozenge: the hue's text on its wash.
 				check(fmt.Sprintf("%s: hue-text on hue-wash over %s", name, s), r.color(t, "--tk-hue-text"), over(r.color(t, "--tk-hue-wash"), surface), 4.5)
+				// A panel's text on its wash.
+				check(fmt.Sprintf("%s: text-1 on hue-wash over %s", name, s), r.color(t, "--tk-text-1"), over(r.color(t, "--tk-hue-wash"), surface), 4.5)
 				// Text in the hue: a mention, a name tag's neighbour.
 				check(fmt.Sprintf("%s: hue-text on %s", name, s), r.color(t, "--tk-hue-text"), surface, 4.5)
 				// A type icon's tile against the page.

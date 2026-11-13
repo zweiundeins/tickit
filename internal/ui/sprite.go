@@ -29,6 +29,16 @@ func mask(viewBox, path string) string {
 	return `url("data:image/svg+xml,` + strings.NewReplacer("<", "%3C", ">", "%3E", "#", "%23", `"`, "'").Replace(svg) + `")`
 }
 
+// IconMask is an icon as a CSS mask image, for a stylesheet that draws it
+// in the text's colour (prose.css's panels); "" for an unknown name.
+func IconMask(name string) string {
+	g, ok := icons[name]
+	if !ok {
+		return ""
+	}
+	return mask("0 0 16 16", g.main)
+}
+
 // Glyphs is the stylesheet of BoardCard's glyphs: once in a page that
 // shows board cards or backlog rows, outside the regions the stream
 // patches.
