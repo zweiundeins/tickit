@@ -9,8 +9,8 @@ The browser side of co-editing pages (docs/editor.md): a Rocket component that w
 | `src/sb-rich-editor.js` | The Rocket component: props, the shadow root (toolbar, dialogs, status line), host methods. Loads the core on first use. |
 | `src/core.js` | The editor: ProseMirror view on lith-coedit's `Session` (frames in, commits and presence out, stopped states), tickit's attributes, toolbar state, notices, dialogs, paste. |
 | `src/schema.js` | The schema from `internal/docnodes/schema.json` (bundled at build time) plus `toDOM` and `parseDOM` per node and mark. |
-| `src/nodeviews.js` | Node views: issue chips, mentions, page links, task items, images, issue lists with their filter form. |
-| `src/commands.js` | Toolbar commands, input rules, keymaps. |
+| `src/nodeviews.js` | Node views: issue chips, mentions, page links, task items, images, issue lists with their filter form, tables of contents. |
+| `src/commands.js` | Toolbar commands (panels, text colours, statuses and tables of contents among them), input rules, keymaps. |
 | `src/limits.js` | DM-05's limits as a `filterTransaction`. |
 | `src/uploads.js` | Image uploads (FR-85): the placeholder while a file travels, the multipart post. |
 | `src/styles.js` | Structural CSS for the light-DOM editor. |

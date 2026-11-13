@@ -85,7 +85,7 @@ export const imageSrc = (imageId) => '/img/lib/' + encodeURIComponent(imageId)
 // Labels for atoms whose text comes from the server (page titles, people's
 // names): node views read the editor's chips attribute; toDOM (copy) asks
 // this hook, which the editor sets.
-const labels = { page: () => '', person: () => '' }
+const labels = { page: () => '', person: () => '', toc: () => [] }
 export function setLabelHooks(hooks) {
 	Object.assign(labels, hooks)
 }
@@ -111,6 +111,86 @@ const imageAttrs = (img) => {
 const codeLanguage = (pre) =>
 	language(pre.getAttribute('data-language')) ||
 	language(/(?:^|\s)(?:language|lang)-(\S+)/.exec((pre.className || '') + ' ' + (pre.querySelector('code')?.className || ''))?.[1])
+
+// The palette, the panels' kinds and the statuses' colours (schema.json's
+// limits, which the server's rules check), with the toolbar's names.
+export const COLORS = limits.textColors
+export const PANEL_KINDS = limits.panelKinds
+export const STATUS_COLORS = limits.statusColors
+export const label = (name) => name.charAt(0).toUpperCase() + name.slice(1)
+const panelKind = (raw) => (PANEL_KINDS.includes(raw) ? raw : null)
+
+// A status's text as the rules take it: one line, 1 to statusText
+// characters.
+export const statusText = (raw) =>
+	[
+		...String(raw ?? '')
+			.replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ')
+			.replace(/\s+/g, ' ')
+			.trim(),
+	]
+		.slice(0, limits.statusText)
+		.join('')
+		.trim()
+
+// slug is internal/docnodes' slug: the text in lower case, each run of
+// other characters than letters and digits one hyphen, at most 60.
+export function slug(text) {
+	let out = '', dash = false, n = 0
+	for (const ch of text.toLowerCase()) {
+		if (!/[\p{L}\p{N}]/u.test(ch)) {
+			dash = true
+			continue
+		}
+		if (dash && n > 0) (out += '-'), n++
+		dash = false
+		out += ch
+		if (++n >= 60) break
+	}
+	return out || 'section'
+}
+
+// outline lists a document's headings with the ids the Go renderer gives
+// them (docnodes.Outline): h- and a slug, -2 and on for repeats.
+export function outline(doc) {
+	const used = new Set(), out = []
+	doc.descendants((node, pos) => {
+		if (node.type.name !== 'heading') return !node.isTextblock
+		const text = node.textBetween(0, node.content.size, ' ', (n) => (n.type.name === 'issue_chip' ? n.attrs.key : n.type.name === 'mention' ? (n.attrs.label ? '@' + n.attrs.label : '') : n.type.name === 'status' ? n.attrs.text : n.type.name === 'hard_break' ? '\n' : '')).split(/\s+/).filter(Boolean).join(' ')
+		let id = 'h-' + slug(text)
+		for (let i = 2; used.has(id); i++) id = 'h-' + slug(text) + '-' + i
+		used.add(id)
+		out.push({ level: Math.min(6, Math.max(1, node.attrs.level)), text, id, pos })
+		return false
+	})
+	return out
+}
+
+// tocList is a toc's nested list as toDOM's array, as docnodes' tocHTML
+// writes it: a deeper level opens a list in the item before it.
+export function tocList(hs) {
+	if (!hs.length) return ['p', { class: 'doc-toc__empty' }, 'No headings yet']
+	const stack = []
+	let root = null
+	for (const h of hs) {
+		let top = stack[stack.length - 1]
+		const open = (into) => {
+			const ol = ['ol']
+			if (into) into.push(ol)
+			else root = ol
+			stack.push((top = { level: h.level, ol, li: null }))
+		}
+		if (!top) open(null)
+		else if (h.level > top.level) open(top.li)
+		else {
+			while (stack.length > 1 && h.level < top.level) stack.pop(), (top = stack[stack.length - 1])
+			if (h.level > top.level) open(top.li)
+		}
+		top.li = ['li', ['a', { href: '#' + h.id }, h.text]]
+		top.ol.push(top.li)
+	}
+	return root
+}
 
 export const SAVED_FILTER = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
@@ -147,9 +227,43 @@ const DOM = {
 	nodes: {
 		paragraph: { parseDOM: [{ tag: 'p' }], toDOM: () => ['p', 0] },
 		heading: {
-			// h1 (pasted) and h2 are level 1; the page title is the page's own h1.
-			parseDOM: [1, 2, 3, 4, 5, 6].map((n) => ({ tag: 'h' + n, attrs: { level: Math.min(3, Math.max(1, n - 1)) } })),
-			toDOM: (node) => ['h' + (clampInt(node.attrs.level, 1, 3, 1) + 1), 0],
+			// h1 (pasted) and h2 are level 1; the page title is the page's own
+			// h1. Level 6 has no h7: a p with the role heading.
+			parseDOM: [
+				{ tag: 'p[role=heading][aria-level="7"]', priority: 60, attrs: { level: 6 } },
+				...[1, 2, 3, 4, 5, 6].map((n) => ({ tag: 'h' + n, attrs: { level: Math.max(1, n - 1) } })),
+			],
+			toDOM: (node) => {
+				const l = clampInt(node.attrs.level, 1, 6, 1)
+				return l < 6 ? ['h' + (l + 1), 0] : ['p', { role: 'heading', 'aria-level': '7' }, 0]
+			},
+		},
+		panel: {
+			parseDOM: [{ tag: 'div.doc-panel', priority: 60, getAttrs: (dom) => ({ kind: panelKind(dom.getAttribute('data-panel')) ?? 'note' }) }],
+			toDOM: (node) => {
+				const kind = panelKind(node.attrs.kind) ?? 'note'
+				return ['div', { class: 'doc-panel', 'data-panel': kind, role: 'note', 'aria-label': label(kind) }, 0]
+			},
+		},
+		toc: {
+			parseDOM: [{ tag: 'nav.doc-toc', priority: 60 }],
+			// What the reader shows comes from the document; a copy holds the
+			// headings as they are now (labels.toc).
+			toDOM: () => ['nav', { class: 'doc-toc', 'aria-label': 'Contents' }, tocList(labels.toc())],
+		},
+		status: {
+			parseDOM: [
+				{
+					tag: 'span.doc-status',
+					priority: 60,
+					getAttrs: (dom) => {
+						const text = statusText(dom.textContent)
+						const color = dom.getAttribute('data-color')
+						return text ? { text, color: STATUS_COLORS.includes(color) ? color : 'neutral' } : false
+					},
+				},
+			],
+			toDOM: (node) => ['span', { class: 'tk-lozenge doc-status', 'data-color': node.attrs.color }, node.attrs.text],
 		},
 		blockquote: { parseDOM: [{ tag: 'blockquote' }], toDOM: () => ['blockquote', 0] },
 		code_block: {
@@ -286,6 +400,10 @@ const DOM = {
 			toDOM: () => ['s', 0],
 		},
 		code: { parseDOM: [{ tag: 'code' }], toDOM: () => ['code', 0] },
+		text_color: {
+			parseDOM: [{ tag: 'span.doc-color', getAttrs: (dom) => (COLORS.includes(dom.getAttribute('data-color')) ? { color: dom.getAttribute('data-color') } : false) }],
+			toDOM: (mark) => ['span', { class: 'doc-color', 'data-color': mark.attrs.color }, 0],
+		},
 	},
 }
 

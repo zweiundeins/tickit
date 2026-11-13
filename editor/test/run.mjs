@@ -255,6 +255,10 @@ test("toDOM writes docs/editor.md's HTML of a document", async () => {
 		const doc = S.nodes.doc.create(null, [
 			S.nodes.heading.create({ level: 1 }, t('One')),
 			S.nodes.heading.create({ level: 3 }, t('Three')),
+			S.nodes.heading.create({ level: 5 }, t('Five')),
+			S.nodes.heading.create({ level: 6 }, t('Six')),
+			S.nodes.panel.create({ kind: 'warning' }, p(t('w'))),
+			S.nodes.toc.create(),
 			S.nodes.blockquote.create(null, p(t('q'))),
 			S.nodes.code_block.create({ language: 'go' }, t('x := 1')),
 			S.nodes.code_block.create(null, t('plain')),
@@ -266,6 +270,7 @@ test("toDOM writes docs/editor.md's HTML of a document", async () => {
 			S.nodes.table.create(null, S.nodes.table_row.create(null, [S.nodes.table_header.create({ colspan: 2 }, p(t('h'))), S.nodes.table_cell.create(null, p(t('c')))])),
 			S.nodes.image.create({ imageId: 'diagram-1', src: '/img/lib/diagram-1', alt: 'A diagram' }),
 			S.nodes.issue_list.create({ filter: 'type=bug&q=<b>', limit: 5 }),
+			p(S.nodes.status.create({ text: 'DONE', color: 'green' }), t('r', [S.marks.text_color.create({ color: 'red' })])),
 			p(
 				t('a'), S.nodes.hard_break.create(), S.nodes.issue_chip.create({ key: 'WEB-12' }), S.nodes.mention.create({ personId: 'u_1', label: 'Sunny Otter' }), S.nodes.page_link.create({ pageId: 'pg_roadmap' }),
 				t('s', ['strong']), t('e', ['em']), t('k', ['strike']), t('c', ['code']), t('l', [S.marks.link.create({ href: 'https://example.com/x' })]), t('u', [S.marks.link.create({ href: 'javascript:alert(1)' })]),
@@ -275,12 +280,16 @@ test("toDOM writes docs/editor.md's HTML of a document", async () => {
 		return harness.host().html()
 	})
 	const want = [
-		'<h2>One</h2>', '<h4>Three</h4>', '<blockquote><p>q</p></blockquote>', '<pre data-language="go"><code>x := 1</code></pre>', '<pre><code>plain</code></pre>', '<hr>',
+		'<h2>One</h2>', '<h4>Three</h4>', '<h6>Five</h6>', '<p role="heading" aria-level="7">Six</p>',
+		'<div class="doc-panel" data-panel="warning" role="note" aria-label="Warning"><p>w</p></div>',
+		'<nav class="doc-toc" aria-label="Contents"><ol><li><a href="#h-one">One</a><ol><li><a href="#h-three">Three</a><ol><li><a href="#h-five">Five</a><ol><li><a href="#h-six">Six</a></li></ol></li></ol></li></ol></li></ol></nav>',
+		'<blockquote><p>q</p></blockquote>', '<pre data-language="go"><code>x := 1</code></pre>', '<pre><code>plain</code></pre>', '<hr>',
 		'<ul><li><p>b</p></li></ul>', '<ol start="3"><li><p>o</p></li></ol>', '<ol><li><p>o1</p></li></ol>',
 		'<ul class="task-list"><li class="task-item" data-checked="true"><input type="checkbox" disabled="" checked=""><div><p>done</p></div></li><li class="task-item" data-checked="false"><input type="checkbox" disabled=""><div><p>todo</p></div></li></ul>',
 		'<table><tbody><tr><th colspan="2"><p>h</p></th><td><p>c</p></td></tr></tbody></table>',
 		'<figure class="doc-image"><img src="/img/lib/diagram-1" alt="A diagram" loading="lazy"></figure>',
 		'<div class="issue-list" data-filter="type=bug&amp;q=&lt;b&gt;" data-saved-filter="" data-limit="5"><p class="issue-list__desc">Issues matching <code>type=bug&amp;q=&lt;b&gt;</code>, at most 5</p></div>',
+		'<p><span class="tk-lozenge doc-status" data-color="green">DONE</span><span class="doc-color" data-color="red">r</span></p>',
 		'<p>a<br><a class="issue-chip" data-key="WEB-12" href="/WEB-12">WEB-12</a><a class="mention" data-person="u_1" href="/people/u_1">@Sunny Otter</a><a class="page-link" data-page="pg_roadmap" href="/pages/pg_roadmap">Roadmap</a><strong>s</strong><em>e</em><s>k</s><code>c</code><a href="https://example.com/x" rel="nofollow ugc noopener" title="example.com">l</a><span class="link-unsafe">u</span></p>',
 	].join('')
 	ok(html === want, 'HTML differs:\n got  ' + html + '\n want ' + want)
@@ -675,6 +684,84 @@ test('a task checkbox toggles with one attr step; others see it (FR-82.1)', asyn
 	ok(s.state.doc.content[3].content[0].attrs.checked === true, 'checked at the writer')
 	const seen = await waitFor(b, () => harness.host().querySelector('li.task-item')?.dataset.checked === 'true' && harness.host().querySelector('li.task-item input').checked)
 	ok(seen, 'B sees it')
+	await close()
+})
+
+// setSelect picks a value of a toolbar select as a person would.
+const setSelect = (tab, id, value) =>
+	shadow(
+		tab,
+		(root, host, [id, value]) => {
+			const s = root.getElementById(id)
+			s.value = value
+			s.dispatchEvent(new Event('change', { bubbles: true }))
+			return !s.disabled
+		},
+		[id, value],
+	)
+
+test('headings 4 to 6, panels, statuses, a table of contents and text colours from the toolbar; others see them (FR-82.1)', async () => {
+	const { tabs, close } = await open(2)
+	const [a, b] = tabs
+	// "#### " to "###### " and the toolbar's select of smaller headings.
+	await appendParagraph(a)
+	await a.keyboard.type('###### six', { delay: 10 })
+	await caretIn(a, 1)
+	ok(await setSelect(a, 'heading-more', '5'), 'the headings select is enabled')
+	// A panel around the paragraph with the chip, then of another kind.
+	await caretIn(a, 2)
+	await setSelect(a, 'panel', 'info')
+	await setSelect(a, 'panel', 'error')
+	const panelShown = await shadow(a, (root) => root.getElementById('panel').value)
+	ok(panelShown === 'error', 'the select shows the panel: ' + panelShown)
+	// A colour on a word.
+	const w = await appendParagraph(a)
+	await a.keyboard.type('teal word')
+	await selectIn(a, w, 0, 4)
+	await setSelect(a, 'color', 'teal')
+	// A status from its dialog, by keyboard.
+	await appendParagraph(a)
+	await a.keyboard.type('state ')
+	await shadow(a, (root) => root.querySelector('button[value=status]').click())
+	await waitFor(a, () => !harness.host().shadowRoot.getElementById('status-dialog').hidden)
+	await a.keyboard.press('Enter')
+	const err = await shadow(a, (root) => root.getElementById('status-error').textContent)
+	ok(err, 'an empty status is refused: ' + err)
+	await a.keyboard.type('In review')
+	await shadow(a, (root) => (root.getElementById('status-color').value = 'blue'))
+	await a.keyboard.press('Enter')
+	// A table of contents from the toolbar, by keyboard: Alt+F10, arrows, Enter.
+	await appendParagraph(a)
+	await a.keyboard.down('Alt')
+	await a.keyboard.press('F10')
+	await a.keyboard.up('Alt')
+	for (let k = 0; k < 40; k++) {
+		if ((await shadow(a, (root) => root.activeElement?.getAttribute('aria-label'))) === 'Table of contents') break
+		await a.keyboard.press('ArrowRight')
+	}
+	await a.keyboard.press('Enter')
+	const s = await settled(tabs)
+	ok(s.ms >= 0, 'settles')
+	const doc = s.state.doc.content
+	ok(doc[1].type === 'heading' && doc[1].attrs.level === 5, 'H5: ' + JSON.stringify(doc[1]))
+	ok(doc.some((n) => n.type === 'heading' && n.attrs.level === 6), 'H6 from "###### "')
+	ok(doc[2].type === 'panel' && doc[2].attrs.kind === 'error' && doc[2].content[0].type === 'paragraph', 'panel: ' + JSON.stringify(doc[2]))
+	const flat = JSON.stringify(doc)
+	ok(flat.includes('{"type":"text","marks":[{"type":"text_color","attrs":{"color":"teal"}}],"text":"teal"}'), 'colour: ' + flat)
+	ok(flat.includes('{"type":"status","attrs":{"text":"In review","color":"blue"}}'), 'status: ' + flat)
+	ok(doc.some((n) => n.type === 'toc'), 'toc: ' + flat)
+	// B sees them, its toc listing the headings in order.
+	const seen = await waitFor(b, () => {
+		const m = harness.host().querySelector('.pm-mount')
+		const toc = [...m.querySelectorAll('nav.doc-toc a')].map((x) => x.getAttribute('href'))
+		return m.querySelector('h6') && m.querySelector('p[role=heading][aria-level="7"]') && m.querySelector('div.doc-panel[data-panel=error][role=note]') &&
+			m.querySelector('span.doc-color[data-color=teal]') && m.querySelector('span.doc-status[data-color=blue]')?.textContent === 'In review' && toc.length === 3 && toc
+	})
+	ok(seen.join() === '#h-release-notes,#h-type-here,#h-six', 'B sees the new nodes and the toc: ' + JSON.stringify(seen))
+	// The toc's link moves the caret to its heading.
+	await b.evaluate(() => harness.host().querySelectorAll('.pm-mount nav.doc-toc a')[1].click())
+	const at = await b.evaluate(() => harness.host().view.state.selection.$from.parent.textContent)
+	ok(at === 'Type here: ', 'the link went to its heading: ' + at)
 	await close()
 })
 

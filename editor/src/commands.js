@@ -123,6 +123,84 @@ export const setLanguage = (lang) => (state, dispatch) => {
 	return true
 }
 
+// panelAround is the panel the selection is in, with its depth.
+export function panelAround(state) {
+	const d = inside(state, N.panel)
+	return d ? { depth: d, kind: state.selection.$from.node(d).attrs.kind } : null
+}
+
+// setPanel puts the selected blocks in a panel of kind, changes the kind
+// of the panel around them, or with kind '' takes that panel away and
+// keeps its blocks.
+export const setPanel = (kind) => (state, dispatch) => {
+	const around = panelAround(state)
+	if (around) {
+		const pos = state.selection.$from.before(around.depth)
+		const node = state.doc.nodeAt(pos)
+		if (!kind) {
+			if (dispatch) dispatch(state.tr.replaceWith(pos, pos + node.nodeSize, node.content).scrollIntoView())
+			return true
+		}
+		if (dispatch && kind !== around.kind) dispatch(state.tr.setNodeAttribute(pos, 'kind', kind))
+		return true
+	}
+	if (!kind) return false
+	return wrapIn(N.panel, { kind })(state, dispatch)
+}
+
+// colorAt is the text colour at the selection: its start's, or the stored one.
+export function colorAt(state) {
+	const { $from, empty } = state.selection
+	const marks = empty ? state.storedMarks || $from.marks() : $from.marksAcross(state.selection.$to) || $from.marks()
+	return M.text_color.isInSet(marks)?.attrs.color ?? ''
+}
+
+// setColor colours the selected text with a name of the palette; '' takes
+// the colour away. Without a selection it applies to what is typed next.
+export const setColor = (color) => (state, dispatch) => {
+	if (state.selection.$from.parent.type.spec.code) return false
+	const { from, to, empty } = state.selection
+	if (!dispatch) return true
+	const tr = state.tr
+	if (empty) {
+		tr.removeStoredMark(M.text_color)
+		if (color) tr.addStoredMark(M.text_color.create({ color }))
+	} else {
+		tr.removeMark(from, to, M.text_color)
+		if (color) tr.addMark(from, to, M.text_color.create({ color }))
+	}
+	dispatch(tr)
+	return true
+}
+
+const insertBlockAtom = (type) => (state, dispatch) => {
+	const { $from } = state.selection
+	if (!$from.parent.isTextblock && !(state.selection instanceof NodeSelection)) return false
+	if ($from.parent.type.spec.code) return false
+	if (dispatch) dispatch(state.tr.replaceSelectionWith(type.create()).scrollIntoView())
+	return true
+}
+
+export const insertToc = insertBlockAtom(N.toc)
+
+// statusAt is the status node the selection holds, with its position.
+export function statusAt(state) {
+	const sel = state.selection
+	return sel instanceof NodeSelection && sel.node.type === N.status ? { pos: sel.from, node: sel.node } : null
+}
+
+// putStatus inserts a status lozenge, or changes the selected one.
+export const putStatus = (text, color) => (state, dispatch) => {
+	if (!text || !N.status) return false
+	const at = statusAt(state)
+	if (!at && (!state.selection.$from.parent.inlineContent || state.selection.$from.parent.type.spec.code)) return false
+	if (dispatch) {
+		const attrs = { text, color }
+		dispatch(at ? state.tr.setNodeMarkup(at.pos, null, attrs) : state.tr.replaceSelectionWith(N.status.create(attrs)).scrollIntoView())
+	}
+	return true
+}
+
 export const hardBreak = (state, dispatch) => {
 	if (state.selection.$from.parent.type.spec.code) return false
 	if (dispatch) dispatch(state.tr.replaceSelectionWith(N.hard_break.create()).scrollIntoView())
@@ -134,6 +212,9 @@ export const COMMANDS = {
 	h1: { run: toggleBlock(N.heading, { level: 1 }), active: (s) => s.selection.$from.parent.type === N.heading && s.selection.$from.parent.attrs.level === 1 },
 	h2: { run: toggleBlock(N.heading, { level: 2 }), active: (s) => s.selection.$from.parent.type === N.heading && s.selection.$from.parent.attrs.level === 2 },
 	h3: { run: toggleBlock(N.heading, { level: 3 }), active: (s) => s.selection.$from.parent.type === N.heading && s.selection.$from.parent.attrs.level === 3 },
+	h4: { run: toggleBlock(N.heading, { level: 4 }), active: (s) => s.selection.$from.parent.type === N.heading && s.selection.$from.parent.attrs.level === 4 },
+	h5: { run: toggleBlock(N.heading, { level: 5 }), active: (s) => s.selection.$from.parent.type === N.heading && s.selection.$from.parent.attrs.level === 5 },
+	h6: { run: toggleBlock(N.heading, { level: 6 }), active: (s) => s.selection.$from.parent.type === N.heading && s.selection.$from.parent.attrs.level === 6 },
 	strong: { run: toggleMark(M.strong), active: (s) => markActive(s, M.strong) },
 	em: { run: toggleMark(M.em), active: (s) => markActive(s, M.em) },
 	strike: { run: toggleMark(M.strike), active: (s) => markActive(s, M.strike) },
@@ -145,6 +226,8 @@ export const COMMANDS = {
 	codeblock: { run: toggleBlock(N.code_block), active: (s) => s.selection.$from.parent.type === N.code_block },
 	rule: { run: insertRule },
 	table: { run: insertTable },
+	toc: { run: insertToc },
+	status: { run: (state, dispatch) => !!statusAt(state) || putStatus('x', 'neutral')(state, undefined), active: (s) => !!statusAt(s) },
 	rowBefore: { run: addRowBefore },
 	rowAfter: { run: addRowAfter },
 	rowDelete: { run: deleteRow },
@@ -187,7 +270,7 @@ const chipRule = new InputRule(/(?:^|[\s(])([A-Z]{2,10}-[1-9][0-9]{0,6}) $/, (st
 export function rules() {
 	return inputRules({
 		rules: [
-			textblockTypeInputRule(/^(#{1,3})\s$/, N.heading, (m) => ({ level: m[1].length })),
+			textblockTypeInputRule(/^(#{1,6})\s$/, N.heading, (m) => ({ level: m[1].length })),
 			wrappingInputRule(/^\s*([-*])\s$/, N.bullet_list),
 			wrappingInputRule(
 				/^(\d+)\.\s$/,

@@ -1,11 +1,14 @@
 // Node views for the atoms whose text the server knows (FR-100, FR-103,
-// FR-67), the clickable task checkbox, images with alt text (FR-84) and
-// issue lists with their filter form and rows (FR-104).
+// FR-67), the clickable task checkbox, images with alt text (FR-84),
+// issue lists with their filter form and rows (FR-104) and tables of
+// contents of the document as it is.
 // Chips, mentions and page links read the editor's chips attribute:
 //   {"WEB-12": {summary, status, category, type} | {state: "deleted"|"unknown"},
 //    "people": {"<id>": {name}}, "pages": {"<id>": {title} | {state: "gone"}}}
 // so a changed issue shows in every open editor with the next frame.
-import { imageSrc, limits, listAttrs, listDescription } from './schema.js'
+import { DOMSerializer } from 'prosemirror-model'
+import { TextSelection } from 'prosemirror-state'
+import { imageSrc, limits, listAttrs, listDescription, outline, tocList } from './schema.js'
 
 // The issue type icons of the design system (design.md 7.5), 16 grid.
 const TILE = 'M1 0h14v1h1v14h-1v1H1v-1H0V1h1z'
@@ -316,5 +319,57 @@ export class IssueListView {
 	}
 	destroy() {
 		this.ctx.lists.delete(this)
+	}
+}
+
+// toc: an atom block that lists the document's headings, rendered again
+// after each change of the document (ctx.tocs); a link moves the caret to
+// its heading.
+export class TocView {
+	constructor(node, view, getPos, ctx) {
+		this.node = node
+		this.view = view
+		this.ctx = ctx
+		ctx.tocs.add(this)
+		this.dom = el('nav', { class: 'doc-toc', 'aria-label': 'Contents', contenteditable: 'false' })
+		this.dom.addEventListener('mousedown', (e) => e.target.closest('a') && e.preventDefault())
+		this.dom.addEventListener('click', (e) => {
+			const a = e.target.closest('a')
+			if (!a) return
+			e.preventDefault()
+			const h = this.hs[[...this.dom.querySelectorAll('a')].indexOf(a)]
+			if (!h || h.pos + 1 > view.state.doc.content.size) return
+			view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, h.pos + 1)).scrollIntoView())
+			view.focus()
+		})
+		this.render()
+	}
+	render() {
+		this.hs = outline(this.view.state.doc)
+		const sig = JSON.stringify(this.hs.map((h) => [h.level, h.id, h.text]))
+		if (sig === this.sig) return
+		this.sig = sig
+		this.dom.replaceChildren(DOMSerializer.renderSpec(document, tocList(this.hs)).dom)
+	}
+	update(node) {
+		if (node.type !== this.node.type) return false
+		this.node = node
+		this.render()
+		return true
+	}
+	selectNode() {
+		this.dom.classList.add('ProseMirror-selectednode')
+	}
+	deselectNode() {
+		this.dom.classList.remove('ProseMirror-selectednode')
+	}
+	stopEvent(e) {
+		return !!e.target.closest?.('a')
+	}
+	ignoreMutation() {
+		return true
+	}
+	destroy() {
+		this.ctx.tocs.delete(this)
 	}
 }

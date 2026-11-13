@@ -9,11 +9,11 @@ import { history } from 'prosemirror-history'
 import { gapCursor } from 'prosemirror-gapcursor'
 import { dropCursor } from 'prosemirror-dropcursor'
 import { tableEditing } from 'prosemirror-tables'
-import { schema, limits, ISSUE_KEY, ID, normalizeHref, setLabelHooks, imageSrc, MAX_ALT } from './schema.js'
+import { schema, limits, ISSUE_KEY, ID, normalizeHref, setLabelHooks, imageSrc, MAX_ALT, COLORS, PANEL_KINDS, STATUS_COLORS, label, statusText, outline } from './schema.js'
 import { Session, collab, caretPlugin, commentPlugin } from 'lith-coedit'
 import { limitsPlugin } from './limits.js'
-import { IssueChipView, MentionView, PageLinkView, TaskItemView, ImageView, IssueListView } from './nodeviews.js'
-import { COMMANDS, rules, keymaps, inTable, inCode, setLanguage, shortcutText } from './commands.js'
+import { IssueChipView, MentionView, PageLinkView, TaskItemView, ImageView, IssueListView, TocView } from './nodeviews.js'
+import { COMMANDS, rules, keymaps, inTable, inCode, setLanguage, shortcutText, setPanel, panelAround, setColor, colorAt, putStatus, statusAt } from './commands.js'
 import { documentCSS } from './styles.js'
 import { uploadPlugin, placeholder, placed, removePlaceholder, imageFiles, check, send, opID } from './uploads.js'
 
@@ -50,9 +50,12 @@ const parseJSON = (s, fallback) => {
 	}
 }
 
-// Labels for toDOM (copy) come from every open editor's chips.
+// Labels for toDOM (copy) come from every open editor's chips; a toc
+// lists the headings of the editor being copied.
 const openEditors = new Set()
+let copying = null
 setLabelHooks({
+	toc: () => (copying ? outline(copying.view.state.doc) : []),
 	page: (id) => {
 		for (const e of openEditors) if (e.chips.pages?.[id]?.title) return e.chips.pages[id].title
 		return ''
@@ -122,6 +125,7 @@ class Editor {
 		this.atoms = new Set()
 		this.offer = null // {from, to, target}
 		this.listViews = new Set()
+		this.tocViews = new Set()
 		this.tracked = new Map() // id to {from, to}: selections an issue's chip will replace (FR-105)
 		this.selSig = ''
 		this.ops = new Map() // op id to the notice kind of its failure: commits' refs and uploads
@@ -141,6 +145,7 @@ class Editor {
 			editable: () => this.editable(),
 			editAlt: (pos) => this.openAlt(pos),
 			lists: this.listViews,
+			tocs: this.tocViews,
 			list: (key) => this.listRows(key),
 			filters: () => this.savedFilters(),
 			listsShown: () => !!this.listsRoot(),
@@ -177,6 +182,7 @@ class Editor {
 					task_item: nodeView(TaskItemView),
 					image: nodeView(ImageView),
 					issue_list: nodeView(IssueListView),
+					toc: nodeView(TocView),
 				},
 				handleClick: (view, pos, event) => {
 					// Ctrl or Cmd and a click follows a link.
@@ -233,6 +239,11 @@ class Editor {
 			if (this.offer.from >= this.offer.to) this.clearOffer()
 		}
 		this.session?.transaction(tr)
+		if (tr.docChanged && this.tocViews.size && !this.tocFrame)
+			this.tocFrame = requestAnimationFrame(() => {
+				this.tocFrame = 0
+				if (!this.destroyed) for (const v of this.tocViews) v.render()
+			})
 		this.updateStatus()
 		this.updateToolbar()
 	}
@@ -323,6 +334,15 @@ class Editor {
 		const bar = ui.querySelector('.toolbar')
 		const lang = ui.getElementById('lang')
 		if (lang && !lang.options.length) for (const l of limits.codeLanguages) lang.append(new Option(l || 'Plain', l))
+		const fill = (id, pairs) => {
+			const el = ui.getElementById(id)
+			if (el && !el.options.length) el.append(...pairs.map(([v, t]) => new Option(t, v)))
+		}
+		const named = (values) => values.map((v) => [v, label(v)])
+		fill('heading-more', [['', 'H4+'], ['4', 'H4'], ['5', 'H5'], ['6', 'H6']])
+		fill('color', [['', 'No colour'], ...named(COLORS)])
+		fill('panel', [['', 'No panel'], ...named(PANEL_KINDS)])
+		fill('status-color', named(STATUS_COLORS))
 		for (const b of ui.querySelectorAll('.toolbar button[data-keys]')) b.title = b.getAttribute('aria-label') + ' (' + shortcutText(b.dataset.keys) + ')'
 		const on = (target, type, fn) => {
 			target?.addEventListener(type, fn)
@@ -340,6 +360,10 @@ class Editor {
 			setLanguage(lang.value)(this.view.state, this.view.dispatch)
 			this.view.focus()
 		})
+		on(ui.getElementById('heading-more'), 'change', (e) => this.runSelect(COMMANDS['h' + (e.target.value || this.view.state.selection.$from.parent.attrs.level)]?.run))
+		on(ui.getElementById('color'), 'change', (e) => this.runSelect(setColor(e.target.value)))
+		on(ui.getElementById('panel'), 'change', (e) => this.runSelect(setPanel(e.target.value)))
+		on(ui.getElementById('status-dialog'), 'submit', (e) => (e.preventDefault(), this.applyStatus(e.submitter?.value)))
 		on(ui.getElementById('link-dialog'), 'submit', (e) => (e.preventDefault(), this.applyLink(e.submitter?.value)))
 		on(ui.getElementById('alt-dialog'), 'submit', (e) => (e.preventDefault(), this.applyAlt(e.submitter?.value)))
 		on(ui.getElementById('image-dialog'), 'click', (e) => {
@@ -364,9 +388,17 @@ class Editor {
 		this.updateToolbar()
 	}
 
+	// runSelect runs a toolbar select's command and goes back to the text.
+	runSelect(cmd) {
+		if (this.editable() && cmd) cmd(this.view.state, this.view.dispatch, this.view)
+		this.updateToolbar()
+		this.view.focus()
+	}
+
 	command(name) {
 		if (!this.editable()) return
 		if (name === 'link') return this.openLink()
+		if (name === 'status') return this.openStatus()
 		if (name === 'image') return this.openImages()
 		const c = COMMANDS[name]
 		if (!c) return
@@ -418,6 +450,23 @@ class Editor {
 			if (lang && inCode(state)) {
 				lang.value = state.selection.$from.parent.attrs.language
 				lang.disabled = !editable
+			}
+			const parent = state.selection.$from.parent
+			const more = this.ui.getElementById('heading-more')
+			if (more) {
+				more.value = parent.type === schema.nodes.heading && parent.attrs.level >= 4 ? String(parent.attrs.level) : ''
+				more.disabled = !editable || !COMMANDS.h4.run(state)
+			}
+			const color = this.ui.getElementById('color')
+			if (color) {
+				color.value = colorAt(state)
+				color.disabled = !editable || !setColor('red')(state)
+			}
+			const panel = this.ui.getElementById('panel')
+			if (panel) {
+				const around = panelAround(state)
+				panel.value = around?.kind ?? ''
+				panel.disabled = !editable || (!around && !setPanel(PANEL_KINDS[0])(state))
 			}
 			// Keep one tab stop on a visible control.
 			const items = [...this.ui.querySelectorAll('.toolbar button, .toolbar select')]
@@ -530,6 +579,42 @@ class Editor {
 			tr.removeMark(r.from, r.to, link).addMark(r.from, r.to, mark)
 		}
 		this.view.dispatch(tr.scrollIntoView())
+		this.closeDialogs()
+	}
+
+	// --- Status lozenges: a short text in a colour ---------------------------
+
+	openStatus() {
+		if (!this.editable()) return
+		const at = statusAt(this.view.state)
+		const d = this.ui.getElementById('status-dialog')
+		this.statusPos = at?.pos ?? null
+		this.showDialog(d)
+		d.elements.text.value = at?.node.attrs.text ?? ''
+		d.elements.color.value = at?.node.attrs.color ?? STATUS_COLORS[0]
+		d.querySelector('[value=remove]').hidden = !at
+		this.ui.getElementById('status-error').textContent = ''
+		d.elements.text.focus()
+		d.elements.text.select()
+	}
+
+	applyStatus(action) {
+		const d = this.ui.getElementById('status-dialog')
+		if (action === 'cancel') return this.closeDialogs()
+		const { state } = this.view
+		const at = statusAt(state)
+		if (action === 'remove') {
+			if (at) this.view.dispatch(state.tr.delete(at.pos, at.pos + at.node.nodeSize))
+			return this.closeDialogs()
+		}
+		const text = statusText(d.elements.text.value)
+		if (!text) {
+			this.ui.getElementById('status-error').textContent = 'A status needs a text.'
+			d.elements.text.focus()
+			return
+		}
+		const color = STATUS_COLORS.includes(d.elements.color.value) ? d.elements.color.value : STATUS_COLORS[0]
+		putStatus(text, color)(state, this.view.dispatch)
 		this.closeDialogs()
 	}
 
@@ -798,7 +883,12 @@ class Editor {
 
 	html() {
 		const div = document.createElement('div')
-		div.append(DOMSerializer.fromSchema(schema).serializeFragment(this.view.state.doc.content))
+		copying = this
+		try {
+			div.append(DOMSerializer.fromSchema(schema).serializeFragment(this.view.state.doc.content))
+		} finally {
+			copying = null
+		}
 		return div.innerHTML
 	}
 
@@ -844,6 +934,7 @@ class Editor {
 		cancelAnimationFrame(this.toolbarFrame)
 		cancelAnimationFrame(this.selFrame)
 		cancelAnimationFrame(this.listsFrame)
+		cancelAnimationFrame(this.tocFrame)
 		this.listsObserver?.disconnect()
 		for (const f of this.unwire ?? []) f()
 		this.view.destroy()

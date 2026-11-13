@@ -37,19 +37,24 @@ const I = {
 	rule: 'M1 7h14v2H1z',
 	table: 'M1 2h14v12H1zM2 3v3h5V3zM8 3v3h6V3zM2 7v3h5V7zM8 7v3h6V7zM2 11v2h5v-2zM8 11v2h6v-2z',
 	image: 'M1 2h14v12H1zM2 3v10h12V3zM4 5h2v2H4zM3 12h10v-1h-1v-1h-1V9h-1v1H9v1H8v-1H7V9H6v1H5v1H3z',
+	toc: 'M1 2h2v2H1zM5 2h10v2H5zM3 7h2v2H3zM7 7h8v2H7zM3 12h2v2H3zM7 12h8v2H7z',
+	status: 'M2 4h12v1h1v6h-1v1H2v-1H1V5h1zM3 6v4h10V6zM4 7h6v2H4z',
 	undo: 'M5 3h1v2h5v1h1v1h1v4h-1v1h-1v1H7v-2h4V7H6v2H5V8H4V7H3V6h1V5h1z',
 	redo: 'M11 3h-1v2H5v1H4v1H3v4h1v1h1v1h4v-2H5V7h5v2h1V8h1V7h1V6h-1V5h-1z',
 }
 // A button: value is the command, keys its shortcut (Mod is Ctrl or Cmd).
 const btn = (value, label, content, { keys, toggle = true } = {}) =>
 	`<button type="button" value="${value}" aria-label="${label}"${toggle ? ' aria-pressed="false"' : ''}${keys ? ` data-keys="${keys}" aria-keyshortcuts="${keys.replace('Mod', 'Control')}"` : ''} tabindex="-1">${content}</button>`
+// A select of the toolbar, named by a hidden label; core.js fills it.
+const sel = (id, label) => `<label class="vh" for="${id}">${label}</label><select id="${id}" tabindex="-1"></select>`
 const txt = (value, label) => `<button type="button" value="${value}" class="text" tabindex="-1">${label}</button>`
 
 const MARKUP = `<div class="toolbar" part="toolbar" role="toolbar" aria-label="Formatting">
-<span class="group">${btn('h1', 'Heading H1', 'H1')}${btn('h2', 'Heading H2', 'H2')}${btn('h3', 'Heading H3', 'H3')}</span>
-<span class="group">${btn('strong', 'Bold', '<b>B</b>', { keys: 'Mod+B' })}${btn('em', 'Italic', '<i>I</i>', { keys: 'Mod+I' })}${btn('strike', 'Strikethrough', '<s>S</s>', { keys: 'Mod+Shift+S' })}${btn('code', 'Inline code', '<code>&lt;/&gt;</code>', { keys: 'Mod+E' })}${btn('link', 'Link', icon(I.link), { keys: 'Mod+K', toggle: false })}</span>
+<span class="group">${btn('h1', 'Heading H1', 'H1')}${btn('h2', 'Heading H2', 'H2')}${btn('h3', 'Heading H3', 'H3')}${sel('heading-more', 'Headings H4 to H6')}</span>
+<span class="group">${btn('strong', 'Bold', '<b>B</b>', { keys: 'Mod+B' })}${btn('em', 'Italic', '<i>I</i>', { keys: 'Mod+I' })}${btn('strike', 'Strikethrough', '<s>S</s>', { keys: 'Mod+Shift+S' })}${btn('code', 'Inline code', '<code>&lt;/&gt;</code>', { keys: 'Mod+E' })}${btn('link', 'Link', icon(I.link), { keys: 'Mod+K', toggle: false })}${sel('color', 'Text colour')}</span>
 <span class="group">${btn('bullet', 'Bulleted list', icon(I.bullet))}${btn('ordered', 'Numbered list', icon(I.ordered))}${btn('task', 'Task list', icon(I.task))}</span>
 <span class="group">${btn('quote', 'Quote', icon(I.quote))}${btn('codeblock', 'Code block', icon(I.codeblock))}${btn('rule', 'Horizontal rule', icon(I.rule), { toggle: false })}${btn('table', 'Table', icon(I.table), { toggle: false })}${btn('image', 'Image', icon(I.image), { toggle: false })}</span>
+<span class="group">${sel('panel', 'Panel')}${btn('status', 'Status', icon(I.status), { toggle: false })}${btn('toc', 'Table of contents', icon(I.toc), { toggle: false })}</span>
 <span class="group group--code" hidden><label class="vh" for="lang">Code language</label><select id="lang" tabindex="-1"></select></span>
 <span class="group group--table" hidden aria-label="Table">${txt('rowBefore', 'Row above')}${txt('rowAfter', 'Row below')}${txt('rowDelete', 'Delete row')}${txt('colBefore', 'Column left')}${txt('colAfter', 'Column right')}${txt('colDelete', 'Delete column')}${txt('headerRow', 'Header row')}${txt('tableDelete', 'Delete table')}</span>
 <span class="group">${btn('undo', 'Undo', icon(I.undo), { keys: 'Mod+Z', toggle: false })}${btn('redo', 'Redo', icon(I.redo), { keys: 'Mod+Shift+Z', toggle: false })}</span>
@@ -62,6 +67,12 @@ const MARKUP = `<div class="toolbar" part="toolbar" role="toolbar" aria-label="F
 <form class="dialog" id="alt-dialog" part="dialog" role="dialog" aria-label="Alt text" hidden>
 <label for="alt">Alt text: what the image shows</label><input id="alt" name="alt" type="text" maxlength="500" autocomplete="off">
 <div class="actions"><button value="apply">Apply</button><button value="cancel">Cancel</button></div>
+</form>
+<form class="dialog" id="status-dialog" part="dialog" role="dialog" aria-label="Status" hidden>
+<label for="status-text">Status text</label><input id="status-text" name="text" type="text" maxlength="40" autocomplete="off">
+<label for="status-color">Colour</label><select id="status-color" name="color"></select>
+<p class="error" id="status-error" aria-live="polite"></p>
+<div class="actions"><button value="apply">Apply</button><button value="remove">Remove status</button><button value="cancel">Cancel</button></div>
 </form>
 <div class="dialog" id="image-dialog" part="dialog" role="dialog" aria-label="Insert an image" hidden>
 <div class="images"></div><input type="file" id="image-file" class="vh" tabindex="-1" aria-hidden="true" accept="image/png,image/jpeg,image/webp">
@@ -123,6 +134,7 @@ button.text { font-size: var(--tk-text-xs, .75rem); padding-inline: var(--tk-spa
 }
 .toolbar + .dialog, .dialog { inset-block-start: calc(var(--_control) + 1.25rem); }
 .dialog[hidden] { display: none; }
+.dialog select { justify-content: start; min-block-size: var(--tk-control-md, 2rem); }
 .dialog input { font: inherit; color: inherit; background: var(--tk-surface-inset, #fff); border: 1px solid var(--_border); border-radius: var(--_radius); min-block-size: var(--tk-control-md, 2rem); padding: 0 var(--tk-space-2, .5rem); }
 .dialog .actions { display: flex; gap: var(--tk-space-2, .5rem); flex-wrap: wrap; }
 .dialog .actions button { border-color: var(--_border); }
