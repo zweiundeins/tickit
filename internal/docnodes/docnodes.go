@@ -46,6 +46,11 @@
 // unchanged blocks, except those holding an issue list. Text gives the
 // search text, References the issue keys, person ids, page ids and images
 // of a document. Markdown exports a page (FR-152).
+//
+// ADF maps Atlassian Document Format to the schema, for an import from
+// Jira and Confluence: issue cards become issue chips, page cards page
+// links, mentions mentions and files images, as far as the importer's
+// Atlassian knows them.
 package docnodes
 
 import (
