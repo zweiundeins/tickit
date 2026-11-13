@@ -29,12 +29,15 @@ The `limits` object of schema.json holds DM-05's and DM-06's numbers, which the 
 
 ## HTML of a document
 
-The Go renderer (reader view, comments, descriptions, versions) and the browser's `toDOM` produce the same elements, so one stylesheet (`static/css/prose.css`) styles both. The container is `<div class="prose">`. `docnodes.RenderHTML` renders the blocks, with a renderer per node type on prosemirror-go's `HTML`; the caller writes the container. The reader view's `docnodes.BlockCache` keeps each top-level block's HTML until the block changes or one of its atoms shows something else (`HTML.DynamicKey`: a chip's issue, a mention's name and face, a page link's title, a hidden image, an issue list's rows), so an issue's new status renders the blocks that show it and no others (`BenchmarkReaderChip*`: 114 µs for a page of 161 blocks before, 39 µs after; a frame while typing costs 45 µs instead of 35 µs, for the keys). Every text and attribute is escaped.
+The Go renderer (reader view, comments, descriptions, versions) and the browser's `toDOM` produce the same elements, so one stylesheet (`static/css/prose.css`) styles both. The container is `<div class="prose">`. `docnodes.RenderHTML` renders the blocks, with a renderer per node type on prosemirror-go's `HTML`; the caller writes the container. The reader view's `docnodes.BlockCache` keeps each top-level block's HTML until the block changes or one of its atoms shows something else (`HTML.DynamicKey`: a chip's issue, a mention's name and face, a page link's title, a hidden image, an issue list's rows; a heading's id and a toc's list, from the document's outline, which every render reads first), so an issue's new status renders the blocks that show it and no others (`BenchmarkReaderChip*`: 114 µs for a page of 161 blocks before, 39 µs after; a frame while typing costs 45 µs instead of 35 µs, for the keys). Every text and attribute is escaped.
 
 | Node or mark | HTML |
 | --- | --- |
 | paragraph | `<p>` |
-| heading, level 1 to 3 | `<h2>`, `<h3>`, `<h4>` (the page title is the page's `h1`) |
+| heading, level 1 to 6 | `<h2>` to `<h6>` for levels 1 to 5 and `<p role="heading" aria-level="7">` for level 6 (the page title is the page's `h1`), with `id="h-<slug>"` from the heading's text (`docnodes.Outline`: lower case, each run of other characters than letters and digits one hyphen, at most 60 characters, `-2`, `-3` for repeats); the editor's `toDOM` writes no `id` |
+| panel | `<div class="doc-panel" data-panel="info" role="note" aria-label="Info">` around its blocks; the kind is `info`, `note`, `warning`, `success` or `error`, which the stylesheet draws as its hue and pixel icon |
+| toc | `<nav class="doc-toc" aria-label="Contents">` holding the document's headings as `<ol>` of `<li><a href="#h-<slug>">Text</a></li>`, a deeper level in an `<ol>` inside the item before it; without headings `<p class="doc-toc__empty">No headings yet</p>`. The editor's node view lists the headings as they are and moves the caret to one on a click |
+| status | `<span class="tk-lozenge doc-status" data-color="green">Done</span>`, the colour one of `neutral`, `purple`, `blue`, `red`, `yellow`, `green` |
 | blockquote | `<blockquote>` |
 | code_block | `<pre data-language="go"><code>…</code></pre>` (`data-language` omitted when empty) |
 | horizontal_rule | `<hr>` |
@@ -51,9 +54,20 @@ The Go renderer (reader view, comments, descriptions, versions) and the browser'
 | issue_list | `<div class="issue-list" data-filter="status=todo" data-saved-filter="" data-limit="10">` holding `<p class="issue-list__desc">Issues matching <code>status=todo</code>, at most 10</p>` (or "Issues of the saved filter <strong>Name</strong>"); the reader view adds the rows after it (`table.issue-list__table` with key, summary, status and assignee, then a link to the issue list), versions and the editor's `toDOM` do not |
 | page_link | `<a class="page-link" data-page="<page id>" href="/pages/<page id>">Title</a>`; a removed page renders `<span class="page-link" data-state="gone">a removed page</span>` |
 | strong, em, strike, code | `<strong>`, `<em>`, `<s>`, `<code>` |
+| text_color | `<span class="doc-color" data-color="red">`, the colour one of `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `grey` (tokens.css draws each in its hue, light and dark) |
 | link | `<a href="…" rel="nofollow ugc noopener" title="<host>">`; an unsafe href renders as `<span class="link-unsafe">` |
 
 The editor's node view of a removed page keeps its element, an `<a class="page-link" data-state="gone">` without `href`; the reader view writes the `<span>`. A link's `title` is the URL's host with its port, or the address of a `mailto` link. A link mark around an atom renders no `<a>` around it (a chip is a link of its own). The comparison of two versions (FR-88) renders the newer one with added text in `<ins class="diff-ins">` and removed text in `<del class="diff-del">`; a block added or removed as a whole also carries `data-diff="ins"` or `data-diff="del"` on its element.
+
+## Panels, statuses, tables of contents and colours
+
+Confluence's pages bring them, and people use them in the editor too: the import maps ADF's panels, statuses, `toc` macros, text colours and heading levels 4 to 6 to them (`docnodes.ADF` on prosemirror-go's `adf.Defaults`, which maps a text colour's hex value to the nearest name of the palette; ADF's highlight, `backgroundColor`, is dropped, since a second colour mark would need its own control for a few uses).
+
+- **The lists** are schema.json's `limits`: `textColors`, `panelKinds`, `statusColors` and `statusText` (40 characters). `docnodes.Rules` refuses another name, and a status without text, over the limit or with a control character; the editor offers only these.
+- **The toolbar.** After H1 to H3 a select of the headings 4 to 6 (`H4+`); after Link a select of the text colour (`No colour` takes it away); after the blocks a select of the panel around the selection (picking a kind wraps the selected blocks in a panel or changes its kind, `No panel` takes the panel away and keeps its blocks), the Status button, which opens a dialog with the text and the colour (it edits the selected status, and removes it), and Table of contents, which inserts one. The selects are part of the toolbar's one tab stop and its arrow keys, as the code language's is; `#### ` to `###### ` make headings 4 to 6.
+- **Text and Markdown.** A status's text is search text (`docnodes.Text`, the activity feeds); a panel's blocks are text as any other; a toc and a colour add nothing. Markdown writes a panel as GitHub's alert of its hue (info `[!NOTE]`, note `[!IMPORTANT]`, success `[!TIP]`, warning `[!WARNING]`, error `[!CAUTION]`), a status as `\[Done\]`, a toc as a nested list of links to the anchors GitHub gives the headings, level 6 as `######` like level 5, and coloured text as text. The markup of descriptions and the seed writes a panel's blocks, a status's text and no toc.
+- **Cache.** Headings and tocs are `Dynamic`: a heading's key is its id, a toc's the whole outline, so a renamed heading renders the toc again, and the heading after it when its id moves.
+- **Ids across documents.** A heading's id is unique in its document; two documents on one page (a description and a comment) may repeat one.
 
 ## Wire format
 

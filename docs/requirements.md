@@ -581,7 +581,7 @@ Must · Source: inferred (Confluence) · Today: missing.
 #### FR-82 Rich-text editor
 Must · Source: inferred (Confluence) · Today: missing.
 
-1. The editor has headings (three levels), paragraphs, bold, italic, strikethrough, inline code, links, bullet and numbered lists, task lists, quotes, code blocks with a language, horizontal rules, mentions (FR-67), issue chips (FR-100) and page links (FR-103).
+1. The editor has headings (six levels), paragraphs, bold, italic, strikethrough, inline code, text colours of a fixed palette, links, bullet and numbered lists, task lists, quotes, panels (info, note, warning, success, error), status lozenges, tables of contents, code blocks with a language, horizontal rules, mentions (FR-67), issue chips (FR-100) and page links (FR-103).
 2. Markdown shortcuts work as people type them ("# " for a heading, "- " for a list, three backticks for code), and so do the usual keyboard shortcuts (Ctrl or Cmd with B, I, K, Z).
 3. Pasting HTML keeps the supported formatting and drops everything else; pasting an issue key or a tickit URL offers to turn it into a chip or a page link.
 4. Undo and redo undo the person's own changes, not other people's.
