@@ -15,11 +15,11 @@ require (
 	github.com/klauspost/compress v1.20.4
 	github.com/prometheus/client_golang v1.25.0
 	github.com/zweiundeins/lith v0.5.8
-	github.com/zweiundeins/lith-coedit v0.1.0
+	github.com/zweiundeins/lith-coedit v0.2.1
 	github.com/zweiundeins/lith/minify v0.5.8
 	github.com/zweiundeins/lith/prom v0.5.8
-	github.com/zweiundeins/prosemirror-go v0.2.0
-	github.com/zweiundeins/prosemirror-go/oracle v0.1.0
+	github.com/zweiundeins/prosemirror-go v0.2.1
+	github.com/zweiundeins/prosemirror-go/oracle v0.2.1
 	golang.org/x/crypto v0.59.0
 	golang.org/x/image v0.48.0
 )
@@ -181,4 +181,11 @@ require (
 	modernc.org/sqlite v1.62.0 // indirect
 	mvdan.cc/sh/v3 v3.14.1 // indirect
 	mvdan.cc/sh/x v0.0.0-20260922090537-aebdf2b86f56 // indirect
+)
+
+// LOCAL ONLY: remove once prosemirror-go v0.2.1, oracle/v0.2.1 and lith-coedit v0.2.1 are tagged.
+replace (
+	github.com/zweiundeins/lith-coedit => ../_lith/lith-coedit-deps
+	github.com/zweiundeins/prosemirror-go => ../_lith/prosemirror-go-deps
+	github.com/zweiundeins/prosemirror-go/oracle => ../_lith/prosemirror-go-deps/oracle
 )

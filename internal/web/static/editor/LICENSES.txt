@@ -1,14 +1,14 @@
 sb-rich-editor bundles the following packages. Their licences follow.
 
-prosemirror-model@1.25.12
+prosemirror-model@1.25.13
 prosemirror-state@1.4.4
-prosemirror-view@1.42.6
-prosemirror-transform@1.12.2
+prosemirror-view@1.42.9
+prosemirror-transform@1.12.5
 prosemirror-keymap@1.2.3
 prosemirror-history@1.5.1
-prosemirror-inputrules@1.5.1
+prosemirror-inputrules@1.6.0
 prosemirror-commands@1.7.2
-prosemirror-schema-list@1.5.1
+prosemirror-schema-list@1.6.0
 prosemirror-gapcursor@1.4.1
 prosemirror-dropcursor@1.8.4
 prosemirror-tables@1.8.5

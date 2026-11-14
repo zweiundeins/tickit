@@ -140,7 +140,7 @@ func TestEditsAgreeWithOracle(t *testing.T) {
 			a := rnd.IntN(size + 1)
 			b := min(size, a+rnd.IntN(12))
 			var raw string
-			switch rnd.IntN(12) {
+			switch rnd.IntN(13) {
 			case 0:
 				raw = `{"stepType":"replace","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `}`
 			case 1:
@@ -163,6 +163,9 @@ func TestEditsAgreeWithOracle(t *testing.T) {
 				raw = `{"stepType":"replace","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `,"slice":{"content":[{"type":"date","attrs":{"date":"2026-11-13"}}]}}`
 			case 10:
 				raw = `{"stepType":"replace","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `,"slice":{"content":[{"type":"details","attrs":{"summary":"More","open":true},"content":[{"type":"paragraph"}]}]}}`
+			case 11: // an undone mark step, as prosemirror-transform 1.12.5 inverts one
+				c := min(size, b+rnd.IntN(6))
+				raw = `{"stepType":"markSet","steps":[{"stepType":"removeMark","mark":{"type":"text_color","attrs":{"color":"teal"}},"from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `},{"stepType":"addMark","mark":{"type":"strong"},"from":` + strconv.Itoa(b) + `,"to":` + strconv.Itoa(c) + `}]}`
 			default:
 				raw = `{"stepType":"removeMark","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `,"mark":{"type":"strong"}}`
 			}

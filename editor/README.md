@@ -154,10 +154,10 @@ Sizes of the current build (brotli at quality 11, gzip at level 9):
 
 | File | Minified | gzip | brotli |
 | --- | --- | --- | --- |
-| `sb-rich-editor.min.js` | 15.1 KB | 5.4 KB | 4.7 KB |
-| `pm-core.min.js` | 302.5 KB | 94.8 KB | 82.2 KB |
+| `sb-rich-editor.min.js` | 17.0 KB | 6.0 KB | 5.1 KB |
+| `pm-core.min.js` | 319.4 KB | 99.6 KB | 86.2 KB |
 
-Pinned versions are in `package.json`: prosemirror-model 1.25.12, -transform 1.12.2, -view 1.42.6, -state 1.4.4, -tables 1.8.5, -history 1.5.1, -commands 1.7.2, -keymap 1.2.3, -inputrules 1.5.1, -schema-list 1.5.1, -gapcursor 1.4.1, -dropcursor 1.8.4. collab-commit is a dev dependency for its licence text: lith-coedit's `editor/src/collab.js` holds the adapted code, because the package's `main` names a missing `dist/index.js` and the editor needs per-step tags its state does not carry. lith-coedit's modules import prosemirror-model, -state, -transform and -view, which the build takes from this folder, so the bundle holds one copy of each; keep the versions equal to lith-coedit's `editor/package.json`.
+Pinned versions are in `package.json`: prosemirror-model 1.25.13, -transform 1.12.5, -view 1.42.9, -state 1.4.4, -tables 1.8.5, -history 1.5.1, -commands 1.7.2, -keymap 1.2.3, -inputrules 1.6.0, -schema-list 1.6.0, -gapcursor 1.4.1, -dropcursor 1.8.4. collab-commit is a dev dependency for its licence text: lith-coedit's `editor/src/collab.js` holds the adapted code, because the package's `main` names a missing `dist/index.js` and the editor needs per-step tags its state does not carry. lith-coedit's modules import prosemirror-model, -state, -transform and -view, which the build takes from this folder, so the bundle holds one copy of each; keep the versions equal to lith-coedit's `editor/package.json`.
 
 ## Tests
 
