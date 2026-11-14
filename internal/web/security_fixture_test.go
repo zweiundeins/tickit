@@ -350,9 +350,10 @@ func (f *fixture) read(c *http.Client, path string) (int, string) {
 
 // Bookkeeping that a refused action writes besides nothing: the op's
 // answer for a retry (lith_results, lith_ops), the tab's outcome, which
-// says why it was refused (tab_state), and when an account's login
-// session was last used (login_sessions.last_seen_at).
-var bookkeeping = []string{"lith_results", "lith_ops", "tab_state", "login_sessions.last_seen_at"}
+// says why it was refused (tab_state), when an account's login session
+// was last used (login_sessions.last_seen_at), and when the person was last
+// seen, which tabs.Act records before the command decides (people.Ensure).
+var bookkeeping = []string{"lith_results", "lith_ops", "tab_state", "login_sessions.last_seen_at", "people.last_seen_at"}
 
 // state is a digest of every table but the bookkeeping, flushed first.
 func (f *fixture) state() map[string]string {

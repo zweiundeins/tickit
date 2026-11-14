@@ -105,6 +105,22 @@ func rawStream(t *testing.T, c *http.Client, base, path string) net.Conn {
 	return conn
 }
 
+// faceOf is the face of the person with id in a presence row's event, ""
+// when the row has none. A face is found by its person's id: a guest's
+// name is one of 1,024, so two guests share one in a test now and then.
+func faceOf(ev, id string) string {
+	i := strings.Index(ev, `data-who="`+id+`"`)
+	if i < 0 {
+		return ""
+	}
+	start := strings.LastIndex(ev[:i], "<li")
+	end := strings.Index(ev[i:], "</li>")
+	if start < 0 || end < 0 {
+		return ev[i:]
+	}
+	return ev[start : i+end]
+}
+
 // MP-02.3: a face goes within 1 s when its person's last tab closes, and
 // within 60 s when its connection drops without closing (the page stops
 // answering heartbeats, alive.go), while a page that answers them stays.
@@ -119,11 +135,7 @@ func TestPresenceGoes(t *testing.T) {
 	things(e)
 	ada, bob, cy := webtest.Client(t), webtest.Client(t), webtest.Client(t)
 	webtest.Get(t, ada, e.URL+"/")
-	name := func(c *http.Client) string {
-		_, page := webtest.Get(t, c, e.URL+"/")
-		return personName.FindStringSubmatch(page)[1]
-	}
-	bobName, cyName := name(bob), name(cy)
+	bobID, cyID := guest(t, e, bob).ID, guest(t, e, cy).ID
 	row := `<ul id="` + views.PresenceID("thing:1") + `" class="tk-presence"`
 	first := webtest.Listen(t, ada, e.URL+"/stream?tab=ada1&v=thing:1", nil) // a stream that never answers heartbeats, as a Go client
 	webtest.Next(t, first, row)
@@ -142,34 +154,44 @@ func TestPresenceGoes(t *testing.T) {
 			}
 		}
 	}
-	there := func(n string) func(string) bool { return func(ev string) bool { return strings.Contains(ev, n) } }
-	gone := func(n string) func(string) bool { return func(ev string) bool { return !strings.Contains(ev, n) } }
+	tabs := func(id, n string) func(string) bool {
+		return func(ev string) bool { return strings.Contains(faceOf(ev, id), n) }
+	}
+	gone := func(id string) func(string) bool { return func(ev string) bool { return faceOf(ev, id) == "" } }
 
 	_, close1 := webtest.Open(t, bob, e.URL+"/stream?tab=bob1&alive=1&v=thing:1", nil)
 	_, close2 := webtest.Open(t, bob, e.URL+"/stream?tab=bob2&alive=1&v=thing:1", nil)
-	until(5*time.Second, there(bobName+", 2 tabs"))
+	until(5*time.Second, tabs(bobID, ", 2 tabs"))
 	close1()
-	until(time.Second, there(bobName+`"`))
+	until(time.Second, func(ev string) bool { f := faceOf(ev, bobID); return f != "" && !strings.Contains(f, " tabs") })
 	close2()
-	if d := until(time.Second, gone(bobName)); d > time.Second {
+	if d := until(time.Second, gone(bobID)); d > time.Second {
 		t.Errorf("the face went %v after the last tab closed", d)
 	}
 
 	// cy's page answers every heartbeat; bob's connection drops.
 	webtest.Listen(t, cy, e.URL+"/stream?tab=cy1&alive=1&v=thing:1", nil)
+	// The poster leaves t alone: the test's end cuts off a post in flight,
+	// and a post that failed earlier shows as cy's stream ending.
+	ctx := t.Context()
 	go func() {
 		for {
 			select {
-			case <-t.Context().Done():
+			case <-ctx.Done():
 				return
 			case <-time.After(300 * time.Millisecond):
-				webtest.Post(t, cy, e.URL+"/alive?tab=cy1", "")
+				req, _ := http.NewRequestWithContext(ctx, "POST", e.URL+"/alive?tab=cy1", nil)
+				req.Header.Set("Datastar-Request", "true")
+				req.Header.Set("Sec-Fetch-Site", "same-origin")
+				if res, err := cy.Do(req); err == nil {
+					res.Body.Close()
+				}
 			}
 		}
 	}()
 	rawStream(t, bob, e.URL, "/stream?tab=bob3&alive=1&v=thing:1")
-	until(5*time.Second, func(ev string) bool { return strings.Contains(ev, bobName) && strings.Contains(ev, cyName) })
-	d = until(10*time.Second, gone(bobName))
+	until(5*time.Second, func(ev string) bool { return faceOf(ev, bobID) != "" && faceOf(ev, cyID) != "" })
+	d = until(10*time.Second, gone(bobID))
 	if d > 6*time.Second { // AliveTimeout, 3 s here, and a loaded machine's slack
 		t.Errorf("the face of a dropped connection went after %v", d)
 	}
@@ -246,7 +268,7 @@ func TestAway(t *testing.T) {
 		t.Helper()
 		for {
 			ev := webtest.Next(t, first, row)
-			if strings.Contains(ev, bobName) && away.MatchString(ev) == want {
+			if faceOf(ev, me.ID) != "" && away.MatchString(ev) == want {
 				return
 			}
 		}
@@ -287,8 +309,7 @@ func TestSpaceTreePresence(t *testing.T) {
 	e := startWiki(t)
 	ada, bob := webtest.Client(t), webtest.Client(t)
 	webtest.Get(t, ada, e.URL+"/")
-	_, page := webtest.Get(t, bob, e.URL+"/")
-	bobName := personName.FindStringSubmatch(page)[1]
+	bobID := guest(t, e, bob).ID
 	space, home := wikiSpace(t, e, ada, "ENG")
 	one := wikiPage(t, e, ada, space, home, "One")
 	two := wikiPage(t, e, ada, space, home, "Two")
@@ -301,7 +322,7 @@ func TestSpaceTreePresence(t *testing.T) {
 	webtest.Listen(t, bob, e.URL+"/stream?tab=bob1&v=page:"+two+",tree:"+two, nil)
 	for {
 		ev := webtest.Next(t, first, `<ul id="`+rowID+`"`)
-		if strings.Contains(ev, bobName) {
+		if faceOf(ev, bobID) != "" {
 			break
 		}
 	}

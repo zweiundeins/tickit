@@ -30,9 +30,8 @@ func TestHomeAndDashboardPresence(t *testing.T) {
 
 	ada := webtest.Client(t)
 	_, page := webtest.Get(t, ada, e.URL+"/")
-	adaName := personName.FindStringSubmatch(page)[1]
+	adaID := guest(t, e, ada).ID
 	_, page = webtest.Get(t, admin, e.URL+"/")
-	adminName := personName.FindStringSubmatch(page)[1]
 
 	here := "Open this page in a private window to see a second person arrive."
 	elsewhere := "Open a board, an issue or a page in a private window to see a second person arrive."
@@ -54,7 +53,7 @@ func TestHomeAndDashboardPresence(t *testing.T) {
 		deadline := time.Now().Add(5 * time.Second)
 		for time.Now().Before(deadline) {
 			ev := webtest.Next(t, first, `<ul id="`+row+`"`)
-			if strings.Contains(ev, adaName) && strings.Contains(ev, adminName) {
+			if faceOf(ev, adaID) != "" && faceOf(ev, adminID) != "" {
 				return
 			}
 		}

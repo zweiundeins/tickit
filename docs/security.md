@@ -76,12 +76,14 @@ The suite lifts the rate limits (`web.Unlimited`, in `export_security_test.go`),
 | `FuzzWikiActions` | spaces and page actions | 3 min | 1,049,913 | 372 | none |
 | `FuzzEditorActions` | an editor's open, commit and presence, of a page and (since FR-15) of an issue's description, with its close | 3 min | 795,581 | 328 | none |
 | `FuzzNotifyActions` | notifications | 3 min | 458,612 | 371 | none |
-| `FuzzStaffActions` | moderation, admin, the account's own | 3 min | 879,940 | 363 | none |
+| `FuzzStaffActions` | moderation, reports, admin, the account's own | 3 min | 879,940 | 363 | none |
 | `FuzzUploads` | an image upload into a page and into a description, the file as the fuzzer makes it (multipart, as the editor sends it) | 1 min (21 October) | 303,651 | 103 | none |
 
 On 21 October 2026, with bulk edit (FR-58, `POST /cmd/issues/bulk`: four cases in `secCases`, of status, a label, the assignee and a delete), `FuzzIssueActions` ran 1 min: 322,580 runs, a corpus of 521, no 500 or panic.
 
-Each target starts the fixture once per worker and sends what the fuzzer makes of a case's body to that case's route, as someone who may take it; the seeds are every case's valid body, half of it, and it with single quotes. The corpora stay in the Go build cache, not in the repository.
+`FuzzNotifyActions` and `FuzzStaffActions` were lost from the code on 21 October (with FR-85) while the task kept listing them; since 14 November they are back, and `FuzzStaffActions` covers every action under `/cmd/admin/`, `/cmd/moderation/`, `/cmd/account/` and `/cmd/report`, the reset sent by a scope's Admin, who may not. On 14 November 2026 (20 cores shared with other jobs, `-parallel 8`) each ran 30 s: `FuzzNotifyActions` 75,511 runs, a corpus of 556; `FuzzStaffActions` 120,517 runs, a corpus of 420; no 500, panic or refusal that changed a table.
+
+Each target starts the fixture once per worker and sends what the fuzzer makes of a case's body to that case's route, as someone who may take it; the seeds are every case's valid body, half of it, and it with single quotes. No answer may be a 500, and since 14 November a refusal (a 4xx, or an outcome that is not OK) may change no table but the bookkeeping, which temporary triggers on the writer's connection count; a failed login writes the security log on purpose (FR-156.1). The corpora stay in the Go build cache, not in the repository.
 
 **Login timing (NFR-10)**, `TestLoginTiming`, 100 interleaved tries each, a new client address per try: a wrong password for an account took 20.6 ms on average (median 18.4 ms), an email without an account 22.4 ms (median 19.3 ms). The difference, under 2 ms, is within the 50 ms of NFR-10.
 

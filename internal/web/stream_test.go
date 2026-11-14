@@ -288,11 +288,12 @@ func TestPresence(t *testing.T) {
 			break
 		}
 	}
+	bobID := guest(t, e, bob).ID
 	closeBob()
 	start := time.Now()
 	for {
 		ev := webtest.Next(t, first, row)
-		if !strings.Contains(ev, bobName) {
+		if faceOf(ev, bobID) == "" {
 			break
 		}
 	}
