@@ -2,6 +2,7 @@
 // it (a hashed name finds its file), the harness pages with a CSP like lith's
 // DefaultCSP and a nonce, and endpoints for checking what @post returns.
 import { createServer } from 'node:http'
+import { execFileSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { dirname, extname, join, normalize } from 'node:path'
@@ -13,6 +14,10 @@ const roots = {
 	'/test/out/': join(here, 'out'),
 	'/test/': join(here, 'harness'),
 }
+// Datastar is lith's build (github.com/zweiundeins/lith/datastar), as the app serves it.
+const lith = execFileSync('go', ['list', '-m', '-f', '{{.Dir}}', 'github.com/zweiundeins/lith'], { cwd: here, encoding: 'utf8' }).trim()
+const datastar = join(lith, 'datastar/datastar-rocket.js')
+
 const types = { '.js': 'text/javascript; charset=utf-8', '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8' }
 
 // lith's unhash: name.<8 to 64 hex>.ext is name.ext.
@@ -54,6 +59,7 @@ export function startServer(port = 0) {
 			if (p === '/cmd/test/drop') return void (hits.drop++, req.socket.destroy())
 			if (p === '/cmd/test/hits') return void res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(hits))
 			if (p.startsWith('/img/lib/')) return void res.writeHead(200, { 'Content-Type': 'image/svg+xml' }).end(image(p.slice(9)))
+			if (unhash(p) === '/static/vendor/datastar-rocket.js') return void res.writeHead(200, { 'Content-Type': types['.js'], 'Cache-Control': 'no-cache' }).end(await readFile(datastar))
 			const prefix = Object.keys(roots).find((r) => p.startsWith(r))
 			if (!prefix) return void res.writeHead(404).end()
 			const rel = normalize(p.slice(prefix.length)).replace(/^(\.\.[/\\])+/, '')

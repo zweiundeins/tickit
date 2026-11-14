@@ -6,8 +6,11 @@
 // renders, the fonts with their OFL texts into internal/web/static/fonts,
 // and Starbase's MIT licence, and writes lock.json and VERSION: the commit,
 // and every file with its SHA-384. It refuses a checkout with uncommitted
-// changes in what it copies, and one whose Datastar build is not the one
-// tickit vendors (internal/web/static/vendor/datastar-rocket.js).
+// changes in what it copies, and one whose Datastar build is another
+// release of Datastar or Rocket than the one tickit serves, lith's
+// (github.com/zweiundeins/lith/datastar): the components must run on it.
+// Starbase's own patches may differ from lith's copy of an older Starbase
+// build; the lock records the build tickit serves.
 //
 //	go run ./cmd/vendor-starbase -src /develop/starbase    (go tool task vendor-starbase)
 //
@@ -33,12 +36,22 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	lithdatastar "github.com/zweiundeins/lith/datastar"
 )
 
+// release is the Datastar and Rocket release a build names in its first
+// line: "Datastar v1.0.5 + Rocket beta.3".
+func release(js []byte) string {
+	first, _, _ := bytes.Cut(js, []byte("\n"))
+	s := strings.TrimPrefix(string(first), "// ")
+	s, _, _ = strings.Cut(s, " (")
+	return s
+}
+
 const (
-	dir      = "internal/web/static/vendor/starbase"
-	fontDir  = "internal/web/static/fonts"
-	datastar = "internal/web/static/vendor/datastar-rocket.js"
+	dir     = "internal/web/static/vendor/starbase"
+	fontDir = "internal/web/static/fonts"
 )
 
 // Pins is what to vendor: pins.json.
@@ -126,15 +139,12 @@ func run(src string, allowDirty bool) error {
 	if err != nil {
 		return err
 	}
-	ours, err := os.ReadFile(datastar)
-	if err != nil {
-		return err
-	}
-	if integrity(theirs) != integrity(ours) {
-		return fmt.Errorf("Starbase at %s ships Datastar %s, tickit vendors %s: update %s and its VERSION first", commit, integrity(theirs), integrity(ours), datastar)
+	ours := lithdatastar.JS()
+	if release(theirs) != release(ours) {
+		return fmt.Errorf("Starbase at %s ships %q, tickit serves lith's %q (%s): move lith to that release first", commit, release(theirs), release(ours), lithdatastar.Version)
 	}
 
-	lock := Lock{Repo: pins.Repo, Commit: commit, Date: date, License: "MIT", Datastar: integrity(ours), Fonts: map[string]string{}}
+	lock := Lock{Repo: pins.Repo, Commit: commit, Date: date, License: "MIT", Datastar: lithdatastar.Integrity, Fonts: map[string]string{}}
 	out := map[string][]byte{}
 	queue := slices.Clone(pins.Components)
 	done := map[string]*Component{}

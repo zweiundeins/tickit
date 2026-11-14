@@ -279,7 +279,7 @@ rocket('sb-date-picker', {
         max: string.docs({ description: 'Latest date that can be picked (ISO). With time, a date (to the end of that day) or a date-time, with time-zone with or without an offset.' }),
         disabledDates: json.default(() => []).docs({ description: 'Server data: dates that can\'t be picked, as a JSON array of ISO dates (e.g. booked days). They can still be focused and read.' }),
         month: string.docs({ description: 'The month shown, YYYY-MM (view state). A changed attribute from the server moves the calendar there; the user paging months emits sb-month.' }),
-        open: bool.docs({ description: 'The calendar popover is open. View state: a changed attribute from the server opens or closes it (open="false" closes); local toggling never reflects it.' }),
+        open: bool.docs({ description: 'The calendar popover is open when present. View state: the server adding or removing the attribute opens or closes it, identical markup keeps the local state; local toggling never reflects it.' }),
         inline: bool.docs({ description: 'Show the calendar on the page, always visible, without the text field.' }),
         label: string.trim.docs({ description: 'Visible label, and the accessible name of the calendar.' }),
         placeholder: string.docs({ description: 'Placeholder text (default: the locale\'s date pattern, e.g. dd.mm.yyyy, or with time dd.mm.yyyy, hh:mm).' }),
@@ -822,9 +822,10 @@ rocket('sb-date-picker', {
             emit('sb-toggle', { name: props.name, open: o });
             o && cell()?.focus();
         }));
-        // The server's word: a changed value, open or month attribute wins. A
-        // removed one is ignored (morphs also strip reflected attributes), and
-        // the same word again leaves the local state alone. Watched on the
+        // The server's word: a changed value, open or month attribute wins, and
+        // the same word again leaves the local state alone. open is a word by
+        // presence (added opens, removed closes); a removed value or month is
+        // ignored (morphs also strip reflected attributes). Watched on the
         // attributes: observeProps is silent when the decoded value is the same.
         const said = {};
         const heard = (k) => {
@@ -833,13 +834,15 @@ rocket('sb-date-picker', {
             said[k] = a;
             return news;
         };
-        for (const k of ['value', 'open', 'month'])
+        for (const k of ['value', 'month'])
             heard(k);
+        let openWord = host.hasAttribute('open');
         const watch = new MutationObserver(() => peek(() => {
             if (heard('value'))
                 set(norm(props.value));
-            if (heard('open'))
-                $$.open = props.open && !props.inline && !props.disabled;
+            const o = host.hasAttribute('open');
+            if (o !== openWord)
+                $$.open = (openWord = o) && !props.inline && !props.disabled;
             if (!heard('month') || mon(props.month) == null)
                 return;
             const had = host.shadowRoot.activeElement?.localName === 'td';
@@ -1019,6 +1022,6 @@ rocket('sb-date-picker', {
         }));
         // A calendar the server rendered open shows (the data-effect), now that the
         // actions its toggle events call are there.
-        $$.open = props.open && !props.inline && !props.disabled;
+        $$.open = host.hasAttribute('open') && !props.inline && !props.disabled;
     },
 });

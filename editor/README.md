@@ -114,7 +114,7 @@ data-on:sb-stopped="$_editor.stopped = evt.detail.state"
 
 ### What Datastar's @post returns
 
-Measured in the browser tests with the vendored Datastar 1.0.4 build (`test/harness/post.html`):
+Measured in the browser tests with Datastar 1.0.4 (`test/harness/post.html`), and again with lith's 1.0.5 build, which answers the same:
 
 | Answer | Promise |
 | --- | --- |

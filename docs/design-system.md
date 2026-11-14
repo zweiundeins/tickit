@@ -282,7 +282,7 @@ The toolbar is `role=toolbar` with one tab stop and Left and Right along it; eve
 
 ## Starbase components
 
-`cmd/vendor-starbase` copies components from a Starbase checkout: it reads `static/vendor/starbase/pins.json`, copies each component's module and those of the components it renders, the fonts with their OFL texts and Starbase's MIT licence, and writes `lock.json` (the commit and each file's SHA-384) and `VERSION`. It refuses a checkout with uncommitted changes in what it copies, and one whose Datastar build is not tickit's. `TestVendored` checks the files against the lock.
+`cmd/vendor-starbase` copies components from a Starbase checkout: it reads `static/vendor/starbase/pins.json`, copies each component's module and those of the components it renders, the fonts with their OFL texts and Starbase's MIT licence, and writes `lock.json` (the commit and each file's SHA-384) and `VERSION`. It refuses a checkout with uncommitted changes in what it copies, and one whose Datastar build is another Datastar or Rocket release than the one tickit serves, lith's (`lith/datastar`). `TestVendored` checks the files against the lock.
 
 ```sh
 go tool task vendor-starbase STARBASE=/develop/starbase

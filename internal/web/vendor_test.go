@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"io/fs"
 	"testing"
+
+	"github.com/zweiundeins/lith/datastar"
 )
 
 // TestVendored checks the Starbase files against lock.json, without
@@ -40,8 +42,8 @@ func TestVendored(t *testing.T) {
 	if lock.Commit == "" || len(lock.Components) == 0 {
 		t.Fatal("lock.json names no commit or no components")
 	}
-	if got := sri("static/vendor/datastar-rocket.js"); got != lock.Datastar {
-		t.Errorf("datastar-rocket.js is %s, the lock says %s", got, lock.Datastar)
+	if lock.Datastar != datastar.Integrity {
+		t.Errorf("the lock was made for Datastar %s, tickit serves lith's %s (%s)", lock.Datastar, datastar.Integrity, datastar.Version)
 	}
 	for _, c := range lock.Components {
 		for name, want := range c.Files {

@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/zweiundeins/lith/datastar"
 	"github.com/zweiundeins/lith/edge"
 	"github.com/zweiundeins/lith/events"
 	"github.com/zweiundeins/lith/live"
@@ -117,6 +118,8 @@ func New(cfg Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Datastar with Rocket, lith's build of Starbase's patches.
+	static.Add("vendor/datastar-rocket.js", datastar.JS())
 	// lith's newest-frame.js, which the page loads after Datastar.
 	js, err := fs.ReadFile(live.Scripts, live.NewestFrame)
 	if err != nil {

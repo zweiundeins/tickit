@@ -59,7 +59,7 @@ The rewrite inherits these from lith and its template. They constrain the design
 8. Streams are bounded: a cap on open streams (200 in the template), a 10 s deadline on each write, the newest frame wins, a heartbeat every 20 s and a page watchdog after 50 s of silence, and a reconnect after a deploy (`lith:site/content/docs/guides/views.md:228-259`, `lith:sse/stream.go:51-56`).
 9. The request edge: an opaque session cookie (`__Host-sid`, 400 days), CSRF checks from `Sec-Fetch-Site` or `Origin`, a Content Security Policy with a nonce that allows scripts from the app only, the client address only from the local proxy, and rate limiters (`lith:site/content/docs/guides/edge.md:45-103`).
 10. Keys are rowids or time-ordered (rule 10); tickit keeps UUID strings at demo size (Q3).
-11. Datastar 1.0.4. A field someone types in does not sit in a region the stream morphs; an editor is an island the stream does not morph (`lith:site/content/docs/guides/pages.md:49`).
+11. Datastar 1.0.5. A field someone types in does not sit in a region the stream morphs; an editor is an island the stream does not morph (`lith:site/content/docs/guides/pages.md:49`).
 12. Deployment from lith's template: the systemd unit, `app-deploy` with a health check and rollback, a Caddy block without `encode`, and drop-ins for a shared host (`lith:site/content/docs/guides/deploying.md`).
 
 ## 3. Roles and permissions

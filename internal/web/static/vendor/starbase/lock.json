@@ -1,9 +1,9 @@
 {
   "repo": "github.com/zweiundeins/starbase",
-  "commit": "163fc43415cfae7b584426f52c599aa444dff326",
-  "date": "2026-10-22T05:15:19Z",
+  "commit": "4d32e31bf9723b3046fc26c3f1b46fd5f3a071c8",
+  "date": "2026-11-13T08:56:34Z",
   "license": "MIT",
-  "datastar": "sha384-mvTnynHaljKNMleD0bj6/rWROnluHlNmbc5rOQTd+fQH3YBDYhlvHdNquEX99by5",
+  "datastar": "sha384-Iu4CMxrmjOgH23gCxLjuY70tjpaQn5TFNBOARkUXz3xmm7MxDUz+XptuiVQFLxvO",
   "fonts": {
     "OFL-JetBrainsMono.txt": "sha384-9dzadA/aWbPgCj0zMah6cPjYgynSdqrBw8D8KjET47pxul8nStep57PT9QFMHCBb",
     "OFL-PixelifySans.txt": "sha384-v3t+wd9dOEgOCrZWFQ8KVleCALDsUy1lO0Na7rVuQCFuo6jCv5tPsTJEHKhBccbD",
@@ -39,7 +39,7 @@
       "pinned": true,
       "entry": "date-picker.js",
       "files": {
-        "date-picker.js": "sha384-BgoE4Rhgw/yKAOAO9XhGHIRNsDjKFWoqg0n9l/GnAdie5JEprj7LcTXaVSfvjHlu"
+        "date-picker.js": "sha384-bfHN7vrmzmT5o8ei1Uug0gUFRPrfvAxyjRlYo+X62SRfu8tsLBPrSXY18+12za8/"
       }
     },
     {
@@ -48,7 +48,7 @@
       "pinned": true,
       "entry": "dropdown.js",
       "files": {
-        "dropdown.js": "sha384-AHXzbtbz23hEQJzQ/EmCdzWb+QdQbTOXv5X1/DqvSkIaE8tObQGFum8aJjXRLaj2"
+        "dropdown.js": "sha384-GAE155RsANn6Dw9gLF4DmAHnfYAb80NJWc8q2ob3PEjSG8x/iitPVDsq0t50BsaS"
       }
     },
     {
@@ -57,7 +57,7 @@
       "pinned": true,
       "entry": "popover.js",
       "files": {
-        "popover.js": "sha384-AaKeLIT5tGRrUfHkFiYcQYFsBN90wAncHQassY45APAqxfXAno0uxgNS4N7nCQ9P"
+        "popover.js": "sha384-CRYHhJdtO0HiQj4xrzb3YaYABIMy6livZSLrnZExTNHI1TAClCGP2lymPh2F5X6a"
       }
     },
     {
@@ -88,12 +88,21 @@
       }
     },
     {
+      "slug": "toc",
+      "tag": "sb-toc",
+      "pinned": true,
+      "entry": "toc.js",
+      "files": {
+        "toc.js": "sha384-FD3hc5cKnlwJPuVzmSWXG0KoWOTEBFSJXGOI7cRDWdtVLpjQa4J/uIIPJsff+uaU"
+      }
+    },
+    {
       "slug": "tree",
       "tag": "sb-tree",
       "pinned": true,
       "entry": "tree.js",
       "files": {
-        "tree.js": "sha384-273N8HWKT7yrRZEChHG+jtriGEmWjloWCp2vkcVrlFp5Dd2OeOET9xjElBwDSAxZ"
+        "tree.js": "sha384-CjfYR4q/M4n9ovQgWxcg9j+tq33W/NMWtNpX81MJajOgwVuAj44FRSYxPJTsWlnC"
       }
     },
     {
