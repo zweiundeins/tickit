@@ -79,12 +79,12 @@ tasks:
       - for: [FuzzCoreActions, FuzzIssueActions, FuzzBoardActions, FuzzWikiActions, FuzzEditorActions, FuzzNotifyActions, FuzzStaffActions, FuzzUploads]
         cmd: go test -run '^$' -fuzz '^{{.ITEM}}$' -fuzztime {{.FUZZTIME}} ./internal/web/
       - bash deploy/security-smoke.sh ./{{.BIN}}
-      - go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+      - go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
   vuln:
     desc: Known vulnerabilities in the code the binary calls (govulncheck)
     cmds:
-      - go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+      - go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
   vendor-starbase:
     desc: Copy Starbase's components and fonts from a checkout (STARBASE=/path/to/starbase)
