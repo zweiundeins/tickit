@@ -158,10 +158,18 @@ func (w *writer) block(n wnode, first, rest string) {
 				w.line(rest, "| "+strings.Join(seps, " | ")+" |")
 			}
 		}
-	case "panel", "details":
-		// The markup has no panels and no collapsible sections: their blocks.
+	case "panel":
+		alert := map[string]string{"info": "NOTE", "note": "IMPORTANT", "success": "TIP", "warning": "WARNING", "error": "CAUTION"}[n.str("kind")]
+		if alert == "" {
+			alert = "IMPORTANT"
+		}
+		w.line(first+"> ", "[!"+alert+"]")
+		w.blocks(n.Content, rest+"> ", rest+"> ")
+	case "details":
+		// The markup has no collapsible sections: their blocks.
 		w.blocks(n.Content, first, rest)
 	case "toc":
+		w.line(first, "[[toc]]")
 	default:
 		// A block the markup cannot say: its text, as a paragraph.
 		w.line(first, w.inline(n.Content))
@@ -192,6 +200,8 @@ func (w *writer) inline(nodes []wnode) string {
 			case "link":
 				href, _ := m.Attrs["href"].(string)
 				b.WriteString("](" + strings.NewReplacer(")", "%29", " ", "%20").Replace(href) + ")")
+			case "text_color":
+				b.WriteString("]]")
 			default:
 				b.WriteString(delim(m.Type))
 			}
@@ -214,6 +224,9 @@ func (w *writer) inline(nodes []wnode) string {
 		for _, m := range marks[same:] {
 			if m.Type == "link" {
 				b.WriteString("[")
+			} else if m.Type == "text_color" {
+				c, _ := m.Attrs["color"].(string)
+				b.WriteString("[[color:" + c + ":")
 			} else {
 				b.WriteString(delim(m.Type))
 			}
@@ -236,9 +249,9 @@ func (w *writer) inline(nodes []wnode) string {
 		case "issue_chip":
 			b.WriteString("[[" + n.str("key") + "]]")
 		case "status":
-			b.WriteString(escape(n.str("text"), lineStart))
+			b.WriteString("[[status:" + n.str("color") + ":" + n.str("text") + "]]")
 		case "date":
-			b.WriteString(n.str("date"))
+			b.WriteString("[[date:" + n.str("date") + "]]")
 		case "page_link":
 			ref := n.str("pageId")
 			if w.pageRef != nil {
@@ -280,6 +293,9 @@ func sameMark(a, b wmark) bool {
 	}
 	if a.Type == "link" {
 		return a.Attrs["href"] == b.Attrs["href"]
+	}
+	if a.Type == "text_color" {
+		return a.Attrs["color"] == b.Attrs["color"]
 	}
 	return true
 }

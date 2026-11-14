@@ -91,3 +91,26 @@ func TestParseText(t *testing.T) {
 		t.Error("a text over the limit went through")
 	}
 }
+
+// Panels, statuses, tables of contents, colours and dates in the markup,
+// as the seed writes them, and what strict parsing refuses.
+func TestParseNewNodes(t *testing.T) {
+	r := people{}
+	got, err := markup.Parse("[[toc]]\n\n> [!WARNING]\n> Careful [[status:red:Sev 1]] on [[date:2026-11-13]], [[color:teal:**bold** words]]", r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"type":"doc","content":[{"type":"toc"},{"type":"panel","attrs":{"kind":"warning"},"content":[{"type":"paragraph","content":[{"type":"text","text":"Careful "},{"type":"status","attrs":{"text":"Sev 1","color":"red"}},{"type":"text","text":" on "},{"type":"date","attrs":{"date":"2026-11-13"}},{"type":"text","text":", "},{"type":"text","marks":[{"type":"strong"},{"type":"text_color","attrs":{"color":"teal"}}],"text":"bold"},{"type":"text","marks":[{"type":"text_color","attrs":{"color":"teal"}}],"text":" words"}]}]}]}`
+	if string(got) != want {
+		t.Errorf("got  %s\nwant %s", got, want)
+	}
+	back, err := markup.Write(got, nil)
+	if again, _ := markup.Parse(back, r); err != nil || string(again) != want {
+		t.Errorf("Write: %q %v", back, err)
+	}
+	for _, bad := range []string{"[[status:pink:x]]", "[[status:red:]]", "[[color:pink:x]]", "[[date:2026-02-30]]"} {
+		if _, err := markup.Parse(bad, r); err == nil {
+			t.Errorf("%s accepted", bad)
+		}
+	}
+}

@@ -6,6 +6,11 @@ author: s-tomasz
 created: -29d 10:00
 labels: [onboarding]
 ---
+> [!NOTE]
+> Nobody expects you to know anything yet. Ask in the team channel, out loud and often.
+
+[[toc]]
+
 ## Monday
 
 - Coffee with @s-tomasz, then [[page:Set up your laptop]]
@@ -20,7 +25,7 @@ labels: [onboarding]
 ## Thursday
 
 - Ship your first change to production, with the [[page:Release checklist]]
-- It may be a typo fix. A typo fix in production is a real change.
+- It may be a typo fix. A typo fix in production is a [[color:green:real change]].
 
 ## Friday
 

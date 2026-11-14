@@ -33,7 +33,7 @@ versions:
 ---
 ![Roadmap board](lib:roadmap-board)
 
-Now means this cycle, next means the one after, later means we believe in it but have not planned it.
+Now means this cycle, next means the one after, later means we [[color:purple:believe in it]] but have not planned it.
 
 | Now | Next | Later |
 | --- | --- | --- |
@@ -45,8 +45,8 @@ Now means this cycle, next means the one after, later means we believe in it but
 
 ## Changes since the last version
 
-- App 3.0 slips by about four days: the store review asked for account deletion in the app ([[APP-37]]). If it is not at 100 % two days before the sale, the sale runs on 2.8.
-- The PostgreSQL upgrade waits for a maintenance window ([[OPS-11]]). We will not do it in the sale week.
+- [[status:yellow:Delayed]] App 3.0 slips by about four days: the store review asked for account deletion in the app ([[APP-37]]). If it is not at 100 % two days before the sale, the sale runs on 2.8.
+- [[status:neutral:Waiting]] The PostgreSQL upgrade waits for a maintenance window ([[OPS-11]]). We will not do it in the sale week.
 
 ## How we choose
 

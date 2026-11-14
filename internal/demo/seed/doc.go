@@ -55,6 +55,10 @@
 //	                     \| is a pipe inside a cell; at most 50 rows by 20
 //	---                  a horizontal rule
 //	![Alt text](lib:id)  an image of the library, on a line of its own
+//	> [!NOTE]            a panel holding the blocks after it: NOTE info,
+//	> text               IMPORTANT note, TIP success, WARNING warning,
+//	                     CAUTION error, as the Markdown export writes them
+//	[[toc]]              a table of contents, on a line of its own
 //
 // A list item's further lines, nested lists and code are indented by two
 // spaces (by the marker's width for numbered items).
@@ -67,10 +71,16 @@
 //	[[page:Exact Title]]          a link to a page of the same space
 //	[[page:ENG/Exact Title]]      a link to a page of another space
 //	@s-priya                      a mention of a seeded person
+//	[[status:green:Done]]         a status lozenge (neutral, purple, blue,
+//	                              red, yellow, green; 1 to 40 characters)
+//	[[color:red:some text]]       text in a colour of the palette (red,
+//	                              orange, yellow, green, teal, blue,
+//	                              purple, grey)
+//	[[date:2026-11-13]]           a date
 //	\*                            a backslash makes punctuation literal
 //
 // Issue descriptions and comments link pages with the space's key. Comments
-// hold no headings and no tables.
+// hold no headings, tables and tables of contents.
 package seed
 
 //go:generate go run ./genimages -out ../../web/static/img/lib -index data/images.json

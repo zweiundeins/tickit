@@ -19,8 +19,11 @@ import (
 // and what to do before axe looks (the notification panel opens).
 func a11yPages(t *testing.T, e *webtest.Env) []struct{ name, path, before string } {
 	t.Helper()
-	var page string
+	var page, incident string
 	if err := e.DB.R.QueryRow(`SELECT id FROM pages WHERE title = 'Deploy to production'`).Scan(&page); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.DB.R.QueryRow(`SELECT id FROM pages WHERE title = 'Incident response'`).Scan(&incident); err != nil {
 		t.Fatal(err)
 	}
 	return []struct{ name, path, before string }{
@@ -34,6 +37,7 @@ func a11yPages(t *testing.T, e *webtest.Env) []struct{ name, path, before string
 		{"page", wiki.PageURL("ENG", page, "Deploy to production"), ""},
 		{"page, Move open", wiki.PageURL("ENG", page, "Deploy to production"), `customElements.get('sb-tree') && (document.getElementById('move').open || document.querySelector('[commandfor=move]').click(), document.getElementById('move').open)`},
 		{"page edit", wiki.EditURL("ENG", page), `document.getElementById('editor')?.view`},
+		{"page with statuses", wiki.PageURL("ENG", incident, "Incident response"), ""},
 		{"search", "/search?q=checkout", ""},
 		{"notifications", "/", `(document.querySelector('[popovertarget=tk-notifications]').click(), true)`},
 	}

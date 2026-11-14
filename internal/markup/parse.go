@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 )
@@ -36,12 +37,17 @@ const (
 	maxDocBytes   = 204800
 	maxTableRows  = 50
 	maxTableCols  = 20
+	maxStatusText = 40
 )
 
 var (
 	codeLanguages = []string{"", "text", "go", "js", "ts", "html", "css", "sql", "json", "yaml", "bash", "python", "java", "rust", "markdown", "diff"}
 	linkSchemes   = []string{"http", "https", "mailto"}
-	markRank      = map[string]int{"link": 0, "strong": 1, "em": 2, "strike": 3, "code": 4}
+	markRank      = map[string]int{"link": 0, "strong": 1, "em": 2, "strike": 3, "code": 4, "text_color": 5}
+	textColors    = []string{"red", "orange", "yellow", "green", "teal", "blue", "purple", "grey"}
+	statusColors  = []string{"neutral", "purple", "blue", "red", "yellow", "green"}
+	// alerts are GitHub's alerts, which open a panel of a kind.
+	alerts = map[string]string{"[!NOTE]": "info", "[!IMPORTANT]": "note", "[!TIP]": "success", "[!WARNING]": "warning", "[!CAUTION]": "error"}
 
 	issueKeyRe  = regexp.MustCompile(`^[A-Z]{2,6}-[1-9][0-9]*$`)
 	issueKeyCI  = regexp.MustCompile(`^[A-Za-z]{2,6}-[1-9][0-9]*$`)
@@ -210,7 +216,7 @@ func startsBlock(s string) bool {
 	if strings.HasPrefix(s, "```") || strings.HasPrefix(s, ">") || strings.HasPrefix(s, "|") || strings.HasPrefix(s, "![") {
 		return true
 	}
-	if s == "---" || headingRe.MatchString(s) {
+	if s == "---" || s == "[[toc]]" || headingRe.MatchString(s) {
 		return true
 	}
 	k, _, _, _ := marker(s)
@@ -261,6 +267,9 @@ func (p *parser) blocks(ls []line) ([]*node, error) {
 		case s == "---":
 			out = append(out, &node{Type: "horizontal_rule"})
 			i++
+		case s == "[[toc]]" && p.mode != Comment:
+			out = append(out, &node{Type: "toc"})
+			i++
 		case strings.HasPrefix(s, ">"):
 			var inner []line
 			for i < len(ls) && strings.HasPrefix(ls[i].text, ">") {
@@ -268,6 +277,10 @@ func (p *parser) blocks(ls []line) ([]*node, error) {
 				t = strings.TrimPrefix(t, " ")
 				inner = append(inner, line{t, ls[i].no})
 				i++
+			}
+			kind, panel := alerts[strings.TrimSpace(inner[0].text)]
+			if panel {
+				inner = inner[1:]
 			}
 			content, err := p.blocks(inner)
 			if err != nil {
@@ -277,6 +290,10 @@ func (p *parser) blocks(ls []line) ([]*node, error) {
 				if !p.lenient() {
 					return nil, errAt(l, "an empty quote")
 				}
+				continue
+			}
+			if panel {
+				out = append(out, &node{Type: "panel", Attrs: attrs{{"kind", kind}}, Content: content})
 				continue
 			}
 			out = append(out, &node{Type: "blockquote", Content: content})
@@ -753,6 +770,20 @@ func (p *parser) spans(s string, marks []mark, at line) ([]*node, error) {
 			} else {
 				i = next
 			}
+		case strings.HasPrefix(s[i:], "[[color:"):
+			end := strings.Index(s[i+2:], "]]")
+			name, text, ok := strings.Cut(s[i+8:max(i+8, i+2+end)], ":")
+			if end < 0 || !ok || !slices.Contains(textColors, name) || strings.TrimSpace(text) == "" {
+				i, err = literal(i, 2, errAt(at, "a colour is [[color:name:text]], the name one of %s", strings.Join(textColors, ", ")))
+				break
+			}
+			inner, e := p.spans(text, withMark(marks, mark{Type: "text_color", Attrs: attrs{{"color", name}}}), at)
+			if e != nil {
+				return nil, e
+			}
+			flush()
+			out = append(out, inner...)
+			i += end + 4
 		case strings.HasPrefix(s[i:], "[["):
 			end := strings.Index(s[i+2:], "]]")
 			if end < 0 {
@@ -810,6 +841,20 @@ func (p *parser) spans(s string, marks []mark, at line) ([]*node, error) {
 }
 
 func (p *parser) reference(ref string, at line) (*node, error) {
+	if rest, ok := strings.CutPrefix(ref, "status:"); ok {
+		color, text, _ := strings.Cut(rest, ":")
+		text = strings.TrimSpace(text)
+		if !slices.Contains(statusColors, color) || text == "" || utf8.RuneCountInString(text) > maxStatusText {
+			return nil, errAt(at, "a status is [[status:colour:text]], the colour one of %s and 1 to %d characters", strings.Join(statusColors, ", "), maxStatusText)
+		}
+		return &node{Type: "status", Attrs: attrs{{"text", text}, {"color", color}}}, nil
+	}
+	if day, ok := strings.CutPrefix(ref, "date:"); ok {
+		if t, err := time.Parse(time.DateOnly, day); err != nil || t.Format(time.DateOnly) != day {
+			return nil, errAt(at, "a date is [[date:2026-11-13]]")
+		}
+		return &node{Type: "date", Attrs: attrs{{"date", day}}}, nil
+	}
 	if title, ok := strings.CutPrefix(ref, "page:"); ok {
 		title = strings.TrimSpace(title)
 		id := title
@@ -904,7 +949,7 @@ func sameMarks(a, b []mark) bool {
 		if a[i].Type != b[i].Type {
 			return false
 		}
-		if a[i].Type == "link" && a[i].Attrs[0].value != b[i].Attrs[0].value {
+		if (a[i].Type == "link" || a[i].Type == "text_color") && a[i].Attrs[0].value != b[i].Attrs[0].value {
 			return false
 		}
 	}
@@ -914,7 +959,7 @@ func sameMarks(a, b []mark) bool {
 func countBlocks(n *node) int {
 	c := 0
 	switch n.Type {
-	case "doc", "text", "hard_break", "issue_chip", "mention", "page_link":
+	case "doc", "text", "hard_break", "issue_chip", "mention", "page_link", "status", "date":
 	default:
 		c = 1
 	}

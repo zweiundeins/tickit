@@ -30,6 +30,9 @@ versions:
 ---
 Copy this list into the issue or the merge request and tick it off there.
 
+> [!TIP]
+> The pipeline checks the first three boxes by itself. The others are yours.
+
 ## Shop and platform
 
 - [ ] Tests green on main

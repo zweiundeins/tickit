@@ -43,7 +43,12 @@ versions:
 ---
 ![Deploy pipeline](lib:deploy-pipeline)
 
+[[toc]]
+
 ## Before you start
+
+> [!WARNING]
+> Deploys stop for the week of a sale unless the on-call lead says yes.
 
 - Not on Friday after 15:00, and not during the first hour of a sale
 - Someone else knows you are deploying
@@ -71,6 +76,9 @@ versions:
 alp deploy rollback summit --env prod
 ```
 
-The rollback deploys the previous image to everyone at once. It takes about two minutes. Migrations are never rolled back by a deploy: every migration must work with the previous version of summit.
+The rollback deploys the previous image to everyone at once. It takes about two minutes.
+
+> [!CAUTION]
+> Migrations are [[color:red:never]] rolled back by a deploy: every migration must work with the previous version of summit.
 
 Known problem: at night the canary may wait a long time for traffic, see [[OPS-42]].

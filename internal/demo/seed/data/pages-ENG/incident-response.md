@@ -18,10 +18,13 @@ labels: [incident, on-call]
 
 Every 30 minutes, even if nothing changed. "Still looking, next update at 07:30" is an update.
 
+> [!WARNING]
+> The Voice never guesses a time for the fix on the status page. Say what we know and when the next update comes.
+
 ## Severity
 
 | Level | Example | Who wakes up |
 | --- | --- | --- |
-| 1 | Nobody can pay | on-call and the lead |
-| 2 | Part of the shop is wrong, like [[OPS-21]] | on-call |
-| 3 | Something internal is broken | nobody, it waits for the morning |
+| [[status:red:Sev 1]] | Nobody can pay | on-call and the lead |
+| [[status:yellow:Sev 2]] | Part of the shop is wrong, like [[OPS-21]] | on-call |
+| [[status:neutral:Sev 3]] | Something internal is broken | nobody, it waits for the morning |
