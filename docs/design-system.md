@@ -278,6 +278,8 @@ The toolbar is `role=toolbar` with one tab stop and Left and Right along it; eve
 
 ### Prose
 
+A wiki page's outline is Starbase's `sb-toc` in `.wk-outline` (wiki.css): its `--sb-*` colours, fonts and notch come from tickit's tokens, it is a 13rem column from a 100rem viewport and a sticky compact bar above the text below that, where headings get a larger `scroll-margin` so a jump lands below the bar.
+
 `.prose` styles exactly the HTML of a document (docs/editor.md): `h2` to `h6` and `p[role=heading][aria-level="7"]` for headings, `div.doc-panel[data-panel]` (its kind's hue as wash and edge, and its pixel icon as a mask, `ui.IconMask`, which `TestProsePanelIcons` checks), `nav.doc-toc`, `span.doc-status` (a `.tk-lozenge` in `data-color`'s hue), `span.doc-color[data-color]`, `pre[data-language] > code` with the language in a tab, `ul.task-list > li.task-item[data-checked]`, `figure.doc-image > img`, tables with a header row, the inline references, `span.link-unsafe`, and `ins.diff-ins` / `del.diff-del` for version compare (FR-88). `.prose--small` is for comments.
 
 ## Starbase components

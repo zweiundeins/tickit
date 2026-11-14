@@ -299,7 +299,7 @@ func (s *Server) pageView(ctx context.Context, q sqlite.Querier, me people.Perso
 	}
 	pageViews := []string{"page:" + p.ID, "pagedoc:" + p.ID, "inline:" + p.ID, "pagepeople:" + p.ID, "tree:" + p.ID}
 	scripts := []string{inlineScript, views.TreeScript}
-	components := []string{"copy-button", "tree"}
+	components := []string{"copy-button", "tree", "toc"}
 	if section == "home" {
 		feed, err := s.ScopeActivity(ctx, q, access.SpaceScope(sp.ID), from, time.Now())
 		if err != nil {
@@ -772,7 +772,29 @@ func (s *Server) readerHTML(ctx context.Context, q sqlite.Querier, page string, 
 	rd := readerOf(page)
 	rd.mu.Lock()
 	defer rd.mu.Unlock()
-	return views.PageBody{HTML: rd.cache.RenderHighlighted(h.Doc, docnodes.As(docnodes.DocName("p", page), r), hs), V: h.Version, Epoch: h.Epoch}, nil
+	name := docnodes.DocName("p", page)
+	body := views.PageBody{HTML: rd.cache.RenderHighlighted(h.Doc, docnodes.As(name, r), hs), V: h.Version, Epoch: h.Epoch}
+	body.Outline = outlineOf(h.Doc, name)
+	return body, nil
+}
+
+// outlineOf is a page's outline: its headings, when it has at least
+// views.OutlineMin of them and no toc, which already lists them.
+func outlineOf(d prosemirror.Doc, name string) []views.OutlineEntry {
+	toc := false
+	d.Descendants(func(n *prosemirror.Node, _ int, _ *prosemirror.Node, _ int) bool {
+		toc = toc || n.Type().Name() == "toc"
+		return !toc && !n.Type().InlineContent()
+	})
+	hs := docnodes.OutlineAs(d, name)
+	if toc || len(hs) < views.OutlineMin {
+		return nil
+	}
+	out := make([]views.OutlineEntry, len(hs))
+	for i, h := range hs {
+		out[i] = views.OutlineEntry{Level: h.Level, Text: h.Text, ID: h.ID}
+	}
+	return out
 }
 
 // readerView is pagedoc:<page>, keyed by the projects the reader may
@@ -794,7 +816,7 @@ func (s *Server) readerView(ctx context.Context, q sqlite.Querier, actor people.
 			if err != nil {
 				return nil, err
 			}
-			return patch(ctx, views.PageBodyRegion(body))
+			return patch(ctx, templ.Join(views.PageOutlineRegion(body), views.PageBodyRegion(body)))
 		},
 	}, nil
 }

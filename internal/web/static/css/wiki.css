@@ -579,6 +579,50 @@
 		}
 	}
 
+	/* The page's outline (sb-toc): a bar above the text, sticky under the
+	 * header, until a wide screen gives it a column of its own. */
+	.wk-outline:empty {
+		display: none;
+	}
+
+	.wk-outline > sb-toc {
+		position: sticky;
+		inset-block-start: var(--tk-header-height);
+		z-index: var(--tk-z-sticky);
+		display: block;
+		max-inline-size: 100%;
+		--sb-brand: var(--tk-accent);
+		--sb-text-1: var(--tk-text-1);
+		--sb-text-2: var(--tk-text-2);
+		--sb-text-muted: var(--tk-text-muted);
+		--sb-border: var(--tk-border);
+		--sb-surface-hover: var(--tk-surface-hover);
+		--sb-surface-card: var(--tk-surface-overlay);
+		--sb-shadow-overlay: var(--tk-shadow-overlay);
+		--sb-focus-ring: var(--tk-focus);
+		--sb-font-display: var(--tk-font-mono);
+		--sb-notch: var(--tk-notch);
+	}
+
+	/* A jump to a heading lands below the outline's bar too. */
+	@media (max-width: 99.99rem) {
+		.wk-docgrid:has(> .wk-outline > sb-toc) .prose :is(h2, h3, h4, h5, h6, [role="heading"]) {
+			scroll-margin-block-start: calc(var(--tk-header-height) + var(--tk-space-16));
+		}
+	}
+
+	@media (min-width: 100rem) {
+		.wk-docgrid:has(> .wk-outline > sb-toc) {
+			grid-template-columns: 13rem minmax(0, 1fr) 18rem;
+		}
+
+		.wk-outline > sb-toc {
+			inset-block-start: calc(var(--tk-header-height) + var(--tk-space-3));
+			max-block-size: calc(100vh - var(--tk-header-height) - var(--tk-space-6));
+			overflow-y: auto;
+		}
+	}
+
 	.wk-ic-panel {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);

@@ -24,6 +24,7 @@ templ WikiPage(p PageProps) {
 		}
 		@pageActions(p)
 		<div class="wk-docgrid">
+			@PageOutlineRegion(p.Body)
 			@PageBodyRegion(p.Body)
 			@InlinePanel(p.Page.ID, p.Page.State == wiki.Current, p.Inline, p.Now)
 			@SelectionBar(p.Page.State == wiki.Current, len(p.Issue.Projects) > 0)
@@ -134,6 +135,20 @@ func boolText(b bool) string {
 templ PageBodyRegion(b PageBody) {
 	<div id={ PageBodyID } class="prose wk-body" data-v={ i64(b.V) } data-epoch={ b.Epoch }>
 		@templ.Raw(b.HTML)
+	</div>
+}
+
+// PageOutlineRegion is the page's outline (sb-toc around the server's
+// list of its headings), or an empty slot for a page without one. It sits
+// in a column of its own on a wide screen and folds into a bar above the
+// text on a narrower one.
+templ PageOutlineRegion(b PageBody) {
+	<div id={ PageOutlineID } class="wk-outline">
+		if len(b.Outline) > 0 {
+			<sb-toc label="On this page" content={ "#" + PageBodyID } compact="(max-width: 99.99rem)" progress>
+				@templ.Raw(outlineList(b.Outline))
+			</sb-toc>
+		}
 	</div>
 }
 

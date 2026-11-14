@@ -1,6 +1,7 @@
 package views
 
 import (
+	"html"
 	"context"
 	"encoding/json"
 	"io"
@@ -103,6 +104,53 @@ type PageBody struct {
 	HTML  string
 	V     int64
 	Epoch string
+	// Outline lists the page's headings beside it when it has at least
+	// OutlineMin of them and no table of contents of its own.
+	Outline []OutlineEntry
+}
+
+// OutlineEntry is a heading of the page's outline, its id as the reader
+// view renders it (docnodes.OutlineAs).
+type OutlineEntry struct {
+	Level    int
+	Text, ID string
+}
+
+// OutlineMin is how many headings a page needs for its outline: with
+// fewer, its sections fit on a screen or two and a list adds nothing.
+const OutlineMin = 4
+
+// PageOutlineID is the outline's slot beside the page's body.
+const PageOutlineID = "page-outline"
+
+// outlineList is the outline as nested lists of links, a deeper level in
+// a list inside the entry before it, as sb-toc reads it.
+func outlineList(hs []OutlineEntry) string {
+	var b strings.Builder
+	var stack []int
+	for _, h := range hs {
+		switch {
+		case len(stack) == 0, h.Level > stack[len(stack)-1]:
+			b.WriteString("<ol>")
+			stack = append(stack, h.Level)
+		default:
+			for len(stack) > 1 && h.Level < stack[len(stack)-1] {
+				b.WriteString("</li></ol>")
+				stack = stack[:len(stack)-1]
+			}
+			if h.Level > stack[len(stack)-1] {
+				b.WriteString("<ol>")
+				stack = append(stack, h.Level)
+			} else {
+				b.WriteString("</li>")
+			}
+		}
+		b.WriteString(`<li><a href="#` + html.EscapeString(h.ID) + `">` + html.EscapeString(h.Text) + `</a>`)
+	}
+	for range stack {
+		b.WriteString("</li></ol>")
+	}
+	return b.String()
 }
 
 // InlineItem is an inline comment's thread beside the text (FR-91).
