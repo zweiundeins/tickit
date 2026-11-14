@@ -410,8 +410,11 @@ func loadIssue(ctx context.Context, q sqlite.Querier, id string, now time.Time) 
 	}
 	for _, c := range comments {
 		vc := views.Comment{Comment: c}
-		if vc.HTML, vc.Markup, err = renderDoc(c.Body, res); err != nil {
+		if vc.HTML, vc.Markup, err = renderDoc(c.Body, docnodes.As(docnodes.DocName("c", c.ID), res)); err != nil {
 			return m, err
+		}
+		if strings.Contains(vc.HTML, ` id="h-`) {
+			vc.FeedHTML, _, _ = renderDoc(c.Body, docnodes.As(docnodes.DocName("a", c.ID), res))
 		}
 		m.Comments = append(m.Comments, vc)
 	}
@@ -464,12 +467,12 @@ func loadIssueAt(ctx context.Context, q sqlite.Querier, id string, version int64
 	if a.People, err = people.Lookup(ctx, q, ids...); err != nil {
 		return a, err
 	}
-	a.DescHTML, _, err = renderDoc(st.Description, &docResolver{ctx: ctx, q: q, people: a.People})
+	a.DescHTML, _, err = renderDoc(st.Description, docnodes.As(docnodes.DocName("d", id), &docResolver{ctx: ctx, q: q, people: a.People}))
 	return a, err
 }
 
 // renderDoc renders a stored document as HTML and as markup; nil gives "".
-func renderDoc(raw json.RawMessage, r *docResolver) (string, string, error) {
+func renderDoc(raw json.RawMessage, r docnodes.Resolver) (string, string, error) {
 	if len(raw) == 0 || string(raw) == "null" {
 		return "", "", nil
 	}

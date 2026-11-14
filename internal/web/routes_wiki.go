@@ -456,7 +456,7 @@ func commentItems(ctx context.Context, q sqlite.Querier, list []wiki.Comment) ([
 		for _, c := range cs {
 			it := views.CommentItem{Comment: c, Author: who[c.Author], Replies: conv(c.Replies)}
 			if d, ok := docs[c.ID]; ok {
-				it.HTML, it.Text = docnodes.RenderHTML(d, res), docnodes.Text(d)
+				it.HTML, it.Text = docnodes.RenderHTML(d, docnodes.As(docnodes.DocName("c", c.ID), res)), docnodes.Text(d)
 			}
 			out = append(out, it)
 		}
@@ -772,7 +772,7 @@ func (s *Server) readerHTML(ctx context.Context, q sqlite.Querier, page string, 
 	rd := readerOf(page)
 	rd.mu.Lock()
 	defer rd.mu.Unlock()
-	return views.PageBody{HTML: rd.cache.RenderHighlighted(h.Doc, r, hs), V: h.Version, Epoch: h.Epoch}, nil
+	return views.PageBody{HTML: rd.cache.RenderHighlighted(h.Doc, docnodes.As(docnodes.DocName("p", page), r), hs), V: h.Version, Epoch: h.Epoch}, nil
 }
 
 // readerView is pagedoc:<page>, keyed by the projects the reader may
@@ -993,9 +993,9 @@ func (s *Server) oldVersion(w http.ResponseWriter, r *http.Request, from, n int)
 		lists := describeLists(ctx, q, res)
 		if old != nil {
 			diff := docnodes.Diff(old, d)
-			vp.Compare, vp.From, vp.HTML, vp.Inserted, vp.Deleted = true, from, diff.HTML(lists), diff.Inserted, diff.Deleted
+			vp.Compare, vp.From, vp.HTML, vp.Inserted, vp.Deleted = true, from, diff.HTML(docnodes.As(docnodes.DocName("p", p.ID), lists)), diff.Inserted, diff.Deleted
 		} else {
-			vp.HTML = docnodes.RenderHTML(d, lists)
+			vp.HTML = docnodes.RenderHTML(d, docnodes.As(docnodes.DocName("p", p.ID), lists))
 		}
 		sidebar, err := s.sidebar(ctx, q, sp, p.ID, "")
 		if err != nil {

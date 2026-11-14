@@ -848,7 +848,11 @@ templ issueActivity(m Issue) {
 							<p><b>{ who.Name }</b> commented</p>
 							if c, ok := m.comment(a.Comment.ID); ok && !c.IsDeleted() && !c.IsHidden() {
 								<div class="prose prose--small">
-									@templ.Raw(c.HTML)
+									if c.FeedHTML != "" {
+										@templ.Raw(c.FeedHTML)
+									} else {
+										@templ.Raw(c.HTML)
+									}
 								</div>
 							} else {
 								<p class="muted">Comment deleted</p>

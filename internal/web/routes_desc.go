@@ -77,7 +77,8 @@ func editableIssue(ctx context.Context, q sqlite.Querier, actor people.Person, i
 // descHTML renders an issue's description as it is now, from its
 // document; an issue created before descriptions had one shows the
 // description its row holds.
-func descHTML(ctx context.Context, q sqlite.Querier, issue string, fallback json.RawMessage, r *docResolver) (string, error) {
+func descHTML(ctx context.Context, q sqlite.Querier, issue string, fallback json.RawMessage, res *docResolver) (string, error) {
+	r := docnodes.As(docnodes.DocName("d", issue), res)
 	h, err := tracker.DescriptionHead(ctx, q, issue)
 	if errors.Is(err, sql.ErrNoRows) {
 		html, _, err := renderDoc(fallback, r)
@@ -467,10 +468,10 @@ func (s *Server) descVersion(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if ver.Before == nil {
-			p.HTML = docnodes.RenderHTML(ver.After, res)
+			p.HTML = docnodes.RenderHTML(ver.After, docnodes.As(docnodes.DocName("d", d.ID), res))
 		} else {
 			diff := docnodes.Diff(ver.Before, ver.After)
-			p.HTML, p.Inserted, p.Deleted = diff.HTML(res), diff.Inserted, diff.Deleted
+			p.HTML, p.Inserted, p.Deleted = diff.HTML(docnodes.As(docnodes.DocName("d", d.ID), res)), diff.Inserted, diff.Deleted
 		}
 		return Page{Title: d.Key + " description, version " + strconv.FormatInt(v, 10), Nav: "projects", Project: d.ProjectID, Width: "prose",
 			Body: views.DescVersion(p)}, nil

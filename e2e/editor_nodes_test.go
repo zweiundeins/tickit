@@ -63,12 +63,12 @@ func TestEditorNewNodes(t *testing.T) {
 	reader.Wait(t, `(() => {
 		const b = document.getElementById('page-body')
 		const toc = [...b.querySelectorAll('nav.doc-toc[aria-label=Contents] a')].map((a) => a.getAttribute('href')).join()
-		return b.querySelector('h5#h-intro')?.textContent === 'Intro' &&
+		return b.querySelector('h5[id^="h-p-"][id$="-intro"]')?.textContent === 'Intro' &&
 			b.querySelector('div.doc-panel[data-panel=warning][role=note][aria-label=Warning] > p')?.textContent === 'Careful now' &&
 			b.querySelector('span.doc-color[data-color=purple]')?.textContent === 'Purple' &&
 			b.querySelector('span.tk-lozenge.doc-status[data-color=green]')?.textContent === 'Done' &&
-			b.querySelector('p[role=heading][aria-level="7"]#h-sixth') && b.querySelector('h6#h-fifth') &&
-			toc === '#h-intro,#h-sixth,#h-fifth'
+			b.querySelector('p[role=heading][aria-level="7"][id$="-sixth"]') && b.querySelector('h6[id$="-fifth"]') &&
+			toc === [...b.querySelectorAll('[id^="h-p-"]')].map((h) => '#' + h.id).join()
 	})()`, 10*time.Second)
 	// The palette's tokens reach them: the colour, the panel's wash and icon.
 	var styled struct{ Text, Para, Wash, Icon string }
@@ -81,8 +81,8 @@ func TestEditorNewNodes(t *testing.T) {
 		t.Errorf("not styled: %+v", styled)
 	}
 	// A toc's link goes to its heading.
-	reader.Eval(t, `(document.querySelector('nav.doc-toc a[href="#h-fifth"]').click(), true)`, nil)
-	reader.Wait(t, `location.hash === '#h-fifth'`, 5*time.Second)
+	reader.Eval(t, `(document.querySelector('nav.doc-toc a[href$="-fifth"]').click(), true)`, nil)
+	reader.Wait(t, `location.hash.startsWith('#h-p-') && location.hash.endsWith('-fifth')`, 5*time.Second)
 	if src := os.Getenv("TICKIT_AXE"); src != "" {
 		axe, err := os.ReadFile(src)
 		if err != nil {

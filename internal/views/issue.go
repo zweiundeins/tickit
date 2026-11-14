@@ -72,6 +72,9 @@ func NamedMentions(text string, who map[string]people.Person) (string, []string)
 type Comment struct {
 	tracker.Comment
 	HTML, Markup string
+	// FeedHTML is HTML with heading ids of its own for the activity feed,
+	// when the comment has headings; "" uses HTML.
+	FeedHTML string
 }
 
 // IssueAsOf is an issue as it stood at a version (FR-70): the view

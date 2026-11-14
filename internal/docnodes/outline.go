@@ -12,15 +12,19 @@ import (
 type Heading struct {
 	Level int
 	Text  string
-	// ID is the id of the heading's element: h- and a slug of its text,
-	// with -2, -3 for the second and third of the same text.
+	// ID is the id of the heading's element: h-, the document's name when
+	// it is rendered As one and a hyphen, and a slug of its text, with -2,
+	// -3 for the second and third of the same text.
 	ID string
 }
 
 // Outline returns the document's headings in document order, wherever
 // they are, with the ids RenderHTML gives their elements; a toc lists
 // them.
-func Outline(d prosemirror.Doc) []Heading { return newOutline(d).list }
+func Outline(d prosemirror.Doc) []Heading { return newOutline(d, "").list }
+
+// OutlineAs is Outline with the ids of a document rendered As doc.
+func OutlineAs(d prosemirror.Doc, doc string) []Heading { return newOutline(d, doc).list }
 
 // outline is a document's headings for one render: their ids by node,
 // and a key of the whole list for the BlockCache of a toc.
@@ -30,7 +34,11 @@ type outline struct {
 	key  string
 }
 
-func newOutline(d prosemirror.Doc) *outline {
+func newOutline(d prosemirror.Doc, doc string) *outline {
+	prefix := "h-"
+	if doc != "" {
+		prefix = "h-" + doc + "-"
+	}
 	o := &outline{ids: map[*prosemirror.Node]string{}}
 	if d == nil {
 		return o
@@ -45,9 +53,9 @@ func newOutline(d prosemirror.Doc) *outline {
 			return false
 		}
 		text := headingText(n)
-		id := "h-" + slug(text)
+		id := prefix + slug(text)
 		for i := 2; used[id]; i++ {
-			id = "h-" + slug(text) + "-" + strconv.Itoa(i)
+			id = prefix + slug(text) + "-" + strconv.Itoa(i)
 		}
 		used[id] = true
 		l := headingLevel(n)

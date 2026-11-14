@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"strconv"
 	"sync"
+	"unicode"
 
 	"github.com/zweiundeins/prosemirror-go"
 )
@@ -106,16 +107,53 @@ type rendering struct {
 }
 
 func withOutline(d prosemirror.Doc, r Resolver) Resolver {
-	return rendering{base(resolverOrNone(r)), newOutline(d)}
+	return rendering{base(resolverOrNone(r)), newOutline(d, nameOf(r))}
+}
+
+// named is a resolver with the name of the document it renders.
+type named struct {
+	Resolver
+	doc string
+}
+
+// As renders with r a document named doc (DocName): its headings' ids
+// start with h-<doc>-, so that the anchors of several documents on one
+// page, and their tables of contents, stay apart.
+func As(doc string, r Resolver) Resolver { return named{base(resolverOrNone(r)), doc} }
+
+// DocName names a document for As by its kind ("p" a page, "d" a
+// description, "c" a comment, "a" a comment's copy in an activity feed) and the last eight letters and digits of
+// its id, the random part of a UUIDv7.
+func DocName(kind, id string) string {
+	var tail []rune
+	for _, c := range []rune(id) {
+		if c < 128 && (unicode.IsLetter(c) || unicode.IsDigit(c)) {
+			tail = append(tail, unicode.ToLower(c))
+		}
+	}
+	return kind + "-" + string(tail[max(0, len(tail)-8):])
+}
+
+func nameOf(r Resolver) string {
+	if x, ok := r.(named); ok {
+		return x.doc
+	}
+	return ""
 }
 
 // base is the caller's resolver, which the optional interfaces
 // (FaceResolver, ListResolver, imageHider) are asked of.
 func base(r Resolver) Resolver {
-	if x, ok := r.(rendering); ok {
-		return x.Resolver
+	for {
+		switch x := r.(type) {
+		case rendering:
+			r = x.Resolver
+		case named:
+			r = x.Resolver
+		default:
+			return r
+		}
 	}
-	return r
 }
 
 func outlineOf(r Resolver) *outline {

@@ -2,6 +2,7 @@ package docnodes
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/zweiundeins/prosemirror-go/adf"
@@ -80,5 +81,18 @@ func TestLimitsMatchADF(t *testing.T) {
 	lim := SchemaLimits()
 	if !slices.Equal(lim.TextColors, adf.Colors) || !slices.Equal(lim.PanelKinds, adf.PanelKinds) || !slices.Equal(lim.StatusColors, adf.StatusColors) {
 		t.Errorf("schema.json %v %v %v, adf %v %v %v", lim.TextColors, lim.PanelKinds, lim.StatusColors, adf.Colors, adf.PanelKinds, adf.StatusColors)
+	}
+}
+
+// Two documents rendered together name their headings apart.
+func TestHeadingIDsAs(t *testing.T) {
+	d := mustDoc(t, docOf(`{"type":"toc"}`, heading(1, "Steps")))
+	a := RenderHTML(d, As(DocName("d", "0192f0c4-7b1e-7cc3-9d2a-5f6e7a8b9c0d"), testResolver))
+	b := RenderHTML(d, As(DocName("c", "0192f0c4-7b1e-7cc3-9d2a-5f6e7a8b9c0e"), nil))
+	if !strings.Contains(a, `<h2 id="h-d-7a8b9c0d-steps">`) || !strings.Contains(a, `href="#h-d-7a8b9c0d-steps"`) || !strings.Contains(b, `<h2 id="h-c-7a8b9c0e-steps">`) {
+		t.Errorf("ids:\n%s\n%s", a, b)
+	}
+	if o := OutlineAs(d, "p-x"); o[0].ID != "h-p-x-steps" {
+		t.Errorf("OutlineAs %+v", o)
 	}
 }
