@@ -108,7 +108,7 @@ func (s *Server) editorPage(w http.ResponseWriter, r *http.Request) {
 			Title: "Editing " + p.Title, Nav: "spaces", Sidebar: sidebar, SidebarLabel: "Space",
 			Views:      []string{"pagepeople:" + p.ID, "carets:" + p.ID, "editchips:" + p.ID, "editcomments:" + p.ID, "pagetitle:" + p.ID, "inline:" + p.ID, "tree:" + p.ID, "pagelists:" + p.ID},
 			Scripts:    []string{"editor/sb-rich-editor.min.js", inlineScript, views.TreeScript},
-			Components: treeComponents,
+			Components: []string{"tree", "date-picker"},
 			Body:       views.EditorPage(views.EditorProps{PageProps: props, Host: host}),
 		}, nil
 	})

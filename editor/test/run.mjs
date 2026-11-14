@@ -270,7 +270,9 @@ test("toDOM writes docs/editor.md's HTML of a document", async () => {
 			S.nodes.table.create(null, S.nodes.table_row.create(null, [S.nodes.table_header.create({ colspan: 2 }, p(t('h'))), S.nodes.table_cell.create(null, p(t('c')))])),
 			S.nodes.image.create({ imageId: 'diagram-1', src: '/img/lib/diagram-1', alt: 'A diagram' }),
 			S.nodes.issue_list.create({ filter: 'type=bug&q=<b>', limit: 5 }),
-			p(S.nodes.status.create({ text: 'DONE', color: 'green' }), t('r', [S.marks.text_color.create({ color: 'red' })])),
+			p(S.nodes.status.create({ text: 'DONE', color: 'green' }), t('r', [S.marks.text_color.create({ color: 'red' })]), S.nodes.date.create({ date: '2026-11-13' })),
+			S.nodes.details.create({ summary: 'More', open: true }, p(t('m'))),
+			S.nodes.details.create(null, p(t('n'))),
 			p(
 				t('a'), S.nodes.hard_break.create(), S.nodes.issue_chip.create({ key: 'WEB-12' }), S.nodes.mention.create({ personId: 'u_1', label: 'Sunny Otter' }), S.nodes.page_link.create({ pageId: 'pg_roadmap' }),
 				t('s', ['strong']), t('e', ['em']), t('k', ['strike']), t('c', ['code']), t('l', [S.marks.link.create({ href: 'https://example.com/x' })]), t('u', [S.marks.link.create({ href: 'javascript:alert(1)' })]),
@@ -289,7 +291,9 @@ test("toDOM writes docs/editor.md's HTML of a document", async () => {
 		'<table><tbody><tr><th colspan="2"><p>h</p></th><td><p>c</p></td></tr></tbody></table>',
 		'<figure class="doc-image"><img src="/img/lib/diagram-1" alt="A diagram" loading="lazy"></figure>',
 		'<div class="issue-list" data-filter="type=bug&amp;q=&lt;b&gt;" data-saved-filter="" data-limit="5"><p class="issue-list__desc">Issues matching <code>type=bug&amp;q=&lt;b&gt;</code>, at most 5</p></div>',
-		'<p><span class="tk-lozenge doc-status" data-color="green">DONE</span><span class="doc-color" data-color="red">r</span></p>',
+		'<p><span class="tk-lozenge doc-status" data-color="green">DONE</span><span class="doc-color" data-color="red">r</span><time class="doc-date" datetime="2026-11-13">Nov 13, 2026</time></p>',
+		'<details class="doc-details" open=""><summary>More</summary><div class="doc-details__body"><p>m</p></div></details>',
+		'<details class="doc-details"><summary>Details</summary><div class="doc-details__body"><p>n</p></div></details>',
 		'<p>a<br><a class="issue-chip" data-key="WEB-12" href="/WEB-12">WEB-12</a><a class="mention" data-person="u_1" href="/people/u_1">@Sunny Otter</a><a class="page-link" data-page="pg_roadmap" href="/pages/pg_roadmap">Roadmap</a><strong>s</strong><em>e</em><s>k</s><code>c</code><a href="https://example.com/x" rel="nofollow ugc noopener" title="example.com">l</a><span class="link-unsafe">u</span></p>',
 	].join('')
 	ok(html === want, 'HTML differs:\n got  ' + html + '\n want ' + want)
@@ -762,6 +766,40 @@ test('headings 4 to 6, panels, statuses, a table of contents and text colours fr
 	await b.evaluate(() => harness.host().querySelectorAll('.pm-mount nav.doc-toc a')[1].click())
 	const at = await b.evaluate(() => harness.host().view.state.selection.$from.parent.textContent)
 	ok(at === 'Type here: ', 'the link went to its heading: ' + at)
+	await close()
+})
+
+test('a date from its dialog and a collapsible section with its summary and toggle; others see them', async () => {
+	const { tabs, close } = await open(2)
+	const [a, b] = tabs
+	await appendParagraph(a)
+	await a.keyboard.type('due ')
+	await shadow(a, (root) => root.querySelector('button[value=date]').click())
+	await waitFor(a, () => !harness.host().shadowRoot.getElementById('date-dialog').hidden)
+	await shadow(a, (root) => {
+		root.getElementById('date-input').value = '2026-11-13'
+		const d = root.getElementById('date-dialog')
+		d.requestSubmit(d.querySelector('[value=apply]'))
+	})
+	// A section around the paragraph "See WEB-12 …": its summary field takes the focus.
+	await caretIn(a, 2)
+	await shadow(a, (root) => root.querySelector('button[value=details]').click())
+	await waitFor(a, () => document.activeElement?.classList.contains('doc-details__summary'))
+	await a.keyboard.type('Background')
+	await a.keyboard.press('Enter')
+	await a.evaluate(() => harness.host().querySelector('.doc-details__toggle').click())
+	const s = await settled(tabs)
+	ok(s.ms >= 0, 'settles')
+	const flat = JSON.stringify(s.state.doc)
+	ok(flat.includes('{"type":"date","attrs":{"date":"2026-11-13"}}'), 'date: ' + flat)
+	const det = s.state.doc.content[2]
+	ok(det.type === 'details' && det.attrs.summary === 'Background' && det.attrs.open === false && det.content[0].type === 'paragraph', 'details: ' + JSON.stringify(det))
+	const seen = await waitFor(b, () => {
+		const m = harness.host().querySelector('.pm-mount')
+		const d = m.querySelector('.doc-details')
+		return m.querySelector('time.doc-date[datetime="2026-11-13"]')?.textContent === 'Nov 13, 2026' && d && !d.hasAttribute('data-open') && d.querySelector('.doc-details__body').hidden && d.querySelector('.doc-details__summary').value === 'Background' && d.querySelector('.doc-details__toggle').getAttribute('aria-expanded') === 'false'
+	})
+	ok(seen, 'B sees the date and the closed section')
 	await close()
 })
 

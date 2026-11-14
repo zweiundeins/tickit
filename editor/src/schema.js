@@ -133,6 +133,23 @@ export const statusText = (raw) =>
 		.join('')
 		.trim()
 
+// A date as documents show it (docnodes.DateText): Nov 13, 2026.
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+export const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
+export function isoDate(raw) {
+	const m = ISO_DATE.exec(String(raw ?? ''))
+	if (!m) return ''
+	const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))
+	return d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3] ? m[0] : ''
+}
+export function dateText(iso) {
+	const m = ISO_DATE.exec(isoDate(iso))
+	return m ? `${MONTHS[+m[2] - 1]} ${+m[3]}, ${+m[1]}` : String(iso ?? '')
+}
+// A section's summary as the rules take it: one line, at most
+// detailsSummary characters.
+export const summaryText = (raw) => [...String(raw ?? '').replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ')].slice(0, limits.detailsSummary).join('')
+
 // slug is internal/docnodes' slug: the text in lower case, each run of
 // other characters than letters and digits one hyphen, at most 60.
 export function slug(text) {
@@ -156,7 +173,7 @@ export function outline(doc) {
 	const used = new Set(), out = []
 	doc.descendants((node, pos) => {
 		if (node.type.name !== 'heading') return !node.isTextblock
-		const text = node.textBetween(0, node.content.size, ' ', (n) => (n.type.name === 'issue_chip' ? n.attrs.key : n.type.name === 'mention' ? (n.attrs.label ? '@' + n.attrs.label : '') : n.type.name === 'status' ? n.attrs.text : n.type.name === 'hard_break' ? '\n' : '')).split(/\s+/).filter(Boolean).join(' ')
+		const text = node.textBetween(0, node.content.size, ' ', (n) => (n.type.name === 'issue_chip' ? n.attrs.key : n.type.name === 'mention' ? (n.attrs.label ? '@' + n.attrs.label : '') : n.type.name === 'status' ? n.attrs.text : n.type.name === 'date' ? dateText(n.attrs.date) : n.type.name === 'hard_break' ? '\n' : '')).split(/\s+/).filter(Boolean).join(' ')
 		let id = 'h-' + slug(text)
 		for (let i = 2; used.has(id); i++) id = 'h-' + slug(text) + '-' + i
 		used.add(id)
@@ -250,6 +267,26 @@ const DOM = {
 			// What the reader shows comes from the document; a copy holds the
 			// headings as they are now (labels.toc).
 			toDOM: () => ['nav', { class: 'doc-toc', 'aria-label': 'Contents' }, tocList(labels.toc())],
+		},
+		details: {
+			parseDOM: [
+				{
+					tag: 'details',
+					priority: 60,
+					contentElement: (dom) => dom.querySelector(':scope > .doc-details__body') ?? dom,
+					getAttrs: (dom) => ({ summary: summaryText(dom.querySelector(':scope > summary')?.textContent.trim() ?? ''), open: dom.hasAttribute('open') }),
+				},
+			],
+			toDOM: (node) => [
+				'details',
+				node.attrs.open ? { class: 'doc-details', open: '' } : { class: 'doc-details' },
+				['summary', node.attrs.summary.trim() || 'Details'],
+				['div', { class: 'doc-details__body' }, 0],
+			],
+		},
+		date: {
+			parseDOM: [{ tag: 'time.doc-date[datetime]', priority: 60, getAttrs: (dom) => (isoDate(dom.getAttribute('datetime')) ? { date: isoDate(dom.getAttribute('datetime')) } : false) }],
+			toDOM: (node) => ['time', { class: 'doc-date', datetime: node.attrs.date }, dateText(node.attrs.date)],
 		},
 		status: {
 			parseDOM: [

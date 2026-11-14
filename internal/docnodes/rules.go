@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/zweiundeins/prosemirror-go"
@@ -29,6 +30,12 @@ var (
 	slugRe     = regexp.MustCompile(`^s-[a-z0-9]+(-[a-z0-9]+)*$`)
 	imageIDRe  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`)
 )
+
+// ISODate parses a date attribute, 2026-11-13.
+func ISODate(s string) (time.Time, bool) {
+	t, err := time.Parse(time.DateOnly, s)
+	return t, err == nil && len(s) == 10
+}
 
 // IssueKey reports whether key has the format of an issue key (WEB-12).
 func IssueKey(key string) bool { return issueKeyRe.MatchString(key) }
@@ -95,6 +102,24 @@ func (r Rules) Rules() prosemirror.Rules {
 			"panel": func(n, _ *prosemirror.Node) error {
 				if !slices.Contains(lim.PanelKinds, n.AttrString("kind")) {
 					return refuse("A panel is one of: %s.", strings.Join(lim.PanelKinds, ", "))
+				}
+				return nil
+			},
+			"date": func(n, _ *prosemirror.Node) error {
+				if _, ok := ISODate(n.AttrString("date")); !ok {
+					return refuse("A date is a day such as 2026-11-13.")
+				}
+				return nil
+			},
+			"details": func(n, _ *prosemirror.Node) error {
+				s := n.AttrString("summary")
+				if utf8.RuneCountInString(s) > lim.Summary {
+					return refuse("A section's summary has at most %d characters.", lim.Summary)
+				}
+				for _, c := range s {
+					if c < 0x20 || (c >= 0x7f && c <= 0x9f) {
+						return refuse("A section's summary holds a control character.")
+					}
 				}
 				return nil
 			},

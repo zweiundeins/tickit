@@ -262,6 +262,35 @@
 			font-style: italic;
 		}
 
+		/* A collapsible section: its summary a control, its blocks below. */
+		& details.doc-details {
+			padding: var(--tk-space-2) var(--tk-space-3);
+			border: 1px solid var(--tk-border-subtle);
+			border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+
+			& > summary {
+				cursor: pointer;
+				font-weight: var(--tk-weight-semibold);
+			}
+
+			&[open] > summary {
+				margin-block-end: var(--tk-space-2);
+			}
+		}
+
+		& .doc-details__body > * + * {
+			margin-block-start: 0.6em;
+		}
+
+		/* A date: a day in the text, set apart a little. */
+		& time.doc-date {
+			padding: 0 0.25em;
+			border-radius: calc(var(--tk-radius-xs) * (1 - var(--tk-notch)));
+			background: var(--tk-surface-2);
+			color: var(--tk-text-1);
+			white-space: nowrap;
+		}
+
 		/* Text in a colour of the palette, light and dark (tokens.css). */
 		& .doc-color {
 			color: var(--tk-hue-text);

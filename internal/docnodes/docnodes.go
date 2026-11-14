@@ -7,7 +7,8 @@
 // with panel (a box of blocks of a kind: info, note, warning, success,
 // error), status (a coloured lozenge with a short text), toc (the
 // document's headings as links) and the text_color mark (a name of a
-// palette), which Confluence's pages bring along.
+// palette), date (a day, ISO) and details (a collapsible section with a
+// summary), which Confluence's pages bring along.
 //
 // # Rules
 //
@@ -23,6 +24,8 @@
 //   - panel.kind one of panelKinds; status.color one of statusColors and
 //     its text 1 to statusText (40) characters without control
 //     characters; text_color.color one of textColors.
+//   - date.date an ISO date from 0001-01-01 to 9999-12-31; details.summary
+//     at most detailsSummary (200) characters without control characters.
 //   - Tables (FR-83): 50 rows, 20 columns counted with colspans and the
 //     rowspans of the rows above; colspan 1 to 20, rowspan 1 to 50;
 //     colwidth null or one number from 0 to 10,000 per spanned column.
@@ -97,10 +100,11 @@ type Limits struct {
 	LinkSchemes   []string `json:"linkSchemes"`
 	CodeLanguages []string `json:"codeLanguages"`
 	HeadingLevels []int    `json:"headingLevels"`
-	TextColors    []string `json:"textColors"`   // the palette of text_color
-	PanelKinds    []string `json:"panelKinds"`   // a panel's kinds
-	StatusColors  []string `json:"statusColors"` // a status lozenge's colours
-	StatusText    int      `json:"statusText"`   // characters of a status's text
+	TextColors    []string `json:"textColors"`     // the palette of text_color
+	PanelKinds    []string `json:"panelKinds"`     // a panel's kinds
+	StatusColors  []string `json:"statusColors"`   // a status lozenge's colours
+	StatusText    int      `json:"statusText"`     // characters of a status's text
+	Summary       int      `json:"detailsSummary"` // characters of a collapsible section's summary
 }
 
 var limits = sync.OnceValue(func() Limits {

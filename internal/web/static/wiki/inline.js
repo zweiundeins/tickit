@@ -13,17 +13,18 @@
 // commentRange() says.
 
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
-const ATOM = 'a.issue-chip, a.mention, .page-link, .doc-status'
+const ATOM = 'a.issue-chip, a.mention, .page-link, .doc-status, time.doc-date'
 const TEXTBLOCK = /^(P|H[1-6]|PRE)$/
 // The elements of nodes with block content (a panel is a div.doc-panel); any
 // other block element is a leaf of size 1 (an image, a rule, an atom block
 // such as an issue list or a table of contents).
-const CONTAINER = /^(BLOCKQUOTE|UL|OL|LI|TABLE|TR|TD|TH)$/
+const CONTAINER = /^(BLOCKQUOTE|UL|OL|LI|TABLE|TR|TD|TH|DETAILS)$/
 
 // blocks are an element's children that are document nodes.
 function blocks(el) {
 	if (el.tagName === 'TABLE') return [...el.querySelectorAll(':scope > tbody > tr')]
 	if (el.tagName === 'LI' && el.classList.contains('task-item')) return [...(el.querySelector(':scope > div')?.children ?? [])]
+	if (el.tagName === 'DETAILS') return [...(el.querySelector(':scope > .doc-details__body')?.children ?? [])]
 	return [...el.children]
 }
 

@@ -30,6 +30,8 @@
     {"name": "panel", "group": "block", "content": "block+", "defining": true,
       "attrs": {"kind": {"default": "info", "validate": "string"}}},
     {"name": "toc", "group": "block", "atom": true, "draggable": true},
+    {"name": "details", "group": "block", "content": "block+", "defining": true,
+      "attrs": {"summary": {"default": "", "validate": "string"}, "open": {"default": false, "validate": "boolean"}}},
     {"name": "text", "group": "inline"},
     {"name": "hard_break", "group": "inline", "inline": true, "selectable": false},
     {"name": "issue_chip", "group": "inline", "inline": true, "atom": true,
@@ -39,7 +41,9 @@
     {"name": "page_link", "group": "inline", "inline": true, "atom": true,
       "attrs": {"pageId": {"validate": "string"}}},
     {"name": "status", "group": "inline", "inline": true, "atom": true,
-      "attrs": {"text": {"validate": "string"}, "color": {"default": "neutral", "validate": "string"}}}
+      "attrs": {"text": {"validate": "string"}, "color": {"default": "neutral", "validate": "string"}}},
+    {"name": "date", "group": "inline", "inline": true, "atom": true,
+      "attrs": {"date": {"validate": "string"}}}
   ],
   "marks": [
     {"name": "link", "inclusive": false, "attrs": {"href": {"validate": "string"}}},
@@ -63,6 +67,7 @@
     "textColors": ["red", "orange", "yellow", "green", "teal", "blue", "purple", "grey"],
     "panelKinds": ["info", "note", "warning", "success", "error"],
     "statusColors": ["neutral", "purple", "blue", "red", "yellow", "green"],
-    "statusText": 40
+    "statusText": 40,
+    "detailsSummary": 200
   }
 }

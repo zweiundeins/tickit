@@ -96,3 +96,38 @@ func TestHeadingIDsAs(t *testing.T) {
 		t.Errorf("OutlineAs %+v", o)
 	}
 }
+
+// Dates and collapsible sections: their HTML, Markdown, text and rules.
+func TestDateAndDetails(t *testing.T) {
+	d := mustDoc(t, docOf(
+		`{"type":"paragraph","content":[`+text("due ")+`,{"type":"date","attrs":{"date":"2026-11-13"}}]}`,
+		`{"type":"details","attrs":{"summary":"Why <so>?","open":true},"content":[`+para+`]}`,
+		`{"type":"details","content":[`+para+`]}`,
+	))
+	want := `<p>due <time class="doc-date" datetime="2026-11-13">Nov 13, 2026</time></p>` +
+		`<details class="doc-details" open=""><summary>Why &lt;so&gt;?</summary><div class="doc-details__body"><p>hi</p></div></details>` +
+		`<details class="doc-details"><summary>Details</summary><div class="doc-details__body"><p>hi</p></div></details>`
+	if got := RenderHTML(d, nil); got != want {
+		t.Errorf("got  %s\nwant %s", got, want)
+	}
+	md := "due Nov 13, 2026\n\n<details open>\n<summary>Why &lt;so&gt;?</summary>\n\nhi\n\n</details>\n\n<details>\n<summary>Details</summary>\n\nhi\n\n</details>\n"
+	if got := Markdown(d, nil); got != md {
+		t.Errorf("markdown:\n%q\nwant\n%q", got, md)
+	}
+	if got := Text(d); got != "due Nov 13, 2026\nhi\nhi\nWhy <so>?" {
+		t.Errorf("Text: %q", got)
+	}
+	for doc, msg := range map[string]string{
+		inPara(`{"type":"date","attrs":{"date":"2026-13-01"}}`):                                                     "A date is a day such as 2026-11-13.",
+		inPara(`{"type":"date","attrs":{"date":"13.11.2026"}}`):                                                     "A date is a day such as 2026-11-13.",
+		docOf(`{"type":"details","attrs":{"summary":"` + strings.Repeat("s", 201) + `"},"content":[` + para + `]}`): "A section's summary has at most 200 characters.",
+		docOf(`{"type":"details","attrs":{"summary":"a\u0007"},"content":[` + para + `]}`):                          "A section's summary holds a control character.",
+	} {
+		if err := library.Check(nil, mustDoc(t, doc)); err == nil || err.Error() != msg {
+			t.Errorf("%s: %v, want %q", doc, err, msg)
+		}
+	}
+	if err := library.Check(nil, d); err != nil {
+		t.Error(err)
+	}
+}

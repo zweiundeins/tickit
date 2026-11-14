@@ -9,11 +9,11 @@ import { history } from 'prosemirror-history'
 import { gapCursor } from 'prosemirror-gapcursor'
 import { dropCursor } from 'prosemirror-dropcursor'
 import { tableEditing } from 'prosemirror-tables'
-import { schema, limits, ISSUE_KEY, ID, normalizeHref, setLabelHooks, imageSrc, MAX_ALT, COLORS, PANEL_KINDS, STATUS_COLORS, label, statusText, outline } from './schema.js'
+import { schema, limits, ISSUE_KEY, ID, normalizeHref, setLabelHooks, imageSrc, MAX_ALT, COLORS, PANEL_KINDS, STATUS_COLORS, label, statusText, outline, isoDate } from './schema.js'
 import { Session, collab, caretPlugin, commentPlugin } from 'lith-coedit'
 import { limitsPlugin } from './limits.js'
-import { IssueChipView, MentionView, PageLinkView, TaskItemView, ImageView, IssueListView, TocView } from './nodeviews.js'
-import { COMMANDS, rules, keymaps, inTable, inCode, setLanguage, shortcutText, setPanel, panelAround, setColor, colorAt, putStatus, statusAt } from './commands.js'
+import { IssueChipView, MentionView, PageLinkView, TaskItemView, ImageView, IssueListView, TocView, DetailsView } from './nodeviews.js'
+import { COMMANDS, rules, keymaps, inTable, inCode, setLanguage, shortcutText, setPanel, panelAround, setColor, colorAt, putStatus, statusAt, putDate, dateAt } from './commands.js'
 import { documentCSS } from './styles.js'
 import { uploadPlugin, placeholder, placed, removePlaceholder, imageFiles, check, send, opID } from './uploads.js'
 
@@ -150,6 +150,7 @@ class Editor {
 			filters: () => this.savedFilters(),
 			listsShown: () => !!this.listsRoot(),
 			focusList: false,
+			focusDetails: false,
 		})
 		const nodeView = (V) => (node, view, getPos) => new V(node, view, getPos, ctx)
 		const state = EditorState.create({
@@ -183,6 +184,7 @@ class Editor {
 					image: nodeView(ImageView),
 					issue_list: nodeView(IssueListView),
 					toc: nodeView(TocView),
+					details: nodeView(DetailsView),
 				},
 				handleClick: (view, pos, event) => {
 					// Ctrl or Cmd and a click follows a link.
@@ -364,6 +366,7 @@ class Editor {
 		on(ui.getElementById('color'), 'change', (e) => this.runSelect(setColor(e.target.value)))
 		on(ui.getElementById('panel'), 'change', (e) => this.runSelect(setPanel(e.target.value)))
 		on(ui.getElementById('status-dialog'), 'submit', (e) => (e.preventDefault(), this.applyStatus(e.submitter?.value)))
+		on(ui.getElementById('date-dialog'), 'submit', (e) => (e.preventDefault(), this.applyDate(e.submitter?.value)))
 		on(ui.getElementById('link-dialog'), 'submit', (e) => (e.preventDefault(), this.applyLink(e.submitter?.value)))
 		on(ui.getElementById('alt-dialog'), 'submit', (e) => (e.preventDefault(), this.applyAlt(e.submitter?.value)))
 		on(ui.getElementById('image-dialog'), 'click', (e) => {
@@ -399,6 +402,8 @@ class Editor {
 		if (!this.editable()) return
 		if (name === 'link') return this.openLink()
 		if (name === 'status') return this.openStatus()
+		if (name === 'date') return this.openDate()
+		if (name === 'details') this.ctx.focusDetails = true
 		if (name === 'image') return this.openImages()
 		const c = COMMANDS[name]
 		if (!c) return
@@ -615,6 +620,48 @@ class Editor {
 		}
 		const color = STATUS_COLORS.includes(d.elements.color.value) ? d.elements.color.value : STATUS_COLORS[0]
 		putStatus(text, color)(state, this.view.dispatch)
+		this.closeDialogs()
+	}
+
+	// --- Dates: a day from the date picker ---------------------------------
+
+	// dateField is Starbase's sb-date-picker when the page loaded it, else
+	// the browser's date input.
+	dateField() {
+		const pick = this.ui.getElementById('date-pick'), input = this.ui.getElementById('date-input')
+		const starbase = !!customElements.get('sb-date-picker')
+		pick.hidden = !starbase
+		input.hidden = starbase
+		input.previousElementSibling.hidden = starbase
+		return starbase ? pick : input
+	}
+
+	openDate() {
+		if (!this.editable()) return
+		const at = dateAt(this.view.state)
+		const d = this.ui.getElementById('date-dialog')
+		this.showDialog(d)
+		const field = this.dateField()
+		field.value = at?.node.attrs.date ?? new Date().toISOString().slice(0, 10)
+		d.querySelector('[value=remove]').hidden = !at
+		this.ui.getElementById('date-error').textContent = ''
+		requestAnimationFrame(() => field.focus())
+	}
+
+	applyDate(action) {
+		if (action === 'cancel') return this.closeDialogs()
+		const { state } = this.view
+		const at = dateAt(state)
+		if (action === 'remove') {
+			if (at) this.view.dispatch(state.tr.delete(at.pos, at.pos + at.node.nodeSize))
+			return this.closeDialogs()
+		}
+		const date = isoDate(this.dateField().value)
+		if (!date) {
+			this.ui.getElementById('date-error').textContent = 'Pick a day.'
+			return
+		}
+		putDate(date)(state, this.view.dispatch)
 		this.closeDialogs()
 	}
 

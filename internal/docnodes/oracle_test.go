@@ -86,6 +86,11 @@ func TestSchemaAgreesWithOracle(t *testing.T) {
 		inPara(text("c", `{"type":"text_color","attrs":{"color":"red"}}`, `{"type":"code"}`, `{"type":"strong"}`)),
 		inPara(text("c", `{"type":"text_color"}`)),
 		docOf(`{"type":"code_block","content":[{"type":"text","text":"x","marks":[{"type":"text_color","attrs":{"color":"red"}}]}]}`),
+		inPara(`{"type":"date","attrs":{"date":"2026-11-13"}},{"type":"date"}`),
+		inPara(`{"type":"date","attrs":{"date":"2026-11-13"},"marks":[{"type":"strong"}]}`),
+		docOf(`{"type":"details","attrs":{"summary":"S","open":true},"content":[`+para+`,{"type":"details","content":[{"type":"toc"}]}]}`),
+		docOf(`{"type":"details","attrs":{"open":"yes"},"content":[`+para+`]}`),
+		docOf(`{"type":"details"}`),
 	)
 	n := 0
 	for i, c := range cases {
@@ -135,7 +140,7 @@ func TestEditsAgreeWithOracle(t *testing.T) {
 			a := rnd.IntN(size + 1)
 			b := min(size, a+rnd.IntN(12))
 			var raw string
-			switch rnd.IntN(10) {
+			switch rnd.IntN(12) {
 			case 0:
 				raw = `{"stepType":"replace","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `}`
 			case 1:
@@ -154,6 +159,10 @@ func TestEditsAgreeWithOracle(t *testing.T) {
 				raw = `{"stepType":"addMark","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `,"mark":{"type":"text_color","attrs":{"color":"teal"}}}`
 			case 8:
 				raw = `{"stepType":"replace","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `,"slice":{"content":[{"type":"panel","attrs":{"kind":"info"},"content":[{"type":"heading","attrs":{"level":5},"content":[{"type":"text","text":"h"}]}]}],"openStart":0,"openEnd":0}}`
+			case 9:
+				raw = `{"stepType":"replace","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `,"slice":{"content":[{"type":"date","attrs":{"date":"2026-11-13"}}]}}`
+			case 10:
+				raw = `{"stepType":"replace","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `,"slice":{"content":[{"type":"details","attrs":{"summary":"More","open":true},"content":[{"type":"paragraph"}]}]}}`
 			default:
 				raw = `{"stepType":"removeMark","from":` + strconv.Itoa(a) + `,"to":` + strconv.Itoa(b) + `,"mark":{"type":"strong"}}`
 			}

@@ -3,6 +3,7 @@ package docnodes
 import (
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"unicode"
 
@@ -163,6 +164,24 @@ func outlineOf(r Resolver) *outline {
 	return nil
 }
 
+// DateText is a date as documents show it, Nov 13, 2026: the same at
+// every render, as the block cache keeps it; the stored ISO date when it
+// is not one.
+func DateText(iso string) string {
+	if t, ok := ISODate(iso); ok {
+		return t.Format("Jan 2, 2006")
+	}
+	return iso
+}
+
+// summaryOf is a section's summary, "Details" when it has none.
+func summaryOf(n *prosemirror.Node) string {
+	if s := strings.TrimSpace(n.AttrString("summary")); s != "" {
+		return s
+	}
+	return "Details"
+}
+
 // panelLabels name a panel's kind for assistive technology, as the
 // editor's toolbar does.
 var panelLabels = map[string]string{"info": "Info", "note": "Note", "warning": "Warning", "success": "Success", "error": "Error"}
@@ -239,6 +258,26 @@ var html = &prosemirror.HTML[Resolver]{
 			}
 			tocHTML(w, hs)
 			w.Raw("</nav>")
+		},
+		"date": func(w *writer, n *prosemirror.Node) {
+			d := n.AttrString("date")
+			w.Raw(`<time class="doc-date" datetime="`)
+			w.Text(d)
+			w.Raw(`">`)
+			w.Text(DateText(d))
+			w.Raw(`</time>`)
+		},
+		"details": func(w *writer, n *prosemirror.Node) {
+			if n.AttrBool("open") {
+				w.Open("details", "class", "doc-details", "open", "")
+			} else {
+				w.Open("details", "class", "doc-details")
+			}
+			w.Raw(`<summary>`)
+			w.Text(summaryOf(n))
+			w.Raw(`</summary><div class="doc-details__body">`)
+			w.Content(n)
+			w.Raw(`</div></details>`)
 		},
 		"status": func(w *writer, n *prosemirror.Node) {
 			w.Raw(`<span class="tk-lozenge doc-status" data-color="`)

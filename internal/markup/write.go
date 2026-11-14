@@ -158,8 +158,8 @@ func (w *writer) block(n wnode, first, rest string) {
 				w.line(rest, "| "+strings.Join(seps, " | ")+" |")
 			}
 		}
-	case "panel":
-		// The markup has no panels: their blocks.
+	case "panel", "details":
+		// The markup has no panels and no collapsible sections: their blocks.
 		w.blocks(n.Content, first, rest)
 	case "toc":
 	default:
@@ -237,6 +237,8 @@ func (w *writer) inline(nodes []wnode) string {
 			b.WriteString("[[" + n.str("key") + "]]")
 		case "status":
 			b.WriteString(escape(n.str("text"), lineStart))
+		case "date":
+			b.WriteString(n.str("date"))
 		case "page_link":
 			ref := n.str("pageId")
 			if w.pageRef != nil {

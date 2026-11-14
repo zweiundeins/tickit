@@ -206,6 +206,7 @@ func writeText(b *strings.Builder, doc json.RawMessage) {
 			Label string `json:"label"`
 			Key   string `json:"key"`
 			Text  string `json:"text"` // a status's
+			Date  string `json:"date"`
 		} `json:"attrs"`
 	}
 	if json.Unmarshal(doc, &n) != nil {
@@ -222,6 +223,8 @@ func writeText(b *strings.Builder, doc json.RawMessage) {
 		b.WriteString(n.Attrs.Key)
 	case "status":
 		b.WriteString(n.Attrs.Text)
+	case "date":
+		b.WriteString(n.Attrs.Date)
 	}
 	for _, c := range n.Content {
 		if b.Len() > 4*maxText {

@@ -8,7 +8,7 @@
 // so a changed issue shows in every open editor with the next frame.
 import { DOMSerializer } from 'prosemirror-model'
 import { TextSelection } from 'prosemirror-state'
-import { imageSrc, limits, listAttrs, listDescription, outline, tocList } from './schema.js'
+import { imageSrc, limits, listAttrs, listDescription, outline, tocList, summaryText } from './schema.js'
 
 // The issue type icons of the design system (design.md 7.5), 16 grid.
 const TILE = 'M1 0h14v1h1v14h-1v1H1v-1H0V1h1z'
@@ -371,5 +371,70 @@ export class TocView {
 	}
 	destroy() {
 		this.ctx.tocs.delete(this)
+	}
+}
+
+// details: a collapsible section. The summary is a field and the toggle a
+// button, each changing its attribute with one attr step; the section
+// shows its blocks while it is open. A div, not <details>: a <summary>
+// must not hold controls.
+export class DetailsView {
+	constructor(node, view, getPos, ctx) {
+		this.node = node
+		this.view = view
+		this.getPos = getPos
+		this.ctx = ctx
+		this.toggle = el('button', { type: 'button', class: 'doc-details__toggle' })
+		this.input = el('input', { type: 'text', class: 'doc-details__summary', 'aria-label': 'Section summary', placeholder: 'Details', maxlength: String(limits.detailsSummary), autocomplete: 'off' })
+		this.summary = el('div', { class: 'doc-details__head', contenteditable: 'false' }, this.toggle, this.input)
+		this.contentDOM = el('div', { class: 'doc-details__body' })
+		this.dom = el('div', { class: 'doc-details doc-details--edit' }, this.summary, this.contentDOM)
+		this.toggle.addEventListener('click', () => this.set('open', !this.node.attrs.open))
+		let timer = 0
+		this.input.addEventListener('input', () => {
+			clearTimeout(timer)
+			timer = setTimeout(() => this.set('summary', summaryText(this.input.value)), 400)
+		})
+		this.input.addEventListener('change', () => (clearTimeout(timer), this.set('summary', summaryText(this.input.value))))
+		this.input.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter' || e.key === 'Escape') {
+				e.preventDefault()
+				clearTimeout(timer)
+				this.set('summary', summaryText(this.input.value))
+				const pos = this.getPos()
+				if (pos != null) view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(pos + 1))))
+				view.focus()
+			}
+		})
+		this.render()
+		if (ctx.focusDetails) (ctx.focusDetails = false), requestAnimationFrame(() => this.input.focus())
+	}
+	set(name, value) {
+		const pos = this.getPos()
+		if (pos == null || !this.ctx.editable() || this.node.attrs[name] === value) return
+		this.view.dispatch(this.view.state.tr.setNodeAttribute(pos, name, value))
+	}
+	render() {
+		const { summary, open } = this.node.attrs
+		this.dom.toggleAttribute('data-open', open)
+		this.contentDOM.hidden = !open
+		this.toggle.setAttribute('aria-expanded', open ? 'true' : 'false')
+		this.toggle.setAttribute('aria-label', open ? 'Close the section' : 'Open the section')
+		this.toggle.textContent = open ? '\u25BE' : '\u25B8'
+		if (document.activeElement !== this.input) this.input.value = summary
+		this.input.disabled = !this.ctx.editable()
+		this.toggle.disabled = !this.ctx.editable()
+	}
+	update(node) {
+		if (node.type !== this.node.type) return false
+		this.node = node
+		this.render()
+		return true
+	}
+	stopEvent(e) {
+		return this.summary.contains(e.target)
+	}
+	ignoreMutation(m) {
+		return m.type !== 'selection' && !this.contentDOM.contains(m.target)
 	}
 }

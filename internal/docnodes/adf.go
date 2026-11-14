@@ -36,7 +36,8 @@ var codeAliases = map[string]string{
 // that are not http, https or mailto plain text, control characters
 // spaces (CR a newline in code), and a status's text is cut to
 // statusText characters. Panels, statuses, text colours, the toc macro
-// and the six heading levels map to tickit's own (adf.Defaults);
+// the six heading levels, dates, expands and the details macro map to
+// tickit's own (adf.Defaults), a section's summary cut to detailsSummary;
 // backgroundColor is dropped, as tickit has no highlight.
 func ADF(a Atlassian) *adf.Mapping {
 	lim := SchemaLimits()
@@ -145,7 +146,38 @@ func ADF(a Atlassian) *adf.Mapping {
 		}
 		return adf.ToMark("link", map[string]any{"href": mk.Attr("href")})
 	}
+	m.Nodes["expand"] = summed(m.Nodes["expand"], lim.Summary)
+	m.Nodes["nestedExpand"] = summed(m.Nodes["nestedExpand"], lim.Summary)
+	m.Extensions["details"] = summed(m.Extensions["details"], lim.Summary)
+	m.Extensions["expand"] = summed(m.Extensions["expand"], lim.Summary)
 	return m
+}
+
+// summed cleans the summary a rule gives a collapsible section: one line,
+// at most limit characters.
+func summed(r adf.Rule, limit int) adf.Rule {
+	return func(n *adf.Node) adf.Result {
+		c := *n
+		c.Attrs = map[string]any{}
+		for k, v := range n.Attrs {
+			c.Attrs[k] = v
+		}
+		clean := func(t string) string {
+			s := []rune(strings.Join(strings.Fields(adfText(t, "")), " "))
+			return string(s[:min(len(s), limit)])
+		}
+		if t, ok := c.Attrs["title"].(string); ok {
+			c.Attrs["title"] = clean(t)
+		}
+		params := map[string]any{}
+		for _, k := range []string{"title", "label", "id"} {
+			if v := adf.MacroParam(n, k); v != "" {
+				params[k] = map[string]any{"value": clean(v)}
+			}
+		}
+		c.Attrs["parameters"] = map[string]any{"macroParams": params}
+		return r(&c)
+	}
 }
 
 func adfText(text, parent string) string {

@@ -33,8 +33,8 @@ func toolbar(t *testing.T, p *browsertest.Page, script string) {
 	})()`, nil)
 }
 
-// FR-82.1: headings of levels 4 to 6, a panel, a text colour, a status and
-// a table of contents made with the editor's toolbar render for a reader
+// FR-82.1: headings of levels 4 to 6, a panel, a text colour, a status, a
+// table of contents, a date and a collapsible section made with the editor's toolbar render for a reader
 // of the page, styled in their colours, and pass axe (TICKIT_AXE).
 func TestEditorNewNodes(t *testing.T) {
 	s := newRealServer(t)
@@ -53,6 +53,10 @@ func TestEditorNewNodes(t *testing.T) {
 	toolbar(t, editor, `append(''); ui.querySelector('button[value=toc]').click()`)
 	toolbar(t, editor, `append('Sixth'); pick('heading-more', '6')`)
 	toolbar(t, editor, `append('Fifth'); pick('heading-more', '5')`)
+	toolbar(t, editor, `append('Due '); ui.querySelector('button[value=date]').click(); const d = ui.getElementById('date-dialog'); ui.getElementById('date-pick').value = '2026-11-13'; ui.getElementById('date-input').value = '2026-11-13'; d.requestSubmit(d.querySelector('[value=apply]'))`)
+	toolbar(t, editor, `append('Hidden words'); ui.querySelector('button[value=details]').click()`)
+	editor.Wait(t, `document.querySelector('.pm-mount .doc-details__summary')`, 5*time.Second)
+	toolbar(t, editor, `const f = document.querySelector('.pm-mount .doc-details__summary'); f.value = 'Background'; f.dispatchEvent(new Event('change'))`)
 	defer func() {
 		if t.Failed() {
 			var html string
@@ -68,7 +72,9 @@ func TestEditorNewNodes(t *testing.T) {
 			b.querySelector('span.doc-color[data-color=purple]')?.textContent === 'Purple' &&
 			b.querySelector('span.tk-lozenge.doc-status[data-color=green]')?.textContent === 'Done' &&
 			b.querySelector('p[role=heading][aria-level="7"][id$="-sixth"]') && b.querySelector('h6[id$="-fifth"]') &&
-			toc === [...b.querySelectorAll('[id^="h-p-"]')].map((h) => '#' + h.id).join()
+			toc === [...b.querySelectorAll('[id^="h-p-"]')].map((h) => '#' + h.id).join() &&
+			b.querySelector('time.doc-date[datetime="2026-11-13"]')?.textContent === 'Nov 13, 2026' &&
+			b.querySelector('details.doc-details[open] > summary')?.textContent === 'Background' && b.querySelector('details.doc-details > .doc-details__body > p')?.textContent === 'Hidden words'
 	})()`, 10*time.Second)
 	// The palette's tokens reach them: the colour, the panel's wash and icon.
 	var styled struct{ Text, Para, Wash, Icon string }

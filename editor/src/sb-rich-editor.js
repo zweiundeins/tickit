@@ -38,6 +38,8 @@ const I = {
 	table: 'M1 2h14v12H1zM2 3v3h5V3zM8 3v3h6V3zM2 7v3h5V7zM8 7v3h6V7zM2 11v2h5v-2zM8 11v2h6v-2z',
 	image: 'M1 2h14v12H1zM2 3v10h12V3zM4 5h2v2H4zM3 12h10v-1h-1v-1h-1V9h-1v1H9v1H8v-1H7V9H6v1H5v1H3z',
 	toc: 'M1 2h2v2H1zM5 2h10v2H5zM3 7h2v2H3zM7 7h8v2H7zM3 12h2v2H3zM7 12h8v2H7z',
+	date: 'M2 3h12v11H2zM3 6v7h10V6zM4 1h2v3H4zM10 1h2v3h-2zM5 8h2v2H5z',
+	details: 'M2 2h1v1h1v1h1v2H4v1H3v1H2zM7 4h7v2H7zM4 10h10v2H4zM4 13h8v1H4z',
 	status: 'M2 4h12v1h1v6h-1v1H2v-1H1V5h1zM3 6v4h10V6zM4 7h6v2H4z',
 	undo: 'M5 3h1v2h5v1h1v1h1v4h-1v1h-1v1H7v-2h4V7H6v2H5V8H4V7H3V6h1V5h1z',
 	redo: 'M11 3h-1v2H5v1H4v1H3v4h1v1h1v1h4v-2H5V7h5v2h1V8h1V7h1V6h-1V5h-1z',
@@ -54,7 +56,7 @@ const MARKUP = `<div class="toolbar" part="toolbar" role="toolbar" aria-label="F
 <span class="group">${btn('strong', 'Bold', '<b>B</b>', { keys: 'Mod+B' })}${btn('em', 'Italic', '<i>I</i>', { keys: 'Mod+I' })}${btn('strike', 'Strikethrough', '<s>S</s>', { keys: 'Mod+Shift+S' })}${btn('code', 'Inline code', '<code>&lt;/&gt;</code>', { keys: 'Mod+E' })}${btn('link', 'Link', icon(I.link), { keys: 'Mod+K', toggle: false })}${sel('color', 'Text colour')}</span>
 <span class="group">${btn('bullet', 'Bulleted list', icon(I.bullet))}${btn('ordered', 'Numbered list', icon(I.ordered))}${btn('task', 'Task list', icon(I.task))}</span>
 <span class="group">${btn('quote', 'Quote', icon(I.quote))}${btn('codeblock', 'Code block', icon(I.codeblock))}${btn('rule', 'Horizontal rule', icon(I.rule), { toggle: false })}${btn('table', 'Table', icon(I.table), { toggle: false })}${btn('image', 'Image', icon(I.image), { toggle: false })}</span>
-<span class="group">${sel('panel', 'Panel')}${btn('status', 'Status', icon(I.status), { toggle: false })}${btn('toc', 'Table of contents', icon(I.toc), { toggle: false })}</span>
+<span class="group">${sel('panel', 'Panel')}${btn('status', 'Status', icon(I.status), { toggle: false })}${btn('toc', 'Table of contents', icon(I.toc), { toggle: false })}${btn('details', 'Collapsible section', icon(I.details), { toggle: false })}${btn('date', 'Date', icon(I.date), { toggle: false })}</span>
 <span class="group group--code" hidden><label class="vh" for="lang">Code language</label><select id="lang" tabindex="-1"></select></span>
 <span class="group group--table" hidden aria-label="Table">${txt('rowBefore', 'Row above')}${txt('rowAfter', 'Row below')}${txt('rowDelete', 'Delete row')}${txt('colBefore', 'Column left')}${txt('colAfter', 'Column right')}${txt('colDelete', 'Delete column')}${txt('headerRow', 'Header row')}${txt('tableDelete', 'Delete table')}</span>
 <span class="group">${btn('undo', 'Undo', icon(I.undo), { keys: 'Mod+Z', toggle: false })}${btn('redo', 'Redo', icon(I.redo), { keys: 'Mod+Shift+Z', toggle: false })}</span>
@@ -73,6 +75,11 @@ const MARKUP = `<div class="toolbar" part="toolbar" role="toolbar" aria-label="F
 <label for="status-color">Colour</label><select id="status-color" name="color"></select>
 <p class="error" id="status-error" aria-live="polite"></p>
 <div class="actions"><button value="apply">Apply</button><button value="remove">Remove status</button><button value="cancel">Cancel</button></div>
+</form>
+<form class="dialog" id="date-dialog" part="dialog" role="dialog" aria-label="Date" hidden>
+<sb-date-picker id="date-pick" class="tk-date" label="Date" lang="en"></sb-date-picker><label for="date-input" hidden>Date</label><input id="date-input" name="date" type="date" hidden>
+<p class="error" id="date-error" aria-live="polite"></p>
+<div class="actions"><button value="apply">Apply</button><button value="remove">Remove date</button><button value="cancel">Cancel</button></div>
 </form>
 <div class="dialog" id="image-dialog" part="dialog" role="dialog" aria-label="Insert an image" hidden>
 <div class="images"></div><input type="file" id="image-file" class="vh" tabindex="-1" aria-hidden="true" accept="image/png,image/jpeg,image/webp">

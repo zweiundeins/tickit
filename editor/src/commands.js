@@ -183,6 +183,32 @@ const insertBlockAtom = (type) => (state, dispatch) => {
 
 export const insertToc = insertBlockAtom(N.toc)
 
+// insertDetails puts the selected blocks in an open collapsible section,
+// or a new one with an empty paragraph where they cannot go.
+export const insertDetails = (state, dispatch) => {
+	if (state.selection.$from.parent.type.spec.code) return false
+	const attrs = { summary: '', open: true }
+	if (wrapIn(N.details, attrs)(state, dispatch)) return true
+	const { $from } = state.selection
+	if (!$from.parent.isTextblock) return false
+	if (dispatch) dispatch(state.tr.replaceSelectionWith(N.details.create(attrs, N.paragraph.create())).scrollIntoView())
+	return true
+}
+
+// dateAt is the date node the selection holds, with its position.
+export function dateAt(state) {
+	const sel = state.selection
+	return sel instanceof NodeSelection && sel.node.type === N.date ? { pos: sel.from, node: sel.node } : null
+}
+
+// putDate inserts a date, or changes the selected one.
+export const putDate = (date) => (state, dispatch) => {
+	const at = dateAt(state)
+	if (!at && (!state.selection.$from.parent.inlineContent || state.selection.$from.parent.type.spec.code)) return false
+	if (date && dispatch) dispatch(at ? state.tr.setNodeMarkup(at.pos, null, { date }) : state.tr.replaceSelectionWith(N.date.create({ date })).scrollIntoView())
+	return true
+}
+
 // statusAt is the status node the selection holds, with its position.
 export function statusAt(state) {
 	const sel = state.selection
@@ -227,6 +253,8 @@ export const COMMANDS = {
 	rule: { run: insertRule },
 	table: { run: insertTable },
 	toc: { run: insertToc },
+	details: { run: insertDetails },
+	date: { run: (state) => !!dateAt(state) || putDate('')(state, undefined), active: (s) => !!dateAt(s) },
 	status: { run: (state, dispatch) => !!statusAt(state) || putStatus('x', 'neutral')(state, undefined), active: (s) => !!statusAt(s) },
 	rowBefore: { run: addRowBefore },
 	rowAfter: { run: addRowAfter },

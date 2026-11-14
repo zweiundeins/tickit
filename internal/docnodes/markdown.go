@@ -56,6 +56,18 @@ var markdown = &prosemirror.Markdown[Resolver]{
 			w.Line("> [!" + alert + "]")
 			w.Blocks(n.Content().Nodes(), "> ", "> ")
 		},
+		"details": func(w *mdWriter, n *prosemirror.Node) {
+			if n.AttrBool("open") {
+				w.Line("<details open>")
+			} else {
+				w.Line("<details>")
+			}
+			w.Line("<summary>" + prosemirror.EscapeHTML(summaryOf(n)) + "</summary>")
+			w.BlankLine()
+			w.Blocks(n.Content().Nodes(), "", "")
+			w.BlankLine()
+			w.Line("</details>")
+		},
 		"toc": func(w *mdWriter, n *prosemirror.Node) {
 			for _, l := range tocMarkdown(w.R) {
 				w.Line(l)
@@ -113,6 +125,7 @@ var markdown = &prosemirror.Markdown[Resolver]{
 		"hard_break": func(w *mdWriter, n *prosemirror.Node) { w.Write("\\\n") },
 		"issue_chip": func(w *mdWriter, n *prosemirror.Node) { w.Write(esc(n.AttrString("key"))) },
 		"status":     func(w *mdWriter, n *prosemirror.Node) { w.Write(`\[` + esc(n.AttrString("text")) + `\]`) },
+		"date":       func(w *mdWriter, n *prosemirror.Node) { w.Write(esc(DateText(n.AttrString("date")))) },
 		"mention": func(w *mdWriter, n *prosemirror.Node) {
 			name, ok := w.R.Person(n.AttrString("personId"))
 			if !ok {
@@ -165,7 +178,8 @@ var markdown = &prosemirror.Markdown[Resolver]{
 // links as their text. Panels export as GitHub's alerts (info a note,
 // note important, success a tip, warning a warning, error a caution),
 // statuses as their text in brackets, a toc as a list of links to the
-// headings, text colours as plain text.
+// headings, text colours as plain text, dates as they show, collapsible
+// sections as HTML's details element around their blocks.
 func Markdown(d prosemirror.Doc, r Resolver) string { return markdown.Render(d, withOutline(d, r)) }
 
 // tocMarkdown is a toc as a nested list of links to the headings, by the
@@ -221,14 +235,27 @@ var leaves = prosemirror.LeafText{
 	},
 	"hard_break": func(*prosemirror.Node) string { return "\n" },
 	"status":     func(n *prosemirror.Node) string { return n.AttrString("text") },
+	"date":       func(n *prosemirror.Node) string { return DateText(n.AttrString("date")) },
 	"image":      func(n *prosemirror.Node) string { return n.AttrString("alt") },
 }
 
 // Text returns the document's text for search: blocks separated by
 // newlines, chips by key, mentions by their name in the document, hard
-// breaks as newlines, images by their alt text and statuses by their
-// text.
-func Text(d prosemirror.Doc) string { return leaves.Text(d, "\n") }
+// breaks as newlines, images by their alt text, statuses by their text,
+// dates as they show, and the summaries of collapsible sections after
+// the rest.
+func Text(d prosemirror.Doc) string {
+	s := leaves.Text(d, "\n")
+	d.Descendants(func(n *prosemirror.Node, _ int, _ *prosemirror.Node, _ int) bool {
+		if n.Type().Name() == "details" {
+			if t := n.AttrString("summary"); t != "" {
+				s += "\n" + t
+			}
+		}
+		return !n.Type().InlineContent()
+	})
+	return s
+}
 
 // Refs are the ids a document refers to, each once and sorted.
 type Refs struct {

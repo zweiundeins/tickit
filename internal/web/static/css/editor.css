@@ -234,4 +234,34 @@
 			color: HighlightText;
 		}
 	}
+
+	/* A collapsible section in the editor: its toggle and summary field. */
+	.prose .doc-details--edit > .doc-details__head {
+		margin-block-end: var(--tk-space-2);
+	}
+
+	.prose .doc-details__toggle {
+		min-inline-size: var(--tk-control-sm);
+		min-block-size: var(--tk-control-sm);
+		border: 1px solid var(--tk-border);
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-2);
+		color: var(--tk-text-1);
+		cursor: pointer;
+	}
+
+	.prose .doc-details__summary {
+		min-block-size: var(--tk-control-sm);
+		padding: 0 var(--tk-space-2);
+		border: 1px solid var(--tk-control-border);
+		border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+		background: var(--tk-surface-inset);
+		color: var(--tk-text-1);
+		font-weight: var(--tk-weight-semibold);
+	}
+
+	.prose :is(.doc-details__toggle, .doc-details__summary):focus-visible {
+		outline: 2px solid var(--tk-focus);
+		outline-offset: 1px;
+	}
 }
