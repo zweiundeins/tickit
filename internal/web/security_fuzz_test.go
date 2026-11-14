@@ -2,13 +2,19 @@ package web_test
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/zweiundeins/lith/writer"
+
+	"github.com/zweiundeins/tickit/internal/tabs"
 	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
 
@@ -150,6 +156,8 @@ func firstLines(log, want string, n int) string {
 
 // fuzzFamily fuzzes the actions whose names start with one of prefixes:
 // sel picks the action, body is what the fuzzer makes of its payload.
+// No answer is a 500, and a refusal, an answer of 4xx or an outcome that
+// is not OK, leaves every table but the bookkeeping as it was.
 func fuzzFamily(f *testing.F, prefixes ...string) {
 	fx := newFixture(f)
 	var cases []secCase
@@ -164,25 +172,144 @@ func fuzzFamily(f *testing.F, prefixes ...string) {
 		f.Fatalf("no actions start with %v", prefixes)
 	}
 	type target struct {
-		url string
-		c   *http.Client
+		url  string
+		w    who
+		c    *http.Client
+		logs bool // a refusal is a security event (FR-156.1): a failed login
 	}
 	targets := make([]target, len(cases))
 	for i, c := range cases {
 		path, body := c.req(fx, c.open)
 		body["tab"], body["op"] = "fuzz", "seed"
-		targets[i] = target{fx.e.URL + path, fx.client(sweepBy(c))}
+		targets[i] = target{fx.e.URL + path, sweepBy(c), fx.client(sweepBy(c)), c.name == "login"}
 		b, _ := json.Marshal(body)
 		f.Add(uint8(i), b)
 		f.Add(uint8(i), b[:len(b)/2])
 		f.Add(uint8(i), bytes.ReplaceAll(b, []byte(`"`), []byte(`'`)))
 	}
+	fx.countChanges(f)
 	f.Fuzz(func(t *testing.T, sel uint8, body []byte) {
 		tg := targets[int(sel)%len(targets)]
-		if code := send(t, tg.c, tg.url, body); code >= 500 {
+		before := fx.changes(t)
+		code := send(t, tg.c, tg.url, body)
+		if code >= 500 {
 			t.Errorf("NFR-16: %s with %q: %d", tg.url, body, code)
 		}
+		if fx.refused(t, tg.w, code, body) {
+			diff := changed(before, fx.changes(t))
+			if tg.logs {
+				diff = slices.DeleteFunc(diff, func(table string) bool { return table == "security_log" })
+			}
+			if len(diff) > 0 {
+				t.Errorf("NFR-01.1: %s refused %q (%d) and changed %v", tg.url, body, code, diff)
+			}
+		}
 	})
+}
+
+// countChanges counts the committed changes of each table but the
+// bookkeeping in temp.fuzz_changes, by temporary triggers on the writer's
+// connection: a digest of every table per input is 13 times slower. The
+// search index, a virtual table, changes only with the rows it indexes.
+func (f *fixture) countChanges(tb testing.TB) {
+	f.e.Do(tb, writer.Func(func(tx *writer.Tx) error {
+		if _, err := tx.ExecUncached(`CREATE TEMP TABLE fuzz_changes (tbl TEXT PRIMARY KEY, n INTEGER NOT NULL)`); err != nil {
+			return err
+		}
+		rows, err := tx.QueryUncached(`SELECT name, coalesce(sql, '') FROM main.sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite\_%' ESCAPE '\' ORDER BY name`)
+		if err != nil {
+			return err
+		}
+		var tables, virtual []string
+		for rows.Next() {
+			var name, def string
+			if err := rows.Scan(&name, &def); err != nil {
+				rows.Close()
+				return err
+			}
+			if strings.HasPrefix(strings.ToUpper(def), "CREATE VIRTUAL") {
+				virtual = append(virtual, name)
+			}
+			tables = append(tables, name)
+		}
+		rows.Close()
+		for i, table := range tables {
+			if slices.Contains(bookkeeping, table) || slices.ContainsFunc(virtual, func(v string) bool { return table == v || strings.HasPrefix(table, v+"_") }) {
+				continue
+			}
+			var cols []string
+			crows, err := tx.QueryUncached(`SELECT name FROM pragma_table_info(?)`, table)
+			if err != nil {
+				return err
+			}
+			for crows.Next() {
+				var c string
+				crows.Scan(&c)
+				if !slices.Contains(bookkeeping, table+"."+c) {
+					cols = append(cols, `"`+c+`"`)
+				}
+			}
+			crows.Close()
+			for _, ev := range []string{"INSERT", "DELETE", "UPDATE OF " + strings.Join(cols, ", ")} {
+				q := fmt.Sprintf(`CREATE TEMP TRIGGER fuzz_%d_%s AFTER %s ON main."%s" BEGIN INSERT INTO fuzz_changes VALUES ('%s', 1) ON CONFLICT DO UPDATE SET n = n + 1; END`, i, ev[:1], ev, table, table)
+				if _, err := tx.ExecUncached(q); err != nil {
+					return fmt.Errorf("%s: %w", q, err)
+				}
+			}
+		}
+		return nil
+	}))
+}
+
+// changes are the counts of countChanges once everything queued is written.
+func (f *fixture) changes(t *testing.T) map[string]string {
+	out := map[string]string{}
+	if err := f.e.W.Do(context.Background(), writer.Func(func(tx *writer.Tx) error {
+		rows, err := tx.Query(`SELECT tbl, n FROM temp.fuzz_changes`)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var table, n string
+			if err := rows.Scan(&table, &n); err != nil {
+				return err
+			}
+			out[table] = n
+		}
+		return rows.Err()
+	})); err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// refused reports whether w's action with body was refused: answered 4xx,
+// or with an outcome in the tab's row that is not OK.
+func (f *fixture) refused(t *testing.T, w who, code int, body []byte) bool {
+	if code >= 400 && code < 500 {
+		return true
+	}
+	var p struct{ Tab, Op, Ref string }
+	if json.Unmarshal(body, &p) != nil || p.Tab == "" {
+		return false
+	}
+	if p.Op == "" {
+		p.Op = p.Ref
+	}
+	var st tabs.State
+	if err := f.e.DB.View(context.Background(), func(tx *sql.Tx) (err error) {
+		st, err = tabs.Get(context.Background(), tx, f.sid(w), p.Tab)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for _, o := range st.Outcomes {
+		if o.Op == p.Op {
+			return !o.OK
+		}
+	}
+	return false
 }
 
 func FuzzCoreActions(f *testing.F) {
@@ -196,6 +323,8 @@ func FuzzWikiActions(f *testing.F) {
 func FuzzEditorActions(f *testing.F) {
 	fuzzFamily(f, "pages/open", "pages/commit", "pages/presence", "pages/image", "issues/description/")
 }
+func FuzzNotifyActions(f *testing.F) { fuzzFamily(f, "notify/") }
+func FuzzStaffActions(f *testing.F)  { fuzzFamily(f, "moderation/", "report", "admin/", "account/") }
 
 // FuzzUploads sends the uploads (FR-85) with every file the fuzzer makes,
 // as the editor sends them: none answers 500.
