@@ -171,13 +171,21 @@ func TestPresenceGoes(t *testing.T) {
 
 	// cy's page answers every heartbeat; bob's connection drops.
 	webtest.Listen(t, cy, e.URL+"/stream?tab=cy1&alive=1&v=thing:1", nil)
+	// The poster leaves t alone: the test's end cuts off a post in flight,
+	// and a post that failed earlier shows as cy's stream ending.
+	ctx := t.Context()
 	go func() {
 		for {
 			select {
-			case <-t.Context().Done():
+			case <-ctx.Done():
 				return
 			case <-time.After(300 * time.Millisecond):
-				webtest.Post(t, cy, e.URL+"/alive?tab=cy1", "")
+				req, _ := http.NewRequestWithContext(ctx, "POST", e.URL+"/alive?tab=cy1", nil)
+				req.Header.Set("Datastar-Request", "true")
+				req.Header.Set("Sec-Fetch-Site", "same-origin")
+				if res, err := cy.Do(req); err == nil {
+					res.Body.Close()
+				}
 			}
 		}
 	}()
