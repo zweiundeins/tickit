@@ -131,3 +131,24 @@ func TestDateAndDetails(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+// PI-18: a private instance's pages hold 1 MB and 10,000 blocks, the
+// demo's 200 KB and 2,000.
+func TestPrivateLimits(t *testing.T) {
+	d := mustDoc(t, docOf(strings.Repeat(`{"type":"horizontal_rule"},`, 2500)+para))
+	if err := library.Check(nil, d); err == nil || err.Error() != "The page is at its limit of 2,000 blocks." {
+		t.Errorf("demo: %v", err)
+	}
+	UsePrivateLimits(true)
+	defer UsePrivateLimits(false)
+	if l := SchemaLimits(); l.StoredBytes != 1<<20 || l.Blocks != 10000 || l.TableRows != 500 {
+		t.Errorf("private limits %+v", l)
+	}
+	if err := library.Check(nil, d); err != nil {
+		t.Errorf("private: %v", err)
+	}
+	big := mustDoc(t, docOf(strings.Repeat(`{"type":"code_block","content":[{"type":"text","text":"`+strings.Repeat("x", 1000)+`"}]},`, 1100)+para))
+	if err := library.Check(nil, big); err == nil || err.Error() != "The page is at its limit of 1,024 KB." {
+		t.Errorf("private, over 1 MB: %v", err)
+	}
+}

@@ -1,15 +1,16 @@
 package views
 
 import (
-	"html"
 	"context"
 	"encoding/json"
+	"html"
 	"io"
 	"strings"
 	"time"
 
 	"github.com/a-h/templ"
 
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/ui"
 	"github.com/zweiundeins/tickit/internal/wiki"
@@ -246,6 +247,17 @@ type EditorHost struct {
 	// Cmd is where its commits, presence and open go: /cmd/pages/<id>
 	// when empty. Label names its text area: "Page content" when empty.
 	Cmd, Label string
+}
+
+// limits are a private instance's page sizes for the editor (PI-18),
+// "" for schema.json's own.
+func (h EditorHost) limits() string {
+	if !docnodes.PrivateLimits() {
+		return ""
+	}
+	l := docnodes.SchemaLimits()
+	b, _ := json.Marshal(docnodes.Sizes{StoredBytes: l.StoredBytes, Blocks: l.Blocks})
+	return string(b)
 }
 
 // signals are the chips and comments the page's GET renders the host

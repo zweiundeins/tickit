@@ -57,6 +57,7 @@ The page loads `/static/editor/sb-rich-editor.min.<hash>.js` (from `static.URL("
 | `images` | JSON `[{id, alt}]`: the image library the Image button offers. Without it and without `upload`, the button fires `sb-insert-image`. |
 | `upload` | Optional. The URL image files go to (FR-85): a file pasted, dropped or chosen with the Image dialog's "Upload an image" is posted there as `multipart/form-data` with `tab`, `op` and `file`, and the header `Datastar-Request: true`. Needs `tab`. A placeholder shows the progress where the image goes; the answer `{id, width, height}` puts the image there, any other answer's text shows as a refusal. |
 | `label` | Accessible name of the text area (default "Page content"). |
+| `limits` | Optional: JSON `{storedBytes, blocks}`, a private instance's page sizes in place of schema.json's (PI-18). |
 | `lists` | Optional: the id of the page's element whose `[data-list]` children hold each issue list's rows by `savedFilter|filter|limit` and whose `[data-filters] > [data-id]` the saved filters (FR-104). Without it an issue list shows no rows. |
 
 ## Events

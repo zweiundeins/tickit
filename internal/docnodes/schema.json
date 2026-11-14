@@ -68,6 +68,7 @@
     "panelKinds": ["info", "note", "warning", "success", "error"],
     "statusColors": ["neutral", "purple", "blue", "red", "yellow", "green"],
     "statusText": 40,
-    "detailsSummary": 200
+    "detailsSummary": 200,
+    "private": {"storedBytes": 1048576, "blocks": 10000}
   }
 }

@@ -179,6 +179,7 @@ rocket('sb-rich-editor', {
 		upload: string.docs({ description: 'Optional: the URL image files go to (FR-85), with the tab attribute. Without it, files are not uploaded.' }),
 		label: string.default('Page content').docs({ description: 'Accessible name of the editing area.' }),
 		lists: string.docs({ description: 'Id of the page element whose [data-list] children hold the issue lists\' rows and whose [data-filters] the saved filters (FR-104).' }),
+		limits: string.docs({ description: 'Optional JSON {storedBytes, blocks}: a private instance\'s page sizes in place of schema.json\'s (PI-18).' }),
 	}),
 	manifest: {
 		slots: [{ name: 'default', description: 'The server-rendered <script type="application/json" data-ignore-morph> and <div class="pm-mount prose" data-ignore-morph data-ignore>.' }],
@@ -204,7 +205,7 @@ rocket('sb-rich-editor', {
 			peek(() => ({
 				page: props.page, epoch: props.epoch, client: props.client, tab: props.tab, base: props.base, head: props.head,
 				batches: props.batches, carets: props.carets, comments: props.comments, chips: props.chips, state: props.state, refusal: props.refusal,
-				readonly: props.readonly, images: props.images, upload: props.upload, label: props.label, lists: props.lists,
+				readonly: props.readonly, images: props.images, upload: props.upload, label: props.label, lists: props.lists, limits: props.limits,
 			}))
 		// One sync for a morph's burst of attribute writes.
 		let queued = false

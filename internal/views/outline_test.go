@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/zweiundeins/tickit/internal/docnodes"
 )
 
 // The outline nests deeper levels in the entry before them, escapes the
@@ -32,5 +34,18 @@ func TestPageOutline(t *testing.T) {
 	PageOutlineRegion(PageBody{}).Render(context.Background(), &b)
 	if b.String() != `<div id="page-outline" class="wk-outline"></div>` {
 		t.Errorf("no outline: %s", b.String())
+	}
+}
+
+// PI-18: the editor's host carries a private instance's page sizes, and
+// none for the demo, whose sizes the editor reads from schema.json.
+func TestEditorHostLimits(t *testing.T) {
+	if got := (EditorHost{}).limits(); got != "" {
+		t.Errorf("demo: %q", got)
+	}
+	docnodes.UsePrivateLimits(true)
+	defer docnodes.UsePrivateLimits(false)
+	if got := (EditorHost{}).limits(); got != `{"storedBytes":1048576,"blocks":10000}` {
+		t.Errorf("private: %q", got)
 	}
 }

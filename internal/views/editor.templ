@@ -183,6 +183,9 @@ templ EditorHostEl(h EditorHost) {
 		upload={ h.cmd() + "/image" }
 		label={ h.label() }
 		lists={ h.lists() }
+		if l := h.limits(); l != "" {
+			limits={ l }
+		}
 		data-cmd={ h.cmd() }
 		if h.Readonly {
 			readonly

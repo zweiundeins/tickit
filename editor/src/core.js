@@ -11,7 +11,7 @@ import { dropCursor } from 'prosemirror-dropcursor'
 import { tableEditing } from 'prosemirror-tables'
 import { schema, limits, ISSUE_KEY, ID, normalizeHref, setLabelHooks, imageSrc, MAX_ALT, COLORS, PANEL_KINDS, STATUS_COLORS, label, statusText, outline, isoDate } from './schema.js'
 import { Session, collab, caretPlugin, commentPlugin } from 'lith-coedit'
-import { limitsPlugin } from './limits.js'
+import { limitsPlugin, limitList } from './limits.js'
 import { IssueChipView, MentionView, PageLinkView, TaskItemView, ImageView, IssueListView, TocView, DetailsView } from './nodeviews.js'
 import { COMMANDS, rules, keymaps, inTable, inCode, setLanguage, shortcutText, setPanel, panelAround, setColor, colorAt, putStatus, statusAt, putDate, dateAt } from './commands.js'
 import { documentCSS } from './styles.js'
@@ -39,6 +39,15 @@ function adoptDocumentCSS() {
 		style.textContent = documentCSS
 		document.head.append(style)
 	}
+}
+
+// sizes are the host's limits attribute, a private instance's
+// {storedBytes, blocks}, as whole numbers only.
+function sizes(raw) {
+	const o = parseJSON(raw, {})
+	const out = {}
+	for (const k of ['storedBytes', 'blocks']) if (Number.isInteger(o?.[k]) && o[k] > 0) out[k] = o[k]
+	return out
 }
 
 const parseJSON = (s, fallback) => {
@@ -163,7 +172,7 @@ class Editor {
 				gapCursor(),
 				dropCursor(),
 				tableEditing(),
-				limitsPlugin((hit) => this.limitHit(hit)),
+				limitsPlugin((hit) => this.limitHit(hit), limitList({ ...limits, ...sizes(this.p.limits) })),
 				caretPlugin(),
 				commentPlugin(),
 				uploadPlugin(),

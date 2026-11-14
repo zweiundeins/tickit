@@ -71,6 +71,7 @@ import (
 	"slices"
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	"github.com/zweiundeins/prosemirror-go"
 )
@@ -105,6 +106,24 @@ type Limits struct {
 	StatusColors  []string `json:"statusColors"`   // a status lozenge's colours
 	StatusText    int      `json:"statusText"`     // characters of a status's text
 	Summary       int      `json:"detailsSummary"` // characters of a collapsible section's summary
+	// Private are the sizes a private instance allows instead (PI-18):
+	// a page's stored bytes and blocks.
+	Private *Sizes `json:"private,omitempty"`
+}
+
+// Sizes are a document's size limits.
+type Sizes struct {
+	StoredBytes int `json:"storedBytes"`
+	Blocks      int `json:"blocks"`
+}
+
+// ForPrivate returns l with its private sizes in place of the demo's.
+func (l Limits) ForPrivate() Limits {
+	if l.Private != nil {
+		l.StoredBytes, l.Blocks = l.Private.StoredBytes, l.Private.Blocks
+	}
+	l.Private = nil
+	return l
 }
 
 var limits = sync.OnceValue(func() Limits {
@@ -117,8 +136,25 @@ var limits = sync.OnceValue(func() Limits {
 	return spec.Limits
 })
 
-// SchemaLimits returns the limits of schema.json.
-func SchemaLimits() Limits { return limits() }
+var private atomic.Bool
+
+// UsePrivateLimits makes SchemaLimits, and so Rules, the import and the
+// editor's page, take schema.json's private sizes (PI-18): 1 MB and
+// 10,000 blocks a page instead of the public demo's 200 KB and 2,000. A
+// private instance calls it once at startup.
+func UsePrivateLimits(on bool) { private.Store(on) }
+
+// PrivateLimits reports whether UsePrivateLimits is on.
+func PrivateLimits() bool { return private.Load() }
+
+// SchemaLimits returns the limits of schema.json, with the private sizes
+// once UsePrivateLimits is on.
+func SchemaLimits() Limits {
+	if private.Load() {
+		return limits().ForPrivate()
+	}
+	return limits()
+}
 
 // ParseDoc reads a document of tickit's schema and checks it.
 func ParseDoc(data []byte) (prosemirror.Doc, error) { return schema.ParseDoc(data) }

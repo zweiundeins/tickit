@@ -43,6 +43,7 @@ import (
 	"github.com/zweiundeins/lith/sqlite"
 	"github.com/zweiundeins/lith/writer"
 
+	"github.com/zweiundeins/tickit/internal/docnodes"
 	"github.com/zweiundeins/tickit/internal/notify"
 	"github.com/zweiundeins/tickit/internal/people"
 	"github.com/zweiundeins/tickit/internal/recent"
@@ -107,8 +108,15 @@ func serve(args []string) error {
 	secure := f.Bool("secure", false, "served over HTTPS: a __Host- cookie and HSTS")
 	dev := f.Bool("dev", false, "development: serve the static files as written, not minified, and seed an empty database")
 	debugLog := f.Bool("debug", false, "log at debug level")
+	pageLimits := f.String("limits", "demo", "a page's size limits: demo (200 KB, 2,000 blocks) for the public demo, private (1 MB, 10,000 blocks) for a private instance (PI-18)")
 	if err := parse(f, args); err != nil {
 		return err
+	}
+	switch *pageLimits {
+	case "demo", "private":
+		docnodes.UsePrivateLimits(*pageLimits == "private")
+	default:
+		return fmt.Errorf("-limits is demo or private, not %q", *pageLimits)
 	}
 	level := slog.LevelInfo
 	if *debugLog {

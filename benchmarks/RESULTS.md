@@ -311,3 +311,19 @@ Against the budgets: a tick at NFR-38's load takes about 25 ms (NFR-35), so even
 The limit is now 500 rows (schema.json `tableRows`, the markup, the editor's input stop).
 
     go test ./internal/docnodes -run '^$' -bench BenchmarkTable -count 3
+
+## Page limits (DM-05.1, PI-18)
+
+14 November 2026, `rw/adf`, the same machine and load as "Table rows". The private-instance plan proposes 1 MB and 10,000 blocks a page instead of the demo's 200 KB and 2,000. A page of sections (a heading, 24 paragraphs of about 200 characters, a bullet list of 18 short items) at each size. The writer's commit and fold are `TestFoldTime` (`FOLD_PARAS=3600` for about 1 MB of paragraphs; 500 commits, then one fold command of up to 200 events); the editor's is `limits.js`'s measure after a keystroke, in Node.
+
+| Page | Blocks | Stored | Reader HTML (gzip) | Render | Cache after a keystroke | Rules on a commit | Commit in the writer, p50 | Fold command | JSON out / in | Editor, a keystroke |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| demo limits | 1,984 | 216 KB | 130 KB (1.1 KB) | 0.30 ms | 0.21 ms | 0.01 ms | 0.08 ms (116 KB page) | 1.8 to 3.9 ms (116 KB) | 0.28 / 0.83 ms | 0.03 ms |
+| private limits | 9,982 | 1,088 KB | 655 KB (4.9 KB) | 1.4 ms | 1.0 ms | 0.06 ms | 0.31 ms | 15 to 17 ms | 1.6 / 4.8 ms | 0.08 ms |
+
+The editor and the commit stay cheap. What grows with the page: every reader's frame carries the whole body, 655 KB of HTML at 1 MB on every tick with a change (these synthetic paragraphs compress to 5 KB; real text to a quarter or a third); a cold read of the page parses 4.8 ms; a snapshot, a checkpoint of `page_doc` (every 50 commits) and every version write 1 MB; and one fold command holds the writer 15 to 17 ms, over NFR-43.3's 5 ms, so the other actions wait that long once a fold of such a page runs.
+
+The public demo keeps 200 KB and 2,000 blocks. A guest may send ten batches of up to 256 KB a second (DM-04.1), so a page reaches 1 MB in a second; 300 pages a day (DM-04.3) at 1 MB with their versions is 300 MB and more before the nightly reset, every reader of such a page gets 655 KB frames, and the fold of each holds the writer 16 ms for everyone. A private instance, with accounts and few editors per page, takes the larger sizes: `tickit serve -limits private`. A smaller fold batch for large pages would bring the fold back under 5 ms; not done here.
+
+    go test ./internal/docnodes -run '^$' -bench BenchmarkPageLimits -count 3
+    FOLD_PARAS=3600 go test ./internal/wiki -run TestFoldTime -v

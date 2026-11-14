@@ -61,19 +61,25 @@ export function measure(doc) {
 	return out
 }
 
-export const LIMITS = [
-	{ name: 'size', key: 'bytes', max: limits.storedBytes, message: `The page is at its limit of ${Math.round(limits.storedBytes / 1024)} KB. Remove something to add more.` },
-	{ name: 'blocks', key: 'blocks', max: limits.blocks, message: `The page is at its limit of ${limits.blocks.toLocaleString('en')} blocks (paragraphs, headings, list items and the like).` },
-	{ name: 'table-rows', key: 'rows', max: limits.tableRows, message: `A table holds at most ${limits.tableRows} rows.` },
-	{ name: 'table-columns', key: 'cols', max: limits.tableColumns, message: `A table holds at most ${limits.tableColumns} columns.` },
-]
+// limitList is DM-05's limits for l: schema.json's, or with a private
+// instance's sizes, which the host's limits attribute brings (PI-18).
+export function limitList(l = limits) {
+	return [
+		{ name: 'size', key: 'bytes', max: l.storedBytes, message: `The page is at its limit of ${Math.round(l.storedBytes / 1024).toLocaleString('en')} KB. Remove something to add more.` },
+		{ name: 'blocks', key: 'blocks', max: l.blocks, message: `The page is at its limit of ${l.blocks.toLocaleString('en')} blocks (paragraphs, headings, list items and the like).` },
+		{ name: 'table-rows', key: 'rows', max: l.tableRows, message: `A table holds at most ${l.tableRows} rows.` },
+		{ name: 'table-columns', key: 'cols', max: l.tableColumns, message: `A table holds at most ${l.tableColumns} columns.` },
+	]
+}
+
+export const LIMITS = limitList()
 
 // The limit a document passes that the one before stayed within (or grew
 // less past), or null. A change that makes nothing worse always passes, so a
 // page over a limit can still be cut down.
-export function exceeded(before, after) {
+export function exceeded(before, after, list = LIMITS) {
 	const a = measure(after)
-	for (const l of LIMITS) {
+	for (const l of list) {
 		if (a[l.key] <= l.max) continue
 		if (a[l.key] > measure(before)[l.key]) return { limit: l.name, max: l.max, value: a[l.key], message: l.message }
 	}
@@ -82,11 +88,11 @@ export function exceeded(before, after) {
 
 // limitsPlugin refuses local transactions past a limit and calls report.
 // Commits from the writer always pass.
-export function limitsPlugin(report) {
+export function limitsPlugin(report, list = LIMITS) {
 	return new Plugin({
 		filterTransaction(tr, state) {
 			if (!tr.docChanged || tr.getMeta(REMOTE)) return true
-			const hit = exceeded(state.doc, tr.doc)
+			const hit = exceeded(state.doc, tr.doc, list)
 			if (hit) report(hit)
 			return !hit
 		},
