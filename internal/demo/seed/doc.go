@@ -52,7 +52,7 @@
 //	                     python, java, rust, markdown, diff, text) or none
 //	| A | B |            a table: a header row, a separator row
 //	| --- | --- |        (| --- | --- |), then rows of as many cells;
-//	                     \| is a pipe inside a cell; at most 50 rows by 20
+//	                     \| is a pipe inside a cell; at most 500 rows by 20
 //	---                  a horizontal rule
 //	![Alt text](lib:id)  an image of the library, on a line of its own
 //	> [!NOTE]            a panel holding the blocks after it: NOTE info,

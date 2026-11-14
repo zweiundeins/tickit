@@ -1089,7 +1089,7 @@ Must · Source: `lith:site/internal/demo/kit.go:55-95`; `docs/user-management/SE
 #### DM-05 Content limits
 Must · Source: inferred (demo); `lith:site/content/docs/guides/events.md:74-75` (title of 1 to 200 characters) · Today: missing. Titles and descriptions have no length limit.
 
-1. Limits: summary and page title 255 characters, issue description 20,000, comment 10,000, page body 200 KB as stored and 2,000 blocks, table 50 rows by 20 columns, label 50, display name 30, 10 mentions per comment.
+1. Limits: summary and page title 255 characters, issue description 20,000, comment 10,000, page body 200 KB as stored and 2,000 blocks, table 500 rows by 20 columns (within the 2,000 blocks: a table of four columns holds about 220 rows), label 50, display name 30, 10 mentions per comment.
 2. Text over a limit is refused next to its field with the limit in words; the editor stops accepting input at the page limit and says why.
 
 #### DM-06 Safe rendering of public content

@@ -26,7 +26,7 @@
 //     characters; text_color.color one of textColors.
 //   - date.date an ISO date from 0001-01-01 to 9999-12-31; details.summary
 //     at most detailsSummary (200) characters without control characters.
-//   - Tables (FR-83): 50 rows, 20 columns counted with colspans and the
+//   - Tables (FR-83): 500 rows, 20 columns counted with colspans and the
 //     rowspans of the rows above; colspan 1 to 20, rowspan 1 to 50;
 //     colwidth null or one number from 0 to 10,000 per spanned column.
 //   - image (FR-84): imageId in the library (the Rules.Image callback);

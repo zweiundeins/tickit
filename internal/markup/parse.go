@@ -35,7 +35,7 @@ const (
 	maxAttrLength = 2048
 	maxBlocks     = 2000
 	maxDocBytes   = 204800
-	maxTableRows  = 50
+	maxTableRows  = 500
 	maxTableCols  = 20
 	maxStatusText = 40
 )

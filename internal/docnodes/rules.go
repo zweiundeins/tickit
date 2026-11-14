@@ -231,7 +231,7 @@ func wholeIn(n *prosemirror.Node, name string, lo, hi int) (int, bool) {
 	return v, ok && v >= lo && v <= hi
 }
 
-// checkTable checks a table against DM-05.1: at most 50 rows and 20
+// checkTable checks a table against DM-05.1: at most 500 rows and 20
 // columns, counting colspans and the rowspans of the rows above.
 func checkTable(t *prosemirror.Node, lim Limits) error {
 	rows, cols := lim.TableRows, lim.TableColumns

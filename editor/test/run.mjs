@@ -547,7 +547,7 @@ test('paste keeps supported formatting only and offers chips and page links (FR-
 	await close()
 })
 
-test('limits: input stops at 200 KB and at 50 table rows, and says why (DM-05)', async () => {
+test('limits: input stops at 200 KB and at 500 table rows, and says why (DM-05)', async () => {
 	const { tabs, close } = await open(1)
 	const [a] = tabs
 	await a.evaluate(() => {
@@ -560,12 +560,12 @@ test('limits: input stops at 200 KB and at 50 table rows, and says why (DM-05)',
 	const r = await a.evaluate(() => ({ len: JSON.stringify(harness.host().json()).length, ev: limitEvents, notice: harness.host().shadowRoot.getElementById('notice-text').textContent }))
 	ok(r.len === before, 'the paste was stopped')
 	ok(r.ev[0]?.limit === 'size' && r.notice.includes('200 KB'), 'says why: ' + r.notice)
-	// A table of 50 rows takes no 51st.
+	// A table of 500 rows takes no 501st (one column, inside the 2,000 blocks).
 	const rows = await a.evaluate(() => {
 		const v = harness.host().view
 		const { nodes } = v.state.schema
-		const row = () => nodes.table_row.create(null, [nodes.table_cell.createAndFill(), nodes.table_cell.createAndFill()])
-		const table = nodes.table.create(null, Array.from({ length: 50 }, row))
+		const row = () => nodes.table_row.create(null, [nodes.table_cell.createAndFill()])
+		const table = nodes.table.create(null, Array.from({ length: 500 }, row))
 		const end = v.state.doc.content.size
 		const tr = v.state.tr.insert(end, table)
 		tr.setSelection(v.state.selection.constructor.near(tr.doc.resolve(end + 4)))
@@ -573,7 +573,7 @@ test('limits: input stops at 200 KB and at 50 table rows, and says why (DM-05)',
 		harness.host().editor.command('rowAfter')
 		return v.state.doc.lastChild.childCount
 	})
-	ok(rows === 50, 'still 50 rows: ' + rows)
+	ok(rows === 500, 'still 500 rows: ' + rows)
 	const last = await a.evaluate(() => limitEvents.at(-1))
 	ok(last.limit === 'table-rows', 'table limit: ' + JSON.stringify(last))
 	await settled(tabs)

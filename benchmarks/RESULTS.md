@@ -294,3 +294,20 @@ The fold (NFR-43.3): `go test ./internal/wiki -run TestFoldTime -v`, a page of 1
 | Reset end to end: flush, wipe, seed, log | 138 ms | the same test, `Demo.Reset` |
 
 DM-02.4 wants the seed under 30 s; the reset holds the writer at most for the wipe and then for one batch of 64 seed steps at a time.
+
+## Table rows (DM-05.1)
+
+14 November 2026, `rw/adf`. Intel Core i5-13500, Linux 6.18.38 (Unraid) in a container, Go 1.27.4, Node 24; other agents' jobs ran on the machine (load 2 to 5). The question: may a table hold 500 rows instead of 50, as the private-instance plan proposes? A page of a heading, a paragraph and one table of short cells ("Item 12 value 3"), the block and size limits left out so that the rows alone count. One render of the reader view, the block cache's render after a keystroke in the last row (the table is one top-level block, so it renders whole), and the writer's part of a commit into it (the step, `docnodes.Rules` on the changed block, the stored size). The editor's part is `limits.js` on every keystroke: the table's JSON and its `TableMap`.
+
+| Table | Blocks | Stored | Reader HTML (gzip) | Render | Cache after a keystroke | Commit (writer) | Editor, a keystroke |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 50 by 4 | 453 | 33 KB | 6.7 KB (0.6 KB) | 0.04 ms | 0.06 ms | 0.03 ms | 0.16 ms |
+| 200 by 4 | 1,803 | 134 KB | 27 KB (1.9 KB) | 0.15 ms | 0.23 ms | 0.10 ms | 0.71 ms |
+| 500 by 1 | 1,503 | 96 KB | 20 KB (1.4 KB) | 0.14 ms | 0.19 ms | 0.09 ms | 0.55 ms |
+| 500 by 4 | 4,503 | 334 KB | 68 KB (4.4 KB) | 0.45 ms | 0.64 ms | 0.28 ms | 1.46 ms |
+
+Against the budgets: a tick at NFR-38's load takes about 25 ms (NFR-35), so even 500 by 4 renders in under 3 % of one, once a tick for all readers of the page; the writer's 0.28 ms sits inside NFR-36's commit p95 of 5.3 ms; the editor's 1.5 ms a keystroke leaves MP-05.3's 250 ms untouched. The page body's frame of 68 KB is over NFR-37's 60 KB for a board, which no page budget asks, and well under the issue view's 325 KB frames; compressed it is a few KB (these cells repeat, real text compresses less). The rows cost nothing that matters. What does limit a table is the rest of DM-05.1, which stays: 2,000 blocks and 200 KB a page. A table of c columns holds at most about (2,000 / (1 + 2c)) rows: 500 with one column, about 400 with two, 220 with four. 500 by 4 needs both page limits raised, which the numbers above would allow too.
+
+The limit is now 500 rows (schema.json `tableRows`, the markup, the editor's input stop).
+
+    go test ./internal/docnodes -run '^$' -bench BenchmarkTable -count 3

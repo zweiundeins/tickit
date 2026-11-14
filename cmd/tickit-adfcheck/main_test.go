@@ -18,7 +18,7 @@ func TestCheck(t *testing.T) {
 		"jira.json": `{"issues":[{"key":"AB-1","fields":{"description":` + para("issue text") + `,"comment":{"comments":[{"body":` + para("comment text") + `}]}}},` +
 			`{"key":"AB-2","fields":{"description":null,"comment":{"comments":[]}}}]}`,
 		"conf.json": `{"results":[{"id":"1","body":{"atlas_doc_format":{"value":` + string(page) + `,"representation":"atlas_doc_format"}}}]}`,
-		"doc.json":  `{"type":"doc","version":1,"content":[{"type":"table","content":[` + strings.Repeat(`{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph"}]}]},`, 50) + `{"type":"tableRow","content":[]}]}]}`,
+		"doc.json":  `{"type":"doc","version":1,"content":[{"type":"table","content":[` + strings.Repeat(`{"type":"tableRow","content":[{"type":"tableCell","content":[{"type":"paragraph"}]}]},`, 500) + `{"type":"tableRow","content":[]}]}]}`,
 	}
 	for name, body := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
@@ -37,7 +37,7 @@ func TestCheck(t *testing.T) {
 			t.Errorf("%s: %d documents, want %d", k, c.sources[k], n)
 		}
 	}
-	if c.refused["adf: A table holds at most 50 rows."] != 1 {
+	if c.refused["adf: A table holds at most 500 rows."] != 1 {
 		t.Errorf("refusals %v", c.refused)
 	}
 	for _, text := range []string{"issue text", "comment text", "page text"} {
