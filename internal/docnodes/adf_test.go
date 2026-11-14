@@ -92,7 +92,7 @@ func TestADF(t *testing.T) {
 		`{"type":"text","marks":[{"type":"text_color","attrs":{"color":"red"}}],"text":" color"}`,
 		`{"type":"text","text":" shaded"},{"type":"date","attrs":{"date":"2025-11-14"}},{"type":"text","text":"👍"}`,
 		`{"type":"details","attrs":{"summary":"Open me","open":false},"content":[{"type":"details","attrs":{"summary":"Inner","open":false}`,
-		`{"type":"details","attrs":{"summary":"Details","open":false},"content":[{"type":"paragraph","content":[{"type":"text","text":"body"}]}]}`,
+		`{"type":"toc"},{"type":"paragraph","content":[{"type":"text","text":"body"}]}`,
 		`{"type":"issue_chip","attrs":{"key":"AB-1"}}`,
 		`{"type":"page_link","attrs":{"pageId":"0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"}}`,
 		`{"type":"mention","attrs":{"personId":"a-0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c","label":"Ada Example"}}`,

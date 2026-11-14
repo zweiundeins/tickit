@@ -36,7 +36,7 @@ var codeAliases = map[string]string{
 // that are not http, https or mailto plain text, control characters
 // spaces (CR a newline in code), and a status's text is cut to
 // statusText characters. Panels, statuses, text colours, the toc macro
-// the six heading levels, dates, expands and the details macro map to
+// the six heading levels, dates, expands and the expand macro map to
 // tickit's own (adf.Defaults), a section's summary cut to detailsSummary;
 // backgroundColor is dropped, as tickit has no highlight.
 func ADF(a Atlassian) *adf.Mapping {
@@ -148,7 +148,6 @@ func ADF(a Atlassian) *adf.Mapping {
 	}
 	m.Nodes["expand"] = summed(m.Nodes["expand"], lim.Summary)
 	m.Nodes["nestedExpand"] = summed(m.Nodes["nestedExpand"], lim.Summary)
-	m.Extensions["details"] = summed(m.Extensions["details"], lim.Summary)
 	m.Extensions["expand"] = summed(m.Extensions["expand"], lim.Summary)
 	return m
 }
