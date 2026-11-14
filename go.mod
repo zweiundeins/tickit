@@ -18,7 +18,7 @@ require (
 	github.com/zweiundeins/lith-coedit v0.1.0
 	github.com/zweiundeins/lith/minify v0.5.8
 	github.com/zweiundeins/lith/prom v0.5.8
-	github.com/zweiundeins/prosemirror-go v0.1.0
+	github.com/zweiundeins/prosemirror-go v0.2.0
 	github.com/zweiundeins/prosemirror-go/oracle v0.1.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/image v0.48.0
@@ -181,7 +181,3 @@ require (
 	mvdan.cc/sh/v3 v3.14.1 // indirect
 	mvdan.cc/sh/x v0.0.0-20260922090537-aebdf2b86f56 // indirect
 )
-
-// LOCAL ONLY: the adf package of prosemirror-go is not published yet. Remove
-// before merging, and require the release that has it.
-replace github.com/zweiundeins/prosemirror-go => ../_lith/prosemirror-go-adf

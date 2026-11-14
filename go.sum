@@ -428,6 +428,8 @@ github.com/zweiundeins/lith/minify v0.5.8 h1:Cp3Vj5rC7KuLo4XT716AdndKOAiRSxr6bRC
 github.com/zweiundeins/lith/minify v0.5.8/go.mod h1:XKJd9158Wdnw7aZUPhKdOJ/UQgBMRPlCrmQijwS3v1k=
 github.com/zweiundeins/lith/prom v0.5.8 h1:Up0+fOr76jUaupmWkpIXx0J2ujWFHreP8fK3vaDuN9k=
 github.com/zweiundeins/lith/prom v0.5.8/go.mod h1:3SzSKf46DtomEcIgcLFOosOejJDo4wrM1h8rmV9QMjY=
+github.com/zweiundeins/prosemirror-go v0.2.0 h1:zpqEOagoOuh1SOMUDRLV1YwcgEYmJPaeifrMVRsT7V8=
+github.com/zweiundeins/prosemirror-go v0.2.0/go.mod h1:N6K/D46qKgP5yJfAr+h98Z7ucssslKlMArQF9oDVcgU=
 github.com/zweiundeins/prosemirror-go/oracle v0.1.0 h1:S3TCcnVhYqVgq+/9d+jNDhxCCtmE4UGOcbCYb8TRysI=
 github.com/zweiundeins/prosemirror-go/oracle v0.1.0/go.mod h1:uD2YOubEIlmbbXXbLtsf0tampNNlFkbdB7jCZDIjGFQ=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
