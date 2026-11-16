@@ -1,7 +1,7 @@
 {
   "repo": "github.com/zweiundeins/starbase",
-  "commit": "d5f5b24a6968bc3b42f998bee9027b815562b37b",
-  "date": "2026-11-16T11:21:08Z",
+  "commit": "7132108b40def8726cb6ef0df73aa973589b8b81",
+  "date": "2026-11-16T11:46:07Z",
   "license": "MIT",
   "datastar": "sha384-DkjVaBESHDA703Xk1QdsjXyHUmwC4Z9N/T8ak/EVxdTXso6apSccCKzi0DwwbGGK",
   "fonts": {
@@ -48,7 +48,7 @@
       "pinned": true,
       "entry": "dropdown.js",
       "files": {
-        "dropdown.js": "sha384-2PGHYD0PSz1Pvg8lP7MVSdOLW3pTElu4sZF+m26DLBNNRgZFSWedh8Sxzwz2BMwN"
+        "dropdown.js": "sha384-jNlrpeJdx16gRWYF3lA4zOCI9O+ihUvNr/rkUxIYqkTdEoLjf74E1L3HmDyzU/JR"
       }
     },
     {

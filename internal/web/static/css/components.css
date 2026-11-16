@@ -1107,12 +1107,13 @@
 			font-weight: var(--tk-weight-regular);
 		}
 
-		/* No text-transform: Chromium names the group in the case shown. */
 		&::part(group-label) {
 			color: var(--tk-text-muted);
 			font-family: var(--tk-font-mono);
 			font-size: var(--tk-text-2xs);
 			font-weight: var(--tk-weight-medium);
+			letter-spacing: var(--tk-tracking-caps);
+			text-transform: uppercase;
 		}
 	}
 
