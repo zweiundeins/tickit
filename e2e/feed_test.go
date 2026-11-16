@@ -53,7 +53,7 @@ func feedSeeded(t *testing.T, n int) (*webtest.Env, func(summary string)) {
 // entries that arrive meanwhile at the top keep the reader's place, and
 // the focused entry keeps the focus (FR-69, MP-03.3, NFR-37, NFR-47).
 func TestHomeFeedScrolls(t *testing.T) {
-	e, create := feedSeeded(t, 400)
+	e, create := feedSeeded(t, 500)
 	b := browsertest.Start(t)
 	p := b.NewPage(t, 1024, 900)
 	p.Navigate(t, e.URL+"/")
@@ -89,8 +89,25 @@ func TestHomeFeedScrolls(t *testing.T) {
 	}
 	p.Wait(t, `(() => { const h = document.getElementById('activity-home-list'); return !h.matches(':state(loading)') && +h.getAttribute('offset') > 100 })()`, 5*time.Second)
 	before := at()
-	if before.N > 60 || before.Offset < 100 {
-		t.Fatalf("the window holds %d entries from %d: want a window of at most 50 far down", before.N, before.Offset)
+	if before.N > 60 || before.Offset < 100 || before.Offset%10 != 0 {
+		t.Fatalf("the window holds %d entries from %d: want a window of at most 50 far down, from a multiple of the step", before.N, before.Offset)
+	}
+	// The feed's length is unknown this far up, and rows are --tk-feed-row high.
+	var host struct {
+		Total, SetSize string
+		Row, Want      float64
+	}
+	p.Eval(t, `(() => {
+		const h = document.getElementById('activity-home-list'), a = h.querySelector('article')
+		const probe = document.createElement('div')
+		probe.style.blockSize = 'var(--tk-feed-row)'
+		document.body.append(probe)
+		const want = probe.getBoundingClientRect().height
+		probe.remove()
+		return {total: h.getAttribute('total'), setSize: a.getAttribute('aria-setsize'), row: a.getBoundingClientRect().height, want}
+	})()`, &host)
+	if host.Total != "-1" || host.SetSize != "-1" || host.Row != host.Want {
+		t.Errorf("the window from %d: total %s, aria-setsize %s, rows %.1fpx of %.1fpx", before.Offset, host.Total, host.SetSize, host.Row, host.Want)
 	}
 
 	// Three entries arrive at the top: the entry the reader looks at stays
@@ -179,6 +196,21 @@ func TestHomeFeedScrolls(t *testing.T) {
 			t.Errorf("as a window landed the focus was on %s (want %s), and Page Down went from %d to %d", l.On, l.Key, l.Pos, l.Next)
 		}
 	}
+
+	// Ctrl+End leaves the feed for the next Tab stop after it, Ctrl+Home for
+	// the last one before it.
+	const where = `(() => { const a = document.activeElement, h = document.getElementById('activity-home-list'); return h.contains(a) ? 'in' : (h.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING) ? 'after' : 'before' })()`
+	// Synthetic keys with Ctrl: Firefox's driver sends no modifiers.
+	ctrl := func(key string) {
+		p.Eval(t, `(document.activeElement.dispatchEvent(new KeyboardEvent('keydown', {key: '`+key+`', ctrlKey: true, bubbles: true, composed: true, cancelable: true})), true)`, nil)
+	}
+	p.Eval(t, `(document.querySelector('#activity-home-list > article').focus(), true)`, nil)
+	ctrl("End")
+	p.Wait(t, where+` === 'after'`, 2*time.Second)
+	p.Eval(t, `(document.querySelector('#activity-home-list > article').focus(), true)`, nil)
+	ctrl("Home")
+	p.Wait(t, where+` === 'before'`, 2*time.Second)
+	p.Eval(t, `(document.querySelector('#activity-home-list > article').focus({preventScroll: true}), true)`, nil)
 
 	// Newer activity leads back to the top, where the newest entry is.
 	p.Eval(t, `(document.querySelector('#activity-home .tk-vfeed__newer').click(), true)`, nil)

@@ -1150,13 +1150,13 @@ func navigation(p Props) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = ui.VirtualList(ui.VirtualProps{Label: "Rows of the example", Total: 40, ItemSize: 32, Class: "sg-virtual"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var41), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = ui.VirtualList(ui.VirtualProps{Label: "Rows of the example", Total: 40, ItemSize: "32", Class: "sg-virtual"}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var41), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = spec("A long list: sb-virtual-scroll, one window from the server", "@ui.VirtualList(ui.VirtualProps{Label: \"Recent activity\", Role: \"feed\", Total: n, Offset: from, ItemSize: 60}) { ...one row each... }").Render(templ.WithChildren(ctx, templ_7745c5c3_Var40), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = spec("A long list: sb-virtual-scroll, one window from the server", "@ui.VirtualList(ui.VirtualProps{Label: \"Recent activity\", Role: \"feed\", Total: n, Offset: from, ItemSize: \"var(--tk-feed-row)\", Step: 10}) { ...one row each... }").Render(templ.WithChildren(ctx, templ_7745c5c3_Var40), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

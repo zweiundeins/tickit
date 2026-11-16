@@ -126,8 +126,8 @@ func activityEmpty() templ.Component {
 }
 
 // FeedWindow is a window of a long feed in sb-virtual-scroll (the ARIA
-// feed pattern): one article per entry, each one row of FeedRow high, with
-// its place in the feed (aria-posinset, aria-setsize), and the faces and
+// feed pattern): one article per entry, each one row of --tk-feed-row high,
+// with its place in the feed (aria-posinset, aria-setsize), and the faces and
 // glyphs as masks, so a window of 50 stays a small frame (NFR-37). The
 // page needs ui.Glyphs once, the "virtual-scroll" component and
 // FeedScript; the button that leads to newer entries is the tab's own, so
@@ -176,7 +176,7 @@ func FeedWindow(f ActivityFeed) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"tk-vfeed\"><span class=\"tk-vfeed__probe\" aria-hidden=\"true\"></span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"tk-vfeed\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -201,7 +201,7 @@ func FeedWindow(f ActivityFeed) templ.Component {
 			return nil
 		})
 		templ_7745c5c3_Err = ui.VirtualList(ui.VirtualProps{ID: f.ID + "-list", Label: f.label(), Role: "feed", Total: f.Total, Offset: f.From,
-			ItemSize: FeedRow, Buffer: 12 * FeedRow, Hidden: len(f.Entries) == 0 && f.From == 0, Class: "tk-vfeed__list", Attrs: f.listAttrs()}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var7), templ_7745c5c3_Buffer)
+			ItemSize: "var(--tk-feed-row)", Buffer: FeedBuffer, Step: FeedStep, Hidden: len(f.Entries) == 0 && f.From == 0, Class: "tk-vfeed__list", Attrs: f.listAttrs()}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var7), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -225,7 +225,7 @@ func FeedWindow(f ActivityFeed) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templruntime.NewAttributeExpression(f.label() + ", more").Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 63, Col: 75}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 62, Col: 75}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 			if templ_7745c5c3_Err != nil {
@@ -243,7 +243,7 @@ func FeedWindow(f ActivityFeed) templ.Component {
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(f.newer())).ResolveURL(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 65, Col: 39}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 64, Col: 39}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 				if templ_7745c5c3_Err != nil {
@@ -262,7 +262,7 @@ func FeedWindow(f ActivityFeed) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(f.older())).ResolveURL(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 68, Col: 39}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 67, Col: 39}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 				if templ_7745c5c3_Err != nil {
@@ -312,7 +312,7 @@ func feedEntry(f ActivityFeed, i int, e activity.Entry) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templruntime.NewAttributeExpression(f.entryKey(e)).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 80, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 79, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {
@@ -325,7 +325,7 @@ func feedEntry(f ActivityFeed, i int, e activity.Entry) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templruntime.NewAttributeExpression(strconv.Itoa(f.From + i + 1)).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 82, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 81, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 		if templ_7745c5c3_Err != nil {
@@ -336,9 +336,9 @@ func feedEntry(f ActivityFeed, i int, e activity.Entry) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var14 string
-		templ_7745c5c3_Var14, templ_7745c5c3_Err = templruntime.NewAttributeExpression(f.setSize()).Resolve(ctx)
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templruntime.NewAttributeExpression(strconv.Itoa(f.Total)).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 83, Col: 28}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 82, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
@@ -351,7 +351,7 @@ func feedEntry(f ActivityFeed, i int, e activity.Entry) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templruntime.NewAttributeExpression(id + "-t").Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 84, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 83, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 		if templ_7745c5c3_Err != nil {
@@ -364,7 +364,7 @@ func feedEntry(f ActivityFeed, i int, e activity.Entry) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templruntime.NewAttributeExpression(id + "-m").Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 85, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 84, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 		if templ_7745c5c3_Err != nil {
@@ -377,7 +377,7 @@ func feedEntry(f ActivityFeed, i int, e activity.Entry) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templruntime.NewAttributeExpression(ui.FaceRef(UIPerson(who).Seed)).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 87, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 86, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 		if templ_7745c5c3_Err != nil {
@@ -390,7 +390,7 @@ func feedEntry(f ActivityFeed, i int, e activity.Entry) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templruntime.NewAttributeExpression(id + "-t").Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 89, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 88, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 		if templ_7745c5c3_Err != nil {
@@ -411,7 +411,7 @@ func feedEntry(f ActivityFeed, i int, e activity.Entry) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templruntime.NewAttributeExpression(id + "-m").Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 92, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 91, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 		if templ_7745c5c3_Err != nil {
@@ -424,7 +424,7 @@ func feedEntry(f ActivityFeed, i int, e activity.Entry) templ.Component {
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(e.Subject.Href)).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 93, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 92, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 		if templ_7745c5c3_Err != nil {
@@ -450,7 +450,7 @@ func feedEntry(f ActivityFeed, i int, e activity.Entry) templ.Component {
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(e.Text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 97, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 96, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
@@ -511,7 +511,7 @@ func activityItem(f ActivityFeed, e activity.Entry) templ.Component {
 				var templ_7745c5c3_Var24 string
 				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(e.Text)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 109, Col: 41}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 108, Col: 41}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 				if templ_7745c5c3_Err != nil {
@@ -558,7 +558,7 @@ func activityText(e activity.Entry, name string, glyph bool) templ.Component {
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 117, Col: 10}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 116, Col: 10}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -571,7 +571,7 @@ func activityText(e activity.Entry, name string, glyph bool) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(" ")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 117, Col: 22}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 116, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
@@ -590,7 +590,7 @@ func activityText(e activity.Entry, name string, glyph bool) templ.Component {
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(" ")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 120, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 119, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -608,7 +608,7 @@ func activityText(e activity.Entry, name string, glyph bool) templ.Component {
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(" ")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 123, Col: 14}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 122, Col: 14}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -625,7 +625,7 @@ func activityText(e activity.Entry, name string, glyph bool) templ.Component {
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(" to ")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 125, Col: 11}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 124, Col: 11}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {
@@ -654,7 +654,7 @@ func activityText(e activity.Entry, name string, glyph bool) templ.Component {
 			var templ_7745c5c3_Var31 string
 			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(" ")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 132, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 131, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {
@@ -672,7 +672,7 @@ func activityText(e activity.Entry, name string, glyph bool) templ.Component {
 			var templ_7745c5c3_Var32 string
 			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(" ")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 135, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 134, Col: 34}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 			if templ_7745c5c3_Err != nil {
@@ -686,7 +686,7 @@ func activityText(e activity.Entry, name string, glyph bool) templ.Component {
 				var templ_7745c5c3_Var33 string
 				templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(" " + editsText(e.Edits))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 138, Col: 30}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 137, Col: 30}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 				if templ_7745c5c3_Err != nil {
@@ -701,7 +701,7 @@ func activityText(e activity.Entry, name string, glyph bool) templ.Component {
 			var templ_7745c5c3_Var34 string
 			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(" ")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 141, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 140, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 			if templ_7745c5c3_Err != nil {
@@ -719,7 +719,7 @@ func activityText(e activity.Entry, name string, glyph bool) templ.Component {
 			var templ_7745c5c3_Var35 string
 			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(" ")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 144, Col: 15}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 143, Col: 15}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 			if templ_7745c5c3_Err != nil {
@@ -733,7 +733,7 @@ func activityText(e activity.Entry, name string, glyph bool) templ.Component {
 				var templ_7745c5c3_Var36 string
 				templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(" " + editsText(e.Edits))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 147, Col: 30}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 146, Col: 30}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 				if templ_7745c5c3_Err != nil {
@@ -748,7 +748,7 @@ func activityText(e activity.Entry, name string, glyph bool) templ.Component {
 			var templ_7745c5c3_Var37 string
 			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(" ")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 150, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/views/activity.templ`, Line: 149, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 			if templ_7745c5c3_Err != nil {

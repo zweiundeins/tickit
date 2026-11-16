@@ -56,6 +56,11 @@ func TestFeedWindows(t *testing.T) {
 	if len(first) > 60<<10 || strings.Count(first, "<article") != 50 {
 		t.Errorf("the window's frame: %d bytes, %d entries", len(first), strings.Count(first, "<article"))
 	}
+	// The total is unknown until a window reaches the feed's end; windows
+	// start on the step the views are named by.
+	if !strings.Contains(first, `total="-1"`) || !strings.Contains(first, `aria-setsize="-1"`) || !strings.Contains(first, `step="10"`) || !strings.Contains(first, `item-size="var(--tk-feed-row)"`) {
+		t.Errorf("the first window's host: %.400s", first[strings.Index(first, "<sb-virtual-scroll"):])
+	}
 
 	if code, _ := webtest.Post(t, c, e.URL+"/cmd/feed/window", `{"tab":"tab1","views":"home:,activity-home:0","feed":"activity-home:60"}`); code != http.StatusNoContent {
 		t.Fatalf("window: %d", code)
@@ -72,6 +77,15 @@ func TestFeedWindows(t *testing.T) {
 		t.Errorf("the window did not follow the new entry")
 	}
 	webtest.Silent(t, home, `offset="0"`, 200*time.Millisecond)
+
+	// The window that reaches the end says how long the feed is.
+	if code, _ := webtest.Post(t, c, e.URL+"/cmd/feed/window", `{"tab":"tab1","views":"home:,activity-home:60","feed":"activity-home:100"}`); code != http.StatusNoContent {
+		t.Fatalf("window: %d", code)
+	}
+	frame = webtest.Next(t, home, `offset="100"`)
+	if !strings.Contains(frame, `total="131"`) || !strings.Contains(frame, `aria-setsize="131"`) || strings.Count(frame, "<article") != 31 {
+		t.Errorf("the last window: %d entries, %.300s", strings.Count(frame, "<article"), frame[strings.Index(frame, "<sb-virtual-scroll"):])
+	}
 
 	for _, bad := range []string{"activity-home:nope", "activity-home:2000", "activity-project:" + project + ".x"} {
 		if code, _ := webtest.Get(t, c, e.URL+"/stream?tab=tab2&v="+bad); code != http.StatusBadRequest {

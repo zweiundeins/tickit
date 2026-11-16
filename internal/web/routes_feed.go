@@ -28,12 +28,15 @@ import (
 // starts in the feed (views.FeedSpec): "activity-home:<from>",
 // "activity-project:<id>.<from>", "activity-space:<id>.<from>", from a
 // multiple of views.FeedStep, so tabs scrolled to about the same place
-// share its render, and the top window is everyone's. Scrolling asks for
+// share its render, and the top window is everyone's. The component asks
+// for windows on that step (its step attribute), so what it asks for and
+// the views' names agree. Scrolling asks for
 // another window (sb-window), which moves the tab's stream from the old
 // window's view to the new one with POST /cmd/feed/window, as the issue
 // list moves between lists; the tab's row keeps the window for rescope.
-// The window from the head moves when entries arrive: the page keeps the
-// reader's place by the entries' ids (static/feed/feed.js).
+// The window from the head moves when entries arrive: the component keeps
+// the reader's place by the entries' keys, and static/feed/feed.js offers
+// "Newer activity".
 
 const (
 	homeFeedKind    = "activity-home"
@@ -78,8 +81,8 @@ func parseFrom(kind, v string) (int, error) {
 }
 
 // feedWindowOf reads the window of a feed from from: up to feedWindow
-// entries, and how many the feed has as far as the read went (Known when
-// it ended, or at maxFeedEntries).
+// entries, and how many the feed has once the read reached its end or
+// maxFeedEntries, else -1.
 func (s *Server) feedWindowOf(ctx context.Context, q sqlite.Querier, keep func(access.Scope) bool, kind, scope, path string, from int, now time.Time) (views.ActivityFeed, error) {
 	entries, more, err := activity.Feed(ctx, q, keep, from+feedWindow)
 	if err != nil {
@@ -94,11 +97,11 @@ func (s *Server) feedWindowOf(ctx context.Context, q sqlite.Querier, keep func(a
 	f.Kind, f.Scope, f.From, f.Window, f.MaxFrom, f.Path = kind, scope, from, feedWindow, maxFeedFrom, path
 	switch {
 	case !more:
-		f.Total, f.Known = len(entries), true
+		f.Total = len(entries)
 	case from+feedWindow >= maxFeedEntries:
-		f.Total, f.Known = maxFeedEntries, true
+		f.Total = maxFeedEntries
 	default:
-		f.Total = from + len(win) + feedWindow
+		f.Total = -1
 	}
 	return f, err
 }

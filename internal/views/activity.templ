@@ -34,8 +34,8 @@ templ activityEmpty() {
 }
 
 // FeedWindow is a window of a long feed in sb-virtual-scroll (the ARIA
-// feed pattern): one article per entry, each one row of FeedRow high, with
-// its place in the feed (aria-posinset, aria-setsize), and the faces and
+// feed pattern): one article per entry, each one row of --tk-feed-row high,
+// with its place in the feed (aria-posinset, aria-setsize), and the faces and
 // glyphs as masks, so a window of 50 stays a small frame (NFR-37). The
 // page needs ui.Glyphs once, the "virtual-scroll" component and
 // FeedScript; the button that leads to newer entries is the tab's own, so
@@ -47,9 +47,8 @@ templ FeedWindow(f ActivityFeed) {
 		}
 		@ui.FaceStyles(f.faces())
 		<div class="tk-vfeed">
-			<span class="tk-vfeed__probe" aria-hidden="true"></span>
 			@ui.VirtualList(ui.VirtualProps{ID: f.ID + "-list", Label: f.label(), Role: "feed", Total: f.Total, Offset: f.From,
-				ItemSize: FeedRow, Buffer: 12 * FeedRow, Hidden: len(f.Entries) == 0 && f.From == 0, Class: "tk-vfeed__list", Attrs: f.listAttrs()}) {
+				ItemSize: "var(--tk-feed-row)", Buffer: FeedBuffer, Step: FeedStep, Hidden: len(f.Entries) == 0 && f.From == 0, Class: "tk-vfeed__list", Attrs: f.listAttrs()}) {
 				for i, e := range f.Entries {
 					@feedEntry(f, i, e)
 				}
@@ -80,7 +79,7 @@ templ feedEntry(f ActivityFeed, i int, e activity.Entry) {
 		data-key={ f.entryKey(e) }
 		tabindex="-1"
 		aria-posinset={ strconv.Itoa(f.From + i + 1) }
-		aria-setsize={ f.setSize() }
+		aria-setsize={ strconv.Itoa(f.Total) }
 		aria-labelledby={ id + "-t" }
 		aria-describedby={ id + "-m" }
 	>

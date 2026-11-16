@@ -16,8 +16,8 @@ import (
 // its live view patches (ActivityID) and names the view in its stream.
 //
 // A feed with a Kind is a window of a long feed in sb-virtual-scroll: the
-// entries from From on, of Total as far as the server knows (Known: the
-// feed ends there). The page asks for another window by the view's name,
+// entries from From on, of Total, which is -1 until a window reaches the
+// feed's end. The page asks for another window by the view's name,
 // Kind ":" and From, or Kind ":" Scope "." From (FeedSpec); the links to
 // older and newer entries name the same window in Path's ?from=, for a
 // page without script.
@@ -33,7 +33,6 @@ type ActivityFeed struct {
 	Scope string // the project's or space's id, "" for the home feed
 	From  int
 	Total int
-	Known bool
 	// Window is how many entries a window holds, MaxFrom the last From a
 	// window may start at.
 	Window, MaxFrom int
@@ -41,12 +40,15 @@ type ActivityFeed struct {
 }
 
 // FeedStep is what a window's From is a multiple of, so that tabs scrolled
-// to about the same place share a window's render.
+// to about the same place share a window's render. sb-virtual-scroll
+// rounds the windows it asks for to it (step); rounding adds up to
+// FeedStep-1 entries at each end, so it stays well under half a window.
 const FeedStep = 10
 
-// FeedRow is a feed entry's height in px at the default font size; the
-// page measures the --tk-feed-row token instead.
-const FeedRow = 60
+// FeedBuffer is how far, in px, a window reaches past the feed's box: 8
+// rows of 60px, which with the box and the rounding fits the 50 entries a
+// window holds.
+const FeedBuffer = 480
 
 // FeedSpec is the name of the view of a feed's window from from.
 func FeedSpec(kind, scope string, from int) string {
@@ -64,13 +66,8 @@ func (f ActivityFeed) faces() []ui.Person {
 	return out
 }
 
-// setSize is aria-setsize: the total, or -1 while more may follow.
-func (f ActivityFeed) setSize() string {
-	if f.Known {
-		return strconv.Itoa(f.Total)
-	}
-	return "-1"
-}
+// Known says whether the feed's length is known.
+func (f ActivityFeed) Known() bool { return f.Total >= 0 }
 
 // entryKey keys an entry for sb-virtual-scroll. No id: with ids the morph
 // moves the entries, and their label ids go by slot so it patches in place.
@@ -80,7 +77,7 @@ func (f ActivityFeed) entryKey(e activity.Entry) string {
 
 // older and newer are the windows after and before this one, "" for none.
 func (f ActivityFeed) older() string {
-	if f.From+len(f.Entries) >= f.Total || f.From+f.Window > f.MaxFrom {
+	if f.Known() && f.From+len(f.Entries) >= f.Total || f.From+f.Window > f.MaxFrom {
 		return ""
 	}
 	return f.Path + "?from=" + strconv.Itoa(f.From+f.Window)

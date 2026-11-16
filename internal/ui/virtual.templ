@@ -12,14 +12,16 @@ type VirtualProps struct {
 	// Role hands the list's semantics to the host: "feed" for articles that
 	// arrive as the reader scrolls; empty for a plain list.
 	Role string
-	// Total is how many items the whole list has, as far as the server
-	// knows; Offset the index of the first child in it.
+	// Total is how many items the whole list has, -1 while the server does
+	// not know; Offset the index of the first child in it.
 	Total, Offset int
-	// ItemSize is the row's height in px; the page may measure it again
-	// (data-preserve-attr keeps what it set). Buffer is how far a window
-	// reaches past the viewport, in px.
-	ItemSize, Buffer int
-	Hidden           bool
+	// ItemSize is the row's height: px or a CSS length ("var(--tk-feed-row)"),
+	// which the component measures. Buffer is how far a window reaches past
+	// the viewport, in px; Step what a window's start and end are multiples
+	// of, so that readers at about the same place share it.
+	ItemSize     string
+	Buffer, Step int
+	Hidden       bool
 	Class            string
 	Attrs            templ.Attributes
 }
@@ -42,11 +44,13 @@ templ VirtualList(p VirtualProps) {
 		}
 		total={ strconv.Itoa(p.Total) }
 		offset={ strconv.Itoa(p.Offset) }
-		item-size={ strconv.Itoa(max(1, p.ItemSize)) }
+		item-size={ p.ItemSize }
 		if p.Buffer > 0 {
 			buffer={ strconv.Itoa(p.Buffer) }
 		}
-		data-preserve-attr="item-size buffer"
+		if p.Step > 1 {
+			step={ strconv.Itoa(p.Step) }
+		}
 		if p.Hidden {
 			hidden
 		}

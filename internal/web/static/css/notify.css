@@ -98,13 +98,6 @@
 		position: relative;
 	}
 
-	.tk-vfeed__probe {
-		position: absolute;
-		inline-size: 0;
-		block-size: var(--tk-feed-row);
-		visibility: hidden;
-	}
-
 	.tk-vfeed__list {
 		block-size: var(--tk-feed-height);
 		border-block: 1px solid var(--tk-border-subtle);
