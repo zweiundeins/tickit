@@ -1,5 +1,5 @@
 Starbase's Rocket components and fonts, copied by cmd/vendor-starbase from
-github.com/zweiundeins/starbase at commit 7132108b40def8726cb6ef0df73aa973589b8b81 (2026-11-16T11:46:07Z).
+github.com/zweiundeins/starbase at commit c138dc233d81ac05cc3715068aa7999d21539045 (2026-11-16T12:12:41Z).
 Licence: MIT, LICENSE-starbase.txt. The fonts are SIL OFL 1.1 (static/fonts/OFL-*.txt).
 Update: change pins.json, then go run ./cmd/vendor-starbase -src <checkout>.
 
