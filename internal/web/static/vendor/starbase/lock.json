@@ -1,7 +1,7 @@
 {
   "repo": "github.com/zweiundeins/starbase",
-  "commit": "4d32e31bf9723b3046fc26c3f1b46fd5f3a071c8",
-  "date": "2026-11-13T08:56:34Z",
+  "commit": "c4605bbc4dffe0c2a07de79a853d7734be551f1e",
+  "date": "2026-11-16T08:37:24Z",
   "license": "MIT",
   "datastar": "sha384-DkjVaBESHDA703Xk1QdsjXyHUmwC4Z9N/T8ak/EVxdTXso6apSccCKzi0DwwbGGK",
   "fonts": {
@@ -39,7 +39,7 @@
       "pinned": true,
       "entry": "date-picker.js",
       "files": {
-        "date-picker.js": "sha384-bfHN7vrmzmT5o8ei1Uug0gUFRPrfvAxyjRlYo+X62SRfu8tsLBPrSXY18+12za8/"
+        "date-picker.js": "sha384-PjAXMvBRHdNPGjFjpBN9hz3Q73tBDTm0MpfndvAeBSfo2N31gO9lw1n2bBMx9+ut"
       }
     },
     {
@@ -48,7 +48,7 @@
       "pinned": true,
       "entry": "dropdown.js",
       "files": {
-        "dropdown.js": "sha384-GAE155RsANn6Dw9gLF4DmAHnfYAb80NJWc8q2ob3PEjSG8x/iitPVDsq0t50BsaS"
+        "dropdown.js": "sha384-26k2ngFv49PcPkVA/MjZFKka/AlqUQ6cpLlLx1tgyxMxjC6b+VQ/vagEPszqyoHm"
       }
     },
     {
@@ -66,7 +66,7 @@
       "pinned": true,
       "entry": "select.js",
       "files": {
-        "select.js": "sha384-yOUkFgz3qaADRKfBTwDeMkFtLEupfiWou8aSvSNO6Fyk/VuHBK/X2MH3LLicJzfW"
+        "select.js": "sha384-ktC+fuF8kBBCEtylqXlEyRSVRzM1fFpUqsMSDKRszwrzDJGjCVl/uUGByDtK05MQ"
       }
     },
     {
@@ -84,7 +84,7 @@
       "pinned": true,
       "entry": "toast.js",
       "files": {
-        "toast.js": "sha384-clZS5kgwkt7AQUT/sZz1smhFil7Gm1KJN8c5k7FrjQITvC3zzWDv7GXBASzNMy+W"
+        "toast.js": "sha384-t4d8D0TpbK6drvbTTBzdHboU5deWSMZ1Lg1QqE/ZrdKesE0vOw6TRYth98cPN9DA"
       }
     },
     {
@@ -102,7 +102,7 @@
       "pinned": true,
       "entry": "tree.js",
       "files": {
-        "tree.js": "sha384-CjfYR4q/M4n9ovQgWxcg9j+tq33W/NMWtNpX81MJajOgwVuAj44FRSYxPJTsWlnC"
+        "tree.js": "sha384-0Dp+dDHwbGPA5O2weTtG7nnGJf+MVD5tz/J2KP7nEue5g7XSv6lCZ8JVxdEuXiJA"
       }
     },
     {
@@ -111,7 +111,7 @@
       "pinned": true,
       "entry": "virtual-scroll.js",
       "files": {
-        "virtual-scroll.js": "sha384-uL3uOCmaYgPNFrJtY5bAr5GSt+/rVqYIeupI51PmGyXyLskIQnk/KukZb04zZ9ps"
+        "virtual-scroll.js": "sha384-R0/Ot7bPM3hCDKBAw8eKVD6jZjGBv7xa8fTa+LetAwoqfgWzPEVt79MNLjoKXSgD"
       }
     }
   ]
