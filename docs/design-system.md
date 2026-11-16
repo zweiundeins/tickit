@@ -291,7 +291,7 @@ A wiki page's outline is Starbase's `sb-toc` in `.wk-outline` (wiki.css): its `-
 go tool task vendor-starbase STARBASE=/develop/starbase
 ```
 
-Vendored (Starbase c4605bb): `context-menu`, `copy-button`, `date-picker`, `dropdown`, `popover`, `select`, `tabs`, `toast`, `toc`, `tree`, `virtual-scroll`. The modules stay as Starbase wrote them; `edge.Static` minifies them in production. A page loads a component by naming it in `Page.Components` (`web.StarbaseScripts` adds the modules it renders, in order, after the import map); `/design` loads them all.
+Vendored (Starbase d5f5b24, v0.9.0): `context-menu`, `copy-button`, `date-picker`, `dropdown`, `popover`, `select`, `tabs`, `toast`, `toc`, `tree`, `virtual-scroll`. The modules stay as Starbase wrote them; `edge.Static` minifies them in production. A page loads a component by naming it in `Page.Components` (`web.StarbaseScripts` adds the modules it renders, in order, after the import map); `/design` loads them all.
 
 Where the app uses them:
 

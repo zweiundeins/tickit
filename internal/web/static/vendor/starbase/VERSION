@@ -1,12 +1,12 @@
 Starbase's Rocket components and fonts, copied by cmd/vendor-starbase from
-github.com/zweiundeins/starbase at commit c4605bbc4dffe0c2a07de79a853d7734be551f1e (2026-11-16T08:37:24Z).
+github.com/zweiundeins/starbase at commit d5f5b24a6968bc3b42f998bee9027b815562b37b (2026-11-16T11:21:08Z).
 Licence: MIT, LICENSE-starbase.txt. The fonts are SIL OFL 1.1 (static/fonts/OFL-*.txt).
 Update: change pins.json, then go run ./cmd/vendor-starbase -src <checkout>.
 
 sb-context-menu	sha384-e23UnqRafdN3NmvXeQN2NY+Th8e+zqTKHK6UDVSflszbRA7VYvtokIWMbuHche5S	pinned
 sb-copy-button	sha384-GRU9G969DYPGPE4ibVggvU2NID2GN+tdB4E5XJqEHUcs+LICIKQmXlGyOmQnE8Yk	pinned
 sb-date-picker	sha384-PjAXMvBRHdNPGjFjpBN9hz3Q73tBDTm0MpfndvAeBSfo2N31gO9lw1n2bBMx9+ut	pinned
-sb-dropdown	sha384-26k2ngFv49PcPkVA/MjZFKka/AlqUQ6cpLlLx1tgyxMxjC6b+VQ/vagEPszqyoHm	pinned
+sb-dropdown	sha384-2PGHYD0PSz1Pvg8lP7MVSdOLW3pTElu4sZF+m26DLBNNRgZFSWedh8Sxzwz2BMwN	pinned
 sb-popover	sha384-CRYHhJdtO0HiQj4xrzb3YaYABIMy6livZSLrnZExTNHI1TAClCGP2lymPh2F5X6a	pinned
 sb-select	sha384-ktC+fuF8kBBCEtylqXlEyRSVRzM1fFpUqsMSDKRszwrzDJGjCVl/uUGByDtK05MQ	pinned
 sb-tabs	sha384-3eum1sFPtIvGPgVCfA8Boh39QVh3yttTMkndKdOMtI5hUiXkU7H0p6sUOnxxDxQj	pinned
