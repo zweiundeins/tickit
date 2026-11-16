@@ -1043,6 +1043,87 @@
 		gap: var(--tk-space-1_5);
 	}
 
+	/* sb-dropdown as the choice of one value (ui.ChoiceMenu): its trigger
+	 * as a ghost button, its rows as tk-menu's. Rows and trigger are copies
+	 * in its shadow root, styled through their part names. */
+	.tk-pick-menu {
+		&::part(trigger) {
+			gap: var(--tk-space-1_5);
+			min-block-size: var(--tk-control-sm);
+			padding-inline: var(--tk-space-2);
+			clip-path: none;
+			border-radius: calc(var(--tk-radius-sm) * (1 - var(--tk-notch)));
+			background: transparent;
+			box-shadow: none;
+			color: var(--tk-text-2);
+			font-weight: var(--tk-weight-regular);
+		}
+
+		&::part(trigger):hover {
+			background: var(--tk-surface-hover);
+			color: var(--tk-text-1);
+		}
+
+		&::part(trigger):focus-visible {
+			outline: 2px solid var(--tk-focus);
+			outline-offset: 2px;
+		}
+
+		&:state(open)::part(trigger) {
+			background: var(--tk-accent-subtle);
+			color: var(--tk-accent-text);
+		}
+
+		/* A value sent and not yet confirmed: dashed, as a pending field is. */
+		&:state(pending)::part(trigger) {
+			outline: 1px dashed var(--tk-border-strong);
+			outline-offset: -1px;
+		}
+
+		&[aria-busy="true"] {
+			cursor: progress;
+		}
+
+		&::part(menu) {
+			font-size: var(--tk-text-sm);
+		}
+
+		&::part(item) {
+			min-block-size: 2rem;
+			box-sizing: border-box;
+		}
+
+		&::part(checked) {
+			color: var(--tk-accent-text);
+		}
+
+		&::part(icon) {
+			inline-size: 1rem;
+			block-size: 1rem;
+		}
+
+		&::part(choice) {
+			font-weight: var(--tk-weight-regular);
+		}
+	}
+
+	/* Until its bundle runs: the choices are data, not buttons. */
+	sb-dropdown:not(:defined) > [slot="item"] {
+		display: none;
+	}
+
+	sb-dropdown::part(prio) {
+		color: var(--tk-hue-text);
+	}
+
+	sb-dropdown::part(type-tile) {
+		fill: var(--tk-hue-fill);
+	}
+
+	sb-dropdown::part(type-glyph) {
+		fill: var(--tk-hue-on);
+	}
+
 	/* ── Dialogs and panels: native <dialog>, in the top layer. ──── */
 	.tk-dialog,
 	.tk-panel {
@@ -2321,6 +2402,10 @@
 			font-size: var(--tk-text-md);
 		}
 
+		& dd > .tk-pick-menu {
+			margin-inline-start: calc(-1 * var(--tk-space-2));
+		}
+
 		& dd > .tk-menu-button {
 			max-inline-size: calc(100% + var(--tk-space-2));
 			margin-inline-start: calc(-1 * var(--tk-space-2));
@@ -2344,11 +2429,13 @@
 			border: 1px solid ButtonText;
 		}
 
-		.tk-type__tile {
+		.tk-type__tile,
+		sb-dropdown::part(type-tile) {
 			fill: CanvasText;
 		}
 
-		.tk-type__glyph {
+		.tk-type__glyph,
+		sb-dropdown::part(type-glyph) {
 			fill: Canvas;
 		}
 

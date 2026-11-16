@@ -389,6 +389,30 @@ func menu(f string) templ.Attributes {
 	return merge(locked, pending(f), templ.Attributes{"data-on:click": menuOpened})
 }
 
+// choiceMenu is the attributes of a ui.ChoiceMenu for field f: a picker
+// whose sb-open keeps the version it showed, as a menu's button does.
+func choiceMenu(f string) templ.Attributes {
+	return merge(picker(f), templ.Attributes{"data-on:sb-open": menuOpened})
+}
+
+// priorityChoices and typeChoices are the rows of the issue's priority
+// and type menus.
+func priorityChoices() []ui.Choice {
+	out := make([]ui.Choice, 0, len(tracker.Priorities))
+	for _, p := range tracker.Priorities {
+		out = append(out, ui.PriorityChoice(uiPrio(p)))
+	}
+	return out
+}
+
+func typeChoices() []ui.Choice {
+	out := make([]ui.Choice, 0, len(tracker.Types))
+	for _, t := range tracker.Types {
+		out = append(out, ui.TypeChoice(uiType(t)))
+	}
+	return out
+}
+
 // locked disables a control of a read-only page or an old version.
 var locked = templ.Attributes{"data-attr:disabled": disabledWhile, "data-preserve-attr": "disabled"}
 

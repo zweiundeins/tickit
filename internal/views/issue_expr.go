@@ -77,15 +77,18 @@ const mentionIDs = `((s) => { const m = new Map(); document.querySelectorAll('#i
 const issuePick = `((t) => { if (!t) return; const f = t.dataset.field; if ($_is.ro || $_is.ops[f] !== '') return t.revert?.(); ` + issueSendFn + `(f, evt.detail.value ?? '', $_is.mseen || ` + curVersion + `, '') })(evt.target.closest?.('[data-act=pick]'))`
 
 // issuePickFocus keeps the version a picker showed when it took the focus.
-const issuePickFocus = `evt.target.closest?.('[data-act=pick]') && !evt.target.contains(evt.relatedTarget) && ($_is.mseen = ` + curVersion + `)`
+// An open menu keeps the one it opened at (sb-open), also when its rows
+// take the focus a frame later.
+const issuePickFocus = `evt.target.closest?.('[data-act=pick]') && !evt.target.contains(evt.relatedTarget) && !(evt.target.localName === 'sb-dropdown' && evt.target.open) && ($_is.mseen = ` + curVersion + `)`
 
 // issueRetry sends field f's request that reached no outcome again with
 // its op id, so that it applies once (MP-09.3, MP-09.4).
 const issueRetryFn = `((f) => $_is.ops[f] === '' && $_is.last[f] !== '' && ($_is.fail[f] = '', $_is.ops[f] = $_is.last[f], ` + issuePost + `))`
 
 // issueAnywayFn sends field f's refused value again against the version
-// the conflict reports (MP-08.3: "Use Critical anyway").
-const issueAnywayFn = `((f) => $_is.conflict[f] && ($_is.edit === f ? ($_is.seen = $_is.conflict[f].version, ` + issueSendFn + `(f, $_is.val, $_is.seen, '')) : ` + issueSendFn + `(f, $_is.want[f], $_is.conflict[f].version, $_is.refs[f])))`
+// the conflict reports (MP-08.3: "Use Critical anyway"); a menu shows it
+// pending again.
+const issueAnywayFn = `((f) => $_is.conflict[f] && ($_is.edit === f ? ($_is.seen = $_is.conflict[f].version, ` + issueSendFn + `(f, $_is.val, $_is.seen, '')) : (` + issueSendFn + `(f, $_is.want[f], $_is.conflict[f].version, $_is.refs[f]), ((m) => m && (m.value = $_is.want[f]))(document.querySelector('#issue sb-dropdown[data-act=pick][data-field=' + f + ']')))))`
 
 // issueEditFn opens the editor of the field on t: the text the page shows
 // (the element t.dataset.src names) goes into $_is.val, and the version
@@ -188,9 +191,11 @@ const issueSettle = `Object.keys($_is.ops).forEach(f => {
 	} else {
 		$_is.msg[f] = o.msg || 'This was refused.'
 		$_is.conflict[f] = o.data && o.data.kind === 'conflict' ? o.data : false
-		// A refused pick shows the server's value again; after a conflict
-		// the person's stays, for "Use it anyway" (MP-08.3).
-		$_is.conflict[f] || document.querySelector('#issue [data-act=pick][data-field=' + f + ']')?.revert?.()
+		// A refused pick shows the server's value again. After a conflict a
+		// picker keeps the person's for "Use it anyway" (MP-08.3); a menu
+		// shows the server's, and the notice beside it the person's.
+		const pick = document.querySelector('#issue [data-act=pick][data-field=' + f + ']')
+		if (!$_is.conflict[f] || pick?.localName === 'sb-dropdown') pick?.revert?.()
 	}
 })`
 

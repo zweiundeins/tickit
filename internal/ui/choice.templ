@@ -1,0 +1,101 @@
+package ui
+
+import "strings"
+
+// ChoiceProps is Starbase's sb-dropdown as a menu that sets one value of a
+// short fixed list (type="radio"): each row a pixel icon and a name, and
+// the trigger the chosen one. Load its bundle ("dropdown").
+//
+// The rows and the trigger are copies the component draws in its shadow
+// root, which the page's classes do not reach: the icons carry part names
+// (hue, prio-<p>, type-<t>, type-tile, type-glyph) that tokens.css and
+// components.css style through ::part.
+type ChoiceProps struct {
+	ID string
+	// Label names the field; the trigger's name adds the choice:
+	// "Priority: High".
+	Label   string
+	Name    string
+	Value   string
+	Choices []Choice
+	// Confirm marks a choice the server has not confirmed yet
+	// (:state(pending)); revert() shows the server's value again.
+	Confirm bool
+	Class   string
+	Attrs   templ.Attributes
+}
+
+// Choice is a row of a ChoiceMenu.
+type Choice struct {
+	Value, Label string
+	// Art is the icon, marked data-icon: PriorityArt, TypeArt.
+	Art templ.Component
+}
+
+// ChoiceMenu is sb-dropdown with tickit's trigger and rows.
+templ ChoiceMenu(p ChoiceProps) {
+	<sb-dropdown
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class={ classes("tk-pick-menu", p.Class) }
+		label={ p.Label }
+		if p.Name != "" {
+			name={ p.Name }
+		}
+		type="radio"
+		value={ p.Value }
+		if p.Confirm {
+			confirm
+		}
+		{ p.Attrs... }
+	>
+		for _, c := range p.Choices {
+			<button slot="item" type="button" value={ c.Value }>
+				if c.Art != nil {
+					@c.Art
+				}
+				<span part="choice">{ c.Label }</span>
+			</button>
+		}
+	</sb-dropdown>
+}
+
+// PriorityChoice is a priority as a row of a ChoiceMenu.
+func PriorityChoice(p Priority) Choice {
+	return Choice{Value: string(p), Label: p.Name(), Art: raw(prioArt(p))}
+}
+
+// TypeChoice is an issue type as a row of a ChoiceMenu.
+func TypeChoice(t IssueType) Choice {
+	return Choice{Value: string(t), Label: t.Name(), Art: raw(typeArt(t))}
+}
+
+// prioArt is prioSVG for a ChoiceMenu's copies: part names instead of
+// classes and data attributes.
+func prioArt(p Priority) string {
+	glyph := prioPaths[string(p)]
+	if glyph == "" {
+		glyph = "M4 7h8v2H4z"
+	}
+	return `<svg data-icon part="hue prio prio-` + partName(string(p)) + `" viewBox="0 0 16 16" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path d="` + glyph + `"/></svg>`
+}
+
+// typeArt is typeSVG for a ChoiceMenu's copies.
+func typeArt(t IssueType) string {
+	glyph := typePaths[string(t)]
+	if glyph == "" {
+		glyph = "M7 4h2v5H7zM7 11h2v2H7z"
+	}
+	return `<svg data-icon part="hue type type-` + partName(string(t)) + `" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path part="type-tile" d="` + typeTile + `"/><path part="type-glyph" d="` + glyph + `"/></svg>`
+}
+
+// partName keeps a value to the letters a part name may hold.
+func partName(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-' {
+			return r
+		}
+		return -1
+	}, s)
+}

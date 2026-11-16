@@ -24,27 +24,38 @@ func openIssue(t *testing.T, e *webtest.Env, width, height int) *browsertest.Pag
 	return p
 }
 
-// choose opens a menu of the issue's details and picks the item labelled
-// label.
+// choose opens a menu of the issue's details (sb-dropdown) and picks the
+// item labelled label.
 func choose(t *testing.T, p *browsertest.Page, menu, label string) {
 	t.Helper()
-	p.Eval(t, `(() => {
-		document.querySelector('[popovertarget=`+menu+`]').click()
-		return true
-	})()`, nil)
+	openMenu(t, p, menu)
 	pick(t, p, menu, label)
+}
+
+// openMenu clicks a menu's trigger and waits for its rows.
+func openMenu(t *testing.T, p *browsertest.Page, menu string) {
+	t.Helper()
+	p.Wait(t, `customElements.get('sb-dropdown') && !!document.getElementById('`+menu+`')?.shadowRoot?.querySelector('.trigger')`, 3*time.Second)
+	p.Eval(t, `(document.getElementById('`+menu+`').shadowRoot.querySelector('.trigger').click(), true)`, nil)
+	p.Wait(t, menuRows(menu)+`.length > 0`, 2*time.Second)
+}
+
+// menuRows are the rows of a menu's open list.
+func menuRows(menu string) string {
+	return `[...(document.getElementById('` + menu + `')?.shadowRoot?.querySelectorAll('.lvl0:popover-open [role^=menuitem]') ?? [])]`
 }
 
 func pick(t *testing.T, p *browsertest.Page, menu, label string) {
 	t.Helper()
-	p.Eval(t, `(() => {
-		const item = [...document.querySelectorAll('#`+menu+` .tk-menu__item')].find(b => b.textContent.trim() === `+jsQuote(label)+`)
-		item.click()
-		return true
-	})()`, nil)
+	p.Eval(t, `(`+menuRows(menu)+`.find(r => r.querySelector('.label').textContent.trim() === `+jsQuote(label)+`).click(), true)`, nil)
 }
 
-const priorityIs = `document.querySelector('[popovertarget=issue-priority]').textContent.trim() === `
+// menuShows is what a menu's trigger names: "Priority: High".
+func menuShows(menu string) string {
+	return `document.getElementById('` + menu + `')?.shadowRoot?.querySelector('.trigger')?.getAttribute('aria-label')`
+}
+
+const priorityIs = `document.getElementById('issue-priority')?.shadowRoot?.querySelector('.trigger')?.getAttribute('aria-label') === 'Priority: ' + `
 
 // MP-02, MP-03, MP-08, MP-09: two people on one issue. Each sees the
 // other's face; a priority one sets shows in the other's page within a
@@ -67,7 +78,7 @@ func TestIssueTwoPeople(t *testing.T) {
 
 	// MP-08.3: both from the version they saw when they opened the menu.
 	for _, p := range []*browsertest.Page{a, b} {
-		p.Eval(t, `(document.querySelector('[popovertarget=issue-priority]').click(), true)`, nil)
+		openMenu(t, p, "issue-priority")
 	}
 	pick(t, a, "issue-priority", "High")
 	b.Wait(t, priorityIs+`'High'`, 2*time.Second)
@@ -90,6 +101,66 @@ func TestIssueTwoPeople(t *testing.T) {
 			t.Errorf("the page reported: %q", errs)
 		}
 	}
+}
+
+// MP-08.3, MP-09.1, NFR-47: the priority menu by keyboard, and a conflict
+// through it. The pick shows pending at once; refused as a conflict, the
+// menu shows the server's value again, the notice beside it the person's;
+// "Use Critical anyway" shows Critical pending until the server confirms it.
+func TestPriorityMenuConflict(t *testing.T) {
+	e := webtest.Start(t)
+	d := issueData(t, e)
+	a := openIssue(t, e, 1280, 900)
+	b := openIssue(t, e, 1280, 900)
+	faces := `document.querySelectorAll('#presence-issue-` + d.story + ` li[data-who]').length === 2`
+	b.Wait(t, faces, 3*time.Second)
+	const menu = `document.getElementById('issue-priority')`
+	b.Wait(t, `customElements.get('sb-dropdown') && `+menu+`.getAttribute('value') === 'high' && `+priorityIs+`'High'`, 3*time.Second)
+
+	// The keyboard opens b's menu on its first row, from the version it shows.
+	b.Eval(t, `(`+menu+`.shadowRoot.querySelector('.trigger').focus(), true)`, nil)
+	enter(t, b)
+	b.Wait(t, menuRows("issue-priority")+`[0] === `+menu+`.shadowRoot.activeElement`, 2*time.Second)
+	var rows []struct{ Name, Checked string }
+	b.Eval(t, menuRows("issue-priority")+`.map(r => ({name: r.querySelector('.label').textContent.trim(), checked: r.getAttribute('aria-checked')}))`, &rows)
+	if len(rows) != 4 || rows[0].Name != "Low" || rows[2].Name != "High" || rows[2].Checked != "true" || rows[3].Checked != "false" {
+		t.Fatalf("the rows: %+v", rows)
+	}
+
+	// Someone else sets Medium meanwhile.
+	choose(t, a, "issue-priority", "Medium")
+	b.Wait(t, menu+`.getAttribute('value') === 'medium'`, 2*time.Second)
+
+	// End, then Enter: Critical, pending at once.
+	b.Eval(t, `(`+menu+`.addEventListener('sb-change', () => ((pending) => setTimeout(() => (window.sent = {pending, name: `+menuShows("issue-priority")+`})))(`+menu+`.matches(':state(pending)')), {once: true}), true)`, nil)
+	b.Press(t, "End")
+	enter(t, b)
+	var sent struct {
+		Pending bool
+		Name    string
+	}
+	b.Wait(t, `!!window.sent`, 2*time.Second)
+	b.Eval(t, `window.sent`, &sent)
+	if !sent.Pending || sent.Name != "Priority: Critical" {
+		t.Errorf("as it was sent the menu was %+v: want pending and Critical", sent)
+	}
+
+	conflict := `[...document.querySelectorAll('#issue-side .tk-issue__conflict')].find(n => !n.closest('[hidden]'))`
+	b.Wait(t, conflict+`?.textContent.includes('changed the priority to Medium') && `+conflict+`.textContent.includes('Your Critical was not saved.')`, 3*time.Second)
+	b.Wait(t, `!`+menu+`.matches(':state(pending)') && `+menu+`.value === 'medium' && `+priorityIs+`'Medium'`, 2*time.Second)
+	b.Wait(t, conflict+`.querySelector('button').textContent.trim() === 'Use Critical anyway'`, time.Second)
+	b.Eval(t, `(`+conflict+`.querySelector('button').click(), true)`, nil)
+	b.Wait(t, `(`+menu+`.matches(':state(pending)') && `+priorityIs+`'Critical') || `+menu+`.getAttribute('value') === 'critical'`, 2*time.Second)
+	a.Wait(t, priorityIs+`'Critical'`, 2*time.Second)
+	b.Wait(t, `!`+conflict+` && !`+menu+`.matches(':state(pending)') && `+menu+`.getAttribute('value') === 'critical' && `+priorityIs+`'Critical'`, 2*time.Second)
+
+	// Escape closes the menu without a change and gives the focus back.
+	b.Eval(t, `(`+menu+`.shadowRoot.querySelector('.trigger').focus(), true)`, nil)
+	b.Press(t, "ArrowDown")
+	b.Wait(t, menuRows("issue-priority")+`.length === 4`, 2*time.Second)
+	b.Press(t, "Escape")
+	b.Wait(t, `!`+menu+`.open && `+menu+`.shadowRoot.activeElement === `+menu+`.shadowRoot.querySelector('.trigger')`, 2*time.Second)
+	noErrors(t, a, b)
 }
 
 // FR-14.1, MP-09.1, MP-03.3: the summary edits in place; what someone
@@ -138,7 +209,9 @@ func TestIssuePanel(t *testing.T) {
 	p.Wait(t, `document.getElementById('issue-panel').open && location.pathname === '/WEB-2'`, 2*time.Second)
 	p.Wait(t, `document.getElementById('issue-summary-text')?.textContent.startsWith('Cards glide')`, 3*time.Second)
 	p.Wait(t, `document.querySelectorAll('#presence-issue-`+d.story+` li[data-who]').length === 1`, 3*time.Second)
-	// Its controls work there too.
+	// Its controls work there too, with the modules a page with the panel
+	// loads (issueComponents), which /privacy does not.
+	p.Eval(t, `fetch('/WEB-2').then((r) => r.text()).then((h) => import(h.match(/\/static\/vendor\/starbase\/dropdown\/dropdown\.[^"]+\.js/)[0])).then(() => true)`, nil)
 	choose(t, p, "issue-priority", "Low")
 	p.Wait(t, priorityIs+`'Low'`, 2*time.Second)
 	p.Eval(t, `(document.getElementById('issue-panel').close(), true)`, nil)

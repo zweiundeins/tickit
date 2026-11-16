@@ -481,19 +481,11 @@ templ issueSide(m Issue) {
 				@personLine(m.person(m.Reporter))
 			}
 			@prop("Priority") {
-				@ui.Menu(ui.MenuProps{ID: "issue-priority", Label: "Priority: " + m.Priority.Name(), Trigger: ui.PriorityLabel(uiPrio(m.Priority)), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("priority")}) {
-					for i, p := range tracker.Priorities {
-						@ui.MenuItem(ui.MenuItemProps{Label: p.Name(), Checked: ui.Pressed(p == m.Priority), Autofocus: i == 0, Attrs: choice("priority", string(p), "")})
-					}
-				}
+				@ui.ChoiceMenu(ui.ChoiceProps{ID: "issue-priority", Label: "Priority", Name: "priority", Value: string(m.Priority), Choices: priorityChoices(), Confirm: true, Attrs: choiceMenu("priority")})
 				@issueNote("priority")
 			}
 			@prop("Type") {
-				@ui.Menu(ui.MenuProps{ID: "issue-type", Label: "Type: " + m.Type.Name(), Trigger: ui.TypeLabel(uiType(m.Type)), Caret: true, Variant: ui.Ghost, Size: ui.SizeSM, Attrs: menu("type")}) {
-					for i, t := range tracker.Types {
-						@ui.MenuItem(ui.MenuItemProps{Label: t.Name(), Checked: ui.Pressed(t == m.Type), Autofocus: i == 0, Attrs: choice("type", string(t), "")})
-					}
-				}
+				@ui.ChoiceMenu(ui.ChoiceProps{ID: "issue-type", Label: "Type", Name: "type", Value: string(m.Type), Choices: typeChoices(), Confirm: true, Attrs: choiceMenu("type")})
 				@issueNote("type")
 			}
 			@prop("Labels") {

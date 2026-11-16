@@ -57,7 +57,7 @@ type Page struct {
 
 // issueComponents are the Starbase components of an issue's details, on
 // its page and in the issue panel: the pickers, the copy button and the tabs.
-var issueComponents = []string{"select", "date-picker", "copy-button", "tabs"}
+var issueComponents = []string{"select", "date-picker", "copy-button", "tabs", "dropdown"}
 
 // createComponents are the create dialog's (views.CreateIssueDialog).
 var createComponents = []string{"select"}

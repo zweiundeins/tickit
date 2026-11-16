@@ -290,9 +290,11 @@
 	/*
 	 * A hue as text, fill, glyph-on-fill, wash and edge. Elements that carry
 	 * a hue set --h, by one of the attributes below; the tokens are declared
-	 * where --h is, so each element derives its own.
+	 * where --h is, so each element derives its own. sb-dropdown's copies of
+	 * a ChoiceMenu's icons carry the hue as part names instead (ui.ChoiceMenu).
 	 */
-	:where([data-hue], [data-type], [data-prio], [data-cat], [data-face], [data-color], [data-panel]) {
+	:where([data-hue], [data-type], [data-prio], [data-cat], [data-face], [data-color], [data-panel]),
+	sb-dropdown::part(hue) {
 		--tk-hue-text: light-dark(oklch(45% 0.13 var(--h)), oklch(82% 0.11 var(--h)));
 		--tk-hue-fill: light-dark(oklch(52% 0.14 var(--h)), oklch(76% 0.12 var(--h)));
 		--tk-hue-on: light-dark(var(--tk-paper), var(--tk-slate-13));
@@ -323,15 +325,15 @@
 	[data-hue="14"] { --h: 315; }
 	[data-hue="15"] { --h: 337.5; }
 
-	[data-type="epic"] { --h: var(--tk-hue-epic); }
-	[data-type="story"] { --h: var(--tk-hue-story); }
-	[data-type="task"] { --h: var(--tk-hue-task); }
-	[data-type="bug"] { --h: var(--tk-hue-bug); }
-	[data-type="subtask"] { --h: var(--tk-hue-subtask); }
-	[data-prio="low"] { --h: var(--tk-hue-low); }
-	[data-prio="medium"] { --h: var(--tk-hue-medium); }
-	[data-prio="high"] { --h: var(--tk-hue-high); }
-	[data-prio="critical"] { --h: var(--tk-hue-critical); }
+	[data-type="epic"], sb-dropdown::part(type-epic) { --h: var(--tk-hue-epic); }
+	[data-type="story"], sb-dropdown::part(type-story) { --h: var(--tk-hue-story); }
+	[data-type="task"], sb-dropdown::part(type-task) { --h: var(--tk-hue-task); }
+	[data-type="bug"], sb-dropdown::part(type-bug) { --h: var(--tk-hue-bug); }
+	[data-type="subtask"], sb-dropdown::part(type-subtask) { --h: var(--tk-hue-subtask); }
+	[data-prio="low"], sb-dropdown::part(prio-low) { --h: var(--tk-hue-low); }
+	[data-prio="medium"], sb-dropdown::part(prio-medium) { --h: var(--tk-hue-medium); }
+	[data-prio="high"], sb-dropdown::part(prio-high) { --h: var(--tk-hue-high); }
+	[data-prio="critical"], sb-dropdown::part(prio-critical) { --h: var(--tk-hue-critical); }
 	[data-cat="progress"] { --h: var(--tk-hue-progress); }
 	[data-cat="done"] { --h: var(--tk-hue-done); }
 

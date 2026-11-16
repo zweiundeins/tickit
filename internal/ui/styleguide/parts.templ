@@ -165,6 +165,12 @@ templ overlays(p Props) {
 					{Value: "delete", Label: "Delete", Danger: true},
 				}})
 			}
+			@spec("Choice of one value: sb-dropdown type=radio with pixel icons, pending until the server confirms", "@ui.ChoiceMenu(ui.ChoiceProps{Label: \"Priority\", Name: \"priority\", Value: \"high\", Choices: choices, Confirm: true})") {
+				<div class="cluster">
+					@ui.ChoiceMenu(ui.ChoiceProps{Label: "Priority", Name: "priority", Value: string(ui.High), Confirm: true, Choices: []ui.Choice{ui.PriorityChoice(ui.Low), ui.PriorityChoice(ui.Medium), ui.PriorityChoice(ui.High), ui.PriorityChoice(ui.Critical)}})
+					@ui.ChoiceMenu(ui.ChoiceProps{Label: "Type", Name: "type", Value: string(ui.Bug), Choices: []ui.Choice{ui.TypeChoice(ui.Epic), ui.TypeChoice(ui.Story), ui.TypeChoice(ui.Task), ui.TypeChoice(ui.Bug), ui.TypeChoice(ui.Subtask)}})
+				</div>
+			}
 			@spec("Tooltip: hover or focus; Escape hides it", "@ui.Tip(\"Calm Lynx, away\") { ... }") {
 				<div class="cluster">
 					@ui.Tip("Assigned to Calm Lynx") {
