@@ -34,6 +34,7 @@ func a11yPages(t *testing.T, e *webtest.Env) []struct{ name, path, before string
 		{"board", "/projects/WEB/board", ""},
 		{"issue", "/WEB-2", ""},
 		{"issue, Priority open", "/WEB-2", `customElements.get('sb-dropdown') && ((m) => (m.open || m.show(), m.open))(document.getElementById('issue-priority'))`},
+		{"issue, Status open", "/WEB-2", `customElements.get('sb-dropdown') && ((m) => (m.open || m.show(), m.open))(document.getElementById('issue-status'))`},
 		{"issue list", "/issues?sort=key&dir=asc", ""},
 		{"page", wiki.PageURL("ENG", page, "Deploy to production"), ""},
 		{"page, Move open", wiki.PageURL("ENG", page, "Deploy to production"), `customElements.get('sb-tree') && (document.getElementById('move').open || document.querySelector('[commandfor=move]').click(), document.getElementById('move').open)`},

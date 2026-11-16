@@ -826,6 +826,10 @@ func overlays(p Props) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
+				templ_7745c5c3_Err = ui.ChoiceMenu(ui.ChoiceProps{Label: "Status", Name: "status", Value: "inprogress", Variant: ui.Secondary, Choices: []ui.Choice{ui.ChoiceHeading("Move to"), ui.StatusChoice("todo", "To Do", ui.ToDo), ui.StatusChoice("inprogress", "In Progress", ui.InProgress), ui.StatusChoice("done", "Done", ui.Done)}}).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -1171,7 +1175,7 @@ func navigation(p Props) templ.Component {
 						var templ_7745c5c3_Var43 string
 						templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(i + 1))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/styleguide/parts.templ`, Line: 223, Col: 58}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/styleguide/parts.templ`, Line: 224, Col: 58}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 						if templ_7745c5c3_Err != nil {
@@ -1394,7 +1398,7 @@ func issueTable(p Props, n int) templ.Component {
 				var templ_7745c5c3_Var49 string
 				templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(s.Key)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/styleguide/parts.templ`, Line: 287, Col: 31}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/styleguide/parts.templ`, Line: 288, Col: 31}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 				if templ_7745c5c3_Err != nil {
@@ -1407,7 +1411,7 @@ func issueTable(p Props, n int) templ.Component {
 				var templ_7745c5c3_Var50 string
 				templ_7745c5c3_Var50, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL("/" + s.Key)).ResolveURL(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/styleguide/parts.templ`, Line: 288, Col: 61}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/styleguide/parts.templ`, Line: 289, Col: 61}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var50)
 				if templ_7745c5c3_Err != nil {
@@ -1420,7 +1424,7 @@ func issueTable(p Props, n int) templ.Component {
 				var templ_7745c5c3_Var51 string
 				templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(s.Summary)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/styleguide/parts.templ`, Line: 288, Col: 75}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/styleguide/parts.templ`, Line: 289, Col: 75}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 				if templ_7745c5c3_Err != nil {
@@ -1462,7 +1466,7 @@ func issueTable(p Props, n int) templ.Component {
 					var templ_7745c5c3_Var52 string
 					templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(s.Who.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/styleguide/parts.templ`, Line: 299, Col: 20}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/styleguide/parts.templ`, Line: 300, Col: 20}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 					if templ_7745c5c3_Err != nil {

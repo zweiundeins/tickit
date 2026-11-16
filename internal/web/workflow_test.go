@@ -38,7 +38,7 @@ func TestWorkflowLive(t *testing.T) {
 	key := pr.Keys[1] // in To Do
 	issue := pr.IDs[key]
 	_, ipage := webtest.Get(t, guest, e.URL+"/"+key)
-	if !strings.Contains(ipage, `data-field="status" data-value="done"`) {
+	if !statusOffers(ipage, "done") {
 		t.Fatal("the status menu does not offer Done before the rule")
 	}
 	issueView := webtest.Listen(t, guest, e.URL+"/stream?tab=g2&v=issue:"+issue, nil)
@@ -57,7 +57,7 @@ func TestWorkflowLive(t *testing.T) {
 		t.Errorf("the board's rules: %.400s", f[strings.Index(f, "data-rules="):])
 	}
 	f = webtest.Next(t, issueView, `id="issue-main"`)
-	if strings.Contains(f, `data-field="status" data-value="done"`) || !strings.Contains(f, `data-field="status" data-value="inreview"`) {
+	if statusOffers(f, "done") || !statusOffers(f, "inreview") {
 		t.Error("FR-37.1: the issue's menu still offers Done")
 	}
 	// FR-37.1, FR-41.3: the board refuses the move in words.
@@ -188,4 +188,11 @@ func TestBulkStatusRule(t *testing.T) {
 	if d := e.detail(t, "WEB-1"); d.Status != tracker.StatusToDo {
 		t.Errorf("WEB-1 is in %s", d.Status)
 	}
+}
+
+// statusOffers says whether the issue's status menu in page offers status.
+func statusOffers(page, status string) bool {
+	_, menu, ok := strings.Cut(page, `<sb-dropdown id="issue-status"`)
+	menu, _, _ = strings.Cut(menu, `</sb-dropdown>`)
+	return ok && strings.Contains(menu, `<button slot="item" type="button" value="`+status+`">`)
 }

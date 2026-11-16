@@ -254,16 +254,7 @@ templ issueMain(m Issue) {
 }
 
 templ statusMenu(m Issue) {
-	@ui.Menu(ui.MenuProps{ID: "issue-status", Label: "Status: " + m.StatusName, Trigger: statusTrigger(m), Caret: true, Variant: ui.Secondary, Size: ui.SizeSM, Attrs: menu("status")}) {
-		@ui.MenuLabel("Move to")
-		for i, c := range m.transitions() {
-			@ui.MenuItem(ui.MenuItemProps{Label: c.Name, Checked: ui.Pressed(c.ID == m.Status), Autofocus: i == 0, Attrs: choice("status", c.ID, "")})
-		}
-	}
-}
-
-templ statusTrigger(m Issue) {
-	@ui.StatusLozenge(m.StatusName, uiCat(m.Category))
+	@ui.ChoiceMenu(ui.ChoiceProps{ID: "issue-status", Label: "Status", Name: "status", Value: m.Status, Choices: statusChoices(m), Confirm: true, Variant: ui.Secondary, Attrs: choiceMenu("status")})
 }
 
 func crumbs(m Issue) []ui.Crumb {

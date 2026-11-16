@@ -291,7 +291,8 @@
 	 * A hue as text, fill, glyph-on-fill, wash and edge. Elements that carry
 	 * a hue set --h, by one of the attributes below; the tokens are declared
 	 * where --h is, so each element derives its own. sb-dropdown's copies of
-	 * a ChoiceMenu's icons carry the hue as part names instead (ui.ChoiceMenu).
+	 * a ChoiceMenu's icons and lozenges carry the hue as part names instead
+	 * (ui.ChoiceMenu).
 	 */
 	:where([data-hue], [data-type], [data-prio], [data-cat], [data-face], [data-color], [data-panel]),
 	sb-dropdown::part(hue) {
@@ -334,8 +335,8 @@
 	[data-prio="medium"], sb-dropdown::part(prio-medium) { --h: var(--tk-hue-medium); }
 	[data-prio="high"], sb-dropdown::part(prio-high) { --h: var(--tk-hue-high); }
 	[data-prio="critical"], sb-dropdown::part(prio-critical) { --h: var(--tk-hue-critical); }
-	[data-cat="progress"] { --h: var(--tk-hue-progress); }
-	[data-cat="done"] { --h: var(--tk-hue-done); }
+	[data-cat="progress"], sb-dropdown::part(status-progress) { --h: var(--tk-hue-progress); }
+	[data-cat="done"], sb-dropdown::part(status-done) { --h: var(--tk-hue-done); }
 
 	/* A document's palette: text colours and statuses by name, panels by
 	 * kind (docs/editor.md). */
@@ -356,7 +357,8 @@
 	 * grey text and a neutral status. */
 	[data-color="grey"],
 	[data-color="neutral"],
-	[data-cat="todo"] {
+	[data-cat="todo"],
+	sb-dropdown::part(status-todo) {
 		--h: var(--tk-hue-todo);
 		--tk-hue-text: var(--tk-text-2);
 		--tk-hue-fill: var(--tk-text-muted);

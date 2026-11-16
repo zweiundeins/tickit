@@ -7,9 +7,10 @@ import "strings"
 // the trigger the chosen one. Load its bundle ("dropdown").
 //
 // The rows and the trigger are copies the component draws in its shadow
-// root, which the page's classes do not reach: the icons carry part names
-// (hue, prio-<p>, type-<t>, type-tile, type-glyph) that tokens.css and
-// components.css style through ::part.
+// root, which the page's classes do not reach: the icons and lozenges carry
+// part names (hue, prio-<p>, type-<t>, type-tile, type-glyph, lozenge,
+// status-<category>, cat) that tokens.css and components.css style through
+// ::part.
 type ChoiceProps struct {
 	ID string
 	// Label names the field; the trigger's name adds the choice:
@@ -21,6 +22,8 @@ type ChoiceProps struct {
 	// Confirm marks a choice the server has not confirmed yet
 	// (:state(pending)); revert() shows the server's value again.
 	Confirm bool
+	// Variant is the trigger's look: Ghost (the default) or Secondary.
+	Variant ButtonVariant
 	Class   string
 	Attrs   templ.Attributes
 }
@@ -28,8 +31,14 @@ type ChoiceProps struct {
 // Choice is a row of a ChoiceMenu.
 type Choice struct {
 	Value, Label string
-	// Art is the icon, marked data-icon: PriorityArt, TypeArt.
+	// Art is the icon, marked data-icon: prioArt, typeArt.
 	Art templ.Component
+	// Body shows in place of the label (a lozenge); its text is the label,
+	// which stays the row's name.
+	Body templ.Component
+	// Heading makes the row a group heading over the choices after it, up
+	// to the next heading (ChoiceHeading).
+	Heading bool
 }
 
 // ChoiceMenu is sb-dropdown with tickit's trigger and rows.
@@ -38,7 +47,7 @@ templ ChoiceMenu(p ChoiceProps) {
 		if p.ID != "" {
 			id={ p.ID }
 		}
-		class={ classes("tk-pick-menu", p.Class) }
+		class={ classes("tk-pick-menu", when(p.Variant == Secondary, "tk-pick-menu--secondary"), p.Class) }
 		label={ p.Label }
 		if p.Name != "" {
 			name={ p.Name }
@@ -51,14 +60,41 @@ templ ChoiceMenu(p ChoiceProps) {
 		{ p.Attrs... }
 	>
 		for _, c := range p.Choices {
-			<button slot="item" type="button" value={ c.Value }>
-				if c.Art != nil {
-					@c.Art
-				}
-				{ c.Label }
-			</button>
+			if c.Heading {
+				<div slot="item" data-group>{ c.Label }</div>
+			} else {
+				<button slot="item" type="button" value={ c.Value }>
+					if c.Art != nil {
+						@c.Art
+					}
+					if c.Body != nil {
+						@c.Body
+					} else {
+						{ c.Label }
+					}
+				</button>
+			}
 		}
 	</sb-dropdown>
+}
+
+// ChoiceHeading heads the choices after it: "Move to".
+func ChoiceHeading(label string) Choice {
+	return Choice{Label: label, Heading: true}
+}
+
+// StatusChoice is a workflow status as a row of a ChoiceMenu: its
+// lozenge in its category's colours.
+func StatusChoice(id, name string, c StatusCategory) Choice {
+	return Choice{Value: id, Label: name, Body: statusArt(name, c)}
+}
+
+// statusArt is StatusLozenge for a ChoiceMenu's copies.
+templ statusArt(name string, c StatusCategory) {
+	<span part={ "hue lozenge status-" + c.attr() }>
+		@raw(`<svg part="cat" viewBox="0 0 10 10" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path d="` + catPaths[c.attr()] + `"/></svg>`)
+		{ name }
+	</span>
 }
 
 // PriorityChoice is a priority as a row of a ChoiceMenu.

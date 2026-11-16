@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"github.com/zweiundeins/tickit/internal/browsertest"
+	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/tickit/internal/tabs"
+	"github.com/zweiundeins/tickit/internal/tracker"
 	"github.com/zweiundeins/tickit/internal/views"
 	"github.com/zweiundeins/tickit/internal/web/webtest"
 )
@@ -56,6 +59,15 @@ func menuShows(menu string) string {
 }
 
 const priorityIs = `document.getElementById('issue-priority')?.shadowRoot?.querySelector('.trigger')?.getAttribute('aria-label') === 'Priority: ' + `
+
+const statusIs = `document.getElementById('issue-status')?.shadowRoot?.querySelector('.trigger')?.getAttribute('aria-label') === 'Status: ' + `
+
+// typeKey types one letter into the focused element.
+func typeKey(t *testing.T, p *browsertest.Page, key string) {
+	t.Helper()
+	p.Call(t, "Input.dispatchKeyEvent", map[string]any{"type": "keyDown", "key": key, "text": key})
+	p.Call(t, "Input.dispatchKeyEvent", map[string]any{"type": "keyUp", "key": key})
+}
 
 // MP-02, MP-03, MP-08, MP-09: two people on one issue. Each sees the
 // other's face; a priority one sets shows in the other's page within a
@@ -161,6 +173,111 @@ func TestPriorityMenuConflict(t *testing.T) {
 	b.Press(t, "Escape")
 	b.Wait(t, `!`+menu+`.open && `+menu+`.shadowRoot.activeElement === `+menu+`.shadowRoot.querySelector('.trigger')`, 2*time.Second)
 	noErrors(t, a, b)
+}
+
+// FR-37.1, FR-58, MP-09.1, NFR-47: the status menu groups the workflow's
+// next statuses under "Move to", which assistive tech reads as a named
+// group; the keys and the type-ahead pass over the heading. A transition
+// the workflow refuses shows pending, then the refusal, and the menu the
+// server's status again.
+func TestStatusMenuRefused(t *testing.T) {
+	e := webtest.Start(t)
+	d := issueData(t, e)
+	p := openIssue(t, e, 1280, 900)
+	const menu = `document.getElementById('issue-status')`
+	p.Wait(t, `customElements.get('sb-dropdown') && `+menu+`.getAttribute('value') === 'inprogress' && `+statusIs+`'In Progress'`, 3*time.Second)
+
+	p.Eval(t, `(`+menu+`.shadowRoot.querySelector('.trigger').focus(), true)`, nil)
+	enter(t, p)
+	focused := `(` + menu + `.shadowRoot.activeElement?.querySelector('.label')?.textContent.trim())`
+	p.Wait(t, focused+` === 'Backlog'`, 2*time.Second)
+	var rows []struct{ Name, Role, Checked string }
+	p.Eval(t, menuRows("issue-status")+`.map(r => ({name: r.querySelector('.label').textContent.trim(), role: r.getAttribute('role'), checked: r.getAttribute('aria-checked')}))`, &rows)
+	want := []string{"Backlog", "Selected for Development", "To Do", "In Progress", "In Review", "Blocked", "Done"}
+	if len(rows) != len(want) {
+		t.Fatalf("the rows: %+v", rows)
+	}
+	for i, r := range rows {
+		if r.Name != want[i] || r.Role != "menuitemradio" || (r.Checked == "true") != (r.Name == "In Progress") {
+			t.Errorf("row %d: %+v", i, r)
+		}
+	}
+	var lozenge string
+	p.Eval(t, menuRows("issue-status")+`[3].querySelector('.rich [part~=lozenge]')?.getAttribute('part')`, &lozenge)
+	if lozenge != "hue lozenge status-progress" {
+		t.Errorf("In Progress's lozenge has the parts %q", lozenge)
+	}
+
+	// The AX tree: the menu holds a group named by the heading, which
+	// holds the rows.
+	tree := p.Call(t, "Accessibility.getFullAXTree", map[string]any{})
+	var ax struct {
+		Nodes []struct {
+			NodeID   string   `json:"nodeId"`
+			ChildIDs []string `json:"childIds"`
+			Ignored  bool     `json:"ignored"`
+			Role     struct{ Value string }
+			Name     struct{ Value string }
+		}
+	}
+	if err := json.Unmarshal(tree, &ax); err != nil {
+		t.Fatal(err)
+	}
+	roles := map[string]string{}
+	for _, n := range ax.Nodes {
+		roles[n.NodeID] = n.Role.Value
+	}
+	found := false
+	for _, n := range ax.Nodes {
+		if n.Role.Value != "group" || n.Name.Value != "Move to" {
+			continue
+		}
+		radios := 0
+		for _, c := range n.ChildIDs {
+			if roles[c] == "menuitemradio" {
+				radios++
+			}
+		}
+		found = radios == len(want)
+	}
+	if !found {
+		t.Error(`the AX tree has no group "Move to" with the seven rows`)
+	}
+
+	// Up wraps from the first row to the last, Down back, Home and End
+	// land on rows; the heading never takes the focus.
+	for _, k := range []struct{ key, want string }{{"ArrowUp", "Done"}, {"ArrowDown", "Backlog"}, {"End", "Done"}, {"Home", "Backlog"}} {
+		p.Press(t, k.key)
+		p.Wait(t, focused+` === '`+k.want+`'`, time.Second)
+	}
+	typeKey(t, p, "d")
+	p.Wait(t, focused+` === 'Done'`, time.Second)
+
+	// Someone makes Done follow only In Review while this menu still
+	// offers it: the frame that would take Done out is held back here.
+	p.Eval(t, `(`+menu+`.setAttribute('data-ignore-morph', ''), true)`, nil)
+	e.Do(t, tracker.SetTransitionRule{By: tabs.By{Actor: people.Seeded[0], Op: "rule1", At: time.Now()}, Project: d.project, Status: tracker.StatusDone, From: []string{tracker.StatusInReview}})
+	p.Eval(t, `(`+menu+`.addEventListener('sb-change', () => ((pending) => setTimeout(() => (window.sent = {pending, name: `+menuShows("issue-status")+`})))(`+menu+`.matches(':state(pending)')), {once: true}), true)`, nil)
+	enter(t, p)
+	var sent struct {
+		Pending bool
+		Name    string
+	}
+	p.Wait(t, `!!window.sent`, 2*time.Second)
+	p.Eval(t, `window.sent`, &sent)
+	if !sent.Pending || sent.Name != "Status: Done" {
+		t.Errorf("as it was sent the menu was %+v: want pending and Done", sent)
+	}
+	refused := `[...document.querySelectorAll('#issue .tk-outcome[data-kind=refused]')].find(n => !n.closest('[hidden]'))`
+	p.Wait(t, refused+`?.textContent.includes('Done can only follow In Review.')`, 3*time.Second)
+	p.Wait(t, `!`+menu+`.matches(':state(pending)') && `+menu+`.value === 'inprogress' && `+statusIs+`'In Progress'`, 2*time.Second)
+
+	// With the frames back, the menu no longer offers Done.
+	p.Eval(t, `(`+menu+`.removeAttribute('data-ignore-morph'), true)`, nil)
+	e.Do(t, tracker.SetPriority{By: tabs.By{Actor: people.Seeded[0], Op: "prio1", At: time.Now()}, Issue: d.story, Seen: 1 << 40, Priority: tracker.Low})
+	p.Wait(t, priorityIs+`'Low'`, 3*time.Second)
+	p.Wait(t, `![...`+menu+`.querySelectorAll('[slot=item]')].some(b => b.value === 'done')`, 2*time.Second)
+	noErrors(t, p)
 }
 
 // FR-14.1, MP-09.1, MP-03.3: the summary edits in place; what someone

@@ -405,6 +405,16 @@ func priorityChoices() []ui.Choice {
 	return out
 }
 
+// statusChoices are the rows of the issue's status menu: under "Move to",
+// the current status and those the workflow lets follow it.
+func statusChoices(m Issue) []ui.Choice {
+	out := []ui.Choice{ui.ChoiceHeading("Move to")}
+	for _, c := range m.transitions() {
+		out = append(out, ui.StatusChoice(c.ID, c.Name, uiCat(c.Category)))
+	}
+	return out
+}
+
 func typeChoices() []ui.Choice {
 	out := make([]ui.Choice, 0, len(tracker.Types))
 	for _, t := range tracker.Types {

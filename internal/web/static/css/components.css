@@ -26,7 +26,8 @@
 		.tk-sidenav__key,
 		.tk-demo__badge,
 		.tk-panel-box
-	) {
+	),
+	sb-dropdown::part(lozenge) {
 		clip-path: polygon(var(--_n) 0, calc(100% - var(--_n)) 0, calc(100% - var(--_n)) var(--_n), 100% var(--_n), 100% calc(100% - var(--_n)), calc(100% - var(--_n)) calc(100% - var(--_n)), calc(100% - var(--_n)) 100%, var(--_n) 100%, var(--_n) calc(100% - var(--_n)), 0 calc(100% - var(--_n)), 0 var(--_n), var(--_n) var(--_n));
 	}
 
@@ -1105,6 +1106,28 @@
 		&::part(label) {
 			font-weight: var(--tk-weight-regular);
 		}
+
+		/* No text-transform: Chromium names the group in the case shown. */
+		&::part(group-label) {
+			color: var(--tk-text-muted);
+			font-family: var(--tk-font-mono);
+			font-size: var(--tk-text-2xs);
+			font-weight: var(--tk-weight-medium);
+		}
+	}
+
+	/* The trigger as a secondary button (the issue's status). */
+	.tk-pick-menu--secondary {
+		&::part(trigger) {
+			background: var(--tk-surface-2);
+			box-shadow: inset 0 0 0 1px var(--tk-border-strong);
+			color: var(--tk-text-1);
+		}
+
+		&::part(trigger):hover {
+			background: var(--tk-surface-hover);
+			box-shadow: inset 0 0 0 1px var(--tk-text-muted);
+		}
 	}
 
 	/* Until its bundle runs: the choices are data, not buttons. */
@@ -1876,8 +1899,10 @@
 		white-space: nowrap;
 	}
 
-	/* A lozenge: the status name in mono caps, its category's marker. */
-	.tk-lozenge {
+	/* A lozenge: the status name in mono caps, its category's marker.
+	 * sb-dropdown's copies (ui.StatusChoice) carry it as part names. */
+	.tk-lozenge,
+	sb-dropdown::part(lozenge) {
 		--_n: calc(2px * var(--tk-notch));
 		display: inline-flex;
 		align-items: center;
@@ -1897,7 +1922,8 @@
 		vertical-align: middle;
 	}
 
-	.tk-cat {
+	.tk-cat,
+	sb-dropdown::part(cat) {
 		flex: none;
 		inline-size: 10px;
 		block-size: 10px;
@@ -2468,6 +2494,7 @@
 		}
 
 		.tk-lozenge,
+		sb-dropdown::part(lozenge),
 		.tk-label,
 		.tk-count {
 			border: 1px solid CanvasText;
