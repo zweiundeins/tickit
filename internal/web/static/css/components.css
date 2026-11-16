@@ -1102,7 +1102,7 @@
 			block-size: 1rem;
 		}
 
-		&::part(choice) {
+		&::part(label) {
 			font-weight: var(--tk-weight-regular);
 		}
 	}
