@@ -5,9 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io/fs"
+	"slices"
 	"testing"
 
 	"github.com/zweiundeins/lith/datastar"
+	"github.com/zweiundeins/starbase/templ/sb"
 )
 
 // TestVendored checks the Starbase files against lock.json, without
@@ -45,7 +47,13 @@ func TestVendored(t *testing.T) {
 	if lock.Datastar != datastar.Integrity {
 		t.Errorf("the lock was made for Datastar %s, tickit serves lith's %s (%s)", lock.Datastar, datastar.Integrity, datastar.Version)
 	}
+	if got := sb.DatastarBuild().Integrity; got != lock.Datastar {
+		t.Errorf("the templ wrappers (%s) were made for Datastar %s, the vendored components for %s", sb.Version(), got, lock.Datastar)
+	}
 	for _, c := range lock.Components {
+		if !slices.Contains(sb.Tags(), sb.Tag("sb-"+c.Slug)) {
+			t.Errorf("the templ wrappers (%s) have no sb-%s", sb.Version(), c.Slug)
+		}
 		for name, want := range c.Files {
 			if got := sri("static/vendor/starbase/" + c.Slug + "/" + name); got != want {
 				t.Errorf("%s/%s is %s, the lock says %s", c.Slug, name, got, want)

@@ -7,12 +7,14 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/a-h/templ"
 	"github.com/zweiundeins/lith/edge"
 	"github.com/zweiundeins/lith/live"
 	"github.com/zweiundeins/lith/sqlite"
+	"github.com/zweiundeins/starbase/templ/sb"
 
 	"github.com/zweiundeins/tickit/internal/access"
 	"github.com/zweiundeins/tickit/internal/demo"
@@ -105,7 +107,14 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, buil
 		if err != nil {
 			return err
 		}
-		return views.Layout(shell).Render(templ.WithChildren(ctx, p.Body), &buf)
+		cctx, rendered := sb.Collect(ctx)
+		if err := views.Layout(shell).Render(templ.WithChildren(cctx, p.Body), &buf); err != nil {
+			return err
+		}
+		if missing := s.unloaded(p.Components, rendered()); len(missing) > 0 {
+			s.log.Error("starbase: the page renders components it does not load", "path", r.URL.Path, "components", missing)
+		}
+		return nil
 	})
 	if err != nil {
 		s.fail(w, r, err)
@@ -218,6 +227,24 @@ func (s *Server) scripts(p Page) ([]string, error) {
 		urls = append(urls, s.static.URL(n))
 	}
 	return urls, nil
+}
+
+// unloaded are the components of rendered that components does not load.
+// Page.Components also names what frames bring later (the issue panel), so
+// it can be longer than what the first render holds, never shorter.
+func (s *Server) unloaded(components []string, rendered []sb.Tag) []string {
+	names, err := StarbaseScripts(s.files, components...)
+	if err != nil {
+		return components
+	}
+	var missing []string
+	for _, t := range rendered {
+		slug := strings.TrimPrefix(string(t), "sb-")
+		if !slices.ContainsFunc(names, func(n string) bool { return strings.HasPrefix(n, "vendor/starbase/"+slug+"/") }) {
+			missing = append(missing, slug)
+		}
+	}
+	return missing
 }
 
 // notFound answers with the page of an address that names nothing.

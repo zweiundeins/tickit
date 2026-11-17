@@ -293,7 +293,7 @@ go tool task vendor-starbase STARBASE=/develop/starbase
 
 Vendored (Starbase v0.9.0, c138dc2): `context-menu`, `copy-button`, `date-picker`, `dropdown`, `popover`, `select`, `tabs`, `toast`, `toc`, `tree`, `virtual-scroll`. The modules stay as Starbase wrote them; `edge.Static` minifies them in production. A page loads a component by naming it in `Page.Components` (`web.StarbaseScripts` adds the modules it renders, in order, after the import map); `/design` loads them all.
 
-The `internal/ui` components and the views write the elements through Starbase's typed templ wrappers (`github.com/zweiundeins/starbase/templ/sb`: `sb.Select`, `sb.Dropdown` and the others), for the markup only. Pages never use `sb.Imports` or `sb.Tracked`: the scripts stay the vendored modules above, and Datastar is lith's, loaded once.
+The `internal/ui` components and the views write the elements through Starbase's typed templ wrappers (`github.com/zweiundeins/starbase/templ/sb`: `sb.Select`, `sb.Dropdown` and the others), for the markup only. Pages never use `sb.Imports` or `sb.Tracked`: the scripts stay the vendored modules above, and Datastar is lith's, loaded once. `render` collects what the wrappers render (`sb.Collect`) and logs an error for a component the page's `Components` does not load; `TestPagesLoadTheirComponents` follows the seeded site's links and fails on one. `Components` still names what frames bring later (the issue panel on a board), which the first render does not hold. `TestVendored` checks that the wrappers were made for the vendored Datastar and know every vendored component.
 
 Where the app uses them:
 
