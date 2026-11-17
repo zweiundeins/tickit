@@ -1,7 +1,8 @@
 {
   "repo": "github.com/zweiundeins/starbase",
-  "commit": "c138dc233d81ac05cc3715068aa7999d21539045",
-  "date": "2026-11-16T12:12:41Z",
+  "commit": "549bee4225235714050d248bd5c1d9a38c980e40",
+  "release": "v0.10.0",
+  "date": "2026-11-17T18:58:34Z",
   "license": "MIT",
   "datastar": "sha384-DkjVaBESHDA703Xk1QdsjXyHUmwC4Z9N/T8ak/EVxdTXso6apSccCKzi0DwwbGGK",
   "fonts": {
@@ -84,7 +85,7 @@
       "pinned": true,
       "entry": "toast.js",
       "files": {
-        "toast.js": "sha384-t4d8D0TpbK6drvbTTBzdHboU5deWSMZ1Lg1QqE/ZrdKesE0vOw6TRYth98cPN9DA"
+        "toast.js": "sha384-YEUN25r3gOoj6LQ2mna+XJQPdtIfO8nx9gHUK8xLplZx2SG3u26Q7re3dNJhPnB1"
       }
     },
     {

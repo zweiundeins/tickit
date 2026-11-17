@@ -40,9 +40,9 @@ import (
 	lithdatastar "github.com/zweiundeins/lith/datastar"
 )
 
-// release is the Datastar and Rocket release a build names in its first
-// line: "Datastar v1.0.5 + Rocket beta.3".
-func release(js []byte) string {
+// datastarRelease is the Datastar and Rocket release a build names in its
+// first line: "Datastar v1.0.5 + Rocket beta.3".
+func datastarRelease(js []byte) string {
 	first, _, _ := bytes.Cut(js, []byte("\n"))
 	s := strings.TrimPrefix(string(first), "// ")
 	s, _, _ = strings.Cut(s, " (")
@@ -64,8 +64,11 @@ type Pins struct {
 // Lock is what was vendored: lock.json. internal/web reads it to load a
 // component with the components it renders.
 type Lock struct {
-	Repo     string            `json:"repo"`
-	Commit   string            `json:"commit"`
+	Repo   string `json:"repo"`
+	Commit string `json:"commit"`
+	// Release is Starbase's release tag on that commit ("v0.10.0"), empty
+	// for a commit between releases.
+	Release  string            `json:"release,omitempty"`
 	Date     string            `json:"date"`
 	License  string            `json:"license"`
 	Datastar string            `json:"datastar"`
@@ -88,9 +91,10 @@ type Component struct {
 }
 
 var (
-	tagRe    = regexp.MustCompile(`<(sb-[a-z0-9]+(?:-[a-z0-9]+)*)`)
-	importRe = regexp.MustCompile(`(?:from|import)\s*\(?\s*["'](\./[^"']+)["']`)
-	bareRe   = regexp.MustCompile(`(?:from|import)\s*\(?\s*["']([^./][^"']*)["']`)
+	releaseRe = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
+	tagRe     = regexp.MustCompile(`<(sb-[a-z0-9]+(?:-[a-z0-9]+)*)`)
+	importRe  = regexp.MustCompile(`(?:from|import)\s*\(?\s*["'](\./[^"']+)["']`)
+	bareRe    = regexp.MustCompile(`(?:from|import)\s*\(?\s*["']([^./][^"']*)["']`)
 )
 
 func main() {
@@ -124,6 +128,16 @@ func run(src string, allowDirty bool) error {
 	if err != nil {
 		return err
 	}
+	tags, err := git(src, "tag", "--points-at", "HEAD")
+	if err != nil {
+		return err
+	}
+	release := ""
+	for _, t := range strings.Fields(tags) {
+		if releaseRe.MatchString(t) {
+			release = t
+		}
+	}
 	status, err := git(src, "status", "--porcelain", "--", "components", "static/vendor", "static/fonts", "LICENSE")
 	if err != nil {
 		return err
@@ -133,6 +147,7 @@ func run(src string, allowDirty bool) error {
 			return fmt.Errorf("%s has uncommitted changes in what this copies:\n%s\ncommit them, or pass -dirty", src, status)
 		}
 		commit += "-dirty"
+		release = ""
 	}
 
 	theirs, err := os.ReadFile(filepath.Join(src, "static/vendor/datastar-rocket.js"))
@@ -140,11 +155,11 @@ func run(src string, allowDirty bool) error {
 		return err
 	}
 	ours := lithdatastar.JS()
-	if release(theirs) != release(ours) {
-		return fmt.Errorf("Starbase at %s ships %q, tickit serves lith's %q (%s): move lith to that release first", commit, release(theirs), release(ours), lithdatastar.Version)
+	if datastarRelease(theirs) != datastarRelease(ours) {
+		return fmt.Errorf("Starbase at %s ships %q, tickit serves lith's %q (%s): move lith to that release first", commit, datastarRelease(theirs), datastarRelease(ours), lithdatastar.Version)
 	}
 
-	lock := Lock{Repo: pins.Repo, Commit: commit, Date: date, License: "MIT", Datastar: lithdatastar.Integrity, Fonts: map[string]string{}}
+	lock := Lock{Repo: pins.Repo, Commit: commit, Release: release, Date: date, License: "MIT", Datastar: lithdatastar.Integrity, Fonts: map[string]string{}}
 	out := map[string][]byte{}
 	queue := slices.Clone(pins.Components)
 	done := map[string]*Component{}
@@ -257,7 +272,11 @@ func run(src string, allowDirty bool) error {
 // version is VERSION: what lock.json says, for people.
 func version(l Lock) []byte {
 	var b bytes.Buffer
-	fmt.Fprintf(&b, "Starbase's Rocket components and fonts, copied by cmd/vendor-starbase from\n%s at commit %s (%s).\n", l.Repo, l.Commit, l.Date)
+	at := "commit " + l.Commit
+	if l.Release != "" {
+		at = l.Release + ", commit " + l.Commit
+	}
+	fmt.Fprintf(&b, "Starbase's Rocket components and fonts, copied by cmd/vendor-starbase from\n%s at %s (%s).\n", l.Repo, at, l.Date)
 	fmt.Fprintf(&b, "Licence: %s, LICENSE-starbase.txt. The fonts are SIL OFL 1.1 (static/fonts/OFL-*.txt).\n", l.License)
 	fmt.Fprintf(&b, "Update: change pins.json, then go run ./cmd/vendor-starbase -src <checkout>.\n\n")
 	for _, c := range l.Components {

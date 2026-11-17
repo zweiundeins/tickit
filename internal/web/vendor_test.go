@@ -23,6 +23,7 @@ func TestVendored(t *testing.T) {
 	}
 	var lock struct {
 		Commit     string            `json:"commit"`
+		Release    string            `json:"release"`
 		Datastar   string            `json:"datastar"`
 		Fonts      map[string]string `json:"fonts"`
 		Components []struct {
@@ -46,6 +47,9 @@ func TestVendored(t *testing.T) {
 	}
 	if lock.Datastar != datastar.Integrity {
 		t.Errorf("the lock was made for Datastar %s, tickit serves lith's %s (%s)", lock.Datastar, datastar.Integrity, datastar.Version)
+	}
+	if lock.Release != "v"+sb.Release {
+		t.Errorf("the vendored components are Starbase %q, the templ wrappers (%s) Starbase v%s", lock.Release, sb.Version(), sb.Release)
 	}
 	if got := sb.DatastarBuild().Integrity; got != lock.Datastar {
 		t.Errorf("the templ wrappers (%s) were made for Datastar %s, the vendored components for %s", sb.Version(), got, lock.Datastar)

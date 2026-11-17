@@ -20,7 +20,7 @@ require (
 	github.com/zweiundeins/lith/prom v0.5.9
 	github.com/zweiundeins/prosemirror-go v0.2.1
 	github.com/zweiundeins/prosemirror-go/oracle v0.2.1
-	github.com/zweiundeins/starbase/templ v0.0.0-20261117163410-6026302b5df0
+	github.com/zweiundeins/starbase/templ v0.10.0
 	golang.org/x/crypto v0.59.0
 	golang.org/x/image v0.48.0
 )
