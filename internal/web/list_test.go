@@ -198,10 +198,13 @@ func TestListURL(t *testing.T) {
 	e := newList(t)
 	c := webtest.Client(t)
 	_, page := webtest.Get(t, c, e.URL+"/issues?status=todo&assignee=me&sort=priority&dir=desc&page=2&q=login")
-	for _, want := range []string{`value="login"`, `name="status" value="todo" checked`, `name="assignee" options=`, `value="[&#34;me&#34;]"`, `name="sort" value="priority"`, `name="dir" value="desc"`, `name="page" value="2"`} {
+	for _, want := range []string{`value="login"`, `name="status" value="todo" checked`, `value="[&#34;me&#34;]"`, `name="sort" value="priority"`, `name="dir" value="desc"`, `name="page" value="2"`} {
 		if !strings.Contains(page, want) {
 			t.Errorf("the form lacks %s", want)
 		}
+	}
+	if !regexp.MustCompile(`<sb-select [^>]*name="assignee"`).MatchString(page) {
+		t.Error("the form lacks the assignee picker")
 	}
 	a := spec(t, page)
 	_, again := webtest.Get(t, c, e.URL+"/issues?q=login&page=2&dir=desc&sort=priority&assignee=me&status=todo")

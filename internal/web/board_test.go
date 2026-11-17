@@ -445,7 +445,8 @@ func TestSettingsLead(t *testing.T) {
 	stranger := people.GuestOf("stranger")
 	edit("op2", stranger.ID)
 	webtest.Next(t, settings, `"op2":{"ok":false,"msg":"`+stranger.Name+` cannot lead WEB: they are not a member of it.","field":"lead"}`)
-	if _, page := webtest.Get(t, c, e.URL+"/projects/WEB/settings"); !strings.Contains(page, `name="lead" options=`) || !regexp.MustCompile(`id="pd-lead"[^>]* value="s-lena"`).MatchString(page) {
+	_, page = webtest.Get(t, c, e.URL+"/projects/WEB/settings")
+	if tag := regexp.MustCompile(`<sb-select id="pd-lead"[^>]*>`).FindString(page); !strings.Contains(tag, ` name="lead"`) || !strings.Contains(tag, ` value="s-lena"`) {
 		t.Error("the new lead is not chosen")
 	}
 }
