@@ -15,8 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-
-	"github.com/a-h/templ"
 )
 
 // Size is a component's size.
@@ -149,12 +147,4 @@ func slug(s string) string {
 		dash = true
 	}
 	return b.String()
-}
-
-// with is a's attributes and then b's, which win.
-func with(a, b templ.Attributes) templ.Attributes {
-	for k, v := range b {
-		a[k] = v
-	}
-	return a
 }

@@ -78,9 +78,9 @@ func Tabs(p TabsProps) templ.Component {
 	})
 }
 
-func tabIndex(i int) *float64 {
+func tabIndex(i int) *int {
 	if i > 0 {
-		return sb.Num(float64(i))
+		return sb.Int(i)
 	}
 	return nil
 }
@@ -109,9 +109,9 @@ func TabPanel(label string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
-		templ_7745c5c3_Var4, templ_7745c5c3_Err = templruntime.NewAttributeExpression(slug(label)).Resolve(ctx)
+		templ_7745c5c3_Var4, templ_7745c5c3_Err = templruntime.NewAttributeExpression(sb.TabSlot([]string{label}, 0)).Resolve(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/nav.templ`, Line: 43, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/nav.templ`, Line: 43, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -688,11 +688,19 @@ func Tree(p TreeProps) templ.Component {
 func treeProps(p TreeProps) sb.TreeProps {
 	t := sb.TreeProps{ID: p.ID, Class: classes("tk-tree", p.Class), Label: p.Label, Attrs: p.Attrs}
 	if p.Name != "" {
-		t.Name, t.Value = p.Name, sb.Str(p.Value)
+		t.Name, t.Value = p.Name, treeValue(p.Value)
 	} else {
 		t.Selection = sb.TreeSelectionNone
 	}
 	return t
+}
+
+// treeValue is the selected id, or an empty list that clears the selection.
+func treeValue(id string) []string {
+	if id == "" {
+		return []string{}
+	}
+	return []string{id}
 }
 
 // TreeBranch is the list of a lazy item's children, which a page puts in
@@ -755,7 +763,7 @@ func treeItems(items []TreeItem) templ.Component {
 			var templ_7745c5c3_Var27 string
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templruntime.NewAttributeExpression(it.ID).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/nav.templ`, Line: 243, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/nav.templ`, Line: 251, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
 			if templ_7745c5c3_Err != nil {
@@ -789,7 +797,7 @@ func treeItems(items []TreeItem) templ.Component {
 				var templ_7745c5c3_Var28 string
 				templ_7745c5c3_Var28, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(it.Href)).ResolveURL(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/nav.templ`, Line: 253, Col: 34}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/nav.templ`, Line: 261, Col: 34}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 				if templ_7745c5c3_Err != nil {
@@ -802,7 +810,7 @@ func treeItems(items []TreeItem) templ.Component {
 				var templ_7745c5c3_Var29 string
 				templ_7745c5c3_Var29, templ_7745c5c3_Err = templruntime.NewAttributeExpression(it.Label).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/nav.templ`, Line: 254, Col: 21}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/nav.templ`, Line: 262, Col: 21}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var29)
 				if templ_7745c5c3_Err != nil {
@@ -895,7 +903,7 @@ func treeItemBody(it TreeItem) templ.Component {
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(it.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/nav.templ`, Line: 277, Col: 11}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/nav.templ`, Line: 285, Col: 11}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -913,7 +921,7 @@ func treeItemBody(it TreeItem) templ.Component {
 			var templ_7745c5c3_Var32 string
 			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(it.Meta)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/nav.templ`, Line: 279, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/nav.templ`, Line: 287, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 			if templ_7745c5c3_Err != nil {

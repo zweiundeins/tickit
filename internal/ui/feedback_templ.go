@@ -474,7 +474,7 @@ func Toasts(p ToastsProps) templ.Component {
 			Toasts:    toastMessages(p.Toasts),
 			Placement: sb.ToastPlacement(iconOr(p.Placement, "bottom-end")),
 			Label:     "Notifications",
-			Attrs:     with(templ.Attributes{"data-preserve-attr": "toasts"}, p.Attrs),
+			Attrs:     sb.Merge(templ.Attributes{"data-preserve-attr": "toasts"}, p.Attrs),
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -489,9 +489,9 @@ func toastMessages(ts []Toast) []sb.ToastMessage {
 	for i, t := range ts {
 		out[i] = sb.ToastMessage{ID: t.ID, Title: t.Title, Text: t.Text, Variant: sb.ToastVariant(t.Tone)}
 		if t.Sticky {
-			out[i].Duration = sb.Num(0)
+			out[i].Duration = sb.Int(0)
 		} else if t.Duration > 0 {
-			out[i].Duration = sb.Num(float64(t.Duration))
+			out[i].Duration = sb.Int(t.Duration)
 		}
 	}
 	return out

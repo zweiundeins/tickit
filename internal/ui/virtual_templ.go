@@ -9,11 +9,7 @@ package ui
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import (
-	"strconv"
-
-	"github.com/zweiundeins/starbase/templ/sb"
-)
+import "github.com/zweiundeins/starbase/templ/sb"
 
 // VirtualProps is Starbase's sb-virtual-scroll: a long list of which the
 // server renders a window, one fixed-height row per item. Load its bundle
@@ -91,7 +87,8 @@ func virtualProps(p VirtualProps) sb.VirtualScrollProps {
 	v := sb.VirtualScrollProps{
 		ID:       p.ID,
 		Class:    classes("tk-virtual", p.Class),
-		Total:    sb.Num(float64(p.Total)),
+		Total:    sb.Int(p.Total),
+		Offset:   sb.Int(p.Offset),
 		ItemSize: p.ItemSize,
 		Attrs:    p.Attrs,
 	}
@@ -99,17 +96,18 @@ func virtualProps(p VirtualProps) sb.VirtualScrollProps {
 		v.Buffer = sb.Num(float64(p.Buffer))
 	}
 	if p.Step > 1 {
-		v.Step = sb.Num(float64(p.Step))
+		v.Step = sb.Int(p.Step)
 	}
-	// sb.VirtualScrollProps.Offset leaves 0 out; the feeds read offset="0".
-	a := templ.Attributes{"offset": strconv.Itoa(p.Offset)}
-	if p.Role != "" {
-		a["role"], a["aria-label"] = p.Role, p.Label
+	if p.Role != "" || p.Hidden {
+		a := templ.Attributes{}
+		if p.Role != "" {
+			a["role"], a["aria-label"] = p.Role, p.Label
+		}
+		if p.Hidden {
+			a["hidden"] = true
+		}
+		v.Attrs = sb.Merge(a, p.Attrs)
 	}
-	if p.Hidden {
-		a["hidden"] = true
-	}
-	v.Attrs = with(a, p.Attrs)
 	if p.Role == "" {
 		v.Label = p.Label
 	}

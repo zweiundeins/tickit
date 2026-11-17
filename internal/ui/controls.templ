@@ -1,6 +1,11 @@
 package ui
 
-import "github.com/zweiundeins/starbase/templ/sb"
+import (
+	"encoding/json"
+	"strings"
+
+	"github.com/zweiundeins/starbase/templ/sb"
+)
 
 // ButtonVariant is a button's weight.
 type ButtonVariant string
@@ -600,6 +605,27 @@ func pickerOptions(opts []Option) []sb.Option {
 	return out
 }
 
+// pickerValue is the picker's value as sb-select's list: for Multiple, the
+// JSON array or comma list of Value; never nil, so value is always written.
+func pickerValue(p PickerProps) []string {
+	if !p.Multiple {
+		return []string{p.Value}
+	}
+	v := []string{}
+	if strings.HasPrefix(strings.TrimSpace(p.Value), "[") {
+		if json.Unmarshal([]byte(p.Value), &v) == nil {
+			return v
+		}
+		return []string{}
+	}
+	for _, s := range strings.Split(p.Value, ",") {
+		if s = strings.TrimSpace(s); s != "" {
+			v = append(v, s)
+		}
+	}
+	return v
+}
+
 // Picker is sb-select with tickit's tokens. Its label is its own (inside
 // the component), so it takes no Field. The value attribute is always
 // there: a frame that clears it sends value="", since sb-select ignores a
@@ -611,7 +637,7 @@ templ Picker(p PickerProps) {
 		Label:       p.Label,
 		Name:        p.Name,
 		Options:     pickerOptions(p.Options),
-		Value:       sb.Str(p.Value),
+		Value:       pickerValue(p),
 		Placeholder: p.Placeholder,
 		Multiple:    p.Multiple,
 		Searchable:  p.Searchable,
@@ -688,5 +714,5 @@ func copyAttrs(p CopyProps) templ.Attributes {
 	if p.Path == "" {
 		return p.Attrs
 	}
-	return with(templ.Attributes{"data-path": p.Path, "data-attr:value": copyOrigin, "data-preserve-attr": "value"}, p.Attrs)
+	return sb.Merge(templ.Attributes{"data-path": p.Path, "data-attr:value": copyOrigin, "data-preserve-attr": "value"}, p.Attrs)
 }

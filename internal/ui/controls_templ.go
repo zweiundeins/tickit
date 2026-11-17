@@ -9,7 +9,12 @@ package ui
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/zweiundeins/starbase/templ/sb"
+import (
+	"encoding/json"
+	"strings"
+
+	"github.com/zweiundeins/starbase/templ/sb"
+)
 
 // ButtonVariant is a button's weight.
 type ButtonVariant string
@@ -133,7 +138,7 @@ func Button(p ButtonProps) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(p.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 81, Col: 60}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 86, Col: 60}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -219,7 +224,7 @@ func button(p ButtonProps) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(p.Href)).ResolveURL(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 94, Col: 31}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 99, Col: 31}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 				if templ_7745c5c3_Err != nil {
@@ -237,7 +242,7 @@ func button(p ButtonProps) templ.Component {
 					var templ_7745c5c3_Var9 string
 					templ_7745c5c3_Var9, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Label).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 96, Col: 24}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 101, Col: 24}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 					if templ_7745c5c3_Err != nil {
@@ -262,7 +267,7 @@ func button(p ButtonProps) templ.Component {
 					var templ_7745c5c3_Var10 string
 					templ_7745c5c3_Var10, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Shortcut).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 102, Col: 34}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 107, Col: 34}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 					if templ_7745c5c3_Err != nil {
@@ -275,7 +280,7 @@ func button(p ButtonProps) templ.Component {
 					var templ_7745c5c3_Var11 string
 					templ_7745c5c3_Var11, templ_7745c5c3_Err = templruntime.NewAttributeExpression(shortcutKey(p.Shortcut)).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 103, Col: 53}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 108, Col: 53}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 					if templ_7745c5c3_Err != nil {
@@ -360,7 +365,7 @@ func button(p ButtonProps) templ.Component {
 				var templ_7745c5c3_Var15 string
 				templ_7745c5c3_Var15, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.typ()).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 114, Col: 17}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 119, Col: 17}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 				if templ_7745c5c3_Err != nil {
@@ -378,7 +383,7 @@ func button(p ButtonProps) templ.Component {
 					var templ_7745c5c3_Var16 string
 					templ_7745c5c3_Var16, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Label).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 116, Col: 24}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 121, Col: 24}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 					if templ_7745c5c3_Err != nil {
@@ -409,7 +414,7 @@ func button(p ButtonProps) templ.Component {
 					var templ_7745c5c3_Var17 string
 					templ_7745c5c3_Var17, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Pressed).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 125, Col: 28}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 130, Col: 28}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
 					if templ_7745c5c3_Err != nil {
@@ -428,7 +433,7 @@ func button(p ButtonProps) templ.Component {
 					var templ_7745c5c3_Var18 string
 					templ_7745c5c3_Var18, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Shortcut).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 128, Col: 34}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 133, Col: 34}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 					if templ_7745c5c3_Err != nil {
@@ -441,7 +446,7 @@ func button(p ButtonProps) templ.Component {
 					var templ_7745c5c3_Var19 string
 					templ_7745c5c3_Var19, templ_7745c5c3_Err = templruntime.NewAttributeExpression(shortcutKey(p.Shortcut)).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 129, Col: 53}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 134, Col: 53}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 					if templ_7745c5c3_Err != nil {
@@ -460,7 +465,7 @@ func button(p ButtonProps) templ.Component {
 					var templ_7745c5c3_Var20 string
 					templ_7745c5c3_Var20, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Command).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 132, Col: 23}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 137, Col: 23}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 					if templ_7745c5c3_Err != nil {
@@ -473,7 +478,7 @@ func button(p ButtonProps) templ.Component {
 					var templ_7745c5c3_Var21 string
 					templ_7745c5c3_Var21, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.CommandFor).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 133, Col: 29}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 138, Col: 29}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
 					if templ_7745c5c3_Err != nil {
@@ -492,7 +497,7 @@ func button(p ButtonProps) templ.Component {
 					var templ_7745c5c3_Var22 string
 					templ_7745c5c3_Var22, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.PopoverTarget).Resolve(ctx)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 136, Col: 35}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 141, Col: 35}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var22)
 					if templ_7745c5c3_Err != nil {
@@ -584,7 +589,7 @@ func buttonBody(p ButtonProps) templ.Component {
 			var templ_7745c5c3_Var25 string
 			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(p.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 153, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 158, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 			if templ_7745c5c3_Err != nil {
@@ -607,7 +612,7 @@ func buttonBody(p ButtonProps) templ.Component {
 			var templ_7745c5c3_Var26 string
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(p.Shortcut)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 157, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 162, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
@@ -758,7 +763,7 @@ func Field(f FieldProps) templ.Component {
 			var templ_7745c5c3_Var32 string
 			templ_7745c5c3_Var32, templ_7745c5c3_Err = templruntime.NewAttributeExpression(f.ID).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 210, Col: 13}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 215, Col: 13}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32)
 			if templ_7745c5c3_Err != nil {
@@ -785,7 +790,7 @@ func Field(f FieldProps) templ.Component {
 		var templ_7745c5c3_Var33 string
 		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(f.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 212, Col: 12}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 217, Col: 12}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 		if templ_7745c5c3_Err != nil {
@@ -823,7 +828,7 @@ func Field(f FieldProps) templ.Component {
 			var templ_7745c5c3_Var34 string
 			templ_7745c5c3_Var34, templ_7745c5c3_Err = templruntime.NewAttributeExpression(f.HintID()).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 222, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 227, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var34)
 			if templ_7745c5c3_Err != nil {
@@ -836,7 +841,7 @@ func Field(f FieldProps) templ.Component {
 			var templ_7745c5c3_Var35 string
 			templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(f.Hint)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 222, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 227, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 			if templ_7745c5c3_Err != nil {
@@ -858,7 +863,7 @@ func Field(f FieldProps) templ.Component {
 			var templ_7745c5c3_Var36 string
 			templ_7745c5c3_Var36, templ_7745c5c3_Err = templruntime.NewAttributeExpression(f.ErrorID()).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 224, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 229, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var36)
 			if templ_7745c5c3_Err != nil {
@@ -898,7 +903,7 @@ func Field(f FieldProps) templ.Component {
 			var templ_7745c5c3_Var37 string
 			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(f.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 227, Col: 13}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 232, Col: 13}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 			if templ_7745c5c3_Err != nil {
@@ -1042,7 +1047,7 @@ func input(p InputProps) templ.Component {
 			var templ_7745c5c3_Var42 string
 			templ_7745c5c3_Var42, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.ID).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 286, Col: 11}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 291, Col: 11}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var42)
 			if templ_7745c5c3_Err != nil {
@@ -1060,7 +1065,7 @@ func input(p InputProps) templ.Component {
 				var templ_7745c5c3_Var43 string
 				templ_7745c5c3_Var43, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Name).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 288, Col: 16}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 293, Col: 16}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var43)
 				if templ_7745c5c3_Err != nil {
@@ -1078,7 +1083,7 @@ func input(p InputProps) templ.Component {
 			var templ_7745c5c3_Var44 string
 			templ_7745c5c3_Var44, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.typ()).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 290, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 295, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var44)
 			if templ_7745c5c3_Err != nil {
@@ -1096,7 +1101,7 @@ func input(p InputProps) templ.Component {
 				var templ_7745c5c3_Var45 string
 				templ_7745c5c3_Var45, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Value).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 292, Col: 18}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 297, Col: 18}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var45)
 				if templ_7745c5c3_Err != nil {
@@ -1115,7 +1120,7 @@ func input(p InputProps) templ.Component {
 				var templ_7745c5c3_Var46 string
 				templ_7745c5c3_Var46, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Placeholder).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 295, Col: 30}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 300, Col: 30}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var46)
 				if templ_7745c5c3_Err != nil {
@@ -1134,7 +1139,7 @@ func input(p InputProps) templ.Component {
 				var templ_7745c5c3_Var47 string
 				templ_7745c5c3_Var47, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Autocomplete).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 298, Col: 32}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 303, Col: 32}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var47)
 				if templ_7745c5c3_Err != nil {
@@ -1153,7 +1158,7 @@ func input(p InputProps) templ.Component {
 				var templ_7745c5c3_Var48 string
 				templ_7745c5c3_Var48, templ_7745c5c3_Err = templruntime.NewAttributeExpression(itoa(p.MaxLength)).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 301, Col: 32}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 306, Col: 32}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var48)
 				if templ_7745c5c3_Err != nil {
@@ -1196,7 +1201,7 @@ func input(p InputProps) templ.Component {
 				var templ_7745c5c3_Var49 string
 				templ_7745c5c3_Var49, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.DescribedBy).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 316, Col: 35}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 321, Col: 35}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var49)
 				if templ_7745c5c3_Err != nil {
@@ -1292,7 +1297,7 @@ func Textarea(p TextareaProps) templ.Component {
 			var templ_7745c5c3_Var53 string
 			templ_7745c5c3_Var53, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.ID).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 342, Col: 11}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 347, Col: 11}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var53)
 			if templ_7745c5c3_Err != nil {
@@ -1310,7 +1315,7 @@ func Textarea(p TextareaProps) templ.Component {
 				var templ_7745c5c3_Var54 string
 				templ_7745c5c3_Var54, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Name).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 344, Col: 16}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 349, Col: 16}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var54)
 				if templ_7745c5c3_Err != nil {
@@ -1328,7 +1333,7 @@ func Textarea(p TextareaProps) templ.Component {
 			var templ_7745c5c3_Var55 string
 			templ_7745c5c3_Var55, templ_7745c5c3_Err = templruntime.NewAttributeExpression(itoa(max(p.Rows, 2))).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 346, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 351, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var55)
 			if templ_7745c5c3_Err != nil {
@@ -1346,7 +1351,7 @@ func Textarea(p TextareaProps) templ.Component {
 				var templ_7745c5c3_Var56 string
 				templ_7745c5c3_Var56, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Placeholder).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 348, Col: 30}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 353, Col: 30}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var56)
 				if templ_7745c5c3_Err != nil {
@@ -1365,7 +1370,7 @@ func Textarea(p TextareaProps) templ.Component {
 				var templ_7745c5c3_Var57 string
 				templ_7745c5c3_Var57, templ_7745c5c3_Err = templruntime.NewAttributeExpression(itoa(p.MaxLength)).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 351, Col: 32}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 356, Col: 32}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var57)
 				if templ_7745c5c3_Err != nil {
@@ -1408,7 +1413,7 @@ func Textarea(p TextareaProps) templ.Component {
 				var templ_7745c5c3_Var58 string
 				templ_7745c5c3_Var58, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.DescribedBy).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 366, Col: 35}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 371, Col: 35}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var58)
 				if templ_7745c5c3_Err != nil {
@@ -1440,7 +1445,7 @@ func Textarea(p TextareaProps) templ.Component {
 		var templ_7745c5c3_Var59 string
 		templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.JoinStringErrs(p.Value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 369, Col: 11}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 374, Col: 11}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var59))
 		if templ_7745c5c3_Err != nil {
@@ -1549,7 +1554,7 @@ func Select(p SelectProps) templ.Component {
 			var templ_7745c5c3_Var63 string
 			templ_7745c5c3_Var63, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.ID).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 402, Col: 12}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 407, Col: 12}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var63)
 			if templ_7745c5c3_Err != nil {
@@ -1567,7 +1572,7 @@ func Select(p SelectProps) templ.Component {
 				var templ_7745c5c3_Var64 string
 				templ_7745c5c3_Var64, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Name).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 404, Col: 17}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 409, Col: 17}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var64)
 				if templ_7745c5c3_Err != nil {
@@ -1604,7 +1609,7 @@ func Select(p SelectProps) templ.Component {
 				var templ_7745c5c3_Var65 string
 				templ_7745c5c3_Var65, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.DescribedBy).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 416, Col: 36}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 421, Col: 36}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var65)
 				if templ_7745c5c3_Err != nil {
@@ -1641,7 +1646,7 @@ func Select(p SelectProps) templ.Component {
 			var templ_7745c5c3_Var66 string
 			templ_7745c5c3_Var66, templ_7745c5c3_Err = templruntime.NewAttributeExpression(o.Value).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 422, Col: 20}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 427, Col: 20}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var66)
 			if templ_7745c5c3_Err != nil {
@@ -1670,7 +1675,7 @@ func Select(p SelectProps) templ.Component {
 			var templ_7745c5c3_Var67 string
 			templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(o.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 429, Col: 14}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 434, Col: 14}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
 			if templ_7745c5c3_Err != nil {
@@ -1747,7 +1752,7 @@ func Checkbox(p CheckboxProps) templ.Component {
 				var templ_7745c5c3_Var69 string
 				templ_7745c5c3_Var69, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.ID).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 455, Col: 13}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 460, Col: 13}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var69)
 				if templ_7745c5c3_Err != nil {
@@ -1766,7 +1771,7 @@ func Checkbox(p CheckboxProps) templ.Component {
 				var templ_7745c5c3_Var70 string
 				templ_7745c5c3_Var70, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Name).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 458, Col: 17}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 463, Col: 17}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var70)
 				if templ_7745c5c3_Err != nil {
@@ -1785,7 +1790,7 @@ func Checkbox(p CheckboxProps) templ.Component {
 				var templ_7745c5c3_Var71 string
 				templ_7745c5c3_Var71, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Value).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 461, Col: 19}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 466, Col: 19}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var71)
 				if templ_7745c5c3_Err != nil {
@@ -1869,7 +1874,7 @@ func Checkbox(p CheckboxProps) templ.Component {
 		var templ_7745c5c3_Var74 string
 		templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(p.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 472, Col: 12}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 477, Col: 12}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var74))
 		if templ_7745c5c3_Err != nil {
@@ -1887,7 +1892,7 @@ func Checkbox(p CheckboxProps) templ.Component {
 			var templ_7745c5c3_Var75 string
 			templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(p.Hint)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 474, Col: 19}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 479, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
 			if templ_7745c5c3_Err != nil {
@@ -1953,7 +1958,7 @@ func Toggle(p ToggleProps) templ.Component {
 				var templ_7745c5c3_Var77 string
 				templ_7745c5c3_Var77, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.ID).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 497, Col: 13}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 502, Col: 13}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var77)
 				if templ_7745c5c3_Err != nil {
@@ -1972,7 +1977,7 @@ func Toggle(p ToggleProps) templ.Component {
 				var templ_7745c5c3_Var78 string
 				templ_7745c5c3_Var78, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Name).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 500, Col: 17}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 505, Col: 17}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var78)
 				if templ_7745c5c3_Err != nil {
@@ -2016,7 +2021,7 @@ func Toggle(p ToggleProps) templ.Component {
 		var templ_7745c5c3_Var79 string
 		templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(p.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 511, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 516, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var79))
 		if templ_7745c5c3_Err != nil {
@@ -2148,7 +2153,7 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 		var templ_7745c5c3_Var85 string
 		templ_7745c5c3_Var85, templ_7745c5c3_Err = templ.JoinStringErrs(p.Legend)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 534, Col: 96}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 539, Col: 96}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var85))
 		if templ_7745c5c3_Err != nil {
@@ -2166,7 +2171,7 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 			var templ_7745c5c3_Var86 string
 			templ_7745c5c3_Var86, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.Name).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 541, Col: 19}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 546, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var86)
 			if templ_7745c5c3_Err != nil {
@@ -2179,7 +2184,7 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 			var templ_7745c5c3_Var87 string
 			templ_7745c5c3_Var87, templ_7745c5c3_Err = templruntime.NewAttributeExpression(o.Value).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 542, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 547, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var87)
 			if templ_7745c5c3_Err != nil {
@@ -2224,7 +2229,7 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 			var templ_7745c5c3_Var88 string
 			templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.JoinStringErrs(o.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 557, Col: 15}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 562, Col: 15}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var88))
 			if templ_7745c5c3_Err != nil {
@@ -2242,7 +2247,7 @@ func RadioGroup(p RadioGroupProps) templ.Component {
 				var templ_7745c5c3_Var89 string
 				templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinStringErrs(o.Description)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 559, Col: 29}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/controls.templ`, Line: 564, Col: 29}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var89))
 				if templ_7745c5c3_Err != nil {
@@ -2301,6 +2306,27 @@ func pickerOptions(opts []Option) []sb.Option {
 	return out
 }
 
+// pickerValue is the picker's value as sb-select's list: for Multiple, the
+// JSON array or comma list of Value; never nil, so value is always written.
+func pickerValue(p PickerProps) []string {
+	if !p.Multiple {
+		return []string{p.Value}
+	}
+	v := []string{}
+	if strings.HasPrefix(strings.TrimSpace(p.Value), "[") {
+		if json.Unmarshal([]byte(p.Value), &v) == nil {
+			return v
+		}
+		return []string{}
+	}
+	for _, s := range strings.Split(p.Value, ",") {
+		if s = strings.TrimSpace(s); s != "" {
+			v = append(v, s)
+		}
+	}
+	return v
+}
+
 // Picker is sb-select with tickit's tokens. Its label is its own (inside
 // the component), so it takes no Field. The value attribute is always
 // there: a frame that clears it sends value="", since sb-select ignores a
@@ -2328,7 +2354,7 @@ func Picker(p PickerProps) templ.Component {
 			Label:       p.Label,
 			Name:        p.Name,
 			Options:     pickerOptions(p.Options),
-			Value:       sb.Str(p.Value),
+			Value:       pickerValue(p),
 			Placeholder: p.Placeholder,
 			Multiple:    p.Multiple,
 			Searchable:  p.Searchable,
@@ -2452,7 +2478,7 @@ func copyAttrs(p CopyProps) templ.Attributes {
 	if p.Path == "" {
 		return p.Attrs
 	}
-	return with(templ.Attributes{"data-path": p.Path, "data-attr:value": copyOrigin, "data-preserve-attr": "value"}, p.Attrs)
+	return sb.Merge(templ.Attributes{"data-path": p.Path, "data-attr:value": copyOrigin, "data-preserve-attr": "value"}, p.Attrs)
 }
 
 var _ = templruntime.GeneratedTemplate

@@ -31,16 +31,16 @@ templ Tabs(p TabsProps) {
 	}
 }
 
-func tabIndex(i int) *float64 {
+func tabIndex(i int) *int {
 	if i > 0 {
-		return sb.Num(float64(i))
+		return sb.Int(i)
 	}
 	return nil
 }
 
 // TabPanel is the panel of the tab with this label.
 templ TabPanel(label string) {
-	<div class="tk-tabs__panel" slot={ slug(label) }>
+	<div class="tk-tabs__panel" slot={ sb.TabSlot([]string{label}, 0) }>
 		{ children... }
 	</div>
 }
@@ -222,11 +222,19 @@ templ Tree(p TreeProps) {
 func treeProps(p TreeProps) sb.TreeProps {
 	t := sb.TreeProps{ID: p.ID, Class: classes("tk-tree", p.Class), Label: p.Label, Attrs: p.Attrs}
 	if p.Name != "" {
-		t.Name, t.Value = p.Name, sb.Str(p.Value)
+		t.Name, t.Value = p.Name, treeValue(p.Value)
 	} else {
 		t.Selection = sb.TreeSelectionNone
 	}
 	return t
+}
+
+// treeValue is the selected id, or an empty list that clears the selection.
+func treeValue(id string) []string {
+	if id == "" {
+		return []string{}
+	}
+	return []string{id}
 }
 
 // TreeBranch is the list of a lazy item's children, which a page puts in
