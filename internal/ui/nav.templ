@@ -40,7 +40,7 @@ func tabIndex(i int) *int {
 
 // TabPanel is the panel of the tab with this label.
 templ TabPanel(label string) {
-	<div class="tk-tabs__panel" slot={ sb.TabSlot([]string{label}, 0) }>
+	<div class="tk-tabs__panel" slot={ sb.TabSlug(label) }>
 		{ children... }
 	</div>
 }

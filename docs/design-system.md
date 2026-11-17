@@ -252,7 +252,7 @@ A board of many cards uses `ui.BoardCard` instead, in a Board with Class `tk-boa
 @ui.RelativeTime(t.In(zone), now)
 ```
 
-The conflict of MP-08.3 is a danger `Notice` beside the field with the retry as its action; the person's value stays in the field. `Outcome` is a polite live region (a failure is an alert). `Toasts` is for an outcome that has no field or region left to sit by: a dialog that closed with it ("Saved. It is in Filters now."), news from elsewhere. Never for a refusal: that stays beside its field, as MP-08's conflict does. `RelativeTime` writes English text and the absolute date, time and zone in its title (NFR-51); the zone is `t`'s location. Its text is the server's at render time.
+The conflict of MP-08.3 is a danger `Notice` beside the field with the retry as its action; the person's value stays in the field. `Outcome` is a polite live region (a failure is an alert). `Toasts` is for an outcome that has no field or region left to sit by: a dialog that closed with it ("Saved. It is in Filters now.", with an Open Filters link: `Toast.Href` and `Label`), news from elsewhere. Never for a refusal: that stays beside its field, as MP-08's conflict does. `RelativeTime` writes English text and the absolute date, time and zone in its title (NFR-51); the zone is `t`'s location. Its text is the server's at render time.
 
 ### Charts
 
@@ -291,9 +291,9 @@ A wiki page's outline is Starbase's `sb-toc` in `.wk-outline` (wiki.css): its `-
 go tool task vendor-starbase STARBASE=/develop/starbase
 ```
 
-Vendored (Starbase v0.9.0, c138dc2): `context-menu`, `copy-button`, `date-picker`, `dropdown`, `popover`, `select`, `tabs`, `toast`, `toc`, `tree`, `virtual-scroll`. The modules stay as Starbase wrote them; `edge.Static` minifies them in production. A page loads a component by naming it in `Page.Components` (`web.StarbaseScripts` adds the modules it renders, in order, after the import map); `/design` loads them all.
+Vendored (Starbase v0.10.0, 549bee4; `lock.json` records the release): `context-menu`, `copy-button`, `date-picker`, `dropdown`, `popover`, `select`, `tabs`, `toast`, `toc`, `tree`, `virtual-scroll`. The modules stay as Starbase wrote them; `edge.Static` minifies them in production. A page loads a component by naming it in `Page.Components` (`web.StarbaseScripts` adds the modules it renders, in order, after the import map); `/design` loads them all.
 
-The `internal/ui` components and the views write the elements through Starbase's typed templ wrappers (`github.com/zweiundeins/starbase/templ/sb`: `sb.Select`, `sb.Dropdown` and the others), for the markup only. Pages never use `sb.Imports` or `sb.Tracked`: the scripts stay the vendored modules above, and Datastar is lith's, loaded once. `render` collects what the wrappers render (`sb.Collect`) and logs an error for a component the page's `Components` does not load; `TestPagesLoadTheirComponents` follows the seeded site's links and fails on one. `Components` still names what frames bring later (the issue panel on a board), which the first render does not hold. `TestVendored` checks that the wrappers were made for the vendored Datastar and know every vendored component.
+The `internal/ui` components and the views write the elements through Starbase's typed templ wrappers (`github.com/zweiundeins/starbase/templ/sb`: `sb.Select`, `sb.Dropdown` and the others), for the markup only, at the same release as the vendored modules (`templ/v0.10.0`). Pages never use `sb.Imports` or `sb.Tracked`: the scripts stay the vendored modules above, and Datastar is lith's, loaded once. `render` collects what the wrappers render (`sb.Collect`) and logs an error for a component the page's `Components` does not load; `TestPagesLoadTheirComponents` follows the seeded site's links and fails on one. `Components` still names what frames bring later (the issue panel on a board), which the first render does not hold. `TestVendored` checks that the wrappers belong to the vendored release (`sb.Release`), were made for the vendored Datastar and know every vendored component.
 
 Where the app uses them:
 

@@ -420,25 +420,24 @@ type Toast struct {
 	Duration int `json:"-"`
 	// Sticky stays until the person dismisses it.
 	Sticky bool `json:"-"`
+	// Href and Label make a link under the message: "Open Filters".
+	Href  string `json:"-"`
+	Label string `json:"-"`
 }
 
 // MarshalJSON is sb-toast's shape: duration 0 means it stays.
 func (t Toast) MarshalJSON() ([]byte, error) {
-	type wire struct {
-		ID       string `json:"id"`
-		Title    string `json:"title,omitempty"`
-		Text     string `json:"text"`
-		Tone     Tone   `json:"variant,omitempty"`
-		Duration *int   `json:"duration,omitempty"`
-	}
-	w := wire{ID: t.ID, Title: t.Title, Text: t.Text, Tone: t.Tone}
+	return json.Marshal(toastMessage(t))
+}
+
+func toastMessage(t Toast) sb.ToastMessage {
+	m := sb.ToastMessage{ID: t.ID, Title: t.Title, Text: t.Text, Variant: sb.ToastVariant(t.Tone), Href: t.Href, Label: t.Label}
 	if t.Sticky {
-		zero := 0
-		w.Duration = &zero
+		m.Duration = sb.Int(0)
 	} else if t.Duration > 0 {
-		w.Duration = &t.Duration
+		m.Duration = sb.Int(t.Duration)
 	}
-	return json.Marshal(w)
+	return m
 }
 
 // ToastsProps is the page's toast region: Starbase's sb-toast, which the
@@ -483,16 +482,11 @@ func Toasts(p ToastsProps) templ.Component {
 	})
 }
 
-// toastMessages is sb-toast's list, [] for none: duration 0 means it stays.
+// toastMessages is sb-toast's list, [] for none.
 func toastMessages(ts []Toast) []sb.ToastMessage {
 	out := make([]sb.ToastMessage, len(ts))
 	for i, t := range ts {
-		out[i] = sb.ToastMessage{ID: t.ID, Title: t.Title, Text: t.Text, Variant: sb.ToastVariant(t.Tone)}
-		if t.Sticky {
-			out[i].Duration = sb.Int(0)
-		} else if t.Duration > 0 {
-			out[i].Duration = sb.Int(t.Duration)
-		}
+		out[i] = toastMessage(t)
 	}
 	return out
 }
@@ -564,7 +558,7 @@ func Skeleton(kind string, lines int) templ.Component {
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templruntime.NewAttributeExpression(itoa(i % 4)).Resolve(ctx)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/feedback.templ`, Line: 199, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/feedback.templ`, Line: 193, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 			if templ_7745c5c3_Err != nil {
@@ -663,7 +657,7 @@ func EmptyState(p EmptyProps) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(p.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/feedback.templ`, Line: 221, Col: 39}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/feedback.templ`, Line: 215, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -681,7 +675,7 @@ func EmptyState(p EmptyProps) templ.Component {
 			var templ_7745c5c3_Var23 string
 			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(p.Text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/feedback.templ`, Line: 223, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/feedback.templ`, Line: 217, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 			if templ_7745c5c3_Err != nil {
@@ -757,7 +751,7 @@ func DemoNotice(p DemoProps) templ.Component {
 				var templ_7745c5c3_Var25 string
 				templ_7745c5c3_Var25, templ_7745c5c3_Err = templruntime.NewAttributeExpression(p.ID).Resolve(ctx)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/feedback.templ`, Line: 252, Col: 12}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/feedback.templ`, Line: 246, Col: 12}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var25)
 				if templ_7745c5c3_Err != nil {
@@ -799,7 +793,7 @@ func DemoNotice(p DemoProps) templ.Component {
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(p.NextReset)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/feedback.templ`, Line: 265, Col: 115}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/feedback.templ`, Line: 259, Col: 115}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -812,7 +806,7 @@ func DemoNotice(p DemoProps) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templruntime.NewAttributeExpression(templ.SafeURL(iconOr(p.PrivacyHref, "/privacy"))).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/feedback.templ`, Line: 266, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/ui/feedback.templ`, Line: 260, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
 		if templ_7745c5c3_Err != nil {

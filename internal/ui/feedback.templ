@@ -135,25 +135,24 @@ type Toast struct {
 	Duration int `json:"-"`
 	// Sticky stays until the person dismisses it.
 	Sticky bool `json:"-"`
+	// Href and Label make a link under the message: "Open Filters".
+	Href  string `json:"-"`
+	Label string `json:"-"`
 }
 
 // MarshalJSON is sb-toast's shape: duration 0 means it stays.
 func (t Toast) MarshalJSON() ([]byte, error) {
-	type wire struct {
-		ID       string `json:"id"`
-		Title    string `json:"title,omitempty"`
-		Text     string `json:"text"`
-		Tone     Tone   `json:"variant,omitempty"`
-		Duration *int   `json:"duration,omitempty"`
-	}
-	w := wire{ID: t.ID, Title: t.Title, Text: t.Text, Tone: t.Tone}
+	return json.Marshal(toastMessage(t))
+}
+
+func toastMessage(t Toast) sb.ToastMessage {
+	m := sb.ToastMessage{ID: t.ID, Title: t.Title, Text: t.Text, Variant: sb.ToastVariant(t.Tone), Href: t.Href, Label: t.Label}
 	if t.Sticky {
-		zero := 0
-		w.Duration = &zero
+		m.Duration = sb.Int(0)
 	} else if t.Duration > 0 {
-		w.Duration = &t.Duration
+		m.Duration = sb.Int(t.Duration)
 	}
-	return json.Marshal(w)
+	return m
 }
 
 // ToastsProps is the page's toast region: Starbase's sb-toast, which the
@@ -177,16 +176,11 @@ templ Toasts(p ToastsProps) {
 	})
 }
 
-// toastMessages is sb-toast's list, [] for none: duration 0 means it stays.
+// toastMessages is sb-toast's list, [] for none.
 func toastMessages(ts []Toast) []sb.ToastMessage {
 	out := make([]sb.ToastMessage, len(ts))
 	for i, t := range ts {
-		out[i] = sb.ToastMessage{ID: t.ID, Title: t.Title, Text: t.Text, Variant: sb.ToastVariant(t.Tone)}
-		if t.Sticky {
-			out[i].Duration = sb.Int(0)
-		} else if t.Duration > 0 {
-			out[i].Duration = sb.Int(t.Duration)
-		}
+		out[i] = toastMessage(t)
 	}
 	return out
 }
