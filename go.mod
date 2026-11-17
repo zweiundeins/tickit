@@ -20,8 +20,10 @@ require (
 	github.com/zweiundeins/lith/prom v0.5.9
 	github.com/zweiundeins/prosemirror-go v0.2.1
 	github.com/zweiundeins/prosemirror-go/oracle v0.2.1
+	github.com/zweiundeins/starbase/templ v0.0.0-20261117122502-23f6a6aa9ad8
 	golang.org/x/crypto v0.59.0
 	golang.org/x/image v0.48.0
+	golang.org/x/net v0.62.0
 )
 
 require (
@@ -161,7 +163,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/mod v0.43.0 // indirect
-	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect

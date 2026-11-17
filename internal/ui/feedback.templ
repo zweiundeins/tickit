@@ -1,6 +1,10 @@
 package ui
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/zweiundeins/starbase/templ/sb"
+)
 
 // NoticeProps is a message in the page: a banner, an alert in a form.
 type NoticeProps struct {
@@ -164,21 +168,27 @@ type ToastsProps struct {
 // Toasts is the region. Toasts are for news from elsewhere (a mention, a
 // reset); the outcome of the person's own action goes beside its control.
 templ Toasts(p ToastsProps) {
-	<sb-toast
-		class="tk-toasts"
-		toasts={ jsonAttr(nonNil(p.Toasts)) }
-		placement={ iconOr(p.Placement, "bottom-end") }
-		label="Notifications"
-		data-preserve-attr="toasts"
-		{ p.Attrs... }
-	></sb-toast>
+	@sb.Toast(sb.ToastProps{
+		Class:     "tk-toasts",
+		Toasts:    toastMessages(p.Toasts),
+		Placement: sb.ToastPlacement(iconOr(p.Placement, "bottom-end")),
+		Label:     "Notifications",
+		Attrs:     with(templ.Attributes{"data-preserve-attr": "toasts"}, p.Attrs),
+	})
 }
 
-func nonNil(t []Toast) []Toast {
-	if t == nil {
-		return []Toast{}
+// toastMessages is sb-toast's list, [] for none: duration 0 means it stays.
+func toastMessages(ts []Toast) []sb.ToastMessage {
+	out := make([]sb.ToastMessage, len(ts))
+	for i, t := range ts {
+		out[i] = sb.ToastMessage{ID: t.ID, Title: t.Title, Text: t.Text, Variant: sb.ToastVariant(t.Tone)}
+		if t.Sticky {
+			out[i].Duration = sb.Num(0)
+		} else if t.Duration > 0 {
+			out[i].Duration = sb.Num(float64(t.Duration))
+		}
 	}
-	return t
+	return out
 }
 
 // Skeleton stands in for content on its way: a few stepped bars. Kind is

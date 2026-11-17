@@ -1,6 +1,10 @@
 package ui
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/zweiundeins/starbase/templ/sb"
+)
 
 // VirtualProps is Starbase's sb-virtual-scroll: a long list of which the
 // server renders a window, one fixed-height row per item. Load its bundle
@@ -31,31 +35,36 @@ type VirtualProps struct {
 // {offset, count}, which the feature answers with a frame. Before the
 // bundle defines it, the window scrolls as a plain box.
 templ VirtualList(p VirtualProps) {
-	<sb-virtual-scroll
-		if p.ID != "" {
-			id={ p.ID }
-		}
-		class={ classes("tk-virtual", p.Class) }
-		if p.Role != "" {
-			role={ p.Role }
-			aria-label={ p.Label }
-		} else {
-			label={ p.Label }
-		}
-		total={ strconv.Itoa(p.Total) }
-		offset={ strconv.Itoa(p.Offset) }
-		item-size={ p.ItemSize }
-		if p.Buffer > 0 {
-			buffer={ strconv.Itoa(p.Buffer) }
-		}
-		if p.Step > 1 {
-			step={ strconv.Itoa(p.Step) }
-		}
-		if p.Hidden {
-			hidden
-		}
-		{ p.Attrs... }
-	>
+	@sb.VirtualScroll(virtualProps(p)) {
 		{ children... }
-	</sb-virtual-scroll>
+	}
+}
+
+func virtualProps(p VirtualProps) sb.VirtualScrollProps {
+	v := sb.VirtualScrollProps{
+		ID:       p.ID,
+		Class:    classes("tk-virtual", p.Class),
+		Total:    sb.Num(float64(p.Total)),
+		ItemSize: p.ItemSize,
+		Attrs:    p.Attrs,
+	}
+	if p.Buffer > 0 {
+		v.Buffer = sb.Num(float64(p.Buffer))
+	}
+	if p.Step > 1 {
+		v.Step = sb.Num(float64(p.Step))
+	}
+	// sb.VirtualScrollProps.Offset leaves 0 out; the feeds read offset="0".
+	a := templ.Attributes{"offset": strconv.Itoa(p.Offset)}
+	if p.Role != "" {
+		a["role"], a["aria-label"] = p.Role, p.Label
+	}
+	if p.Hidden {
+		a["hidden"] = true
+	}
+	v.Attrs = with(a, p.Attrs)
+	if p.Role == "" {
+		v.Label = p.Label
+	}
+	return v
 }

@@ -1,5 +1,7 @@
 package ui
 
+import "github.com/zweiundeins/starbase/templ/sb"
+
 // Tip shows text on hover and focus beside its children, in the inverted
 // bubble. The bubble is aria-hidden: the children carry the same words for
 // screen readers (an aria-label, visually hidden text). Escape hides it.
@@ -196,15 +198,7 @@ templ MenuLabel(text string) {
 
 // MenuEntry is an item of an ActionMenu: a value to choose, a divider, or
 // a submenu (Children).
-type MenuEntry struct {
-	Value       string      `json:"value,omitempty"`
-	Label       string      `json:"label,omitempty"`
-	Description string      `json:"description,omitempty"`
-	Danger      bool        `json:"danger,omitempty"`
-	Disabled    bool        `json:"disabled,omitempty"`
-	Divider     bool        `json:"divider,omitempty"`
-	Children    []MenuEntry `json:"children,omitempty"`
-}
+type MenuEntry = sb.DropdownItem
 
 // ActionMenuProps is Starbase's sb-dropdown: a menu of actions with
 // submenus and full keyboard support. Choosing an item emits sb-select
@@ -224,18 +218,14 @@ type ActionMenuProps struct {
 
 // ActionMenu is sb-dropdown with tickit's trigger.
 templ ActionMenu(p ActionMenuProps) {
-	<sb-dropdown
-		class={ classes("tk-actions", when(p.IconOnly, "tk-actions--icon"), p.Class) }
-		label={ p.Label }
-		if p.Name != "" {
-			name={ p.Name }
-		}
-		items={ jsonAttr(p.Items) }
-		if p.Placement != "" {
-			placement={ p.Placement }
-		}
-		{ p.Attrs... }
-	>
+	@sb.Dropdown(sb.DropdownProps{
+		Class:     classes("tk-actions", when(p.IconOnly, "tk-actions--icon"), p.Class),
+		Label:     p.Label,
+		Name:      p.Name,
+		Items:     p.Items,
+		Placement: sb.DropdownPlacement(p.Placement),
+		Attrs:     p.Attrs,
+	}) {
 		if p.Icon != "" || !p.IconOnly {
 			<span slot="trigger" class="tk-actions__trigger">
 				if p.Icon != "" {
@@ -246,7 +236,7 @@ templ ActionMenu(p ActionMenuProps) {
 				}
 			</span>
 		}
-	</sb-dropdown>
+	}
 }
 
 // DialogProps is a modal dialog: the browser's <dialog>, opened with

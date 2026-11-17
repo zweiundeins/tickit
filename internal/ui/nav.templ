@@ -1,6 +1,10 @@
 package ui
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/zweiundeins/starbase/templ/sb"
+)
 
 // TabsProps is Starbase's sb-tabs: panels in one place, the tab list's
 // keyboard and ARIA from the component. Load its bundle ("tabs").
@@ -16,19 +20,22 @@ type TabsProps struct {
 // Tabs is sb-tabs; the children are a TabPanel per label, in order.
 // Before the bundle defines it, the first panel shows.
 templ Tabs(p TabsProps) {
-	<sb-tabs
-		class={ classes("tk-tabs", p.Class) }
-		labels={ jsonAttr(p.Labels) }
-		if p.Selected > 0 {
-			selected={ strconv.Itoa(p.Selected) }
-		}
-		if p.Name != "" {
-			name={ p.Name }
-		}
-		{ p.Attrs... }
-	>
+	@sb.Tabs(sb.TabsProps{
+		Class:    classes("tk-tabs", p.Class),
+		Labels:   p.Labels,
+		Selected: tabIndex(p.Selected),
+		Name:     p.Name,
+		Attrs:    p.Attrs,
+	}) {
 		{ children... }
-	</sb-tabs>
+	}
+}
+
+func tabIndex(i int) *float64 {
+	if i > 0 {
+		return sb.Num(float64(i))
+	}
+	return nil
 }
 
 // TabPanel is the panel of the tab with this label.
@@ -205,24 +212,21 @@ type TreeProps struct {
 // Right and Left open and close, Home and End. Before its bundle runs it
 // is the lists themselves. Load its bundle on the page ("tree").
 templ Tree(p TreeProps) {
-	<sb-tree
-		if p.ID != "" {
-			id={ p.ID }
-		}
-		class={ classes("tk-tree", p.Class) }
-		label={ p.Label }
-		if p.Name != "" {
-			name={ p.Name }
-			value={ p.Value }
-		} else {
-			selection="none"
-		}
-		{ p.Attrs... }
-	>
+	@sb.Tree(treeProps(p)) {
 		<ul>
 			@treeItems(p.Items)
 		</ul>
-	</sb-tree>
+	}
+}
+
+func treeProps(p TreeProps) sb.TreeProps {
+	t := sb.TreeProps{ID: p.ID, Class: classes("tk-tree", p.Class), Label: p.Label, Attrs: p.Attrs}
+	if p.Name != "" {
+		t.Name, t.Value = p.Name, sb.Str(p.Value)
+	} else {
+		t.Selection = sb.TreeSelectionNone
+	}
+	return t
 }
 
 // TreeBranch is the list of a lazy item's children, which a page puts in
