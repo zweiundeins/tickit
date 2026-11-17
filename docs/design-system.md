@@ -293,6 +293,8 @@ go tool task vendor-starbase STARBASE=/develop/starbase
 
 Vendored (Starbase v0.9.0, c138dc2): `context-menu`, `copy-button`, `date-picker`, `dropdown`, `popover`, `select`, `tabs`, `toast`, `toc`, `tree`, `virtual-scroll`. The modules stay as Starbase wrote them; `edge.Static` minifies them in production. A page loads a component by naming it in `Page.Components` (`web.StarbaseScripts` adds the modules it renders, in order, after the import map); `/design` loads them all.
 
+The `internal/ui` components and the views write the elements through Starbase's typed templ wrappers (`github.com/zweiundeins/starbase/templ/sb`: `sb.Select`, `sb.Dropdown` and the others), for the markup only. Pages never use `sb.Imports` or `sb.Tracked`: the scripts stay the vendored modules above, and Datastar is lith's, loaded once.
+
 Where the app uses them:
 
 | Component | `internal/ui` | Used on |

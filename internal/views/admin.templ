@@ -5,6 +5,7 @@ import (
 
 	"github.com/zweiundeins/tickit/internal/demo"
 	"github.com/zweiundeins/tickit/internal/people"
+	"github.com/zweiundeins/starbase/templ/sb"
 	"github.com/zweiundeins/tickit/internal/ui"
 )
 
@@ -128,7 +129,7 @@ templ AdminAccountsTable(a AdminAccounts) {
 // each row's button says which role is checked and what does not apply.
 // templ reads data-action as a URL, so "role:…" goes in as a SafeURL.
 templ adminMenu() {
-	<sb-context-menu id={ AdminMenuID } class="tk-menu tk-menu--end" aria-label="Account actions" data-ignore-morph data-on:sb-menu-action={ adminMenuAction } data-on:datastar-fetch={ adminFailed }>
+	@sb.ContextMenu(sb.ContextMenuProps{ID: AdminMenuID, Class: "tk-menu tk-menu--end", Attrs: templ.Attributes{"aria-label": "Account actions", "data-ignore-morph": true, "data-on:sb-menu-action": adminMenuAction, "data-on:datastar-fetch": adminFailed}}) {
 		<template data-sb-menu>
 			<div role="group" aria-label="Site role">
 				<div class="tk-menu__label-group tk-eyebrow" aria-hidden="true">Site role</div>
@@ -155,7 +156,7 @@ templ adminMenu() {
 				<span class="tk-menu__label">Erase…</span>
 			</button>
 		</template>
-	</sb-context-menu>
+	}
 	<button id={ AdminMenuID + "-erase" } type="button" hidden data-on:click={ adminErase } data-on:datastar-fetch={ adminFailed }></button>
 }
 

@@ -3,6 +3,7 @@ package views
 import (
 	"time"
 
+	"github.com/zweiundeins/starbase/templ/sb"
 	"github.com/zweiundeins/tickit/internal/ui"
 	"github.com/zweiundeins/tickit/internal/wiki"
 )
@@ -145,9 +146,9 @@ templ PageBodyRegion(b PageBody) {
 templ PageOutlineRegion(b PageBody) {
 	<div id={ PageOutlineID } class="wk-outline">
 		if len(b.Outline) > 0 {
-			<sb-toc label="On this page" content={ "#" + PageBodyID } compact="(max-width: 99.99rem)" progress>
+			@sb.TableOfContents(sb.TableOfContentsProps{Label: "On this page", Content: "#" + PageBodyID, Compact: "(max-width: 99.99rem)", Progress: true}) {
 				@templ.Raw(outlineList(b.Outline))
-			</sb-toc>
+			}
 		}
 	</div>
 }
