@@ -201,7 +201,7 @@ func controls(p Props) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = section("buttons", "Buttons", "Mono labels on notched plates. One primary action per view. Icon-only buttons carry their label as aria-label and tooltip. Pending is aria-busy with lith's walking pixel.").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = section("buttons", "Buttons", "Mono labels on notched plates. One primary action per view. Icon-only buttons carry their label as aria-label and tooltip. Pending is aria-busy at once, with lith's walking pixel after 200 ms.").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -172,6 +172,7 @@
 		--tk-ease-zoom: cubic-bezier(0.16, 1, 0.3, 1); /* opens a layer */
 		--tk-ease-exit: cubic-bezier(0.4, 0, 1, 1); /* leaves */
 		--tk-ease-steps: steps(4, end); /* pixel motion */
+		--tk-pending-delay: 200ms; /* a pending look waits this long (lith v0.5.10) */
 
 		/* Stacking */
 		--tk-z-raised: 1;

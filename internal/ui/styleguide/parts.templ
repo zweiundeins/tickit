@@ -12,7 +12,7 @@ import (
 const pendingDemo = `el.setAttribute('aria-busy', 'true'); setTimeout(() => el.removeAttribute('aria-busy'), 2400)`
 
 templ controls(p Props) {
-	@section("buttons", "Buttons", "Mono labels on notched plates. One primary action per view. Icon-only buttons carry their label as aria-label and tooltip. Pending is aria-busy with lith's walking pixel.") {
+	@section("buttons", "Buttons", "Mono labels on notched plates. One primary action per view. Icon-only buttons carry their label as aria-label and tooltip. Pending is aria-busy at once, with lith's walking pixel after 200 ms.") {
 		<div class="sg-grid">
 			@spec("Variants", "@ui.Button(ui.ButtonProps{Label: \"Create\", Icon: \"plus\", Variant: ui.Primary})") {
 				<div class="cluster">

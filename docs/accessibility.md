@@ -51,6 +51,8 @@ Every focused control shows the 2px ring, except the editor's title, which shows
 
 With `prefers-reduced-motion: reduce` no element on the board has a running transition or animation, and cards that others move jump to their place: the view transition's groups are covered too.
 
+A pending state shows about 200 ms after the click (lith v0.5.10, 19 November 2026; docs/design-system.md, Principles), so an op answered within a tick never flashes. Only the look waits: `aria-busy`, `readonly`, `disabled`, `aria-disabled` and Starbase's `:state(pending)` are set at once, so assistive technology hears the control busy at once, and a busy button ignores clicks at once. Reduced motion keeps the wait (it shortens durations, not delays), and the walking pixel then stands still. In forced colours the dashed edges and outlines stay, since they are styles, not colours.
+
 With `forced-colors: active` the board, an issue, a page and the issue list were checked by screenshot. Glyphs drawn as masks (types, priorities, status markers, faces, the card's "…", due dates) and page link icons vanished, since the system paints their fill in the canvas colour, and the task list's checkboxes lost their edges with their box shadows. They now keep their own colours or the text colour.
 
 ## Firefox and touch

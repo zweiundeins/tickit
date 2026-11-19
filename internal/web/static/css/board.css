@@ -383,17 +383,19 @@
 		}
 	}
 
-	/* Waiting for the frame (MP-04.2): faded, the pending pixel walking
-	 * in its corner. */
+	/* Waiting for the frame (MP-04.2): after the pending delay faded, the
+	 * pending pixel walking in its corner. */
 	.tk-card[data-state="pending"] {
 		cursor: progress;
 
 		& > :not(.tk-card__grip) {
 			opacity: 0.55;
+			transition: opacity 0s var(--tk-pending-delay);
 		}
 
 		&::before {
 			box-shadow: inset 3px 0 0 var(--_edge), inset 0 0 0 1px var(--tk-accent-edge);
+			transition: box-shadow 0s var(--tk-pending-delay);
 		}
 
 		&::after {
@@ -404,7 +406,7 @@
 			inline-size: 5px;
 			block-size: 5px;
 			background: var(--tk-accent);
-			animation: tk-card-busy 0.8s steps(1, end) infinite;
+			animation: tk-pending-wait 0s var(--tk-pending-delay) backwards, tk-card-busy 0.8s steps(1, end) var(--tk-pending-delay) infinite;
 		}
 	}
 
@@ -1005,6 +1007,7 @@
 
 			& > :not(.tk-card__grip) {
 				opacity: 0.55;
+				transition: opacity 0s var(--tk-pending-delay);
 			}
 		}
 	}
@@ -1178,6 +1181,7 @@
 
 		&:disabled {
 			opacity: 0.55;
+			transition: opacity 0s var(--tk-pending-delay);
 		}
 	}
 

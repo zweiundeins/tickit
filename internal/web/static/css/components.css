@@ -279,11 +279,14 @@
 			outline-offset: 2px;
 		}
 
+		/* Most controls turn disabled while an op is pending: they dim
+		 * after the pending delay, so a fast answer never flashes. */
 		&:disabled,
 		&[aria-disabled="true"] {
 			opacity: 0.45;
 			cursor: not-allowed;
 			translate: none;
+			transition: opacity 0s var(--tk-pending-delay);
 		}
 
 		& .tk-icon {
@@ -375,14 +378,15 @@
 		color: inherit;
 	}
 
-	/* Waiting for the stream (MP-09.1): faded, clicks ignored, a pixel
-	 * walking around the label. */
+	/* Waiting for the stream (MP-09.1): clicks ignored at once; after the
+	 * pending delay faded, a pixel walking around the label. */
 	.tk-btn[aria-busy="true"] {
 		cursor: progress;
 		pointer-events: none;
 
 		& > * {
 			opacity: 0.6;
+			transition: opacity 0s var(--tk-pending-delay);
 		}
 
 		&::after {
@@ -391,7 +395,15 @@
 			inline-size: 5px;
 			block-size: 5px;
 			background: currentColor;
-			animation: tk-busy 0.8s steps(1, end) infinite;
+			animation: tk-pending-wait 0s var(--tk-pending-delay) backwards, tk-busy 0.8s steps(1, end) var(--tk-pending-delay) infinite;
+		}
+	}
+
+	/* Hides a pending mark that has just appeared for the pending delay. */
+	@keyframes tk-pending-wait {
+		from,
+		to {
+			visibility: hidden;
 		}
 	}
 
@@ -502,10 +514,11 @@
 		}
 
 		/* Sent, waiting for its outcome (MP-09.1): the person's input
-		 * stays, dashed. */
+		 * stays, dashed after the pending delay. */
 		&[readonly] {
 			border-style: dashed;
 			color: var(--tk-text-2);
+			transition: border-style 0s var(--tk-pending-delay) allow-discrete, color 0s var(--tk-pending-delay);
 		}
 
 		&[aria-invalid="true"],
@@ -516,6 +529,7 @@
 		&:disabled {
 			opacity: 0.55;
 			cursor: not-allowed;
+			transition: opacity 0s var(--tk-pending-delay);
 		}
 	}
 
@@ -857,6 +871,7 @@
 	.tk-picker:state(pending)::part(control),
 	.tk-date:state(pending)::part(control) {
 		border-style: dashed;
+		transition: border-style 0s var(--tk-pending-delay) allow-discrete;
 	}
 
 	sb-select.tk-picker--bare:not(:defined),
@@ -1079,6 +1094,7 @@
 		&:state(pending)::part(trigger) {
 			outline: 1px dashed var(--tk-border-strong);
 			outline-offset: -1px;
+			transition: outline-style 0s var(--tk-pending-delay) allow-discrete, outline-color 0s var(--tk-pending-delay), outline-width 0s var(--tk-pending-delay), outline-offset 0s var(--tk-pending-delay);
 		}
 
 		&[aria-busy="true"] {

@@ -144,13 +144,14 @@
 		}
 	}
 
-	/* Saving: the pending pixel, walking a small square. */
+	/* Saving: the pending pixel, walking a small square after the pending
+	 * delay. */
 	.tk-editor__dot {
 		inline-size: 5px;
 		block-size: 5px;
 		margin: 3px;
 		background: var(--tk-accent);
-		animation: tk-busy 0.8s steps(1, end) infinite;
+		animation: tk-pending-wait 0s var(--tk-pending-delay) backwards, tk-busy 0.8s steps(1, end) var(--tk-pending-delay) infinite;
 	}
 
 	/* ── Unsaved edits and conflicts (MP-05.6) ─────────────────────── */

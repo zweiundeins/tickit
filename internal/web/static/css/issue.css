@@ -181,6 +181,7 @@
 
 	.tk-issue__value[aria-busy="true"] {
 		opacity: 0.6;
+		transition: opacity 0s var(--tk-pending-delay);
 	}
 
 	.tk-issue__related {
@@ -404,6 +405,7 @@
 		&[aria-busy="true"] {
 			opacity: 0.5;
 			cursor: default;
+			transition: opacity 0s var(--tk-pending-delay);
 		}
 	}
 
