@@ -2,7 +2,7 @@
 
 tickit had no releases before v0.5.0. The versions below were tagged afterwards, on the commits where each stretch of work ended.
 
-## Unreleased
+## v0.5.1 (2026-11-19)
 
 - lith v0.5.10: its Datastar build (1.0.5+starbase.846b62d) re-scopes a Rocket component once per frame instead of once per patched element, so a frame into a page full of live components (pickers, menus, the page tree) no longer stalls it.
 - Starbase v0.11.2: the vendored components and the templ wrappers, made for that Datastar build.
