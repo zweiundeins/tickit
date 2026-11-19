@@ -14,13 +14,13 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/klauspost/compress v1.20.4
 	github.com/prometheus/client_golang v1.25.0
-	github.com/zweiundeins/lith v0.5.9
+	github.com/zweiundeins/lith v0.5.10
 	github.com/zweiundeins/lith-coedit v0.2.1
-	github.com/zweiundeins/lith/minify v0.5.9
-	github.com/zweiundeins/lith/prom v0.5.9
+	github.com/zweiundeins/lith/minify v0.5.10
+	github.com/zweiundeins/lith/prom v0.5.10
 	github.com/zweiundeins/prosemirror-go v0.2.1
 	github.com/zweiundeins/prosemirror-go/oracle v0.2.1
-	github.com/zweiundeins/starbase/templ v0.11.1
+	github.com/zweiundeins/starbase/templ v0.11.2
 	golang.org/x/crypto v0.59.0
 	golang.org/x/image v0.48.0
 )

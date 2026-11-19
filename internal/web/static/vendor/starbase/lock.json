@@ -1,10 +1,10 @@
 {
   "repo": "github.com/zweiundeins/starbase",
-  "commit": "503bea220f1d140bd9e1858cd1c29108e3769efd",
-  "release": "v0.11.1",
-  "date": "2026-11-19T12:53:06Z",
+  "commit": "26af3207e42e93b69de73c6fbd2b3ebf06e74e65",
+  "release": "v0.11.2",
+  "date": "2026-11-19T17:09:06Z",
   "license": "MIT",
-  "datastar": "sha384-DkjVaBESHDA703Xk1QdsjXyHUmwC4Z9N/T8ak/EVxdTXso6apSccCKzi0DwwbGGK",
+  "datastar": "sha384-AfXVdZ/qxhMEHK4Nz/pJT6jl9xm3HGMBLBtC9yRuU5A7AQtXHYC0x6ap034vDqBV",
   "fonts": {
     "OFL-JetBrainsMono.txt": "sha384-9dzadA/aWbPgCj0zMah6cPjYgynSdqrBw8D8KjET47pxul8nStep57PT9QFMHCBb",
     "OFL-PixelifySans.txt": "sha384-v3t+wd9dOEgOCrZWFQ8KVleCALDsUy1lO0Na7rVuQCFuo6jCv5tPsTJEHKhBccbD",
