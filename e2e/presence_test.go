@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/a-h/templ"
 
@@ -44,7 +45,12 @@ func TestPresenceRow(t *testing.T) {
 	b := browsertest.Start(t)
 	p := b.NewPage(t, 1024, 768)
 	for _, me = range []int{2, 10} {
-		p.Navigate(t, srv.URL)
+		p.Navigate(t, fmt.Sprintf("%s/?me=%d", srv.URL, me))
+		// The stylesheet comes from the other server: wait until it applies
+		// to this document, not only for its load event.
+		p.Wait(t, fmt.Sprintf(`location.search === '?me=%d' && document.querySelector('link[rel=stylesheet]')?.sheet
+			&& getComputedStyle(document.documentElement).getPropertyValue('--tk-bg') !== ''
+			&& getComputedStyle(document.getElementById('row')).display === 'flex'`, me), 10*time.Second)
 		var got struct {
 			Shown []string
 			More  string
