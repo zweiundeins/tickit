@@ -4,6 +4,9 @@ tickit had no releases before v0.5.0. The versions below were tagged afterwards,
 
 ## Unreleased
 
+- lith v0.5.10: its Datastar build (1.0.5+starbase.846b62d) re-scopes a Rocket component once per frame instead of once per patched element, so a frame into a page full of live components (pickers, menus, the page tree) no longer stalls it.
+- Starbase v0.11.2: the vendored components and the templ wrappers, made for that Datastar build.
+- A pending state shows about 200 ms after the click, so a change answered within a tick no longer flashes: busy buttons, read-only fields, pickers, menus, cards and the editor's saving pixel. `aria-busy` and the read-only and disabled states are still set at once.
 - Starbase v0.11.1: the vendored components and the templ wrappers; sb-select's chips have a 24 px remove target. Its `rev` and `pending` change nothing on tickit's pages: the issue's menus still show the server's value again on a refusal from the page, since a refusal brings no frame of the shared issue view.
 - The old demo's archive was deleted on 2026-11-19.
 
