@@ -1,8 +1,8 @@
 {
   "repo": "github.com/zweiundeins/starbase",
-  "commit": "549bee4225235714050d248bd5c1d9a38c980e40",
-  "release": "v0.10.0",
-  "date": "2026-11-17T18:58:34Z",
+  "commit": "aff3857e9c48d46ecdef54740cf993a5ddf468f2",
+  "release": "v0.11.0",
+  "date": "2026-11-19T10:34:42Z",
   "license": "MIT",
   "datastar": "sha384-DkjVaBESHDA703Xk1QdsjXyHUmwC4Z9N/T8ak/EVxdTXso6apSccCKzi0DwwbGGK",
   "fonts": {
@@ -40,7 +40,7 @@
       "pinned": true,
       "entry": "date-picker.js",
       "files": {
-        "date-picker.js": "sha384-PjAXMvBRHdNPGjFjpBN9hz3Q73tBDTm0MpfndvAeBSfo2N31gO9lw1n2bBMx9+ut"
+        "date-picker.js": "sha384-D2QWanCmLWAoB2DG981joBRZCBSiDqwDIVGdDFWajFSmarsfohw2H5hFksQpI/sP"
       }
     },
     {
@@ -49,7 +49,7 @@
       "pinned": true,
       "entry": "dropdown.js",
       "files": {
-        "dropdown.js": "sha384-jNlrpeJdx16gRWYF3lA4zOCI9O+ihUvNr/rkUxIYqkTdEoLjf74E1L3HmDyzU/JR"
+        "dropdown.js": "sha384-dBqaom3EDx2FrIadsP5mpx9jQjrM5/UVwAD0Sde8SaTaekt+7DIKjOMAFe3osO/b"
       }
     },
     {
@@ -67,7 +67,7 @@
       "pinned": true,
       "entry": "select.js",
       "files": {
-        "select.js": "sha384-ktC+fuF8kBBCEtylqXlEyRSVRzM1fFpUqsMSDKRszwrzDJGjCVl/uUGByDtK05MQ"
+        "select.js": "sha384-808XsRuRz2cLC8WVX7Rpfp8xmTaf1hzi1jIkxVlZ73/3wiO34yFOz/5hmDdMjTVr"
       }
     },
     {
@@ -76,7 +76,7 @@
       "pinned": true,
       "entry": "tabs.js",
       "files": {
-        "tabs.js": "sha384-3eum1sFPtIvGPgVCfA8Boh39QVh3yttTMkndKdOMtI5hUiXkU7H0p6sUOnxxDxQj"
+        "tabs.js": "sha384-5hPxo1jqxVjgZc1MC+zxLgUziiz2erscdxE+OHrt/ZdhjAtK8NjhzZU6d7KvMGbd"
       }
     },
     {
@@ -103,7 +103,7 @@
       "pinned": true,
       "entry": "tree.js",
       "files": {
-        "tree.js": "sha384-0Dp+dDHwbGPA5O2weTtG7nnGJf+MVD5tz/J2KP7nEue5g7XSv6lCZ8JVxdEuXiJA"
+        "tree.js": "sha384-MeMfT50ZKY300l2y9uetxvDu3Fv9k/WGYIgYHIPzSGlmDFXipQePmuIHZxJJKKjj"
       }
     },
     {

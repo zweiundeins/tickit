@@ -244,7 +244,7 @@ slot[name="item"] { display: none; }
 }
 `;
 rocket('sb-dropdown', {
-    props: ({ bool, json, oneOf, string }) => ({
+    props: ({ bool, json, number, oneOf, string }) => ({
         items: json.default(() => []).docs({ description: 'The menu, as JSON: ["Rename", "-", {"value":"delete","label":"Delete","danger":true}]. An item is {value, label?, description?, icon?, href?, disabled?, danger?} (icon is text, such as an emoji: rich icons and content are the markup form\'s), {"divider":true} ("-" works too), a group heading {"group":"Move to"} (the items after it, up to the next heading or divider, are its group), or a submenu {label, children:[...]} nested up to 5 levels deep. An item with href is a link the browser follows (no sb-select). Server data: a new array replaces the whole tree, open or not.' }),
         label: string.trim.default('Actions').docs({ description: 'Text of the default trigger, and the accessible name of trigger and menu.' }),
         emptyLabel: string.default('Nothing here').docs({ description: 'Shown in a menu or submenu that has no items.' }),
@@ -252,6 +252,8 @@ rocket('sb-dropdown', {
         type: oneOf('actions', 'radio').default('actions').docs({ description: 'radio makes the root menu one radio group, for a menu that shows a current choice; a group inside a submenu is type:"radio" on that item instead. The group reaches into its submenus, and a dropdown holds one group.' }),
         value: string.docs({ description: 'Radio group: the checked value, owned by the server — for a choice in a submenu the item values from the group root down, joined with dots ("date.newest"). A new value from the server wins (value="" clears it); the live value is the value property.' }),
         confirm: bool.docs({ description: 'Radio group: :state(pending) on the host and on the chosen item while the local value differs from the server\'s value attribute (see revert()).' }),
+        rev: number.docs({ description: 'Revision of the server\'s value, for commands: the server bumps it with every command it answers for this field, applied or refused. A new rev makes the value attribute win even when it is unchanged, so a refused edit reverts.' }),
+        pending: bool.docs({ description: 'The page\'s word that a command is on its way (e.g. data-attr:pending="$_saving"): :state(pending) and aria-busy while present. It adds to confirm\'s pending, never clears it.' }),
         open: bool.docs({ description: 'Open when present. The server adding or removing the attribute opens or closes the menu; re-sent identical markup leaves the local state alone. Never reflected: use the open property, show() and hide() from the client.' }),
         disabled: bool.docs({ description: 'Disable the trigger (and close the menu).' }),
         name: string.trim.docs({ description: 'Name reported in sb-select and sb-change (e.g. the field of a command).' }),
@@ -394,7 +396,7 @@ rocket('sb-dropdown', {
         // what you assign to it).
         const publish = () => {
             let icons = false;
-            const waiting = props.confirm && $$.value !== servedV;
+            const waiting = props.pending || (props.confirm && $$.value !== servedV);
             for (const k of LEVELS) {
                 const rows = k <= path.length ? nodes(k).map(light) : [];
                 const here = onGroup(k); // this level belongs to the radio group
@@ -717,17 +719,25 @@ rocket('sb-dropdown', {
         // morph can never re-open a menu the user just closed. They are watched on
         // the attribute, not through observeProps, which stays silent when the
         // decoded value did not change (value="" on an element without it).
-        const states = internalsOf(host).states;
-        const sync = () => peek(() => (props.confirm && $$.value !== servedV ? states.add('pending') : states.delete('pending')));
+        const int = internalsOf(host), states = int.states;
+        const sync = () => peek(() => {
+            states[props.pending || (props.confirm && $$.value !== servedV) ? 'add' : 'delete']('pending');
+            int.ariaBusy = props.pending ? 'true' : null;
+        });
         // :state(open) follows the menu, whichever way it opens or closes.
         effect(() => states[$$.open ? 'add' : 'delete']('open'));
+        // A new rev makes the server's value win even when it is the same.
         let said = host.hasAttribute('value') ? props.value : null;
+        let word = host.getAttribute('rev');
         const serverValue = () => {
+            let apply = word !== (word = host.getAttribute('rev'));
             if (!host.hasAttribute('value'))
-                return void (said = null);
-            if (props.value === said)
+                said = null;
+            else if (props.value !== said)
+                (said = servedV = props.value), (apply = true);
+            if (!apply)
                 return;
-            $$.value = servedV = said = props.value;
+            $$.value = servedV;
             publish();
             sync();
         };
@@ -743,7 +753,7 @@ rocket('sb-dropdown', {
         // checks above are idempotent, so every batch runs them.
         // Any attribute inside an item counts (a rich item's copy shows them all);
         // on the host only the ones read here.
-        const hostAttrs = ['open', 'value', 'type', 'disabled'];
+        const hostAttrs = ['open', 'value', 'type', 'disabled', 'rev'];
         const watch = new MutationObserver((records) => {
             if (!records.some((m) => m.type !== 'attributes' || m.target !== host || hostAttrs.includes(m.attributeName)))
                 return;
