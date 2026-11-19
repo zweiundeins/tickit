@@ -2,6 +2,11 @@
 
 tickit had no releases before v0.5.0. The versions below were tagged afterwards, on the commits where each stretch of work ended.
 
+## Unreleased
+
+- Starbase v0.11.0: the vendored components and the templ wrappers. Its `rev` and `pending` change nothing on tickit's pages: the issue's menus still show the server's value again on a refusal from the page, since a refusal brings no frame of the shared issue view.
+- The old demo's archive was deleted on 2026-11-19.
+
 ## v0.5.0 (2026-11-17)
 
 - The issue's status, priority and type menus are Starbase's sb-dropdown with rich items: pixel icons and lozenges, a "Move to" group over the workflow's next statuses, a pick shown pending at once, and the server's value back on a refusal or conflict.
