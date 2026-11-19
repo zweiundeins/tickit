@@ -1,8 +1,8 @@
 {
   "repo": "github.com/zweiundeins/starbase",
-  "commit": "aff3857e9c48d46ecdef54740cf993a5ddf468f2",
-  "release": "v0.11.0",
-  "date": "2026-11-19T10:34:42Z",
+  "commit": "503bea220f1d140bd9e1858cd1c29108e3769efd",
+  "release": "v0.11.1",
+  "date": "2026-11-19T12:53:06Z",
   "license": "MIT",
   "datastar": "sha384-DkjVaBESHDA703Xk1QdsjXyHUmwC4Z9N/T8ak/EVxdTXso6apSccCKzi0DwwbGGK",
   "fonts": {
@@ -40,7 +40,7 @@
       "pinned": true,
       "entry": "date-picker.js",
       "files": {
-        "date-picker.js": "sha384-D2QWanCmLWAoB2DG981joBRZCBSiDqwDIVGdDFWajFSmarsfohw2H5hFksQpI/sP"
+        "date-picker.js": "sha384-it+/0wqsqcAxs1Tgaiilr0/ErSSb0pGDq6Z/MZ01cqlHmVzBdO7eIEb85vZAdh0G"
       }
     },
     {
@@ -49,7 +49,7 @@
       "pinned": true,
       "entry": "dropdown.js",
       "files": {
-        "dropdown.js": "sha384-dBqaom3EDx2FrIadsP5mpx9jQjrM5/UVwAD0Sde8SaTaekt+7DIKjOMAFe3osO/b"
+        "dropdown.js": "sha384-DIcd2diIKEtnZYd2Pi8lK2MhZquKGCpzKCq0Q1POaFFzKdTxc2FPLrxZE3aAsCqw"
       }
     },
     {
@@ -58,7 +58,7 @@
       "pinned": true,
       "entry": "popover.js",
       "files": {
-        "popover.js": "sha384-CRYHhJdtO0HiQj4xrzb3YaYABIMy6livZSLrnZExTNHI1TAClCGP2lymPh2F5X6a"
+        "popover.js": "sha384-1QszYVntN1dPK7/Ep4/3dBTMiZjDf4YPLayJI/vU8JPGslKvMRZBi169ETMh0Gi/"
       }
     },
     {
@@ -67,7 +67,7 @@
       "pinned": true,
       "entry": "select.js",
       "files": {
-        "select.js": "sha384-808XsRuRz2cLC8WVX7Rpfp8xmTaf1hzi1jIkxVlZ73/3wiO34yFOz/5hmDdMjTVr"
+        "select.js": "sha384-SN4iit56U1Kg5p+6ajgefqY5cbLz83WYZajcASEQUu4cFl+cuONBzSOPFjXWJ4NM"
       }
     },
     {
@@ -85,7 +85,7 @@
       "pinned": true,
       "entry": "toast.js",
       "files": {
-        "toast.js": "sha384-YEUN25r3gOoj6LQ2mna+XJQPdtIfO8nx9gHUK8xLplZx2SG3u26Q7re3dNJhPnB1"
+        "toast.js": "sha384-280qLLutqdP7Q8fzwj1yWgb209T6rMy0Cv6XdxMKb9Il26FpZmBZk7y7LzbluqtI"
       }
     },
     {

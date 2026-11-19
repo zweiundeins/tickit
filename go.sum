@@ -432,10 +432,8 @@ github.com/zweiundeins/prosemirror-go v0.2.1 h1:QGENdr2bJb9k6yd2j/CUmBlMEM4IQmnp
 github.com/zweiundeins/prosemirror-go v0.2.1/go.mod h1:N6K/D46qKgP5yJfAr+h98Z7ucssslKlMArQF9oDVcgU=
 github.com/zweiundeins/prosemirror-go/oracle v0.2.1 h1:uZTV+LALG+Y3FTuDC1lsgBIoLDPDA2HB3oTiIToQvTo=
 github.com/zweiundeins/prosemirror-go/oracle v0.2.1/go.mod h1:P/z+svVFJLBcrRxCoLbRHlAc9JjCipz53Ami9xUw+9k=
-github.com/zweiundeins/starbase/templ v0.10.0 h1:qWJBmfk0u3RvQJ+BnaRNJ9Xu6B/pZYU8EAe++czH0bA=
-github.com/zweiundeins/starbase/templ v0.10.0/go.mod h1:6gt2rqzG74TZp6ZjuyAcA9BAEWQ6ePDEYWjjrlvmn7w=
-github.com/zweiundeins/starbase/templ v0.11.0 h1:HiIn4LyUeij98fNa0u3hdPt2dLZFbASvhF9wvGW6aVQ=
-github.com/zweiundeins/starbase/templ v0.11.0/go.mod h1:6gt2rqzG74TZp6ZjuyAcA9BAEWQ6ePDEYWjjrlvmn7w=
+github.com/zweiundeins/starbase/templ v0.11.1 h1:i2lZzr12UakH1HUpPegH7WRRUDyVnC1XiIgpRO2GVuE=
+github.com/zweiundeins/starbase/templ v0.11.1/go.mod h1:6gt2rqzG74TZp6ZjuyAcA9BAEWQ6ePDEYWjjrlvmn7w=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
 go.opentelemetry.io/contrib/detectors/gcp v1.45.0 h1:9jR0ZPRok9ryaOQ2Wx8rg5F7Aon59mxrqbVI60/vlBk=
