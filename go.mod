@@ -12,7 +12,7 @@ require (
 	github.com/a-h/templ v0.3.1118
 	github.com/andybalholm/brotli v1.3.0
 	github.com/google/uuid v1.6.0
-	github.com/klauspost/compress v1.20.4
+	github.com/klauspost/compress v1.20.5
 	github.com/prometheus/client_golang v1.25.0
 	github.com/zweiundeins/lith v0.5.10
 	github.com/zweiundeins/lith-coedit v0.2.1
